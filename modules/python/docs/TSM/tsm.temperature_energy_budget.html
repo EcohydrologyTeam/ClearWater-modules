@@ -1,0 +1,160 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module tsm_python.temperature_energy_budget</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="tsm_python.html"><font color="#ffffff">tsm_python</font></a>.temperature_energy_budget</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/Users/todd/Documents/Work/Sandbox/RAS_2D_Water_Quality/modules/TSM/tsm_python/temperature_energy_budget.py">/Users/todd/Documents/Work/Sandbox/RAS_2D_Water_Quality/modules/TSM/tsm_python/temperature_energy_budget.py</a></font></td></tr></table>
+    <p><tt>=======================================================================================<br>
+Water&nbsp;Temperature&nbsp;Simulation&nbsp;Module&nbsp;(TSM):&nbsp;Temperature&nbsp;Energy&nbsp;Budget&nbsp;Module<br>
+=======================================================================================<br>
+&nbsp;<br>
+Developed&nbsp;by:<br>
+Dr.&nbsp;Todd&nbsp;E.&nbsp;Steissberg&nbsp;(ERDC-EL)<br>
+Dr.&nbsp;Billy&nbsp;E.&nbsp;Johnson&nbsp;(ERDC-EL,&nbsp;LimnoTech)<br>
+Dr.&nbsp;Zhonglong&nbsp;Zhang&nbsp;(Portland&nbsp;State&nbsp;University)<br>
+Mr.&nbsp;Mark&nbsp;Jensen&nbsp;(HEC)<br>
+&nbsp;<br>
+Version&nbsp;1.0<br>
+&nbsp;<br>
+Initial&nbsp;Version:&nbsp;April&nbsp;9,&nbsp;2021<br>
+Last&nbsp;Revision&nbsp;Date:&nbsp;April&nbsp;11,&nbsp;2021</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="logging.html">logging</a><br>
+</td><td width="25%" valign=top></td><td width="25%" valign=top></td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-TemperatureEnergyBudget"><strong>TemperatureEnergyBudget</strong></a>(TwaterC: float, q_solar: float, TairC: float, wind_kh_kw: float, eair_mb: float, pressure_mb: float, cloudiness: float, wind_speed: float, wind_a: float, wind_b: float, wind_c: float, surface_area: float, volume: float, use_SedTemp: bool = False, TsedC: float = 0.0) -&gt; dict</dt><dd><tt>Compute&nbsp;water&nbsp;temperature&nbsp;kinetics&nbsp;using&nbsp;the&nbsp;energy&nbsp;balance&nbsp;method<br>
+&nbsp;<br>
+Parameters<br>
+----------<br>
+TwaterC&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Water&nbsp;temperature&nbsp;(degrees&nbsp;Celsius)<br>
+q_solar&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Solar&nbsp;radiation&nbsp;(W/m2)<br>
+TairC&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Air&nbsp;temperature&nbsp;(degrees&nbsp;Celsius)<br>
+wind_kh_kw&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Diffusivity&nbsp;ratio&nbsp;(unitless)<br>
+eair_mb&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Vapor&nbsp;pressure&nbsp;(mb)<br>
+pressure_mb&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Air&nbsp;pressure&nbsp;(mb)<br>
+cloudiness&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Cloudiness<br>
+wind_speed&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Wind&nbsp;speed&nbsp;(m/s)<br>
+wind_a&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"a"&nbsp;coefficient&nbsp;of&nbsp;the&nbsp;wind&nbsp;function<br>
+wind_b&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"b"&nbsp;coefficient&nbsp;of&nbsp;the&nbsp;wind&nbsp;function<br>
+wind_c&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"c"&nbsp;coefficient&nbsp;of&nbsp;the&nbsp;wind&nbsp;function<br>
+surface_area&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Cell&nbsp;surface&nbsp;area&nbsp;(m2)<br>
+volume&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Cell&nbsp;volume&nbsp;(m3)<br>
+use_SedTemp&nbsp;(bool,&nbsp;optional)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Compute&nbsp;surface&nbsp;temperature&nbsp;(on/off)<br>
+TsedC&nbsp;:&nbsp;float,&nbsp;optional<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Sediment&nbsp;temperature&nbsp;(degrees&nbsp;Celsius)<br>
+&nbsp;<br>
+Returns<br>
+----------<br>
+ddict&nbsp;(unordered&nbsp;map)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Dictionary&nbsp;of&nbsp;pathway&nbsp;variables</tt></dd></dl>
+ <dl><dt><a name="-compute_equilibrium_temperature"><strong>compute_equilibrium_temperature</strong></a>(TairK, wind_speed: float, Richardson_option, wind_kh_kw: float, Cp_air: float, wind_function: float, pressure_mb: float, density_air: float, pb: float, alphas: float, Cps: float, h2: float, TsedC: float, TwaterC: float, q_longwave_down: float, q_solar: float, eair_mb: float, initialOffset: float = -10.0, use_SedTemp: bool = False, num_iterations: int = 10, tolerance: float = 0.01)</dt><dd><tt>Obtain&nbsp;equilibrium&nbsp;temperature&nbsp;for&nbsp;current&nbsp;met&nbsp;conditions<br>
+&nbsp;<br>
+Newton-Rhapson&nbsp;interation.&nbsp;&nbsp;Begin&nbsp;with&nbsp;air&nbsp;temperature&nbsp;-&nbsp;10&nbsp;as&nbsp;first&nbsp;guess.<br>
+*<br>
+Parameters<br>
+----------<br>
+TairK&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Air&nbsp;temperature&nbsp;(Kelvin)<br>
+wind_speed&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Wind&nbsp;speed&nbsp;(m/s)<br>
+Richardson&nbsp;option&nbsp;:&nbsp;bool<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Compute&nbsp;Richardson&nbsp;number&nbsp;(on/off)<br>
+wind_kh_kw&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Diffusivity&nbsp;ratio&nbsp;(unitless)<br>
+Cp_air<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Specific&nbsp;heat&nbsp;of&nbsp;air&nbsp;(J/kg/K)<br>
+wind_function&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Wind&nbsp;function<br>
+pressure_mb&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Air&nbsp;pressure&nbsp;(mb)<br>
+density_air&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Air&nbsp;density&nbsp;(kg/m3)<br>
+pb&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Bulk&nbsp;density&nbsp;of&nbsp;sediment&nbsp;(kg/m3)<br>
+alphas&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Sediment&nbsp;thermal&nbsp;diffusivity&nbsp;(m2/d)<br>
+Cps&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Specific&nbsp;heat&nbsp;of&nbsp;sediment&nbsp;(J/kg/C)<br>
+h2&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Effective&nbsp;thickness&nbsp;of&nbsp;the&nbsp;sediment&nbsp;layer&nbsp;(m)&nbsp;<br>
+TsedC&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Sediment&nbsp;temperature&nbsp;(degrees&nbsp;Celsius)<br>
+TwaterC&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Water&nbsp;temperature&nbsp;(degrees&nbsp;Celsius)<br>
+q_longwave_down&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Downwelling&nbsp;(atmospheric)&nbsp;longwave&nbsp;radiation&nbsp;(W/m2)<br>
+q_solar&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Solar&nbsp;radiation&nbsp;(W/m2)<br>
+eair_mb&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Vapor&nbsp;pressure&nbsp;(mb)<br>
+initialOffset&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Initial&nbsp;offset&nbsp;for&nbsp;Newton-Raphson&nbsp;algorithm<br>
+use_SedTemp&nbsp;:&nbsp;bool,&nbsp;optional<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Compute&nbsp;surface&nbsp;temperature&nbsp;(on/off)<br>
+numIterations&nbsp;:&nbsp;int<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Maximum&nbsp;number&nbsp;of&nbsp;iterations&nbsp;for&nbsp;Newton-Raphson&nbsp;algorithm<br>
+tolerance&nbsp;:&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Tolerance&nbsp;for&nbsp;Newton-Raphson&nbsp;algorithm<br>
+&nbsp;<br>
+Returns<br>
+----------<br>
+dict<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Dictionary&nbsp;of&nbsp;pathway&nbsp;variables</tt></dd></dl>
+</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>TairC</strong> = 20.0<br>
+<strong>TsedC</strong> = 5.0<br>
+<strong>TwaterC</strong> = 20.0<br>
+<strong>cloudiness</strong> = 0.1<br>
+<strong>constants</strong> = {'Cp_air': 1005.0, 'Stefan-Boltzmann': 5.67e-08, 'emissivity_water': 0.97, 'gravity': 9.806, 'vp_a0': 6984.505294, 'vp_a1': -188.903931, 'vp_a2': 2.133357675, 'vp_a3': -0.01288580973, 'vp_a4': 4.393587233e-05, 'vp_a5': -8.023923082e-08, ...}<br>
+<strong>eair_mb</strong> = 1.0<br>
+<strong>initial_values</strong> = {'Cps': 1673.0, 'Richardson_option': True, 'alphas': 0.0432, 'h2': 0.1, 'pb': 1600.0}<br>
+<strong>key</strong> = 'Ri_fxn'<br>
+<strong>keys</strong> = ['TeqC', 'q_longwave_down', 'q_longwave_up', 'q_net', 'q_sensible', 'q_latent', 'q_sediment', 'd_sediment_dT', 'dTsedCdt', 'dTwaterCdt', 'Ta_Tw', 'Esat_Eair', 'Ri_No', 'Ri_fxn']<br>
+<strong>pathways</strong> = {'Esat_Eair': 22.371004503124823, 'Ri_No': -0.006575457796086729, 'Ri_fxn': 1.0, 'Ta_Tw': 0.0, 'TeqC': 689.6550456634511, 'dTsedCdt': 129.6, 'dTwaterCdt': -109.91368958745495, 'd_sediment_dT': 0.0, 'q_latent': 246.88974392955842, 'q_longwave_down': 337.8225234581498, ...}<br>
+<strong>pressure_mb</strong> = 1013.0<br>
+<strong>q_solar</strong> = -5000.0<br>
+<strong>surface_area</strong> = 1.0<br>
+<strong>use_SedTemp</strong> = True<br>
+<strong>volume</strong> = 1.0<br>
+<strong>wind_a</strong> = 5.0<br>
+<strong>wind_b</strong> = 5.0<br>
+<strong>wind_c</strong> = 0.0<br>
+<strong>wind_kh_kw</strong> = 1.0<br>
+<strong>wind_speed</strong> = 5.0</td></tr></table>
+</body></html>
