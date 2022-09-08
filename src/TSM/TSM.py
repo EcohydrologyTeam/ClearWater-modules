@@ -77,46 +77,6 @@ Richardson_option = True
 # Initial dictionary that will hold the pathways to return from this function
 pathways = {}
 
-@numba.njit
-def equilibrium_temperature_method(TwaterC: float, surface_area: float, volume: float, TeqC: float, KT: float, use_SedTemp: bool = False, TsedC: float = 0.0):
-    '''
-    Compute water temperature kinetics using the equilibrium method
-
-    Parameters:
-        TwaterC (float):        Water temperature (degrees Celsius)
-        surface_area (float):   Cell surface area (m2)
-        volume (float):         Cell volume (m3)
-        TeqC (float):           Equilibrium water temperature (degrees Celsius)
-        KT (float):             Constant
-        use_SedTemp (bool):     Compute surface temperature (on/off)
-        TsedC (float):          Sediment temperature (degrees Celsius)
-    '''
-
-    # logger.debug(
-    #     f'equilibrium_temperature_method({TeqC:.2f}, {KT:.2f}, use_SedTemp={use_SedTemp}, TsedC={TsedC})')
-
-    density_water: float = mf_density_water(TwaterC)
-    Cp_water: float = mf_Cp_water(TwaterC)
-
-    # Sediment heat flux and its derivative
-    q_sediment: float = 0.0
-    dTsedCdt = 0.0
-    if use_SedTemp:
-        q_sediment = pb * Cps * alphas / 0.5 / h2 * (TsedC - TwaterC) / 86400.0
-        dTsedCdt = alphas / (0.5 * h2 * h2) * (TwaterC - TsedC)
-
-    # Net heat flux
-    q_net = KT * (TeqC - TwaterC) + q_sediment
-    dTwaterCdt = q_net * surface_area / (volume * density_water * Cp_water) * 86400.0
-    TwaterC += dTwaterCdt  # Added by Todd Steissberg
-
-    # Set pathway variables
-    set_pathways_float(q_net, 'q_net', 'Net Solar Radiation', "W/m2")
-    set_pathways_float(q_sediment, 'q_sediment', 'Sediment Heat Flux', 'W/m2')
-    set_pathways_float(dTwaterCdt, 'dTwaterCdt', 'Water Temperature Rate of Change', 'degC')
-    set_pathways_float(dTsedCdt, 'dTsedCdt', 'Sediment Temperature Rate of Change', '')
-    set_pathways_float(TwaterC, 'TwaterC', 'Water Temperature', 'degC', description='Updated water temperature')
-
 def energy_budget_method(TwaterC: float, surface_area: float, volume: float, TairC: float, q_solar: float, pressure_mb: float, eair_mb: float, cloudiness: float, wind_speed: float, wind_a: float, wind_b: float, wind_c: float, wind_kh_kw: float, use_SedTemp: bool = False, TsedC: float = 0.0, num_iterations: int = 10, tolerance: float = 0.01):
     '''
     Compute water temperature kinetics using the energy budget method
@@ -252,6 +212,7 @@ def energy_budget_method(TwaterC: float, surface_area: float, volume: float, Tai
     # ------------------------------------------------------------------------
     # Compute water temperature change
     dTwaterCdt = q_net * surface_area / (volume * density_water * Cp_water) * 86400.0
+    TwaterC += dTwaterCdt
 
     # ------------------------------------------------------------------------------------
     # Difference between air and water temperature (Celsius or Kelvins)
@@ -279,12 +240,15 @@ def energy_budget_method(TwaterC: float, surface_area: float, volume: float, Tai
     set_pathways_float(q_latent, 'q_latent', 'Latent Heat', 'W/m2')
     set_pathways_float(q_longwave_up, 'q_longwave_up', 'Upwelling Longwave Radiation', 'W/m2')
     set_pathways_float(q_longwave_down, 'q_longwave_down', 'Downwelling Longwave Radiation', 'W/m2')
-    set_pathways_float(dTwaterCdt, 'dTwaterCdt', 'Water Temperature Rate of Change', 'degC')
     set_pathways_float(Ta_Tw, 'Ta_Tw', 'Difference between Air and Water Temperature', 'degC')
     set_pathways_float(Esat_Eair, 'Esat_Eair', 'Difference between Saturation and Air Vapor Pressure', 'mb')
     set_pathways_float(Ri_No, 'Ri_No', 'Richardson Number', '')
     set_pathways_float(Ri_fxn, 'Ri_fxn', 'Richardson Function', '')
     set_pathways_float(dTsedCdt, 'dTsedCdt', 'Sediment Temperature Rate of Change', '')
+    set_pathways_float(dTwaterCdt, 'dTwaterCdt', 'Water Temperature Rate of Change', 'degC')
+    set_pathways_float(TwaterC, 'TwaterC', 'Water Temperature', 'degC')
+
+    return TwaterC
 
 
 # Functions to set the pathways dictionary
