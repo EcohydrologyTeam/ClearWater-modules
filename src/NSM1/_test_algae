@@ -1,0 +1,50 @@
+from collections import OrderedDict
+import unittest
+import os
+import sys
+
+from _algae import Algae
+from _main import create_global_constant_changes, create_algae_constant_changes, create_globals_vars
+
+class Test_algae(unittest.TestCase):
+
+
+    def setUp(self):
+
+        self.global_vars = create_globals_vars().assign()
+        self.algae_constant_changes=create_algae_constant_changes().assign()
+        self.global_constant_changes = create_global_constant_changes().assign()
+
+#Change the Ap
+    def test_Ap (self):
+        self.params = OrderedDict()
+        self.params['Ap']= 100
+
+        for key in self.params.keys() :
+            if key in self.global_vars:
+                self.global_vars[key] = self.params[key]
+
+        for key in self.global_vars.keys() :
+            print(key, '=', self.global_vars[key])
+
+        Change=Algae(self.global_vars, self.algae_constant_changes, self.global_constant_changes).Calculations()
+
+        self.assertAlmostEqual(Change, 35.466, 3, 'test complete')
+
+#Change mu_max
+    def test_mu_max (self) :
+        self.params = OrderedDict()
+        self.params['mu_max']=1
+
+        for key in self.params.keys() :
+           self.algae_constant_changes[key] = self.params[key]
+
+        for key in self.algae_constant_changes :
+            print(key, '=', self.algae_constant_changes[key])
+        
+        Change = Algae(self.global_vars, self.algae_constant_changes, self.global_constant_changes).Calculations()
+
+        self.assertAlmostEqual(Change, 35.466, 3, 'test complete')
+
+if __name__ == '__main__':
+    unittest.main()

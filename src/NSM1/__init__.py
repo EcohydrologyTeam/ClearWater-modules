@@ -35,6 +35,8 @@ from ._sed_flux import SedFlux
 from ._globals import Globals
 from ._temp_correction import TempCorrection
 
+from ._kelsey_global import Kelsey_Global
+from ._kelsey_algae import Algae
 
 class NSM1:
     def __init__(self):
