@@ -152,17 +152,11 @@ class Algae:
         self.algae_constant['rca'] = self.algae_constant['AWc'] / self.algae_constant['AWa']             # Algal C : Chla ratio [mg-C/ugChla]
         self.algae_constant['rda'] = self.algae_constant['AWd'] / self.algae_constant['AWa']             # Algal D : Chla ratio [mg-D/ugChla]
 
-        # Parameters related to algae growth
-        mu_max = TempCorrection(self.algae_constant['mu_max'], 1.047)         # Maximum algal growth rate [1/d]
+        # Parameters related to algae growth and settling
         KL = self.algae_constant['KL']                                        # Light limiting constant for algal growth [W/m^2]
         growth_rate_option = self.algae_constant['growth_rate_option']                    
         light_limitation_option = self.algae_constant['light_limitation_option']           
 
-        # Parameters related to algae death
-        kdp = TempCorrection(self.algae_constant['kdp'], 1.047)           # algae mortality rate [1/d]
-
-        # Parameters related to algae respiration
-        krp = TempCorrection(self.algae_constant['krp'], 1.047)            # algal respiration rate [1/d]
         vsap = self.algae_constant['vsap']                                 # algal settling velocity [m/d]
 
         if self.global_constant['use_NH4'] or self.global_constant['use_NO3']:
@@ -176,9 +170,9 @@ class Algae:
             Fpocp = self.algae_constant['Fpocp']                           # Fraction of algal mortality into POC: not in document
 
         # Temperature correction
-        mu_max_tc = mu_max.arrhenius_correction(self.global_vars['TwaterC'])           # Maximum algal growth rate [1/d]
-        krp_tc = krp.arrhenius_correction(self.global_vars['TwaterC'])                 # algae respiration rate [1/d]
-        kdp_tc = kdp.arrhenius_correction(self.global_vars['TwaterC'])                 # algae mortality rate [1/d]
+        mu_max_tc = TempCorrection(self.algae_constant['mu_max'], 1.047).arrhenius_correction(self.global_vars['TwaterC'])           # Maximum algal growth rate [1/d]
+        krp_tc = TempCorrection(self.algae_constant['krp'], 1.047).arrhenius_correction(self.global_vars['TwaterC'])                 # algae respiration rate [1/d]
+        kdp_tc = TempCorrection(self.algae_constant['kdp'], 1.047).arrhenius_correction(self.global_vars['TwaterC'])                 # algae mortality rate [1/d]
 
         sqrt1 = 0.0
         sqrt2 = 0.0

@@ -19,6 +19,7 @@ class create_global_constant_changes :
          #   'use_DOC': False,
 
         }
+        
 
         return self.global_constant_changes
 
