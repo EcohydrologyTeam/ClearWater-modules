@@ -26,6 +26,7 @@ Initial Version: June 12, 2021
 
 import math
 from collections import OrderedDict
+from pickle import TRUE
 from _temp_correction import TempCorrection
 
 
@@ -139,6 +140,7 @@ class Algae:
             'use_TIP': True,
             'use_POC': False,
             'use_DOC': False,
+            'use_OrgN' : True
 
         }
         
@@ -147,10 +149,10 @@ class Algae:
                 self.global_constant[key] = self.global_constant_changes[key]
 
 
-        self.algae_constant['rna'] = self.algae_constant['AWn'] / self.algae_constant['AWa']             # Algal N : Chla ratio [mg-N/ugChla]
-        self.algae_constant['rpa'] = self.algae_constant['AWp'] / self.algae_constant['AWa']             # Algal P : Chla ratio [mg-P/ugChla]
-        self.algae_constant['rca'] = self.algae_constant['AWc'] / self.algae_constant['AWa']             # Algal C : Chla ratio [mg-C/ugChla]
-        self.algae_constant['rda'] = self.algae_constant['AWd'] / self.algae_constant['AWa']             # Algal D : Chla ratio [mg-D/ugChla]
+        self.rna = self.algae_constant['AWn'] / self.algae_constant['AWa']             # Algal N : Chla ratio [mg-N/ugChla]
+        self.rpa = self.algae_constant['AWp'] / self.algae_constant['AWa']             # Algal P : Chla ratio [mg-P/ugChla]
+        self.rca = self.algae_constant['AWc'] / self.algae_constant['AWa']             # Algal C : Chla ratio [mg-C/ugChla]
+        self.rda = self.algae_constant['AWd'] / self.algae_constant['AWa']             # Algal D : Chla ratio [mg-D/ugChla]
 
         # Parameters related to algae growth and settling
         KL = self.algae_constant['KL']                                        # Light limiting constant for algal growth [W/m^2]
@@ -254,22 +256,38 @@ class Algae:
                 mu = mu_max_tc * FL * 2.0 / (1.0 / FN + 1.0 / FP)
 
         # Algal growth
-        ApGrowth = mu * Ap                      # [ug-Chla/L/d]
+        self.ApGrowth = mu * Ap                      # [ug-Chla/L/d]
 
         # Algal respiration
-        ApRespiration = krp_tc * Ap             # [ug-Chla/L/d]
+        self.ApRespiration = krp_tc * Ap             # [ug-Chla/L/d]
 
         # Algal mortality
-        ApDeath = kdp_tc * Ap                   # [ug-Chla/L/d]
+        self.ApDeath = kdp_tc * Ap                   # [ug-Chla/L/d]
 
         # Algal settling
-        ApSettling = vsap / self.global_vars['depth'] * Ap          # [ug-Chla/L/d]
+        self.ApSettling = vsap / self.global_vars['depth'] * Ap          # [ug-Chla/L/d]
 
         # Algal Biomass Concentration
         # dA/dt = A*(AlgalGrowthRate - AlgalRespirationRate - AlgalDeathRate - AlgalSettlingRate)(mg/L/day)
-        dApdt = ApGrowth - ApRespiration - ApDeath - ApSettling     # [ug-Chla/L/d]
-
-        self.dApdt = dApdt
-        print(dApdt)
+        dApdt = self.ApGrowth - self.ApRespiration - self.ApDeath - self.ApSettling     # [ug-Chla/L/d]
         
-        return dApdt
+
+        algae_to_nitrogen = OrderedDict()
+        algae_to_nitrogen = {
+            'ApGrowth': self.ApGrowth,
+            'ApRespiration' : self.ApRespiration,
+            'ApDeath': self.ApDeath,
+            'rna': self.rna,
+            'rda' : self.rda,         
+            'rca': self.rca,
+            'rpa': self.rpa
+        #   'PN' : self.algae_constant['PN']
+        }
+
+        print(dApdt)
+
+
+        return dApdt, algae_to_nitrogen
+
+
+        

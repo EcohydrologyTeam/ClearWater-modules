@@ -21,11 +21,8 @@ Version 1.0
 Initial Version: June 13, 2021
 '''
 
-from cmath import exp
 import math
 from collections import OrderedDict
-
-from pandas import isna
 from _temp_correction import TempCorrection
 
 
@@ -33,37 +30,38 @@ class Nitrogen:
 
     def __init__(self):
         pass
+
     def Calculations (self):
-        # use modGlobal,       only: r, depth, TwaterC, NH4, dNH4dt, NO3, dNO3dt, OrgN, dOrgNdt, DIN, TON, TKN, TN, DOX, Ap,  & use_OrgN, use_NH4, use_NO3, use_DOX, use_Algae, use_BAlgae, use_SedFlux
+        #use modGlobal,       only: r, depth, TwaterC, NH4, dNH4dt, NO3, dNO3dt, OrgN, dOrgNdt, DIN, TON, TKN, TN, DOX, Ap,  & use_OrgN, use_NH4, use_NO3, use_DOX, use_Algae, use_BAlgae, use_SedFlux
         #use modGlobalParam,  only: vson
         #use modAlgae,        only: PN, ApGrowth, ApRespiration, ApDeath, rna  
         #use modBenthicAlgae, only: Fb, Fw, PNb, AbGrowth, AbRespiration, AbDeath, rnb
         #use modSedFlux,      only: JNH4, JNO3
         #use modDLL,          only: R8, nRegion, list_class, SetOptionalIndex, TempCorrectionStruct, Arrhenius_TempCorrection 
  
-        TwaterC = 0
-        PN =0   #NH4 preference factor for algal growth
-        PNb =0 #No3 preference factor for benthic algal growth
-        NH4 = 0 #Concentration NH4
-        NO3 = 0 #Concentration NO3
-        OrgN = 0 #Concentration Orgnaic Nitrogen
-        vson = 0 # Organic N settlign velocity (m/d)
-        depth = 0 #depth
-        rna = 0 #algal N: Chla ratio (mg-N/ug-Chla)
-        ApDeath = 0 # algal mortality rate (1/d)
-        rnb = 0 # benthic algae N: D ration (mg-N/mg-D)
-        Fw = 0 # Fraction of benthic algae mortality into the water column (0-1)
-        Fb = 0 #fraction of bottom area available for benthic algae growth (0-1)
-        AbDeath = 0 # benthic algal mortality rate (1/d)
-        KNR = 0 # oxygen inhibitation factor for nitrification (0.6-0.7) [mg-O2/L]
-        DOX = 0 # dissolved oxygen
-        JNH4 = 0 # sediment release rate for NH4 (g-N/m^2 * d)
-        ApRespiration = 0 # Ap Resipration rate
-        ApGrowth = 0 # Algae growth rate
-        AbRespiration = 0 # Ab resipration rate
-        AbGrowth = 0 # Benthic algae growth rate
-        JNO3 = 0 # sediment release rate for NO3 (g-N/<^2 * d)
-        Ap = 0 
+        TwaterC = 0         # Water temperature [C]
+        PN =0               # NH4 preference factor for algal growth [unitless]
+        PNb =0              # No3 preference factor for benthic algal growth [unitless]
+        NH4 = 0             # Concentration NH4 [mg-N/L]
+        NO3 = 0             # Concentration NO3 [mg-N/L]
+        OrgN = 0            # Concentration Orgnaic Nitrogen [mg-N/L]
+        vson = 0            # Organic N settling velocity [m/d]
+        depth = 0           # Depth [m]
+        rna = 0             # Algal N: Chla ratio [mg-N/ug-Chla]
+        ApDeath = 0         # Algal mortality rate [1/d] 
+        rnb = 0             # Benthic algae N: D ration [mg-N/mg-D]
+        Fw = 0              # Fraction of benthic algae mortality into the water column (0-1) [unitless]
+        Fb = 0              # Fraction of bottom area available for benthic algae growth (0-1) [unitless]
+        AbDeath = 0         # Benthic algal mortality rate [1/d]
+        KNR = 0.6             # Oxygen inhibitation factor for nitrification (0.6-0.7) [mg-O2/L]
+        DOX = 0             # Dissolved oxygen [mg-O2/L]
+        JNH4 = 0            # Sediment water flux of ammonia [g-N/m^2 *d] TODO Where does this come from 
+        ApRespiration = 0   # Ap Resipration rate [ug-Chla/L/d] 
+        ApGrowth = 0        # Algae growth rate [ug-Chla/L/d] 
+        AbRespiration = 0   # Ab resipration rate
+        AbGrowth = 0        # Benthic algae growth rate
+        JNO3 = 0            # Sediment water flux of NO3 [g-N/m^2 * d] TODO where does this come from
+        Ap = 0              #
 
         #pathways
         ApDeath_OrgN  =0                # Floating Algae -> OrgN     (mg-N/L/day)
@@ -81,23 +79,7 @@ class Nitrogen:
         NH4_AbGrowth =0                 # NH4 -> Benthic Algae       (g-N/L/day)
         NO3_AbGrowth =0                 # NO3 -> Benthic Algae       (g-N/L/day)
 
-        ApDeath_OrgN_index = 0
-        OrgN_Settling_index = 0
-        OrgN_NH4_Decay_index = 0
-        NH4_Nitrification_index = 0
-        NH4_ApRespiration_index = 0
-        NH4_ApGrowth_index = 0
-        NH4fromBed_index = 0
-        NO3_ApGrowth_index = 0
-        NO3_Denit_index = 0
-        NO3_BedDenit_index = 0
-        AbDeath_OrgN_index = 0
-        NH4_AbRespiration_index = 0
-        NH4_AbGrowth_index = 0
-        NO3_AbGrowth_index = 0
-
-        # local variables        
-        KNR = 0.6                                        # QCLL Hardwire (mg-O2/L)  Range {0.6-0.7}            
+        # local variables                
         NitrificationInhibition =0                       # Nitrification Inhibitation (limits nitrification under low DO conditions)	
         ApUptakeFr_NH4  =0                               # fraction of actual floating algal uptake that is from ammonia pool
         ApUptakeFr_NO3 =0                                # fraction of actual floating algal uptake that is from nitrate pool
@@ -124,17 +106,12 @@ class Nitrogen:
         }
 
        #Parameters
-        knit=0.1              # ammonia decay  NH4 -> NO3 (1/day)  Range {0.1-1.0}
-        knit_tc=0           # TODO temp correction
-        kon=0.1              # OrgN -> NH4 (1/day)  Range {0.02-0.4}
-        kon_tc=0            # TODO temp correction
-        kdnit=0.002	            # denitrification rate (1/day)
-        kdnit_tc=0          # TODO temp correction
-        rnh4=0              # Benthos source rate  Benthos -> NH4 (mg/m2day)  Range {variable}	
-        rnh4_tc =0          # TODO temp correction
-        vno3=0	            # Sediment denitrification reaction velocity (m/d)	
-        vno3_tc	=0          # TODO temp correction    
-        KsOxdn=0            # Half-saturation oxygen attenuation constant for denitrification	  (mg-O2/L)
+        knit=0.1              # ammonia decay  NH4 -> NO3 [1/day]  Range {0.1-1.0}
+        kon=0.1               # OrgN -> NH4 [1/day]  Range {0.02-0.4}
+        kdnit=0.002	          # denitrification rate [1/day]
+        rnh4=0                # Benthos source rate  Benthos -> NH4 [mg/m2day[]  Range {variable}	
+        vno3=0	              # Sediment denitrification reaction velocity [m/d[]	
+        KsOxdn=0              # Half-saturation oxygen attenuation constant for denitrification	  [mg-O2/L]
 
         if initial_values['use_NH4'] :
             knit_tc=TempCorrection(knit, 1.083).arrhenius_correction(TwaterC)
@@ -233,24 +210,23 @@ class Nitrogen:
   end subroutine 
   !
 '''
-
-    #  subroutine NitrogenKinetics()
-    # TODO make sure the ApUptakeFr_NO3 is used as well
+    #TODO keep tabs on the ApUptakeFr_NO3 if that comes up
+    #  Calculating Nitrogen Kinetics
         if initial_values['use_Algae'] and initial_values['use_NH4'] and initial_values['use_NO3'] : 
             ApUptakeFr_NH4 = PN * NH4 / (PN * NH4  + (1.0 - PN) * NO3)
     # Check for case when NH4 and NO3 are very small.  If so, force uptake_fractions appropriately. 
-        if math.isnan(ApUptakeFr_NH4) :
-            ApUptakeFr_NH4 = PN
-            ApUptakeFr_NO3 = 1.0 - ApUptakeFr_NH4
+            if math.isnan(ApUptakeFr_NH4) :
+                ApUptakeFr_NH4 = PN
+                ApUptakeFr_NO3 = 1.0 - ApUptakeFr_NH4
 
     # Check for benthic and recompute if necessary
         if initial_values['use_BAlgae'] and initial_values['use_NH4'] and initial_values['use_NO3'] :
             AbUptakeFr_NH4 = (PNb * NH4) / (PNb * NH4  + (1.0 - PNb) * NO3)
     
     # Check if NH4 and NO3 are very small.  If so, force uptake_fractions appropriately. 
-        if math.isnan(AbUptakeFr_NH4) :
-            AbUptakeFr_NH4 = PNb
-            AbUptakeFr_NO3 = 1.0 - AbUptakeFr_NH4
+            if math.isnan(AbUptakeFr_NH4) :
+                AbUptakeFr_NH4 = PNb
+                AbUptakeFr_NO3 = 1.0 - AbUptakeFr_NH4
 
         '''
      Organic Nitrogen                     (mgN/day)
@@ -384,6 +360,7 @@ class Nitrogen:
         if initial_values['use_NO3'] :
             DIN = DIN + NO3
 
+#TODO what if you use both OrgN and Algae?
         if initial_values['use_OrgN'] :
             TON = TON + OrgN
 
