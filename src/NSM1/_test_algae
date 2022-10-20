@@ -101,13 +101,7 @@ class Test_algae(unittest.TestCase):
         self.global_vars['depth']= 2
         self.algae_constant_changes['KsN'] = 0.08
 
-        for key in self.global_vars :
-            print (key, " ", self.global_vars[key])
-
         Change, path = Algae(self.global_module_choices,self.global_vars, self.algae_constant_changes).Calculations()
-
-        for key in path :
-            print (key, " ", path[key])
 
         self.assertAlmostEqual(Change, 34.570, 3)
 

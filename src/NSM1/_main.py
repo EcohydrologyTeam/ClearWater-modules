@@ -43,7 +43,7 @@ global_module_choices = {
     'use_OrgN' : True,
     'use_OrgP' : True,
 
-    'use_SedFlux' : True,
+    'use_SedFlux' : False,
     'use_DOX': True,
 
     'use_DIC': False,
@@ -131,6 +131,7 @@ nitrogen_constant_changes = {
 #   'kdnit' : 0.002,
 #   'rnh4'  : 0,
 #   'KsOxdn' : 0.1
+#   'vno3' : 0
         
 #   'PN' : 0.5 
 #   'PNB' : 0.5 
@@ -142,16 +143,16 @@ nitrogen_constant_changes = {
 #TODO should I send extra variables in a dictionary or each individual variable seperatly, or each individual variable in a dicitonary
 #Call Algae module
 if global_module_choices['use_Algae'] :
-    output_variables['dApdt'], algae_pathways = Algae(global_module_choices, global_vars, algae_constant_changes).Calculations()
+#    output_variables['dApdt'], algae_pathways = Algae(global_module_choices, global_vars, algae_constant_changes).Calculations()
 
-    '''
+    
     algae_pathways={
         'ApGrowth': 10,
         'ApDeath' : 20,
         'ApRespiration': 30,
         'rna' : 0.5
     }
-    '''
+    
 else:
     algae_pathways={}
 
@@ -188,9 +189,8 @@ else :
 
 #Call Nitrogen module
 if global_module_choices['use_NH4'] or global_module_choices['use_NO3'] or global_module_choices['use_OrgN'] :
-
-#    output_variables['DIN'], output_variables['TON'], output_variables['TKN'], output_variables['TN'], output_variables['dOrgNdt'], output_variables['dNH4dt'], output_variables['dNO3dt']= Nitrogen(global_module_choices, global_vars, algae_pathways, Balgae_pathways, sedFlux_pathways, nitrogen_constant_changes).Calculations()
-    pass
+    output_variables['DIN'], output_variables['TON'], output_variables['TKN'], output_variables['TN'], output_variables['dOrgNdt'], output_variables['dNH4dt'], output_variables['dNO3dt']= Nitrogen(global_module_choices, global_vars, algae_pathways, Balgae_pathways, sedFlux_pathways, nitrogen_constant_changes).Calculations()
+  
 #TODO create for alkalinity, DOX, CBOD, N2, Pathogen, and POM
  
 et = time.time()

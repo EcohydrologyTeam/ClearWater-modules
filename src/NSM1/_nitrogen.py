@@ -110,7 +110,7 @@ class Nitrogen:
             'kon' : 0.1,              
             'kdnit': 0.002,	          
             'rnh4': 0,                
-            'vno3': 1,	              
+            'vno3': 0,	              
             'KsOxdn': 0.1,              
             'KNR' : 0.6,
             'PN' : 0.5,
