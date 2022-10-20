@@ -110,7 +110,7 @@ class Nitrogen:
             'kon' : 0.1,              
             'kdnit': 0.002,	          
             'rnh4': 0,                
-            'vno3': 0,	              
+            'vno3': 1,	              
             'KsOxdn': 0.1,              
             'KNR' : 0.6,
             'PN' : 0.5,
@@ -166,7 +166,7 @@ class Nitrogen:
     # Check for benthic and recompute if necessary
         if self.global_module_choices['use_BAlgae'] and self.global_module_choices['use_NH4'] and self.global_module_choices['use_NO3'] :
             AbUptakeFr_NH4 = (self.nitrogen_constant['PNb'] * self.global_vars['NH4']) / (self.nitrogen_constant['PNb'] * self.global_vars['NH4']  + (1.0 - self.nitrogen_constant['PNb']) * self.global_vars['NO3'])
-            ApUptakeFr_NO3 = 1 - AbUptakeFr_NH4
+            AbUptakeFr_NO3 = 1 - AbUptakeFr_NH4
 
     # Check if NH4 and NO3 are very small.  If so, force uptake_fractions appropriately. 
             if math.isnan(AbUptakeFr_NH4) :
@@ -195,7 +195,9 @@ class Nitrogen:
             else : 
                 AbDeath_OrgN = 0.0
 
-            dOrgNdt = ApDeath_OrgN + AbDeath_OrgN - OrgN_NH4_Decay - OrgN_Settling 
+            dOrgNdt = ApDeath_OrgN + AbDeath_OrgN - OrgN_NH4_Decay - OrgN_Settling
+        else:
+            dOrgNdt = 0 
         '''
         Ammonia Nitrogen (NH4)                 (mg-N/day*L)
         dNH4/dt   =    OrgN_NH4_Decay          (OrgN -> NH4)  
@@ -230,7 +232,8 @@ class Nitrogen:
                 NH4_ApGrowth      = 0.0
 
             if self.global_module_choices['use_BAlgae'] : 
-                NH4_AbRespiration = self.Balgae_pathways['rnb'] *  self.nitrogen_constant['Fb'] * self.Balgae_pathways['AbRespiration'] / self.global_vars['depth'] 
+                #TODO changed the calculation for respiration from the inital FORTRAN due to conflict with the reference guide
+                NH4_AbRespiration = self.Balgae_pathways['rnb'] * self.Balgae_pathways['AbRespiration']
                 NH4_AbGrowth      = (AbUptakeFr_NH4 * self.Balgae_pathways['rnb'] *  self.nitrogen_constant['Fb'] * self.Balgae_pathways['AbGrowth']) / self.global_vars['depth'] 
             else :
                 NH4_AbRespiration = 0.0
@@ -238,8 +241,10 @@ class Nitrogen:
 
             if not self.global_module_choices['use_OrgN'] :
                 OrgN_NH4_Decay = 0.0 
-    
+
             dNH4dt = OrgN_NH4_Decay - NH4_Nitrification + NH4fromBed + NH4_ApRespiration - NH4_ApGrowth + NH4_AbRespiration - NH4_AbGrowth
+        else:
+            dNH4dt = 0
  
         '''
         Nitrite Nitrogen  (NO3)                       (mg-N/day*L)
@@ -267,15 +272,16 @@ class Nitrogen:
                 NO3_ApGrowth  = 0.0
  
             if self.global_module_choices['use_BAlgae'] : 
-                NO3_AbGrowth  = AbUptakeFr_NO3 * self.Balgae_pathways['rnb'] *  self.nitrogen_constant['Fb'] * self.Balgae_pathways['AbGrowth'] / self.global_vars['depth']  
+                NO3_AbGrowth  = (AbUptakeFr_NO3 * self.Balgae_pathways['rnb'] *  self.nitrogen_constant['Fb'] * self.Balgae_pathways['AbGrowth'] )/ self.global_vars['depth']  
             else :
                 NO3_AbGrowth  = 0.0
 
             if not self.global_module_choices['use_NH4'] :
                  NH4_Nitrification = 0.0
-      
-            dNO3dt = NH4_Nitrification - NO3_Denit - NO3_BedDenit - NO3_ApGrowth - NO3_AbGrowth 
 
+            dNO3dt = NH4_Nitrification - NO3_Denit - NO3_BedDenit - NO3_ApGrowth - NO3_AbGrowth 
+        else:
+            dNO3dt = 0
 
         # output pathways
         '''
@@ -315,16 +321,13 @@ class Nitrogen:
         TKN = TKN + TON
         TN  = DIN + TON
 
+        print("dNH4dt", dNH4dt)
+        print("dNO3dt", dNO3dt)
+        print("dOrgNdt", dOrgNdt)
+
         print("DIN", DIN)
         print("TON", TON)
         print("TKN", TKN)
         print("TN", TN)
-        
-        if self.global_module_choices['use_NH4'] :
-            print('dNH4dt', dNH4dt)
-        if self.global_module_choices['use_NO3'] :
-            print('dNO3dt', dNO3dt)
-        if self.global_module_choices['use_OrgN'] :
-            print('dOrgNdt', dOrgNdt)
 
-        return DIN, TON, TKN, TN
+        return DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt

@@ -21,7 +21,7 @@ Version 1.0
 Initial Version: June 5, 2021
 '''
 
-from ._algae import Algae
+from ._algae_split import Algae
 from ._benthic_algae import BenthicAlgae
 from ._carbon import Carbon
 from ._cbod import CBOD

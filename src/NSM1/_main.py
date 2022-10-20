@@ -43,7 +43,7 @@ global_module_choices = {
     'use_OrgN' : True,
     'use_OrgP' : True,
 
-    'use_SedFlux' : False,
+    'use_SedFlux' : True,
     'use_DOX': True,
 
     'use_DIC': False,
@@ -67,7 +67,7 @@ global_vars = {
 
     'DOX' : 100,
     'OrgN' : 100,
-    'vson':1,
+    'vson': 0.01,
 
     'lambda': 1,
     'fdp': 0.5,
@@ -85,16 +85,16 @@ algae_constant_changes = {
 #   'AWp': 1,               
 #   'AWa':1000,        
 
-    'KL':10,
-    'KsN':0.04,
-    'KsP':0.0012,
-    'mu_max': 1,
-    'kdp':0.15,
-    'krp': 0.2,
-    'vsap':0.15,
+#    'KL':10,
+#    'KsN':0.04,
+#    'KsP':0.0012,
+#    'mu_max': 1,
+#    'kdp':0.30,
+#    'krp': 0.2,
+#    'vsap':0.15,
 
-    'growth_rate_option':1,
-    'light_limitation_option': 1
+#    'growth_rate_option':1,
+#    'light_limitation_option': 1
 }
 
 #Benthic algae module optional changes
@@ -139,32 +139,32 @@ nitrogen_constant_changes = {
 
 }
 
-
-
-#Create some univresal variables
-if global_module_choices['use_Algae'] or global_module_choices['use_NH4'] or global_module_choices['use_NO3'] or global_module_choices['use_OrgN'] :
-    #Call growth rate calculation
-    ApGrowth_rate = ApGrowth(global_vars['Ap'], global_vars['TwaterC'], global_vars['PAR'], global_vars['lambda'], global_vars['depth'], global_vars['NH4'], 
-        global_vars['NO3'], global_vars['TIP'], global_vars['fdp'], algae_constant_changes['mu_max'], algae_constant_changes['KsN'], algae_constant_changes['KsP'], 
-        algae_constant_changes['KL'], global_module_choices['use_NH4'], global_module_choices['use_NO3'], global_module_choices['use_TIP'], algae_constant_changes['light_limitation_option'], 
-        algae_constant_changes['growth_rate_option']).Calculation()
-   
-    #Call death rate calculation
-    ApDeath_rate = ApDeath(algae_constant_changes['kdp'], global_vars['TwaterC'], global_vars['Ap']).Calculation()
-    
-    #Call respiration calculation
-    ApRespiration_rate=ApRespiration(algae_constant_changes['krp'], global_vars['TwaterC'], global_vars['Ap']).Calculation()
-
 #TODO should I send extra variables in a dictionary or each individual variable seperatly, or each individual variable in a dicitonary
 #Call Algae module
 if global_module_choices['use_Algae'] :
-    output_variables['dApdt'] = Algae(global_vars['Ap'], global_vars['depth'], algae_constant_changes['vsap'], ApGrowth_rate, ApDeath_rate, ApRespiration_rate).Calculations()
+    output_variables['dApdt'], algae_pathways = Algae(global_module_choices, global_vars, algae_constant_changes).Calculations()
+
+    '''
+    algae_pathways={
+        'ApGrowth': 10,
+        'ApDeath' : 20,
+        'ApRespiration': 30,
+        'rna' : 0.5
+    }
+    '''
+else:
+    algae_pathways={}
 
 #Call Benthic Algae module
 if global_module_choices['use_BAlgae'] :
 # Call Benthic Algea 
-# TEMP here until integrate Balgae module to get the variables for nitrogen
-    dAbdt, Balgae_pathways = BenthicAlgae(global_module_choices, global_vars, Balgae_constant_changes).Calculations()
+#    dAbdt, Balgae_pathways = BenthicAlgae(global_module_choices, global_vars, Balgae_constant_changes).Calculations()
+    Balgae_pathways = {
+        'AbGrowth' : 30,
+        'AbDeath' : 20,
+        'AbRespiration' : 10,
+        'rnb' : 0.25
+    }
 else :
     Balgae_pathways = {}
 
@@ -180,8 +180,8 @@ if global_module_choices['use_POC'] or global_module_choices['use_DOC'] or globa
 if global_module_choices['use_SedFlux'] :
     #TEMP here unitl integrate Sediment Flux module to get the variables for nitrogen
     sedFlux_pathways = {
-        'JNH4': 100,
-        'JNO3': 100
+        'JNH4': 2,
+        'JNO3': 2
     }
 else : 
     sedFlux_pathways ={}
@@ -189,8 +189,8 @@ else :
 #Call Nitrogen module
 if global_module_choices['use_NH4'] or global_module_choices['use_NO3'] or global_module_choices['use_OrgN'] :
 
-    output_variables['DIN'], output_variables['TON'], output_variables['TKN'], output_variables['TN']= Nitrogen(global_module_choices, global_vars, Balgae_pathways, sedFlux_pathways, nitrogen_constant_changes).Calculations()
-
+#    output_variables['DIN'], output_variables['TON'], output_variables['TKN'], output_variables['TN'], output_variables['dOrgNdt'], output_variables['dNH4dt'], output_variables['dNO3dt']= Nitrogen(global_module_choices, global_vars, algae_pathways, Balgae_pathways, sedFlux_pathways, nitrogen_constant_changes).Calculations()
+    pass
 #TODO create for alkalinity, DOX, CBOD, N2, Pathogen, and POM
  
 et = time.time()

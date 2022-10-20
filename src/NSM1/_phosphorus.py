@@ -28,3 +28,5 @@ class Phosphorus:
 
     def __init__(self):
         pass
+    def Calculation(self) :
+        pass
