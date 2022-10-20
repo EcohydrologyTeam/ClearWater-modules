@@ -20,7 +20,7 @@ Version 1.0
 
 Initial Version: June 5, 2021
 '''
-
+from numba import njit
 
 class TempCorrection:
     '''
