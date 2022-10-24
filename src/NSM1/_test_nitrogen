@@ -3,13 +3,12 @@ from collections import OrderedDict
 import unittest
 from numba.typed import Dict
 from numba import types
-import os
-import sys
 
 from _nitrogen import Nitrogen
 
-class Test_algae(unittest.TestCase):
+class Test_nitrogen(unittest.TestCase):
 
+#Define inital array values
     def setUp(self) :
         self.global_module_choices = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
         self.global_module_choices = {
@@ -107,7 +106,6 @@ class Test_algae(unittest.TestCase):
         self.assertAlmostEqual(dNH4dt, 11.625, 3)
         self.assertAlmostEqual(dNO3dt, 4.1248, 3)
         self.assertAlmostEqual(dOrgNdt, 3.05, 3)
-
 
 #Change DOX and OrgN
     def test_change_DOX_OrgN (self):
@@ -254,7 +252,7 @@ class Test_algae(unittest.TestCase):
 #Change Fw, rnh4, KsOxdn
     def test_change_Fw_rnh4_KsOxdn (self):
 
-        self.nitrogen_constant_changes['Fw'] = 0.75
+        self.nitrogen_constant_changes['Fw'] = 0.5
         self.nitrogen_constant_changes['rnh4'] = 1
         self.nitrogen_constant_changes['KsOxdn'] = 0.2
 
@@ -287,6 +285,162 @@ class Test_algae(unittest.TestCase):
         self.assertAlmostEqual(dNH4dt, 13.875, 3)
         self.assertAlmostEqual(dNO3dt, 6.3748, 3)
         self.assertAlmostEqual(dOrgNdt, 5.075, 3) 
+
+#Change ApRespiration
+    def test_change_ApRespiration (self):
+
+        self.algae_pathways['ApRespiration'] = 15
+
+        DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt= Nitrogen(self.global_module_choices, self.global_vars, self.algae_pathways, 
+            self.Balgae_pathways, self.sedFlux_pathways, self.nitrogen_constant_changes).Calculations()
+        
+        self.assertAlmostEqual(DIN, 200, 3)
+        self.assertAlmostEqual(TON, 150, 3)
+        self.assertAlmostEqual(TKN, 250, 3)
+        self.assertAlmostEqual(TN, 350, 3)
+
+        self.assertAlmostEqual(dNH4dt, 4.125, 3)
+        self.assertAlmostEqual(dNO3dt, 4.1248, 3)
+        self.assertAlmostEqual(dOrgNdt, 3.05, 3) 
+
+#Change Ap and AbRespiration
+    def test_change_Ap_AbRespiration (self):
+
+        self.Balgae_pathways['AbRespiration'] = 20
+        self.global_vars['Ap'] = 200
+
+        DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt= Nitrogen(self.global_module_choices, self.global_vars, self.algae_pathways, 
+            self.Balgae_pathways, self.sedFlux_pathways, self.nitrogen_constant_changes).Calculations()
+        
+        self.assertAlmostEqual(DIN, 200, 3)
+        self.assertAlmostEqual(TON, 200, 3)
+        self.assertAlmostEqual(TKN, 300, 3)
+        self.assertAlmostEqual(TN, 400, 3)
+
+        self.assertAlmostEqual(dNH4dt, 14.125, 3)
+        self.assertAlmostEqual(dNO3dt, 4.1248, 3)
+        self.assertAlmostEqual(dOrgNdt, 3.05, 3) 
+
+#Change NH4
+    def test_change_NH4 (self):
+
+        self.global_vars['NH4'] = 200
+
+        DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt= Nitrogen(self.global_module_choices, self.global_vars, self.algae_pathways, 
+            self.Balgae_pathways, self.sedFlux_pathways, self.nitrogen_constant_changes).Calculations()
+        
+        self.assertAlmostEqual(DIN, 300, 3)
+        self.assertAlmostEqual(TON, 150, 3)
+        self.assertAlmostEqual(TKN, 350, 3)
+        self.assertAlmostEqual(TN, 450, 3)
+
+        self.assertAlmostEqual(dNH4dt, -0.3333, 3)
+        self.assertAlmostEqual(dNO3dt, 16.08313, 3)
+        self.assertAlmostEqual(dOrgNdt, 3.05, 3) 
+
+#Change NO3
+    def test_change_NO3 (self):
+
+        self.global_vars['NO3'] = 200
+
+        DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt= Nitrogen(self.global_module_choices, self.global_vars, self.algae_pathways, 
+            self.Balgae_pathways, self.sedFlux_pathways, self.nitrogen_constant_changes).Calculations()
+        
+        self.assertAlmostEqual(DIN, 300, 3)
+        self.assertAlmostEqual(TON, 150, 3)
+        self.assertAlmostEqual(TKN, 250, 3)
+        self.assertAlmostEqual(TN, 450, 3)
+
+        self.assertAlmostEqual(dNH4dt, 13.5833, 3)
+        self.assertAlmostEqual(dNO3dt, 2.16627, 3)
+        self.assertAlmostEqual(dOrgNdt, 3.05, 3) 
+
+#Change TwaterC
+    def test_change_TwaterC (self):
+
+        self.global_vars['TwaterC'] = 10
+
+        DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt= Nitrogen(self.global_module_choices, self.global_vars, self.algae_pathways, 
+            self.Balgae_pathways, self.sedFlux_pathways, self.nitrogen_constant_changes).Calculations()
+        
+        self.assertAlmostEqual(DIN, 200, 3)
+        self.assertAlmostEqual(TON, 150, 3)
+        self.assertAlmostEqual(TKN, 250, 3)
+        self.assertAlmostEqual(TN, 350, 3)
+
+        self.assertAlmostEqual(dNH4dt, 12.01719, 3)
+        self.assertAlmostEqual(dNO3dt, -1.369915, 3)
+        self.assertAlmostEqual(dOrgNdt, 8.15269, 3) 
+
+#Change PN
+    def test_change_PN (self):
+
+        self.nitrogen_constant_changes['PN'] = 0.75
+
+        DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt= Nitrogen(self.global_module_choices, self.global_vars, self.algae_pathways, 
+            self.Balgae_pathways, self.sedFlux_pathways, self.nitrogen_constant_changes).Calculations()
+        
+        self.assertAlmostEqual(DIN, 200, 3)
+        self.assertAlmostEqual(TON, 150, 3)
+        self.assertAlmostEqual(TKN, 250, 3)
+        self.assertAlmostEqual(TN, 350, 3)
+
+        self.assertAlmostEqual(dNH4dt, 10.375, 3)
+        self.assertAlmostEqual(dNO3dt, 5.3748, 3)
+        self.assertAlmostEqual(dOrgNdt, 3.05, 3) 
+
+#Change PNb
+    def test_change_PNb (self):
+
+        self.nitrogen_constant_changes['PNb'] = 0.25
+
+        DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt= Nitrogen(self.global_module_choices, self.global_vars, self.algae_pathways, 
+            self.Balgae_pathways, self.sedFlux_pathways, self.nitrogen_constant_changes).Calculations()
+        
+        self.assertAlmostEqual(DIN, 200, 3)
+        self.assertAlmostEqual(TON, 150, 3)
+        self.assertAlmostEqual(TKN, 250, 3)
+        self.assertAlmostEqual(TN, 350, 3)
+
+        self.assertAlmostEqual(dNH4dt, 13.3125, 3)
+        self.assertAlmostEqual(dNO3dt, 2.43730, 3)
+        self.assertAlmostEqual(dOrgNdt, 3.05, 3) 
+
+#Change use_SedFlux
+    def test_change_use_SedFlux(self):
+
+        self.global_module_choices['use_SedFlux'] = True
+
+        DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt= Nitrogen(self.global_module_choices, self.global_vars, self.algae_pathways, 
+            self.Balgae_pathways, self.sedFlux_pathways, self.nitrogen_constant_changes).Calculations()
+        
+        self.assertAlmostEqual(DIN, 200, 3)
+        self.assertAlmostEqual(TON, 150, 3)
+        self.assertAlmostEqual(TKN, 250, 3)
+        self.assertAlmostEqual(TN, 350, 3)
+
+        self.assertAlmostEqual(dNH4dt, 13.625, 3)
+        self.assertAlmostEqual(dNO3dt, 2.12480, 3)
+        self.assertAlmostEqual(dOrgNdt, 3.05, 3) 
+
+#Change JNH4 and JNO3
+    def test_change_JNH4_JNO3(self):
+
+        self.global_module_choices['use_SedFlux'] = True
+        self.sedFlux_pathways['JNH4'] = 4
+        self.sedFlux_pathways['JNO3'] = 4
+
+        DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt= Nitrogen(self.global_module_choices, self.global_vars, self.algae_pathways, 
+            self.Balgae_pathways, self.sedFlux_pathways, self.nitrogen_constant_changes).Calculations()
+        
+        self.assertAlmostEqual(DIN, 200, 3)
+        self.assertAlmostEqual(TON, 150, 3)
+        self.assertAlmostEqual(TKN, 250, 3)
+        self.assertAlmostEqual(TN, 350, 3)
+
+        self.assertAlmostEqual(dNH4dt, 15.625, 3)
+        self.assertAlmostEqual(dNO3dt, 0.12480, 3)
+        self.assertAlmostEqual(dOrgNdt, 3.05, 3) 
 
 if __name__ == '__main__':
     unittest.main()

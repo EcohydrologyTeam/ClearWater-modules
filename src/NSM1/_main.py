@@ -5,10 +5,6 @@ from numba import types
 
 st=time.time()
 
-from _ApDeath import ApDeath
-from _ApRespiration import ApRespiration
-from _ApGrowth import ApGrowth
-
 from _algae import Algae
 from _nitrogen import Nitrogen
 from _benthic_algae import BenthicAlgae
@@ -143,29 +139,14 @@ nitrogen_constant_changes = {
 #TODO should I send extra variables in a dictionary or each individual variable seperatly, or each individual variable in a dicitonary
 #Call Algae module
 if global_module_choices['use_Algae'] :
-#    output_variables['dApdt'], algae_pathways = Algae(global_module_choices, global_vars, algae_constant_changes).Calculations()
-
-    
-    algae_pathways={
-        'ApGrowth': 10,
-        'ApDeath' : 20,
-        'ApRespiration': 30,
-        'rna' : 0.5
-    }
-    
+    output_variables['dApdt'], algae_pathways = Algae(global_module_choices, global_vars, algae_constant_changes).Calculations()   
 else:
     algae_pathways={}
 
 #Call Benthic Algae module
 if global_module_choices['use_BAlgae'] :
 # Call Benthic Algea 
-#    dAbdt, Balgae_pathways = BenthicAlgae(global_module_choices, global_vars, Balgae_constant_changes).Calculations()
-    Balgae_pathways = {
-        'AbGrowth' : 30,
-        'AbDeath' : 20,
-        'AbRespiration' : 10,
-        'rnb' : 0.25
-    }
+    dAbdt, Balgae_pathways = BenthicAlgae(global_module_choices, global_vars, Balgae_constant_changes).Calculations()
 else :
     Balgae_pathways = {}
 
