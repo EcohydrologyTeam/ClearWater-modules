@@ -1,7 +1,7 @@
+
 import time
 from collections import OrderedDict
-from numba.typed import Dict
-from numba import types
+from numba import types, typed
 
 st=time.time()
 
@@ -19,82 +19,81 @@ from _benthic_algae import BenthicAlgae
 # from _alkalinity import Alkalinity
 
 #Variables to return
-output_variables = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+output_variables = OrderedDict()
 output_variables = {
 
 } 
 
+'''
+@njit
+def create_dict_float(items):
+    dictionary=typed.Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+    print (items)
+    for k,v in items:
+        dictionary[k] = v
+    #    print(k)
+
+    return dictionary
+
+nb_gv = create_dict_float(tuple(global_vars.items()))
+'''
+
 #True/False module use, user defined
-
-global_module_choices = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
-global_module_choices = {
-    'use_Algae': True,
-    'use_NH4': True,
-    'use_NO3': True,
-    'use_TIP': True,
-    'use_POC': False,
-    'use_DOC': False,
-
-    'use_BAlgae': True,
-    'use_OrgN' : True,
-    'use_OrgP' : True,
-
-    'use_SedFlux' : False,
-    'use_DOX': True,
-
-    'use_DIC': False,
-    'use_N2' : False,
-    'use_Pathogen' : False,
-    'use_Alk' : False,
-    'use_POM2' : False,
-}
+global_module_choices =typed.Dict.empty(key_type=types.unicode_type, value_type=types.boolean)
+global_module_choices['use_Algae'] = True
+global_module_choices['use_NH4'] = True
+global_module_choices['use_NO3'] = True
+global_module_choices['use_TIP'] = True
+global_module_choices['use_POC'] = True
+global_module_choices['use_DOC'] = True
+global_module_choices['use_OrgN'] = True
+global_module_choices['use_OrgP'] = True
+global_module_choices['use_SedFlux'] = False
+global_module_choices['use_DOX'] = True
+global_module_choices['use_DIC'] = False
+global_module_choices['use_N2'] = False
+global_module_choices['use_Pathogen'] = False
+global_module_choices['use_Alk'] = False
+global_module_choices['use_POM2'] = False
         
 #User-defined global variables
-global_vars = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
-global_vars = {
-    'Ap': 100,
-    'NH4':100,
-    'NO3': 100,
-    'TIP':100,
-    'TwaterC':20,
-    'depth':1,
+global_vars =typed.Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+global_vars['Ap'] = 100.0
+global_vars['NH4'] = 100.0
+global_vars['NO3'] = 100.0
+global_vars['TIP'] = 100.0
+global_vars['TwaterC'] = 20.0
+global_vars['depth'] = 1.0
 
-    'Ab':100,
-
-    'DOX' : 100,
-    'OrgN' : 100,
-    'vson': 0.01,
-
-    'lambda': 1,
-    'fdp': 0.5,
-    'PAR': 100
-}
+global_vars['Ab'] = 100.0
+global_vars['DOX'] = 100.0
+global_vars['OrgN'] = 100.0
+global_vars['vson'] = 0.01
+global_vars['lambda'] = 1.0
+global_vars['fdp'] = 0.5
+global_vars['PAR'] = 100.0
 
 #Algae Module Optional Changes 
-#TODO potentially make three columes which distinguishes the module it is for
-algae_constant_changes = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
-algae_constant_changes = {
-        
-#   'AWd':100,              
-#   'AWc':40,               
-#   'AWn':7.2,              
-#   'AWp': 1,               
-#   'AWa':1000,        
+algae_constant_changes = typed.Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+#algae_constant_changes['AWd'] = 100
+#algae_constant_changes['AWc'] = 40
+#algae_constant_changes['AWn'] = 7.2
+#algae_constant_changes['AWp'] = 1
+#algae_constant_changes['AWa'] = 1000
 
-#    'KL':10,
-#    'KsN':0.04,
-#    'KsP':0.0012,
-#    'mu_max': 1,
-#    'kdp':0.30,
-#    'krp': 0.2,
-#    'vsap':0.15,
+#algae_constant_changes['KL'] = 10
+#algae_constant_changes['KsN'] = 0.04
+#algae_constant_changes['KsP'] = 0.0012
+#algae_constant_changes['mu_max'] = 1
+#algae_constant_changes['kdp'] = 0.3
+#algae_constant_changes['krp'] = 0.2
+#algae_constant_changes['vsap'] = 0.15
+#algae_constant_changes['growth_rate_option'] = 1
+#algae_constant_changes['light_limitation_option'] = 1
 
-#    'growth_rate_option':1,
-#    'light_limitation_option': 1
-}
 
 #Benthic algae module optional changes
-Balgae_constant_changes = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+Balgae_constant_changes = OrderedDict()
 Balgae_constant_changes = {
 #    'BWd': 100,       
 #    'BWc': 40,      
@@ -117,7 +116,7 @@ Balgae_constant_changes = {
 }
 
 #Nitrogen Module Optional Changes
-nitrogen_constant_changes = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+nitrogen_constant_changes = OrderedDict()
 nitrogen_constant_changes = {
         
 #   'vson' : 0.01,
@@ -142,7 +141,7 @@ if global_module_choices['use_Algae'] :
     output_variables['dApdt'], algae_pathways = Algae(global_module_choices, global_vars, algae_constant_changes).Calculations()   
 else:
     algae_pathways={}
-
+'''
 #Call Benthic Algae module
 if global_module_choices['use_BAlgae'] :
 # Call Benthic Algea 
@@ -173,7 +172,7 @@ if global_module_choices['use_NH4'] or global_module_choices['use_NO3'] or globa
     output_variables['DIN'], output_variables['TON'], output_variables['TKN'], output_variables['TN'], output_variables['dOrgNdt'], output_variables['dNH4dt'], output_variables['dNO3dt']= Nitrogen(global_module_choices, global_vars, algae_pathways, Balgae_pathways, sedFlux_pathways, nitrogen_constant_changes).Calculations()
   
 #TODO create for alkalinity, DOX, CBOD, N2, Pathogen, and POM
- 
+''' 
 et = time.time()
 elapsed_time = et - st 
 

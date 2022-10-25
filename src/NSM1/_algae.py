@@ -25,47 +25,48 @@ Initial Version: June 12, 2021
 '''
 
 import math
-from collections import OrderedDict
 from _temp_correction import TempCorrection
 
-from numba import types
+from numba import jitclass
+from numba.types import float64, unicode_type, boolean, DictType
 from numba.typed import Dict
 
 
-class Algae:
-    def __init__(self, global_module_choices: Dict, global_vars: Dict, algae_constant_changes: Dict):
+kv_mod_ty = (unicode_type, boolean)
+kv_ty = (unicode_type, float64)
 
-        self.algae_constant_changes=algae_constant_changes
+spec=[('global_module_choices',DictType(*kv_mod_ty)), ('global_vars', DictType(*kv_ty)), ('algae_constant_changes', DictType(*kv_ty)), ('algae_constant', DictType(*kv_ty))]
+
+@jitclass(spec)
+class Algae:
+    def __init__(self, global_module_choices, global_vars, algae_constant_changes):
         self.global_module_choices=global_module_choices
         self.global_vars = global_vars
+        self.algae_constant_changes=algae_constant_changes
 
         # Initialize genrally constant parameters
-        self.algae_constant = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
-        self.algae_constant = {
-            'AWd': 100,              
-            'AWc': 40,              
-            'AWn': 7.2,              
-            'AWp': 1,               
-            'AWa': 1000,             
+        self.algae_constant=Dict.empty(key_type=unicode_type, value_type=float64)
+        self.algae_constant['AWd'] = 100
+        self.algae_constant['AWc'] = 40
+        self.algae_constant['AWn'] = 7.2
+        self.algae_constant['AWp'] = 1
+        self.algae_constant['AWa'] = 1000
 
-            'KL': 10,
-            'KsN': 0.04,
-            'KsP': 0.0012,
-            'mu_max': 1,
-            'kdp': 0.15,
-            'krp': 0.2,
-            'vsap': 0.15,
+        self.algae_constant['KL'] = 10
+        self.algae_constant['KsN'] = 0.04
+        self.algae_constant['KsP'] = 0.0012
+        self.algae_constant['mu_max'] = 1
+        self.algae_constant['kdp'] = 0.15
+        self.algae_constant['krp'] = 0.2
+        self.algae_constant['vsap'] = 0.15
+        self.algae_constant['growth_rate_option'] = 1
+        self.algae_constant['light_limitation_option'] = 1
 
-            'growth_rate_option': 1,
-            'light_limitation_option': 1
-
-        }
 
         for key in self.algae_constant_changes.keys() :
             if key in self.algae_constant:
                 self.algae_constant[key] = self.algae_constant_changes[key]
-
-
+    
     def Calculations (self):
         '''
         Compute algae kinetics (Main function)
@@ -125,14 +126,14 @@ class Algae:
 
         '''
 
-        print("Calculating change in algae concentration")
+        #print("Calculating change in algae concentration")
         
         #Updating generally constant parameters
 
-        self.rna : float = self.algae_constant['AWn'] / self.algae_constant['AWa']             # Algal N : Chla ratio [mg-N/ugChla]
-        self.rpa : float= self.algae_constant['AWp'] / self.algae_constant['AWa']             # Algal P : Chla ratio [mg-P/ugChla]
-        self.rca : float= self.algae_constant['AWc'] / self.algae_constant['AWa']             # Algal C : Chla ratio [mg-C/ugChla]
-        self.rda : float= self.algae_constant['AWd'] / self.algae_constant['AWa']             # Algal D : Chla ratio [mg-D/ugChla]
+        rna : float64 = self.algae_constant['AWn'] / self.algae_constant['AWa']             # Algal N : Chla ratio [mg-N/ugChla]
+        rpa : float64 = self.algae_constant['AWp'] / self.algae_constant['AWa']             # Algal P : Chla ratio [mg-P/ugChla]
+        rca : float64 = self.algae_constant['AWc'] / self.algae_constant['AWa']             # Algal C : Chla ratio [mg-C/ugChla]
+        rda : float64 = self.algae_constant['AWd'] / self.algae_constant['AWa']             # Algal D : Chla ratio [mg-D/ugChla]
 
         # Parameters related to algae growth and settling
         KL = self.algae_constant['KL']                                     # Light limiting constant for algal growth [W/m^2]
@@ -224,35 +225,34 @@ class Algae:
                 mu = mu_max_tc * FL * 2.0 / (1.0 / FN + 1.0 / FP)
 
         # Algal growth
-        self.ApGrowth = mu * Ap                      # [ug-Chla/L/d]
+        ApGrowth = mu * Ap                      # [ug-Chla/L/d]
 
         # Algal respiration
-        self.ApRespiration = krp_tc * Ap             # [ug-Chla/L/d]
+        ApRespiration = krp_tc * Ap             # [ug-Chla/L/d]
 
         # Algal mortality
-        self.ApDeath = kdp_tc * Ap                   # [ug-Chla/L/d]
+        ApDeath = kdp_tc * Ap                   # [ug-Chla/L/d]
 
         # Algal settling
-        self.ApSettling = self.algae_constant['vsap'] / self.global_vars['depth'] * Ap          # [ug-Chla/L/d]
+        ApSettling = self.algae_constant['vsap'] / self.global_vars['depth'] * Ap          # [ug-Chla/L/d]
 
         # Algal Biomass Concentration
         # dA/dt = A*(AlgalGrowthRate - AlgalRespirationRate - AlgalDeathRate - AlgalSettlingRate)(mg/L/day)
-        dApdt = self.ApGrowth - self.ApRespiration - self.ApDeath - self.ApSettling     # [ug-Chla/L/d]
+        dApdt = ApGrowth - ApRespiration - ApDeath - ApSettling     # [ug-Chla/L/d]
         
-        algae_pathway = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+        algae_pathway = Dict.empty(key_type=unicode_type, value_type=float64)
         algae_pathway = {
-            'ApGrowth': self.ApGrowth,
-            'ApRespiration' : self.ApRespiration,
-            'ApDeath': self.ApDeath,
-            'rna': self.rna,
-            'rda' : self.rda,         
-            'rca': self.rca,
-            'rpa': self.rpa
+            'ApGrowth': ApGrowth,
+            'ApRespiration' : ApRespiration,
+            'ApDeath': ApDeath,
+            'rna': rna,
+            'rda' : rda,         
+            'rca': rca,
+            'rpa': rpa
         }
 
-        print (dApdt)
+        print ("print dApdt", dApdt)
 
         return dApdt, algae_pathway
 
 
-        
