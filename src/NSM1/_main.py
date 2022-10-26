@@ -23,24 +23,12 @@ output_variables = {
 
 } 
 
-'''
-@njit
-def create_dict_float(items):
-    dictionary=typed.Dict.empty(key_type=types.unicode_type, value_type=types.float64)
-    print (items)
-    for k,v in items:
-        dictionary[k] = v
-    #    print(k)
-
-    return dictionary
-
-nb_gv = create_dict_float(tuple(global_vars.items()))
-'''
 
 #True/False module use, user defined
 global_module_choices =OrderedDict
 global_module_choices = {
     'use_Algae' : True,
+    'use_BAlgae': True,
     'use_NH4' : True,
     'use_NO3' : True,
     'use_TIP' : True,
@@ -96,8 +84,6 @@ algae_constant_changes = {
 #    'light_limitation_option' : 1
 }
 
-
-
 #Benthic algae module optional changes
 Balgae_constant_changes = OrderedDict()
 Balgae_constant_changes = {
@@ -147,7 +133,7 @@ if global_module_choices['use_Algae'] :
     output_variables['dApdt'], algae_pathways = Algae(global_module_choices, global_vars, algae_constant_changes).Calculations()
 else:
     algae_pathways={}
-'''
+
 #Call Benthic Algae module
 if global_module_choices['use_BAlgae'] :
 # Call Benthic Algea 
@@ -178,7 +164,7 @@ if global_module_choices['use_NH4'] or global_module_choices['use_NO3'] or globa
     output_variables['DIN'], output_variables['TON'], output_variables['TKN'], output_variables['TN'], output_variables['dOrgNdt'], output_variables['dNH4dt'], output_variables['dNO3dt']= Nitrogen(global_module_choices, global_vars, algae_pathways, Balgae_pathways, sedFlux_pathways, nitrogen_constant_changes).Calculations()
   
 #TODO create for alkalinity, DOX, CBOD, N2, Pathogen, and POM
-''' 
+
 et = time.time()
 elapsed_time = et - st 
 

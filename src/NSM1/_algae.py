@@ -240,6 +240,6 @@ class Algae :
             'rpa': rpa
         }
 
-        print ("print dApdt", dApdt)
+        print (dApdt)
 
         return dApdt, algae_pathway
