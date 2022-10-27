@@ -105,6 +105,9 @@ Balgae_constant_changes = {
 #    'b_growth_rate_option' : 1,     
 #    'b_light_limitation_option' : 1
 
+#   'Fw' : 0.9 
+#   'Fb' : 0.9 
+
 }
 
 #Nitrogen Module Optional Changes
@@ -122,8 +125,7 @@ nitrogen_constant_changes = {
         
 #   'PN' : 0.5 
 #   'PNB' : 0.5 
-#   'Fw' : 0.9 
-#   'Fb' : 0.9 
+
 
 }
 

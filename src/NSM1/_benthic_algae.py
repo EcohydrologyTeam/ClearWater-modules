@@ -119,9 +119,14 @@ class BenthicAlgae:
             'kdb': 0.3,   
             
             'b_growth_rate_option' : 1,     
-            'b_light_limitation_option' : 1
+            'b_light_limitation_option' : 1,
+
+            'Fw' : 0.9,
+            'Fb' : 0.9 
         }
 
+        self.Fw = self.Balgae_constant['Fw']
+        self.Fb = self.Balgae_constant['Fb']
 
         # User-supplied maximum benthic algal growth rate (1/day), Range {1.0 - 2.25}
         mub_max_tc = TempCorrection(self.Balgae_constant['mub_max'], 1.047).arrhenius_correction(self.global_vars['TwaterC']) # TODO Need to define
@@ -225,6 +230,8 @@ class BenthicAlgae:
         'AbGrowth' : AbGrowth,
         'AbDeath' : AbDeath,
         'AbRespiration' : AbRespiration,
+        'Fw' : self.Fw,
+        'Fb' : self.Fb
         }
 
         print(dAbdt)

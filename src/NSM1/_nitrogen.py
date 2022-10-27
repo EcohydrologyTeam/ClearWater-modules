@@ -115,8 +115,6 @@ class Nitrogen:
             'KNR' : 0.6,
             'PN' : 0.5,
             'PNb' : 0.5,
-            'Fw' : 0.9,
-            'Fb': 0.9
         }
 
         for key in self.nitrogen_constant_changes.keys() :
@@ -191,7 +189,7 @@ class Nitrogen:
                 ApDeath_OrgN  = 0.0
 
             if self.global_module_choices['use_BAlgae'] :  
-                AbDeath_OrgN = self.Balgae_pathways['rnb'] * self.nitrogen_constant['Fw'] * self.nitrogen_constant['Fb'] * self.Balgae_pathways['AbDeath'] / self.global_vars['depth']
+                AbDeath_OrgN = self.Balgae_pathways['rnb'] * self.Balgae_pathways['Fw'] * self.Balgae_pathways['Fb'] * self.Balgae_pathways['AbDeath'] / self.global_vars['depth']
             else : 
                 AbDeath_OrgN = 0.0
 
@@ -234,7 +232,7 @@ class Nitrogen:
             if self.global_module_choices['use_BAlgae'] : 
                 #TODO changed the calculation for respiration from the inital FORTRAN due to conflict with the reference guide
                 NH4_AbRespiration = self.Balgae_pathways['rnb'] * self.Balgae_pathways['AbRespiration']
-                NH4_AbGrowth      = (AbUptakeFr_NH4 * self.Balgae_pathways['rnb'] *  self.nitrogen_constant['Fb'] * self.Balgae_pathways['AbGrowth']) / self.global_vars['depth'] 
+                NH4_AbGrowth      = (AbUptakeFr_NH4 * self.Balgae_pathways['rnb'] *  self.Balgae_pathways['Fb'] * self.Balgae_pathways['AbGrowth']) / self.global_vars['depth'] 
             else :
                 NH4_AbRespiration = 0.0
                 NH4_AbGrowth      = 0.0
@@ -272,7 +270,7 @@ class Nitrogen:
                 NO3_ApGrowth  = 0.0
  
             if self.global_module_choices['use_BAlgae'] : 
-                NO3_AbGrowth  = (AbUptakeFr_NO3 * self.Balgae_pathways['rnb'] *  self.nitrogen_constant['Fb'] * self.Balgae_pathways['AbGrowth'] )/ self.global_vars['depth']  
+                NO3_AbGrowth  = (AbUptakeFr_NO3 * self.Balgae_pathways['rnb'] *  self.Balgae_pathways['Fb'] * self.Balgae_pathways['AbGrowth'] )/ self.global_vars['depth']  
             else :
                 NO3_AbGrowth  = 0.0
 

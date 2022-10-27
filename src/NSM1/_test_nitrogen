@@ -55,10 +55,10 @@ class Test_nitrogen(unittest.TestCase):
         
         self.algae_pathways = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
         self.algae_pathways={
-        'ApGrowth': 10,
-        'ApDeath' : 20,
-        'ApRespiration': 30,
-        'rna' : 0.5
+            'ApGrowth': 10,
+            'ApDeath' : 20,
+            'ApRespiration': 30,
+            'rna' : 0.5
         } 
 
         self.Balgae_pathways= Dict.empty(key_type=types.unicode_type, value_type=types.float64)
@@ -66,7 +66,9 @@ class Test_nitrogen(unittest.TestCase):
             'AbGrowth' : 30,
             'AbDeath' : 20,
             'AbRespiration' : 10,
-            'rnb' : 0.25
+            'rnb' : 0.25,
+            'Fw' : 0.9,
+            'Fb' : 0.9,
         }
 
         self.sedFlux_pathways = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
@@ -235,7 +237,7 @@ class Test_nitrogen(unittest.TestCase):
 #Change Fb
     def test_change_Fb (self):
 
-        self.nitrogen_constant_changes['Fb'] = 0.75
+        self.Balgae_pathways['Fb'] = 0.75
 
         DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt= Nitrogen(self.global_module_choices, self.global_vars, self.algae_pathways, 
             self.Balgae_pathways, self.sedFlux_pathways, self.nitrogen_constant_changes).Calculations()
@@ -252,7 +254,7 @@ class Test_nitrogen(unittest.TestCase):
 #Change Fw, rnh4, KsOxdn
     def test_change_Fw_rnh4_KsOxdn (self):
 
-        self.nitrogen_constant_changes['Fw'] = 0.5
+        self.Balgae_pathways['Fw'] = 0.5
         self.nitrogen_constant_changes['rnh4'] = 1
         self.nitrogen_constant_changes['KsOxdn'] = 0.2
 
