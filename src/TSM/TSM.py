@@ -25,6 +25,8 @@ import logging
 import os
 import numba
 from collections import namedtuple
+import types
+import typing
 
 '''
 Initialize class
@@ -41,7 +43,8 @@ LOG_LEVEL = logging.DEBUG
 LOG_FORMAT = '%(levelname)-8s %(asctime)20s: %(message)s'
 src_path = os.path.dirname(os.path.realpath(__file__))
 log_filename = os.path.join(src_path, 'TSM.log')
-logging.basicConfig(filename=log_filename, level=LOG_LEVEL, format=LOG_FORMAT, filemode='w')
+logging.basicConfig(filename=log_filename, level=LOG_LEVEL,
+                    format=LOG_FORMAT, filemode='w')
 logger = logging.getLogger()
 
 # Constants
@@ -77,45 +80,22 @@ Richardson_option = True
 # Initial dictionary that will hold the pathways to return from this function
 pathways = {}
 
-@numba.njit
-def equilibrium_temperature_method(TwaterC: float, surface_area: float, volume: float, TeqC: float, KT: float, use_SedTemp: bool = False, TsedC: float = 0.0):
-    '''
-    Compute water temperature kinetics using the equilibrium method
 
-    Parameters:
-        TwaterC (float):        Water temperature (degrees Celsius)
-        surface_area (float):   Cell surface area (m2)
-        volume (float):         Cell volume (m3)
-        TeqC (float):           Equilibrium water temperature (degrees Celsius)
-        KT (float):             Constant
-        use_SedTemp (bool):     Compute surface temperature (on/off)
-        TsedC (float):          Sediment temperature (degrees Celsius)
-    '''
+class Parameter:
+    def __init__(self, value: typing.Any, name: str, full_name: str, units: str = "", 
+            absolute_min: float = -1.0e3, absolute_max: float = 1.0e3, 
+            expected_min: float = -1.0e3, expected_max: float = 1.0e3, 
+            description: str = ""):
+        self.value = value
+        self.name = name
+        self.full_name = full_name
+        self.units = units
+        self.absolute_min = absolute_min
+        self.absolute_max = absolute_max
+        self.expected_min = expected_min
+        self.expected_max = expected_max
+        self.description = description
 
-    # logger.debug(
-    #     f'equilibrium_temperature_method({TeqC:.2f}, {KT:.2f}, use_SedTemp={use_SedTemp}, TsedC={TsedC})')
-
-    density_water: float = mf_density_water(TwaterC)
-    Cp_water: float = mf_Cp_water(TwaterC)
-
-    # Sediment heat flux and its derivative
-    q_sediment: float = 0.0
-    dTsedCdt = 0.0
-    if use_SedTemp:
-        q_sediment = pb * Cps * alphas / 0.5 / h2 * (TsedC - TwaterC) / 86400.0
-        dTsedCdt = alphas / (0.5 * h2 * h2) * (TwaterC - TsedC)
-
-    # Net heat flux
-    q_net = KT * (TeqC - TwaterC) + q_sediment
-    dTwaterCdt = q_net * surface_area / (volume * density_water * Cp_water) * 86400.0
-    TwaterC += dTwaterCdt  # Added by Todd Steissberg
-
-    # Set pathway variables
-    set_pathways_float(q_net, 'q_net', 'Net Solar Radiation', "W/m2")
-    set_pathways_float(q_sediment, 'q_sediment', 'Sediment Heat Flux', 'W/m2')
-    set_pathways_float(dTwaterCdt, 'dTwaterCdt', 'Water Temperature Rate of Change', 'degC')
-    set_pathways_float(dTsedCdt, 'dTsedCdt', 'Sediment Temperature Rate of Change', '')
-    set_pathways_float(TwaterC, 'TwaterC', 'Water Temperature', 'degC', description='Updated water temperature')
 
 def energy_budget_method(TwaterC: float, surface_area: float, volume: float, TairC: float, q_solar: float, pressure_mb: float, eair_mb: float, cloudiness: float, wind_speed: float, wind_a: float, wind_b: float, wind_c: float, wind_kh_kw: float, use_SedTemp: bool = False, TsedC: float = 0.0, num_iterations: int = 10, tolerance: float = 0.01):
     '''
@@ -159,7 +139,8 @@ def energy_budget_method(TwaterC: float, surface_area: float, volume: float, Tai
     mixing_ratio_air = 0.622 * eair_mb / (pressure_mb - eair_mb)
 
     # Compute density of air (kg/m3)
-    density_air = 0.348 * (pressure_mb / TairK) * (1.0 + mixing_ratio_air) / (1.0 + 1.61 * mixing_ratio_air)
+    density_air = 0.348 * (pressure_mb / TairK) * (1.0 +
+                                                   mixing_ratio_air) / (1.0 + 1.61 * mixing_ratio_air)
 
     # ----------------------------------------------------------------------------------------------
     #  Computations that are not a function of water temperature
@@ -172,7 +153,8 @@ def energy_budget_method(TwaterC: float, surface_area: float, volume: float, Tai
     emissivity_air = 0.00000937 * TairK**2.0
 
     # Atmospheric (downwelling) longwave radiation (W/m2)
-    q_longwave_down = mf_q_longwave_down(TairK, emissivity_air, cloudiness, stefan_boltzmann)
+    q_longwave_down = mf_q_longwave_down(
+        TairK, emissivity_air, cloudiness, stefan_boltzmann)
 
     pathways["q_longwave_down"] = q_longwave_down
 
@@ -183,7 +165,8 @@ def energy_budget_method(TwaterC: float, surface_area: float, volume: float, Tai
     # This computes and sets the TeqC and d_sediment_dT pathways.
     # It also sets the q_sensible and q_sediment pathways, but these are also computed later, below.
     # TODO: check why q_sensible and q_sediment are recomputed below.
-    compute_equilibrium_temperature(TwaterC, surface_area, volume, TairC, TsedC, wind_speed, wind_kh_kw, wind_function, pressure_mb, density_air, q_longwave_down, q_solar, eair_mb, initialOffset=10.0, use_SedTemp=use_SedTemp, num_iterations=num_iterations, tolerance=tolerance)
+    compute_equilibrium_temperature(TwaterC, surface_area, volume, TairC, TsedC, wind_speed, wind_kh_kw, wind_function, pressure_mb, density_air,
+                                    q_longwave_down, q_solar, eair_mb, initialOffset=10.0, use_SedTemp=use_SedTemp, num_iterations=num_iterations, tolerance=tolerance)
 
     # ____________________________________________________________________________________
     #  Energy balance computations that are functions of water temperature
@@ -227,15 +210,18 @@ def energy_budget_method(TwaterC: float, surface_area: float, volume: float, Tai
     if (wind_speed > 0.0 and Richardson_option):
         # Density of air computed at water surface temperature (kg/m3)
         density_air_sat = mf_density_air_sat(TwaterK, esat_mb, pressure_mb)
-        (Ri_No, Ri_fxn) = RichardsonNumber(wind_speed, density_air_sat, density_air)
+        (Ri_No, Ri_fxn) = RichardsonNumber(
+            wind_speed, density_air_sat, density_air)
 
     # ------------------------------------------------------------------------
     # Latent heat flux (W/m2)
-    q_latent = Ri_fxn * (0.622 / pressure_mb) * Lv * density_water * wind_function * (esat_mb - eair_mb)
+    q_latent = Ri_fxn * (0.622 / pressure_mb) * Lv * \
+        density_water * wind_function * (esat_mb - eair_mb)
 
     # ------------------------------------------------------------------------
     # Sensible heat flux
-    q_sensible = wind_kh_kw * Ri_fxn * Cp_air * density_water * wind_function * (TairK - TwaterK)
+    q_sensible = wind_kh_kw * Ri_fxn * Cp_air * \
+        density_water * wind_function * (TairK - TwaterK)
 
     # ------------------------------------------------------------------------
     # Compute sediment heat flux and temperature change
@@ -247,11 +233,14 @@ def energy_budget_method(TwaterC: float, surface_area: float, volume: float, Tai
 
     # ------------------------------------------------------------------------
     # Net heat flux
-    q_net = q_sensible - q_latent - q_longwave_up + q_longwave_down + q_solar + q_sediment
+    q_net = q_sensible - q_latent - q_longwave_up + \
+        q_longwave_down + q_solar + q_sediment
 
     # ------------------------------------------------------------------------
     # Compute water temperature change
-    dTwaterCdt = q_net * surface_area / (volume * density_water * Cp_water) * 86400.0
+    dTwaterCdt = q_net * surface_area / \
+        (volume * density_water * Cp_water) * 86400.0
+    TwaterC += dTwaterCdt
 
     # ------------------------------------------------------------------------------------
     # Difference between air and water temperature (Celsius or Kelvins)
@@ -277,14 +266,23 @@ def energy_budget_method(TwaterC: float, surface_area: float, volume: float, Tai
     # TODO: check why q_sediment was computed twice
     set_pathways_float(q_sediment, 'q_sediment', 'Sediment Heat Flux', 'W/m2')
     set_pathways_float(q_latent, 'q_latent', 'Latent Heat', 'W/m2')
-    set_pathways_float(q_longwave_up, 'q_longwave_up', 'Upwelling Longwave Radiation', 'W/m2')
-    set_pathways_float(q_longwave_down, 'q_longwave_down', 'Downwelling Longwave Radiation', 'W/m2')
-    set_pathways_float(dTwaterCdt, 'dTwaterCdt', 'Water Temperature Rate of Change', 'degC')
-    set_pathways_float(Ta_Tw, 'Ta_Tw', 'Difference between Air and Water Temperature', 'degC')
-    set_pathways_float(Esat_Eair, 'Esat_Eair', 'Difference between Saturation and Air Vapor Pressure', 'mb')
+    set_pathways_float(q_longwave_up, 'q_longwave_up',
+                       'Upwelling Longwave Radiation', 'W/m2')
+    set_pathways_float(q_longwave_down, 'q_longwave_down',
+                       'Downwelling Longwave Radiation', 'W/m2')
+    set_pathways_float(
+        Ta_Tw, 'Ta_Tw', 'Difference between Air and Water Temperature', 'degC')
+    set_pathways_float(Esat_Eair, 'Esat_Eair',
+                       'Difference between Saturation and Air Vapor Pressure', 'mb')
     set_pathways_float(Ri_No, 'Ri_No', 'Richardson Number', '')
     set_pathways_float(Ri_fxn, 'Ri_fxn', 'Richardson Function', '')
-    set_pathways_float(dTsedCdt, 'dTsedCdt', 'Sediment Temperature Rate of Change', '')
+    set_pathways_float(dTsedCdt, 'dTsedCdt',
+                       'Sediment Temperature Rate of Change', '')
+    set_pathways_float(dTwaterCdt, 'dTwaterCdt',
+                       'Water Temperature Rate of Change', 'degC')
+    set_pathways_float(TwaterC, 'TwaterC', 'Water Temperature', 'degC')
+
+    return TwaterC
 
 
 # Functions to set the pathways dictionary
@@ -294,22 +292,26 @@ def set_pathways_float(value: float, name: str, full_name: str, units: str = "",
     Set the pathway for a floating point value
     '''
     pathways[name] = {"value": value, "name": name, "full_name": full_name, "units": units,
-                            "absolute_min": absolute_min, "absolute_max": absolute_max, "expected_min": expected_min,
-                            "expected_max": expected_max, "description": description}
+                      "absolute_min": absolute_min, "absolute_max": absolute_max, "expected_min": expected_min,
+                      "expected_max": expected_max, "description": description}
+
 
 def set_pathways_int(value: int, name: str, full_name: str, units: str = "", absolute_min: int = -1e3, absolute_max: int = 1e3, expected_min: int = -1e3, expected_max: int = 1e3, description: str = ""):
     '''
     Set the pathway for an integer value
     '''
     pathways[name] = {"value": value, "name": name, "full_name": full_name, "units": units,
-                            "absolute_min": absolute_min, "absolute_max": absolute_max, "expected_min": expected_min,
-                            "expected_max": expected_max, "description": description}
+                      "absolute_min": absolute_min, "absolute_max": absolute_max, "expected_min": expected_min,
+                      "expected_max": expected_max, "description": description}
+
 
 def set_pathways_bool(value: bool, name: str, full_name: str, description: str = ""):
     '''
     Set the pathway for a boolean value
     '''
-    pathways[name] = {"value": value, "name": name, "full_name": full_name, "description": description}
+    pathways[name] = {"value": value, "name": name,
+                      "full_name": full_name, "description": description}
+
 
 def compute_equilibrium_temperature(TwaterC: float, surface_area: float, volume: float, TairC: float, TsedC: float, wind_speed: float, wind_kh_kw: float, wind_function: float, pressure_mb: float, density_air: float, q_longwave_down: float, q_solar: float, eair_mb: float, initialOffset: float = 10.0, use_SedTemp: bool = False, num_iterations: int = 10, tolerance: float = 0.01):
     '''
@@ -373,34 +375,40 @@ def compute_equilibrium_temperature(TwaterC: float, surface_area: float, volume:
         # Compute Richardson No. for latent and sensible heat fluxes
         if wind_speed > 0.0 and Richardson_option:
             density_air_sat = mf_density_air_sat(TeqK, esat_mb, pressure_mb)
-            (Ri_No, Ri_fxn) = RichardsonNumber(wind_speed, density_air_sat, density_air)
+            (Ri_No, Ri_fxn) = RichardsonNumber(
+                wind_speed, density_air_sat, density_air)
         else:
             Ri_No = 0.0
             Ri_fxn = 1.0
 
         # Compute sensible heat flux and its derivative
-        q_sensible = wind_kh_kw * Ri_fxn * Cp_air * density_water * wind_function * (TairK - TwaterK)
+        q_sensible = wind_kh_kw * Ri_fxn * Cp_air * \
+            density_water * wind_function * (TairK - TwaterK)
         d_sensible_dT = -wind_kh_kw * Ri_fxn * Cp_air * density_water * wind_function
 
         # Compute latent heat flux and its derivative
-        q_latent = Ri_fxn * (0.622 / pressure_mb) * Lv * density_water * wind_function * (esat_mb - eair_mb)
+        q_latent = Ri_fxn * (0.622 / pressure_mb) * Lv * \
+            density_water * wind_function * (esat_mb - eair_mb)
 
         # Compute the derivative of function computing saturation vapor pressure as a function of water temperature
         d_esat_dT = mf_d_esat_dT(TwaterK)
 
-        d_latent_dT = Ri_fxn * (0.622 / pressure_mb) * Lv * density_water * wind_function * d_esat_dT
+        d_latent_dT = Ri_fxn * (0.622 / pressure_mb) * \
+            Lv * density_water * wind_function * d_esat_dT
 
         # Compute sediment-water interface flux
         q_sediment = 0.0
         d_sediment_dT = 0.0
         if (use_SedTemp):
-            q_sediment = pb * Cps * alphas / 0.5 / h2 * (TsedC - TwaterC) / 86400.0
+            q_sediment = pb * Cps * alphas / 0.5 / \
+                h2 * (TsedC - TwaterC) / 86400.0
             d_sediment_dT = -pb * Cps * alphas / 0.5 / h2 / 86400.0
 
         d_qnet_dT = - d_longwave_up_dT - d_latent_dT + d_sensible_dT + d_sediment_dT
 
         # Compute the net heat flux (W/m2)
-        q_net = q_sensible - q_latent - q_longwave_up + q_longwave_down + q_solar + q_sediment
+        q_net = q_sensible - q_latent - q_longwave_up + \
+            q_longwave_down + q_solar + q_sediment
         Teqnext = TeqK - (q_net / d_qnet_dT)
         count += 1
 
@@ -411,7 +419,9 @@ def compute_equilibrium_temperature(TwaterC: float, surface_area: float, volume:
     set_pathways_float(TeqC, 'TeqC', 'Equilibrium Temperature', 'degC')
     set_pathways_float(q_sensible, 'q_sensible', 'Sensible Heat Flux', 'W/m2')
     set_pathways_float(q_sediment, 'q_sediment', 'Sediment Heat Flux', 'W/m2')
-    set_pathways_float(d_sediment_dT, 'd_sediment_dT', 'Derivative of the Sediment Heat Flux', 'W/m2')
+    set_pathways_float(d_sediment_dT, 'd_sediment_dT',
+                       'Derivative of the Sediment Heat Flux', 'W/m2')
+
 
 @numba.njit
 def mf_d_esat_dT(TwaterK: float) -> float:
@@ -450,6 +460,7 @@ def mf_q_longwave_down(TairK: float, emissivity_air: float, cloudiness: float, s
 
     return (1.0 + 0.17 * cloudiness**2) * emissivity_air * stefan_boltzmann * TairK**4.0
 
+
 @numba.njit
 def mf_q_longwave_up(TwaterK: float) -> float:
     '''
@@ -459,6 +470,7 @@ def mf_q_longwave_up(TwaterK: float) -> float:
     # logger.debug(f'mf_q_longwave_up({TwaterK:.2f})')
 
     return emissivity_water * stefan_boltzmann * TwaterK**4.0
+
 
 @numba.njit
 def mf_esat_mb(TwaterK: float) -> float:
@@ -480,9 +492,11 @@ def mf_esat_mb(TwaterK: float) -> float:
 def celsius_to_kelvin(tempc: float) -> float:
     return tempc + 273.16
 
+
 @numba.njit
 def kelvin_to_celsius(tempk: float) -> float:
     return tempk - 273.16
+
 
 @numba.njit
 def RichardsonNumber(wind_speed: float, density_air_sat: float, density_air: float) -> list:
@@ -507,7 +521,8 @@ def RichardsonNumber(wind_speed: float, density_air_sat: float, density_air: flo
     # logger.debug(f'RichardsonNumber({wind_speed:.2f}, {density_air_sat:.2f}, {density_air:.2f})')
 
     Ri_fxn: float = 0.0
-    Ri_No: float = gravity * (density_air - density_air_sat) * 2.0 / (density_air * (wind_speed**2.0))
+    Ri_No: float = gravity * (density_air - density_air_sat) * \
+        2.0 / (density_air * (wind_speed**2.0))
 
     # Set bounds
     if (Ri_No > 2.0):
@@ -531,6 +546,7 @@ def RichardsonNumber(wind_speed: float, density_air_sat: float, density_air: flo
             Ri_fxn = (1.0 + 34.0 * Ri_No)**(-0.80)
     return (Ri_No, Ri_fxn)
 
+
 @numba.njit
 def mf_latent_heat_vaporization(TwaterK: float) -> float:
     '''
@@ -541,6 +557,7 @@ def mf_latent_heat_vaporization(TwaterK: float) -> float:
 
     return 2499999 - 2385.74 * TwaterK
 
+
 @numba.njit
 def mf_density_water(TwaterC: float) -> float:
     '''
@@ -550,8 +567,9 @@ def mf_density_water(TwaterC: float) -> float:
     # logger.debug(f'mf_density_water({TwaterC:.2f})')
 
     return 999.973 * (1.0 -
-                        (((TwaterC - 3.9863) * (TwaterC - 3.9863) * (TwaterC + 288.9414)) /
-                        (508929.2 * (TwaterC + 68.12963))))
+                      (((TwaterC - 3.9863) * (TwaterC - 3.9863) * (TwaterC + 288.9414)) /
+                       (508929.2 * (TwaterC + 68.12963))))
+
 
 @numba.njit
 def mf_density_air_sat(TwaterK: float, esat_mb: float, pressure_mb: float) -> float:
@@ -571,6 +589,7 @@ def mf_density_air_sat(TwaterK: float, esat_mb: float, pressure_mb: float) -> fl
 
     mixing_ratio_sat = 0.622 * esat_mb / (pressure_mb - esat_mb)
     return 0.348 * (pressure_mb / TwaterK) * (1.0 + mixing_ratio_sat) / (1.0 + 1.61 * mixing_ratio_sat)
+
 
 @numba.njit
 def mf_Cp_water(TwaterC: float) -> float:
@@ -596,6 +615,7 @@ def mf_Cp_water(TwaterC: float) -> float:
     else:
         Cp_water = 4178.0
     return Cp_water
+
 
 def print_pathways():
     '''
