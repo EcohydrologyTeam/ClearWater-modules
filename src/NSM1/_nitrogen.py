@@ -36,12 +36,26 @@ class Nitrogen:
         self.Balgae_pathways = Balgae_pathways
         self.sedFlux_pathways = sedFlux_pathways
 
+        #Parameters
+        self.nitrogen_constant = OrderedDict()
+        self.nitrogen_constant = {
+            'knit':0.1,              
+            'kon' : 0.1,              
+            'kdnit': 0.002,	          
+            'rnh4': 0,                
+            'vno3': 0,	              
+            'KsOxdn': 0.1,              
+            'KNR' : 0.6,
+            'PN' : 0.5,
+            'PNb' : 0.5,
+        }
+
+        for key in self.nitrogen_constant_changes.keys() :
+            if key in self.nitrogen_constant:
+                self.nitrogen_constant[key] = self.nitrogen_constant_changes[key]
+
     def Calculations (self):
-        #use modGlobal,       only: r, depth, TwaterC, NH4, dNH4dt, NO3, dNO3dt, OrgN, dOrgNdt, DIN, TON, TKN, TN, DOX, Ap,  & use_OrgN, use_NH4, use_NO3, use_DOX, use_Algae, use_BAlgae, use_SedFlux
-        #use modGlobalParam,  only: vson
-        #use modAlgae,        only: PN, ApGrowth, ApRespiration, ApDeath, rna  
-        #use modBenthicAlgae, only: Fb, Fw, PNb, AbGrowth, AbRespiration, AbDeath, rnb
-        #use modSedFlux,      only: JNH4, JNO3
+
         '''
         (Global) module_choices T/F
         'use_Algae'
@@ -92,7 +106,6 @@ class Nitrogen:
         'JNH4'     Sediment water flux of ammonia                   [g-N/m^2*d]
         'JNO3'     Sediment water flux of NO3                       [g-N/m^2*d]
       
-
         '''
         print("Calculating change in Nitrogen concentration")
 
@@ -103,23 +116,6 @@ class Nitrogen:
         AbUptakeFr_NO3 =0                                # fraction of actual benthic algal uptake that is from nitrate pool
         AbUptakeFr_NH4 =0                                # fraction of actual benthic algal uptake that is from ammonia pool
 
-       #Parameters
-        self.nitrogen_constant = OrderedDict()
-        self.nitrogen_constant = {
-            'knit':0.1,              
-            'kon' : 0.1,              
-            'kdnit': 0.002,	          
-            'rnh4': 0,                
-            'vno3': 0,	              
-            'KsOxdn': 0.1,              
-            'KNR' : 0.6,
-            'PN' : 0.5,
-            'PNb' : 0.5,
-        }
-
-        for key in self.nitrogen_constant_changes.keys() :
-            if key in self.nitrogen_constant:
-                self.nitrogen_constant[key] = self.nitrogen_constant_changes[key]
 
         if self.global_module_choices['use_NH4'] :
             knit_tc=TempCorrection(self.nitrogen_constant['knit'], 1.083).arrhenius_correction(self.global_vars['TwaterC'])
@@ -281,25 +277,9 @@ class Nitrogen:
         else:
             dNO3dt = 0
 
-        # output pathways
-        '''
-    ApDeath_OrgN
-    OrgN_Settling
-    OrgN_NH4_Decay
-    H4_Nitrification
-    NH4_ApRespiration
-    NH4_ApGrowth
-    NH4fromBed
-    NO3_ApGrowth
-    NO3_Denit
-    NO3_BedDenit
-    AbDeath_OrgN
-    NH4_AbRespiration
-    NH4_AbGrowth
-    NO3_AbGrowth
-    '''
+
   
-        # compute derived variables   
+        # Derived variables calculations
         DIN = 0.0
         TON = 0.0
         TKN = 0.0

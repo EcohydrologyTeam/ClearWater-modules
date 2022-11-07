@@ -7,12 +7,12 @@ st=time.time()
 from _algae import Algae
 from _nitrogen import Nitrogen
 from _benthic_algae import BenthicAlgae
+from _phosphorus import Phosphorus
 # from _carbon import Carbon
 # from _cbod import CBOD
 # from _dox import DOX
 # from _n2 import N2
 # from _pathogen import Pathogen
-# from _phosphorus import Phosphorus
 # from _pom import POM
 # from _sed_flux import SedFlux
 # from _alkalinity import Alkalinity
@@ -22,7 +22,6 @@ output_variables = OrderedDict()
 output_variables = {
 
 } 
-
 
 #True/False module use, user defined
 global_module_choices =OrderedDict
@@ -48,6 +47,7 @@ global_module_choices = {
 #User-defined global variables
 global_vars =OrderedDict()
 global_vars = {
+    #Algae
     'Ap' : 100.0,
     'NH4' : 100.0,
     'NO3' : 100.0,
@@ -55,10 +55,24 @@ global_vars = {
     'TwaterC' : 20.0,
     'depth' : 1.0,
 
+    #Benthic algae
     'Ab' : 100.0,
+
+    #Nitrogen
     'DOX' : 100.0,
     'OrgN' : 100.0,
     'vson' : 0.01,
+
+    #Phosphrous
+    'OrgP' : 100,
+    'vs' : 1,
+    'vsop' : 0.01,
+
+    #CBOD
+    'nCBOD' : 2,
+    'CBOD' : 100,
+
+    #Parameters
     'lambda' : 1.0,
     'fdp' : 0.5,
     'PAR' : 100.0
@@ -129,7 +143,15 @@ nitrogen_constant_changes = {
 
 }
 
-#TODO should I send extra variables in a dictionary or each individual variable seperatly, or each individual variable in a dicitonary
+#Phosphorus Module Optional Changes
+phosphorous_constant_changes = OrderedDict()
+phosphorous_constant_changes = {
+        
+#   'kop' : 0.1,
+#   'rpo4' : 0
+
+}
+
 #Call Algae module
 if global_module_choices['use_Algae'] :
     output_variables['dApdt'], algae_pathways = Algae(global_module_choices, global_vars, algae_constant_changes).Calculations()
@@ -139,33 +161,32 @@ else:
 #Call Benthic Algae module
 if global_module_choices['use_BAlgae'] :
 # Call Benthic Algea 
-    dAbdt, Balgae_pathways = BenthicAlgae(global_module_choices, global_vars, Balgae_constant_changes).Calculations()
+    output_variables ['dAbdt'], Balgae_pathways = BenthicAlgae(global_module_choices, global_vars, Balgae_constant_changes).Calculations()
 else :
     Balgae_pathways = {}
-
-#Call Phosphorus module
-if global_module_choices['use_OrgP'] or global_module_choices['use_TIP']:
-    pass
-
-#Call carbon module
-if global_module_choices['use_POC'] or global_module_choices['use_DOC'] or global_module_choices['use_DIC'] :
-    pass
 
 #Call Sediment Flux module
 if global_module_choices['use_SedFlux'] :
     #TEMP here unitl integrate Sediment Flux module to get the variables for nitrogen
     sedFlux_pathways = {
         'JNH4': 2,
-        'JNO3': 2
+        'JNO3': 2,
+        'JDIP' : 2,
     }
 else : 
     sedFlux_pathways ={}
 
+#Call Phosphorus module
+if global_module_choices['use_OrgP'] or global_module_choices['use_TIP']:
+    output_variables['dOrgPdt'], output_variables['dTIPdt'], output_variables['TOP'], output_variables['TP'] \
+        = Phosphorus(global_module_choices, global_vars, algae_pathways, Balgae_pathways, sedFlux_pathways, phosphorous_constant_changes).Calculation()
+
 #Call Nitrogen module
 if global_module_choices['use_NH4'] or global_module_choices['use_NO3'] or global_module_choices['use_OrgN'] :
-    output_variables['DIN'], output_variables['TON'], output_variables['TKN'], output_variables['TN'], output_variables['dOrgNdt'], output_variables['dNH4dt'], output_variables['dNO3dt']= Nitrogen(global_module_choices, global_vars, algae_pathways, Balgae_pathways, sedFlux_pathways, nitrogen_constant_changes).Calculations()
+    output_variables['DIN'], output_variables['TON'], output_variables['TKN'], output_variables['TN'], output_variables['dOrgNdt'], output_variables['dNH4dt'], output_variables['dNO3dt'] \
+        = Nitrogen(global_module_choices, global_vars, algae_pathways, Balgae_pathways, sedFlux_pathways, nitrogen_constant_changes).Calculations()
   
-#TODO create for alkalinity, DOX, CBOD, N2, Pathogen, and POM
+#TODO create for carbon, alkalinity, DOX, CBOD, N2, Pathogen, and POM
 
 et = time.time()
 elapsed_time = et - st 

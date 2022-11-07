@@ -30,10 +30,38 @@ class BenthicAlgae:
 
     def __init__(self, global_module_choices: OrderedDict, global_vars: OrderedDict, Balgae_constant_changes: OrderedDict ):
 
-        self.algae_constant_changes=Balgae_constant_changes
+        self.Balgae_constant_changes=Balgae_constant_changes
         self.global_module_choices=global_module_choices
         self.global_vars = global_vars
+        
+        # Initialize genrally constant parameters
+        self.Balgae_constant = OrderedDict()
+        self.Balgae_constant = {
+            'BWd': 100,       
+            'BWc': 40,      
+            'BWn' : 7.2,      
+            'BWp' : 1,      
+            'BWa' : 3500,       
 
+            'KLb': 10,       
+            'KsNb' : 0.25,       
+            'KsPb' : 0.125,    
+            'Ksb' : 10,       
+
+            'mub_max' : 0.4,   
+            'krb' : 0.2,     
+            'kdb': 0.3,   
+            
+            'b_growth_rate_option' : 1,     
+            'b_light_limitation_option' : 1,
+
+            'Fw' : 0.9,
+            'Fb' : 0.9 
+        }
+
+        for key in self.Balgae_constant_changes.keys() :
+            if key in self.Balgae_constant:
+                self.Balgae_constant[key] = self.Balgae_constant_changes[key]
         '''
         Compute benthic algae kinetics (Main function)
 
@@ -100,31 +128,6 @@ class BenthicAlgae:
     def Calculations (self) : 
         print("Calculating change in benthic algae concentration")
         
-        # Initialize genrally constant parameters
-        self.Balgae_constant = OrderedDict()
-        self.Balgae_constant = {
-            'BWd': 100,       
-            'BWc': 40,      
-            'BWn' : 7.2,      
-            'BWp' : 1,      
-            'BWa' : 3500,       
-
-            'KLb': 10,       
-            'KsNb' : 0.25,       
-            'KsPb' : 0.125,    
-            'Ksb' : 10,       
-
-            'mub_max' : 0.4,   
-            'krb' : 0.2,     
-            'kdb': 0.3,   
-            
-            'b_growth_rate_option' : 1,     
-            'b_light_limitation_option' : 1,
-
-            'Fw' : 0.9,
-            'Fb' : 0.9 
-        }
-
         self.Fw = self.Balgae_constant['Fw']
         self.Fb = self.Balgae_constant['Fb']
 
@@ -227,6 +230,7 @@ class BenthicAlgae:
 
         Balgae_pathways = {
         'rnb' : self.rnb,
+        'rpb' : self.rpb,
         'AbGrowth' : AbGrowth,
         'AbDeath' : AbDeath,
         'AbRespiration' : AbRespiration,

@@ -37,19 +37,54 @@ class Phosphorus:
 
         self.P_constants = OrderedDict()
         self.P_constants = {
-
+            'kop' : 0.1,
+            'rpo4' : 0
         }
         
+        for key in self.P_constant_changes.keys() :
+            if key in self.P_constants:
+                self.P_constants[key] = self.P_constant_changes[key]
+
     def Calculation(self) :
 
-    # use modGlobal,       only: r, nGS, depth, TwaterC, Solid, TIP, dTIPdt, OrgP, dOrgPdt, DIP, TOP, TP, Ap,use_Algae, use_BAlgae, use_OrgP, use_TIP, use_SedFlux
-    # use modGlobalParam,  only: vs, vsop, fdp, kdpo4
-    # use modAlgae,        only: ApGrowth, ApRespiration, ApDeath, rpa
-    # use modBenthicAlgae, only: Fb, Fw, AbGrowth, AbRespiration, AbDeath, rpb
-    # use modSedFlux,      only: JDIP
-    # use modDLL,          only: R8, nRegion, list_class, SetOptionalIndex, TempCorrectionStruct, Arrhenius_TempCorrection  
-        kop=0.1
-        rop4=0
+        '''
+        (Global) module_choices T/F
+        'use_Algae'
+        'use_BAlgae'
+        'use_OrgP'
+        'use_TIP'
+        'use_SedFlux'
+
+        (Global) global_vars
+        'Ap'       Algae concentration                              [ug/Chla/L]
+        'TwaterC'  Water temperature                                [C]
+        'depth'    Depth from water surface                         [m]
+        'OrgP'     Organic phosphorus                               [mg-P/L]
+        'TIP'      Total inorganic phosphorus                       [mg-P/L]
+        'vs'       Sediment settling velocity                       [m/d]
+        'fdp'      fraction P dissolved                             [unitless]
+
+        phosphorus_constant_changes
+        'kop'       Decay rate or orgnaic P to DIP                  [1/d]
+        'rpo4'      Benthic sediment release rate of DIP            [g-P/m2*d]
+
+        from Algae
+        'rPa'           AlgalP : Chla ratio                              [mg-P/ugChla]
+        'ApGrowth'      Algal growth rate                                [ug-chla/L/d]
+        'ApDeath'       Algal death rate                                 [ug-chla/L/d]
+        'ApRespiration' AlgalRespiration rate                            [ug-chla/L/d]
+
+        from Benthic Algae
+        'rpb'           Benthic Algal P: Benthic Algal Dry Weight        [mg-P/mg-D]
+        'AbGrowth'      Benthic Algal growth rate                        [g/m^2*d]
+        'AbDeath'       Benthic Algal death rate                         [g/m^2*d]
+        'AbRespiration' Benthic Algal respiration rate                   [g/m^2*d]
+        
+        from SedFlux
+        'JDIP'     Sediment water flux of phosphate                   [g-P/m^2*d]      
+
+        '''
+        print("Calculating change in phosphorus concentration")
 
         if self.global_module_choices['use_OrgP'] :
             kop_tc=TempCorrection(self.P_constants['kop'], 1.047).arrhenius_correction(self.global_vars['TwaterC'])
@@ -70,20 +105,20 @@ class Phosphorus:
 
         if self.global_module_choices['use_OrgP'] :
             OrgP_DIP_decay  = kop_tc  * self.global_vars['OrgP']
-            OrgP_Settling   = self.global_vars['vsop']/ self.global_vars['depth'] * self.global_vars['OrgP']
+            OrgP_Settling   = (self.global_vars['vsop']/ self.global_vars['depth']) * self.global_vars['OrgP']
         
-        if self.global_module_choices['use_Algae'] :
-            ApDeath_OrgP = self.algae_pathways['rpa'] * self.algae_pathways['ApDeath']
-        else :
-            ApDeath_OrgP    = 0
-      
-        if self.global_module_choices['use_BAlgae'] :
-            AbDeath_OrgP = self.Balgae_pathways['rpb'] * self.P_constants['Fw'] * self.P_constants['Fb'] * self.Balgae_pathways['AbDeath'] / self.global_vars['depth'] 
-        else :
-            AbDeath_OrgP = 0.0
+            if self.global_module_choices['use_Algae'] :
+                ApDeath_OrgP = self.algae_pathways['rpa'] * self.algae_pathways['ApDeath']
+            else :
+                ApDeath_OrgP    = 0
+        
+            if self.global_module_choices['use_BAlgae'] :
+                AbDeath_OrgP = (self.Balgae_pathways['rpb'] * self.Balgae_pathways['Fw'] * self.Balgae_pathways['Fb'] * self.Balgae_pathways['AbDeath']) / self.global_vars['depth'] 
+            else :
+                AbDeath_OrgP = 0.0
 
-        dOrgPdt = ApDeath_OrgP + AbDeath_OrgP - OrgP_DIP_decay - OrgP_Settling
-     
+            dOrgPdt = ApDeath_OrgP + AbDeath_OrgP - OrgP_DIP_decay - OrgP_Settling
+        
         # Total Inorganic Phosphorus  (mg/P/day)
         '''
          dTIP/dt =     OrgP Decay                (OrgP -> DIP)
@@ -95,30 +130,33 @@ class Phosphorus:
         if self.global_module_choices['use_TIP'] :
             if self.global_module_choices['use_SedFlux'] :
                 DIPfromBed = self.sedFlux_pathways['JDIP'] / self.global_vars['depth']
-        else :
-            DIPfromBed = rpo4_tc / self.global_vars['depth']
+            else :
+                DIPfromBed = rpo4_tc / self.global_vars['depth']
 
-        TIP_Settling = self.global_vars['vs'] / self.global_vars['depth'] * (1.0 - self.global_vars['fdp']) * self.global_vars['TIP']  
-        
-        if not self.global_module_choices['use_OrgP'] :
-            OrgP_DIP_decay = 0.0
+            TIP_Settling = self.global_vars['vs'] / self.global_vars['depth'] * (1.0 - self.global_vars['fdp']) * self.global_vars['TIP']  
+            
+            if self.global_module_choices['use_OrgP'] :
+                OrgP_DIP_decay = kop_tc * self.global_vars['OrgP']
+            else :
+                OrgP_DIP_decay = 0.0
 
-        if self.global_module_choices['use_Algae'] :    
-            DIP_ApRespiration = self.algae_pathways['rpa'] * self.algae_pathways['ApRespiration']      
-            DIP_ApGrowth= self.algae_pathways['rpa'] * self.algae_pathways['ApGrowth']
-        else :
-            DIP_ApRespiration = 0.0
-            DIP_ApGrowth = 0.0
+            if self.global_module_choices['use_Algae'] :    
+                DIP_ApRespiration = self.algae_pathways['rpa'] * self.algae_pathways['ApRespiration']      
+                DIP_ApGrowth= self.algae_pathways['rpa'] * self.algae_pathways['ApGrowth']
+            else :
+                DIP_ApRespiration = 0.0
+                DIP_ApGrowth = 0.0
 
-        if self.global_module_choices['use_BAlgae'] : 
-            DIP_AbRespiration = self.Balgae_pathways['rpb'] * self.P_constants['Fb'] * self.Balgae_pathways['AbRespiration'] / self.global_vars['depth']
-            DIP_AbGrowth = self.Balgae_pathways['rpb'] * self.P_constants['Fb'] * self.Balgae_pathways['AbGrowth'] / self.global_vars['depth']
-        else :
-            DIP_AbRespiration = 0.0
-            DIP_AbGrowth = 0.0
+            if self.global_module_choices['use_BAlgae'] : 
+                DIP_AbRespiration = self.Balgae_pathways['rpb'] * self.Balgae_pathways['AbRespiration']
+                DIP_AbGrowth = self.Balgae_pathways['rpb'] * self.Balgae_pathways['Fb'] * self.Balgae_pathways['AbGrowth'] / self.global_vars['depth']
+            else :
+                DIP_AbRespiration = 0.0
+                DIP_AbGrowth = 0.0
 
-        dTIPdt = OrgP_DIP_decay - TIP_Settling + DIPfromBed + DIP_ApRespiration - DIP_ApGrowth + DIP_AbRespiration - DIP_AbGrowth 
+            dTIPdt = OrgP_DIP_decay - TIP_Settling + DIPfromBed + DIP_ApRespiration - DIP_ApGrowth + DIP_AbRespiration - DIP_AbGrowth 
 
+        #Derived variable calculations
         TOP = 0.0
         if self.global_module_choices['use_OrgP'] :
             TOP = TOP + self.global_vars['OrgP'] 
@@ -130,9 +168,18 @@ class Phosphorus:
             TP  = TP + self.global_vars['TIP'] 
 
             '''
+            Residual FORTRAN code I did not know what it ment
             fdp = 1.0
             do i = 1, nGS
                 fdp = fdp + kdpo4(i,r) * Solid(i) / 1.0E6
             end do
             '''
+
             DIP = (self.global_vars['TIP']) * self.global_vars['fdp'] #TODO Check formula, check all with the change of d/dt
+        
+        print("dOrgPdt", dOrgPdt)
+        print("dTIPdt", dTIPdt)
+        print("TOP", TOP)
+        print("TP", TP)
+
+        return dOrgPdt, dTIPdt, TOP, TP

@@ -36,6 +36,7 @@ class SedFlux:
       self.algae_pathways=algae_pathways
       self.Balgae_pathways=Balgae_pathways
       self.CBOD = CBOD #TODO CBOD has multiple values based on different groups (up to 10) and their differernt decay rates, array not dictionary
+      self.sedFlux_constant_changes = sedFlux_constant_changes
 
       self.sedFlux_constants = OrderedDict()
       self.sedFlux_constants = {
@@ -92,6 +93,10 @@ class SedFlux:
         'POCdiagenesis_part_option' : 1,
         'BFORmax' : 0.0,
       }
+
+      for key in self.sedFlux_constant_changes.keys() :
+        if key in self.sedFlux_constants:
+          self.sedFlux_constants[key] = self.sedFlux_constant_changes[key]
 
   def Calculation (self) :
     '''
@@ -335,7 +340,6 @@ class SedFlux:
     POCdiagenesis_part_option= self.sedFlux_constants['POCdiagenesis_part_option']
     BFORmax= self.sedFlux_constants['BFORmax']
 
-    TwaterC=self.global_vars['TwaterC']
     vsoc=self.global_vars['vsoc']
     POC= self.global_vars['POC']
     vson=self.global_vars['vson']
@@ -354,12 +358,36 @@ class SedFlux:
     rpb=self.Balgae_pathways['rpb']
     dt=self.global_vars['dt']
     TsedC=self.global_vars['TsedC']
+    
     DOX=self.global_vars['DOX']
     DOX = max(DOX, 0.01) #TODO check this, why this too? was in the subroutine that called all the subroutines
+
     DIC = self.global_vars['DIC']
     fdp = self.global_vars['fdp']
     TIP = self.global_vars['TIP']
     vs = self.global_vars['vs']
+
+    NH41 = self.global_vars['NH41']
+    NH42 = self.global_vars['NH42']
+    NO31 = self.global_vars['NO31']
+    NO32 = self.global_vars['NO32']
+    TH2S1 = self.global_vars['TH2S1']
+    TH2S2 = self.global_vars['TH2S2']
+    CH41 = self.global_vars['CH41']
+    CH42 = self.global_vars['CH42']
+    DIC1 = self.global_vars['DIC1']
+    DIC2 = self.global_vars['DIC2']
+    TIP1 = self.global_vars['TIP1']
+    TIP2 = self.global_vars['TIP2']
+    SO41 = self.global_vars['SO41']
+    SO42 = self.global_vars['SO42']
+
+    Salinity = self.global_vars['Salinity']
+ 
+    t=self.global_vars['t']
+    depth = self.global_vars['depth']
+    NH4 = self.global_vars['NH4']
+    NO3 = self.global_vars['NO3']
 
     #local variables
     roc = 32.0 / 12.0
@@ -371,20 +399,22 @@ class SedFlux:
     ron   = 2.0 * 32.0 / 14.0
     rcdn  = 5.0 * 12.0 / (4.0 * 14.0)
 
-    #TODO Fortran code seems to call TempCorrection differently
     KPON_tc=[0]*3
     KPOP_tc=[0]*3
     KPOC_tc = [0]*3
-
-    Dd_tc=TempCorrection(Dd, 1.08).arrhenius_correction(TsedC)
+    
+    #TODO  Dd and Dp has a divide by two in fortran but not listed as in documentation
+    Dd_tc=TempCorrection(Dd, 1.08).arrhenius_correction(TsedC) 
     Dp_tc=TempCorrection(Dp, 1.117).arrhenius_correction(TsedC)
-    vnh41_tc=TempCorrection(vnh41, 1.123).arrhenius_correction(TsedC)
-    vno31_tc=TempCorrection(vno31, 1.08).arrhenius_correction(TsedC)
-    vno32_tc=TempCorrection(vno32, 1.08).arrhenius_correction(TsedC)     
-    vch41_tc =TempCorrection(vch41, 1.079).arrhenius_correction(TsedC)
-    vh2sd_tc =TempCorrection(vh2sd, 1.079).arrhenius_correction(TsedC)
-    vh2sp_tc =TempCorrection(vh2sp, 1.079).arrhenius_correction(TsedC)
 
+    vnh41_tc= vnh41 * 1.123 * ((TsedC-20)/2)
+    vno31_tc= vno31 * 1.08 * ((TsedC-20)/2)
+    vno32_tc= vno32 * 1.08 * ((TsedC-20)/2)    
+    vch41_tc = vch41 * 1.079 * ((TsedC-20)/2)
+    vh2sd_tc = vh2sd * 1.079 * ((TsedC-20)/2)
+    vh2sp_tc = vh2sp * 1.079 * ((TsedC-20)/2)
+
+    #only uses arrhenius correction and passes two arguments (rc20 and TsedC not theta)
     KPON_tc[1] = TempCorrection(KPONG1, 1.1).arrhenius_correction(TsedC)
     KPON_tc[2] = TempCorrection(KPONG2, 1.15).arrhenius_correction(TsedC)
     KPON_tc[3] = 0
@@ -395,27 +425,26 @@ class SedFlux:
     KPOC_tc[2] = TempCorrection(KPOCG2, 1.15).arrhenius_correction(TsedC)
     KPOC_tc[3] = 0
 
-    FAP3, FAB3 =0     
-    a, b, c = 0
+    FAP3, FAB3 =0    #fraction algal/benthic algal death to G3
 
-    #compute JPOC, JPON, JPOP
-    #particulate organic matter settling
+    #compute JPOC, JPON, JPOP total depositional flux to sediment of particulate oragnic matter
+ 
     JPOC=[0]*3
     JPON=[0]*3
     JPOP=[0]*3
 
+    #Carbon settling from water (settling velocity * particulate organic carbon * fraction settling to G1/G2/G3 sediment)
     if self.global_module_choices['use_POC'] :
-      JPOC[1] = vsoc * POC * FPOC1
+      JPOC[1] = vsoc * POC * FPOC1                  #(g-C/d*m^2)
       JPOC[2]=  vsoc * POC * FPOC2
       JPOC[3]=  vsoc * POC * (1 - FPOC1 - FPOC2)
-
     else :
       JPOC[1]= 0.0
       JPOC[2]= 0.0
       JPOC[3]= 0.0
 
     if self.global_module_choices['use_OrgN'] :
-      JPON[1] = vson * OrgN * FPON1
+      JPON[1] = vson * OrgN * FPON1                  #(g-N/d*m^2)
       JPON[2] = vson * OrgN * FPON2
       JPON[3] = vson * OrgN * (1 -FPON1 - FPON2)
     else :
@@ -424,7 +453,7 @@ class SedFlux:
       JPON[3] = 0.0
 
     if self.global_module_choices['use_OrgP'] :
-      JPOP[1] = vsop * OrgP * FPOP1
+      JPOP[1] = vsop * OrgP * FPOP1                  #(g-P/d*m^2)
       JPOP[2] = vsop * OrgP * FPOP2
       JPOP[3] = vsop * OrgP * (1 - FPOP1 - FPOP2)
     else :
@@ -434,106 +463,106 @@ class SedFlux:
     
     #CBOD sedimentation 
     for i in (1, self.global_vars['nCBOD']) :
-      JPOC[1] = JPOC[1] + self.ksbod_tc[i] * FCBOD1 * self.CBOD[i] / roc
+      JPOC[1] = JPOC[1] + self.ksbod_tc[i] * FCBOD1 * self.CBOD[i] / roc      
       JPOC[2] = JPOC[2] + self.ksbod_tc[i] * FCBOD2 * self.CBOD[i] / roc
       JPOC[3] = JPOC[3] + self.ksbod_tc[i] * (1.0 - FCBOD1 - FCBOD2) * self.CBOD[i] / roc
 
-    #algae settling
-      if self.global_module_choices['use_Algae'] :
-        FAP3 = 1.0 - FAP1 - FAP2
-        JPOC[1]  = JPOC[1] + FAP1 * rca * Ap * vsap
-        JPOC[2]  = JPOC[2] + FAP2 * rca * Ap * vsap
-        JPOC[3]  = JPOC[3] + FAP3 * rca * Ap * vsap
-        JPON[1]  = JPON[1] + FAP1 * rna * Ap * vsap
-        JPON[2]  = JPON[2] + FAP2 * rna * Ap * vsap
-        JPON[3]  = JPON[3] + FAP3 * rna * Ap * vsap
-        JPOP[1]  = JPOP[1] + FAP1 * rpa * Ap * vsap
-        JPOP[2]  = JPOP[2] + FAP2 * rpa * Ap * vsap 
-        JPOP[3]  = JPOP[3] + FAP3 * rpa * Ap * vsap
+    #Algae settling 
+    if self.global_module_choices['use_Algae'] :
+      FAP3 = 1.0 - FAP1 - FAP2
+      JPOC[1]  = JPOC[1] + FAP1 * rca * Ap * vsap     
+      JPOC[2]  = JPOC[2] + FAP2 * rca * Ap * vsap
+      JPOC[3]  = JPOC[3] + FAP3 * rca * Ap * vsap
+      JPON[1]  = JPON[1] + FAP1 * rna * Ap * vsap
+      JPON[2]  = JPON[2] + FAP2 * rna * Ap * vsap
+      JPON[3]  = JPON[3] + FAP3 * rna * Ap * vsap
+      JPOP[1]  = JPOP[1] + FAP1 * rpa * Ap * vsap
+      JPOP[2]  = JPOP[2] + FAP2 * rpa * Ap * vsap 
+      JPOP[3]  = JPOP[3] + FAP3 * rpa * Ap * vsap
 
-    # benthic algae death
-      if self.global_module_choices['use_BAlgae'] :
-        FAB3 = 1.0 - FAB1 - FAB2
-        JPOC[1] = JPOC[1] + AbDeath * (1.0 - Fw) * rcb * FAB1
-        JPOC[2] = JPOC[2] + AbDeath * (1.0 - Fw) * rcb * FAB2
-        JPOC[3] = JPOC[3] + AbDeath * (1.0 - Fw) * rcb * FAB3
-        JPON[1] = JPON[1] + AbDeath * (1.0 - Fw) * rnb * FAB1
-        JPON[2] = JPON[2] + AbDeath * (1.0 - Fw) * rnb * FAB2
-        JPON[3] = JPON[3] + AbDeath * (1.0 - Fw) * rnb * FAB3
-        JPOP[1] = JPOP[1] + AbDeath * (1.0 - Fw) * rpb * FAB1
-        JPOP[2] = JPOP[2] + AbDeath * (1.0 - Fw) * rpb * FAB2
-        JPOP[3] = JPOP[3] + AbDeath * (1.0 - Fw) * rpb * FAB3
+    #Benthic algae death
+    if self.global_module_choices['use_BAlgae'] :
+      FAB3 = 1.0 - FAB1 - FAB2
+      JPOC[1] = JPOC[1] + AbDeath * (1.0 - Fw) * rcb * FAB1
+      JPOC[2] = JPOC[2] + AbDeath * (1.0 - Fw) * rcb * FAB2
+      JPOC[3] = JPOC[3] + AbDeath * (1.0 - Fw) * rcb * FAB3
+      JPON[1] = JPON[1] + AbDeath * (1.0 - Fw) * rnb * FAB1
+      JPON[2] = JPON[2] + AbDeath * (1.0 - Fw) * rnb * FAB2
+      JPON[3] = JPON[3] + AbDeath * (1.0 - Fw) * rnb * FAB3
+      JPOP[1] = JPOP[1] + AbDeath * (1.0 - Fw) * rpb * FAB1
+      JPOP[2] = JPOP[2] + AbDeath * (1.0 - Fw) * rpb * FAB2
+      JPOP[3] = JPOP[3] + AbDeath * (1.0 - Fw) * rpb * FAB3
 
-    #compute POC2/PON2/POP2, POC2/PON2/POP2 pathways and JC/JN/JP
-      POC2=[0]*3
-      PON2=[0]*3
-      POP2=[0]*3
-      POC2_Diagenesis=[0]*3
-      PON2_Diagenesis=[0]*3
-      POP2_Diagenesis=[0]*3
-      POC2_Burial=[0]*3
-      PON2_Burial=[0]*3
-      POP2_Burial=[0]*3
+  #compute POC2/PON2/POP2, POC2/PON2/POP2 pathways and JC/JN/JP
+    POC2=[0]*3        #concentration of sediment particulate organic carbon
+    PON2=[0]*3        #concentration of sediment particulate organic nitrogen
+    POP2=[0]*3        #concentration of sediment particulate organic phosphrous 
+    POC2_Diagenesis=[0]*3
+    PON2_Diagenesis=[0]*3
+    POP2_Diagenesis=[0]*3
+    POC2_Burial=[0]*3
+    PON2_Burial=[0]*3
+    POP2_Burial=[0]*3
+  
+  #POC G1/G2/G3 in the second layer. Able for diagenesis and depends on depositional flux above 
+    for i in (1, 3) :
+      if self.sedFlux_constants['SedFlux_solution_option'] == 1 :       # steady state solution
+        POC2[i] = JPOC[i] / (KPOC_tc[i] * h2 + vb)
+        PON2[i] = JPON[i] / (KPON_tc[i] * h2 + vb)
+        POP2[i] = JPOP[i] / (KPOP_tc[i] * h2 + vb)
+      elif (self.sedFlux_constants['SedFlux_solution_option'] == 2):    #unsteady state solution
+        POC2[i] = (JPOC[i] + POC2[i] * h2 / dt) / (h2 / dt + KPOC_tc[i] * h2 + vb)
+        PON2[i] = (JPON[i] + PON2[i] * h2 / dt) / (h2 / dt + KPON_tc[i] * h2 + vb)
+        POP2[i] = (JPOP[i] + POP2[i] * h2 / dt) / (h2 / dt + KPOP_tc[i] * h2 + vb)
 
-      for i in (1, 3) :
-        if self.sedFlux_constants['SedFlux_solution_option'] == 1 :       # steady state solution
-          POC2[i] = JPOC[i] / (KPOC_tc[i] * h2 + vb)
-          PON2[i] = JPON[i] / (KPON_tc[i] * h2 + vb)
-          POP2[i] = JPOP[i] / (KPOP_tc[i] * h2 + vb)
-        elif (self.sedFlux_constants['SedFlux_solution_option'] == 2): #unsteady state solution
-          POC2[i] = (JPOC[i] + POC2[i] * h2 / dt) / (h2 / dt + KPOC_tc[i] * h2 + vb)
-          PON2[i] = (JPON[i] + PON2[i] * h2 / dt) / (h2 / dt + KPON_tc[i] * h2 + vb)
-          POP2[i] = (JPOP[i] + POP2[i] * h2 / dt) / (h2 / dt + KPOP_tc[i] * h2 + vb)
+      if math.isnan(POC2[i]) :
+        POC2[i] = 0.0
+      if math.isnan(PON2[i]):
+        PON2[i] = 0.0
+      if math.isnan(POP2[i]):
+        POP2[i] = 0.0
 
-        if math.isnan(POC2[i]) :
-          POC2[i] = 0.0
-        if math.isnan(PON2[i]):
-          PON2[i] = 0.0
-        if math.isnan(POP2[i]):
-          POP2[i] = 0.0
+      POC2[i] = max(POC2[i], 0.0) 
+      PON2[i] = max(PON2[i], 0.0) 
+      POP2[i] = max(POP2[i], 0.0) 
+      
+      POC2_Diagenesis[i] = KPOC_tc[i] * h2 * POC2[i]
+      PON2_Diagenesis[i] = KPON_tc[i] * h2 * PON2[i]
+      POP2_Diagenesis[i] = KPOP_tc[i] * h2 * POP2[i]
+      POC2_Burial[i] = vb * POC2[i]
+      PON2_Burial[i] = vb * PON2[i]
+      POP2_Burial[i] = vb * POP2[i]
 
-        POC2[i] = max(POC2[i], 0.0) 
-        PON2[i] = max(PON2[i], 0.0) 
-        POP2[i] = max(POP2[i], 0.0) 
-        
-        POC2_Diagenesis[i] = KPOC_tc[i] * h2 * POC2[i]
-        PON2_Diagenesis[i] = KPON_tc[i] * h2 * PON2[i]
-        POP2_Diagenesis[i] = KPOP_tc[i] * h2 * POP2[i]
-        POC2_Burial[i] = vb * POC2[i]
-        PON2_Burial[i] = vb * PON2[i]
-        POP2_Burial[i] = vb * POP2[i]
-
-      JC = POC2_Diagenesis[1] + POC2_Diagenesis[2]
-      JN = PON2_Diagenesis[1] + PON2_Diagenesis[2]
-      JP = POP2_Diagenesis[1] + POP2_Diagenesis[2]
+    #Calculate sediment diagenesis flux C, N, P
+    JC = POC2_Diagenesis[1] + POC2_Diagenesis[2] 
+    JN = PON2_Diagenesis[1] + PON2_Diagenesis[2]
+    JP = POP2_Diagenesis[1] + POP2_Diagenesis[2]
 
     # compute SOD
     SOD_old =0
-      
-    #local variables related to half-saturation method to split carbon diagenesis flux
-
     # coefficients of a quadratic equation
     ra2, ra1, ra0 =0
     #root of the quadratic equation      
     sn1, disc, r1, r2 =0     
   
-    #initial estimation of SOD
+    #TODO Find this calculation: Initial estimation of SOD
     SOD_Bed = JC * 32.0 / 12.0 + 1.714 * JN
     
+    #Partical mixing transfer velocity: Transfer for NH4, H2S, and PIP between layer 1 and 2
     if SedFlux_solution_option == 1 :
-      w12 = Dp_tc / (0.5 * h2)
+      w12 = Dp_tc / (0.5 * h2)         
     elif SedFlux_solution_option == 2 :
       w12 = Dp_tc / (0.5 * h2) * POC2[1] / (1000.0 * POCr * Css2)
-    
     if math.isnan(w12):
       w12 = 0.0
   
-    # benthic stress does not accumulate when temperature is lower than 10oC.
+    #Sediment Benthic Stress: Low DO will eliminate bioturbation. Particle phase mixing coefficient is modified. 
     if SedFlux_solution_option == 1 :
-      ST = 0.0
+      ST = 0.0                          #TODO check: Benthic stress does not accumulate when temperature is lower than TempBen=10oC.
     elif SedFlux_solution_option == 2 :
     
       '''
+      This was commented out in the FORTRAN
        if (ISWBEN) then
          if (TsedC >= TempBen) then
            ISWBEN   = .false
@@ -548,11 +577,11 @@ class SedFlux:
          if (isnan(ST)) ST = 0.0 
        end if
       '''
-
+  
       if TsedC < TempBen :
-        ST = (ST + dt * KsDp) / (KsDp + DOX) / (1.0 + kst * dt)
+        ST = ((ST + dt * KsDp) / (KsDp + DOX)) / (1.0 + kst * dt)      
         BFORmax = 0.0
-      else :
+      else :  #TODO do not know what the else calculation is doing
         BFORmax = max(BFORmax, KsDp / KsDp + DOX)
         ST = (ST + dt * BFORmax) / (1.0 + kst * dt)
 
@@ -564,51 +593,46 @@ class SedFlux:
     if (w12 < 0.0) :   
       w12  = 0.0
 
-    KL12 = Dd_tc / (0.5 * h2)
+    #Dissolved and particulate phase mixing coefficient between layer 1 and layer 2
+    KL12 = Dd_tc / (0.5 * h2)         
     if math.isnan(KL12):
       KL12 = 0.0
-    KL01 = SOD_Bed / DOX
+
+    #Dissolved constituent exchange between water and layer 1
+    KL01 = SOD_Bed / DOX                  
     if math.isnan(KL01) or KL01 == 0.0:
       KL01 = 1.0E-8
 
-    # TNH41 and TNH42
-    NH41 = self.global_vars['NH41']
-    NH42 = self.global_vars['NH42']
-    NO32 = self.global_vars['NO32']
-    Salinity = self.global_vars['Salinity']
-    SO42 = self.global_vars['SO42']
-    TH2S2 = self.global_vars['TH2S2']
-    t=self.global_vars['t']
-    depth = self.global_vars['depth']
-    NH4 = self.global_vars['NH4']
-    NO3 = self.global_vars['NO3']
+    #Sediment ammonium (TNH41 and TNH42) produced by decomposition of reactive G1 and G2 classes of PON in layer 2
+    #Calculate dissolved and particulate fraction
+    fd1  = 1.0 / (1.0 + Css1 * kdnh42)      #dissolved fraction NH4 layer 1
+    fd2  = 1.0 / (1.0 + Css2 * kdnh42)      #dissolved fraction NH4 layer 2
+    fp1  = 1.0 - fd1                        #particulate fraction NH4 layer 1
+    fp2  = 1.0 - fd2                        #particulate fraction NH4 layer 2
+    TNH41 = NH41 / fd1                      #total concentration NH4 dissolved layer 1
+    TNH42 = NH42 / fd2                      #total concentration NH4 dissolved layer 2
 
-    fd1  = 1.0 / (1.0 + Css1 * kdnh42)
-    fd2  = 1.0 / (1.0 + Css2 * kdnh42)
-    fp1  = 1.0 - fd1
-    fp2  = 1.0 - fd2
-    TNH41 = NH41 / fd1 #TODO where does NH41 come from?
-    TNH42 = NH42 / fd2  #TODO where does NH42 come from?
-
-    FOxna = DOX / KsOxna1 * 2.0 + DOX
+    FOxna = DOX / (KsOxna1 * 2.0 + DOX)     #Oxygen attenuation factor for sediment nitrification 
 
     if math.isnan(FOxna):
       FOxna = 0.0
     
     con_nit  = vnh41_tc * vnh41_tc * FOxna * fd1
+    
+    #coefficents for implicit finite difference form for TNH4 (a11, a12, a21, a22, b1, b2)
+    #NH41 and NH42
     a12_TNH4 = -w12 * fp2 - KL12 * fd2
     a21_TNH4 = -w12 * fp1 - KL12 * fd1 - vb
-    if SedFlux_solution_option == 1 : 
+    if SedFlux_solution_option == 1 :         #steady
       a22_TNH4 = -a12_TNH4 + vb
       b2_TNH4  = JN
-    elif SedFlux_solution_option == 2:
+    elif SedFlux_solution_option == 2:        #unsteady
       a22_TNH4 = -a12_TNH4 + vb + h2 / dt
       b2_TNH4  = JN + h2 * TNH42 / dt
 
     # NO31 and NO32
     a12_NO3 = -KL12
     a21_NO3 = -KL12
-
     if SedFlux_solution_option == 1 : 
       a22_NO3 = KL12 + vno32_tc
       b2_NO3  = 0.0
@@ -626,27 +650,28 @@ class SedFlux:
       SO4 = self.sedFlux_constants['SO4_fresh']
 
     # Half-saturation method
-    if self.sedFlux_constants['POCdiagenesis_part_option'] == 1 :
+    if self.sedFlux_constants['POCdiagenesis_part_option'] == 1 :  
       SO42_prev = SO42
-      
-      fds1 = 1.0 / (1.0 + Css1 * kdh2s2)
-      fds2 = 1.0 / (1.0 + Css2 * kdh2s2)
-      fps1 = 1.0 - fds1
-      fps2 = 1.0 - fds2
       TH2S2_prev = TH2S2
+      
+      fds1 = 1.0 / (1.0 + Css1 * kdh2s2)      #dissolved fraction layer 1
+      fds2 = 1.0 / (1.0 + Css2 * kdh2s2)      #dissolved fraction layer 2
+      fps1 = 1.0 - fds1                       #particulate fraction layer 1
+      fps2 = 1.0 - fds2                       #particulate fraction layer 2
+
       con_sox = (vh2sd_tc * vh2sd_tc * fds1 + vh2sp_tc * vh2sp_tc * fps1) * DOX / 2.0 / KSh2s
       if math. isnan(con_sox):
         con_sox = (vh2sd_tc * vh2sd_tc * fds1 + vh2sp_tc * vh2sp_tc * fps1)
     
     # Sulfate reduction depth method
-    elif POCdiagenesis_part_option == 2 :
+    elif POCdiagenesis_part_option == 2 :   
       #Set initial value for HSO4
       if (t < 1.0E-10) :
-        HSO4 = math.sqrt(Dd_tc * SO4 * h2 / (max(roc * JC, 1.0E-10)))
+        HSO4 = math.sqrt(Dd_tc * SO4 * h2 / (max(roc * JC, 1.0E-10)))         #sulfate penetration into layer 2 from layer 1
         if (HSO4 > h2) :
           HSO4 = h2
 
-      # SO41 and SO42
+      #SO41 and SO42
       TH2S1_prev = TH2S1
       HSO4_prev  = HSO4
       SO42_prev  = SO42
@@ -700,7 +725,7 @@ class SedFlux:
 
         a11 = -a21_TNH4 + con_nit * FNH4 / KL01 + KL01 * fd1
         b1  = KL01 * NH4
-        #TODO TODO call MatrixSolution(TNH41, TNH42, a11, a12_TNH4, b1, a21_TNH4, a22_TNH4, b2_TNH4)
+        TNH41, TNH42 = MatrixSolution(TNH41, TNH42, a11, a12_TNH4, b1, a21_TNH4, a22_TNH4, b2_TNH4)
         TNH41 = max(TNH41, 0.0)
         TNH42 = max(TNH42, 0.0)
         
@@ -715,7 +740,7 @@ class SedFlux:
         JCc = max(roc * JC - JC_dn, 1.0E-10)
         
         # SO41, SO42 and TH2S1, TH2S2
-          #coefficients for SO41, SO42, H2S1 and H2S2 equations
+        #coefficients for SO41, SO42, H2S1 and H2S2 equations
 
         bx=[0]*4
         ad=[(0,0,0,0),(0,0,0,0), (0,0,0,0), (0,0,0,0)] # 4x4
@@ -735,7 +760,7 @@ class SedFlux:
           else:
             KL12SO4 = Dd_tc / (0.5 * HSO4)
 
-          # four equations
+          # four equations (FORTRAN)
           # 0 = bx(1) + ad(1,1) * SO41 + ad(1,2) * SO42 + ad(1,3) * TH2S1
           # 0 = bx(2) + ad(2,1) * SO41 + ad(2,2) * SO42 - JCc * SO42 / (SO42 + KsSO4)
           # 0 = bx(3) + ad(3,3) * TH2S1 + ad(3,4) * TH2S2
@@ -762,7 +787,7 @@ class SedFlux:
             ad[3][3] = - vb - KL12SO4 * fds2 - w12 * fps2 - h2 / dt 
             bx[3]   = h2 * TH2S2_prev / dt
   
-          #eliminate H2ST1 and H2ST2 from above equation sets, get two equations
+          #eliminate H2ST1 and H2ST2 from above equation sets, get two equations (FORTRAN)
           # 0 = g(1) + h(1,1) * SO41 + h(1,2) * SO42
           # 0 = g(2) + h(2,1) * SO41 + h(2,2) * SO42 + JCc * SO42 / (SO42 + KsSO4)
           
@@ -774,7 +799,7 @@ class SedFlux:
           h[0][1] = h[1][1] + ad[1][1]
           
           #eliminate SO41 and get a quadratic equation of SO42
-          # ra2 * SO42 * SO42 + ra1 * SO42 + ra0 = 0.0
+          # ra2 * SO42 * SO42 + ra1 * SO42 + ra0 = 0.0 
           ra0 = (h[0][0] * g[1] - h[1][0] * g[0]) * KsSO4
           ra1 = h[0][0] * g[1] - h[1][0] * g[0] + (h[0][0] * h[1][1] - h[0][1] * h[1][0]) * KsSO4 + h[0][0] * JCc
           ra2 = h[0][0] * h[1][1] - h[0][1] * h[1][0]
@@ -1151,20 +1176,20 @@ class SedFlux:
     DIP2  = TIP2 / (1.0 + Css2 * kdpo42)
 
 
-  def MatrixSolution(x1, x2, a11, a12, b1, a21, a22, b2) :
-    x1=x1
-    x2=x2
-    a11=a11
-    a12=a12
-    b1=b1
-    a21=a21
-    a22=a22
-    b2=b2
+def MatrixSolution(x1, x2, a11, a12, b1, a21, a22, b2) :
+  x1=x1
+  x2=x2
+  a11=a11
+  a12=a12
+  b1=b1
+  a21=a21
+  a22=a22
+  b2=b2
 
-    if (a11 * a22 - a12 * a21 == 0.0) :
-      print('Twod is singular: A11,A12,A21,A22')
-      print('a11, a12, a21, a22')
+  if (a11 * a22 - a12 * a21 == 0.0) :
+    print('Twod is singular: A11,A12,A21,A22')  
+    print('a11, a12, a21, a22')
 
-    x1 = (a22 * b1 - a12 * b2) / (a11 * a22 - a12 * a21)
-    x2 = (a11 * b2 - a21 * b1) / (a11 * a22 - a12 * a21)
-    return x1 , x2
+  x1 = (a22 * b1 - a12 * b2) / (a11 * a22 - a12 * a21)
+  x2 = (a11 * b2 - a21 * b1) / (a11 * a22 - a12 * a21)
+  return x1 , x2
