@@ -1,6 +1,6 @@
 '''
 =======================================================================================
-Nutrient Simulation Module 1 (NSM1): Dissolved Oxygen Kinetics
+Nutrient Simulation Module 1 (NSM1): Temperature Correction
 =======================================================================================
 
 Developed by:
@@ -18,14 +18,19 @@ developed by:
 
 Version 1.0
 
-Initial Version: June 13, 2021
-Last Revision Date: June 13, 2021
+Initial Version: June 5, 2021
 '''
 
-import math
+from numba import njit
 
+@njit(cache = True,fastmath = True)
+def TempCorrection(rc20, theta, TwaterC) :
+    '''
+    Computes an adjusted kinetics reaction rate coefficient for the specified water 
+    temperature using the van't Hoff form of the Arrhenius equation
 
-class DOX:
+    Parameters:
+        TwaterC (float): Water temperature in degrees Celsius
+    '''
 
-    def __init__(self):
-       pass
+    return rc20 * theta**(TwaterC - 20.0)

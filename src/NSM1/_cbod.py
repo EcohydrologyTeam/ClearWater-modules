@@ -23,43 +23,39 @@ Initial Version: June 13, 2021
 
 import math
 from ._temp_correction import TempCorrection
-from ._globals import Globals
+from collections import OrderedDict
 
 
 class CBOD:
 
-    def __init__(self, CBOD: float, TwaterC: float, DOX: float):
-        '''
-        Compute CBOD kinetics
+    def __init__(self, CBOD: float, TwaterC: float, DOX: float, use_DOX: bool, CBOD_constant_changes: dict):
+        self.CBOD = CBOD
+        self.DOX = DOX
+        self.TwaterC = TwaterC
+        self.use_DOX = use_DOX
+        self.CBOD_constant_changes = CBOD_constant_changes
 
-        Parameters
-        ----------
-        CBOD : float
-            Current CBOD concentration
-        TwaterC : float
-            Water temperature in degrees Celsius
-        DOX: float
-            Current dissolved oxygen concentration?
+        self.CBOD_constants = OrderedDict()
+        self.CBOD_constants = {
+            'kbod' : 0.12,
+            'ksbod' : 0,
+            'KsOxbod' : 0.5,
+        }
 
-        Returns
-        ----------
-        dCBODdt: float
-            Change in CBOD concentration
+        for key in self.CBOD_constant_changes.keys() :
+            if key in self.CBOD_constants:
+                self.CBOD_constants[key] = self.CBOD_constant_changes[key]
 
-        '''
-
-        gv = Globals()
-
+    def Calculation(self) :
         # CBOD parameters
         # Oxidation rate (1/day), Range {0.02-3.4}
-        kbod = TempCorrection(0.0, 0.0)  # TODO Need to define
+        kbod_tc=TempCorrection(self.CBOD_constants['kbod'], 1.047).arrhenius_correction(self.TwaterC)
 
         # Sedimentation rate (1/day), Range {-0.36-0.36}
-        ksbod = TempCorrection(0.0, 0.0)  # TODO Need to define
+        ksbod_tc=TempCorrection(self.CBOD_constants['ksbod'], 1.047).arrhenius_correction(self.TwaterC)
 
-        # Half-saturation oxygen attenuation constant for CBOD oxidation (mg-O/L)
-        KsOxbod = 0.0
-
+        KsOxbod = self.CBOD_constants['KsOxbod']
+        
         # CBOD pathway
         # CBOD oxidation into DIC (mg-O2/L/day)
         CBOD_Oxidation = 0.0
@@ -67,34 +63,22 @@ class CBOD:
         CBOD_Oxidation_index = 0
         CBOD_Sediment_index = 0
 
-        # Initialize parameters and pathways
-        kbod = TempCorrection(0.12, 1.047)
-        ksbod = TempCorrection(0.0, 1.024)
-
-        if gv.globals['use_DOX']:
-            KsOxbod = 0.5
-        CBOD_Oxidation_index = 0
-        CBOD_Sediment_index = 0
-
         # Note: I am going to code this to compute a single CBOD value
         # to be consistent with the other functions in this module. Then
         # this function can be called multiple times for multiple CBOD values
-        kbod_tc = kbod.arrhenius_correction(TwaterC)
-        ksbod_tc = ksbod.arrhenius_correction(TwaterC)
 
         # CBOD Kinetics: compute kinetic rate
         # dBOD/dt = - CBOD decay due to oxidation - CBOD Sedimentation
 
-        if gv.globals['use_DOX']:
-            CBOD_Oxidation = DOX / (DOX + KsOxbod) * kbod_tc * CBOD
+        if self.use_DOX:
+            CBOD_Oxidation = self.DOX / (self.DOX + KsOxbod) * kbod_tc * self.CBOD
         if math.isnan(CBOD_Oxidation):
             CBOD_Oxidation = 0.0
         else:
-            CBOD_Oxidation = kbod_tc * CBOD
+            CBOD_Oxidation = kbod_tc * self.CBOD
 
-        CBOD_Sediment = ksbod_tc * CBOD
+        CBOD_Sediment = ksbod_tc * self.CBOD
         dCBODdt = - CBOD_Oxidation - CBOD_Sediment
 
-        # TODO: Add code to handle output pathways
-
-        self.dCBODdt = dCBODdt
+        # TODO: is this all the output pathways needed?
+        return dCBODdt
