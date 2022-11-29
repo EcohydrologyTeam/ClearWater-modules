@@ -26,6 +26,8 @@ Last Revision Date: June 12, 2021
 
 class WQ_Variable:
     def __init__(self, name: str, value: float, index: str, units: str):
+        pass
+'''    
         self.name = name
         self.value = value
         self.index = index
@@ -500,3 +502,4 @@ class Globals:
             # 'PIP1_PIP2_name' : 'PIP1_PIP2',
             'TIP2_Burial_name': 'TIP2_Burial',
         }
+'''
