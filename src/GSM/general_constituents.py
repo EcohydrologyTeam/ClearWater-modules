@@ -24,9 +24,10 @@ Last Revision Date: April 11, 2021
 
 # %%
 from EnvironmentalSystems.ClearWater.water_quality_modules.python.clearwater_modules.src import water_quality_functions
+import numpy as np
+from typing import Union
 
-
-def GeneralConstituentKinetics(GC: float, TwaterC: float, order: float, k_rc20: float = 1.0, k_theta: float = 1.047,
+def GeneralConstituentKinetics(GC: Union[float, np.array], TwaterC: float, order: float, k_rc20: float = 1.0, k_theta: float = 1.047,
     rgc_rc20: float = 1.0, rgc_theta: float = 1.047, release: bool = True, settling: bool = False, 
     settling_rate: float = 0.1, depth: float = 1.0):
 
@@ -35,8 +36,8 @@ def GeneralConstituentKinetics(GC: float, TwaterC: float, order: float, k_rc20: 
 
     Parameters
     ----------
-    GC : float
-        General constituent concentration
+    GC : float or numpy array
+        General constituent concentration of a single cell or an array of cells
     TwaterC : float
         Water temperature in degrees Celsius
     order : int
