@@ -71,3 +71,7 @@ class Test_GeneralConstituentKinetics(unittest.TestCase):
         self.assertAlmostEqual(call_GeneralConstituentKinetics(test_params), -4.5020, places=4)
         test_params["TwaterC"] = 30.0
         self.assertAlmostEqual(call_GeneralConstituentKinetics(test_params), -7.1253, places=4)
+
+if __name__ == '__main__':
+    unittest.main()
+# %%

@@ -23,9 +23,43 @@ Last Revision Date: April 11, 2021
 '''
 
 # %%
-from EnvironmentalSystems.ClearWater.water_quality_modules.python.clearwater_modules.src import water_quality_functions
+import sys
+import os
+src_path = os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(src_path))
+from src import water_quality_functions as wqf
+
+# %%
+# need to receive TwaterC, depth, number of GCs -- from global
+
+"""
+Globals
+    GC
+    TwaterC
+    depth
+    nGC
+    r
+    nRegion
+
+GCM_Constants
+    k0_rc20 = 1
+    k1_rc20 = 1
+    k2_rc20 = 1
+    k0_theta = 1.047
+    k1_theta = 1.047
+    k2_theta = 1.047
+
+    rgc_rc20 = 1
+    rgc_theta = 1.047
 
 
+
+
+"""
+
+
+# %% 
 def GeneralConstituentKinetics(GC: float, TwaterC: float, order: float, k_rc20: float = 1.0, k_theta: float = 1.047,
     rgc_rc20: float = 1.0, rgc_theta: float = 1.047, release: bool = True, settling: bool = False, 
     settling_rate: float = 0.1, depth: float = 1.0):
@@ -76,7 +110,7 @@ def GeneralConstituentKinetics(GC: float, TwaterC: float, order: float, k_rc20: 
     gc_settling: float = 0.0            # Settling rate (loss)
 
     # Correct reaction rate for current temperature
-    k_corr: float  = ArrheniusCorrection(TwaterC, k_rc20, k_theta)
+    k_corr: float  = wqf.ArrheniusCorrection(TwaterC, k_rc20, k_theta)
 
     if order == 0:
         # Zero-order decay rate (mg/L/d)
@@ -87,7 +121,7 @@ def GeneralConstituentKinetics(GC: float, TwaterC: float, order: float, k_rc20: 
     elif order == 2:
         gc_second_order_decay = k_corr * GC**2
     if release:
-        rgc_corr: float  = ArrheniusCorrection(TwaterC, rgc_rc20, rgc_theta)
+        rgc_corr: float  = wqf.ArrheniusCorrection(TwaterC, rgc_rc20, rgc_theta)
         gc_from_bed = rgc_corr / depth
     if settling:
         gc_settling = settling_rate * GC / depth
@@ -126,5 +160,6 @@ def test():
 # %%
 # test()
 
-# if __name__ == '__main__':
-#     test()
+if __name__ == '__main__':
+    test()
+
