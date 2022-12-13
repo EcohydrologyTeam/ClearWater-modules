@@ -44,9 +44,9 @@ class Test_TSM_energy_budget_method(unittest.TestCase):
         self.global_vars['TwaterC'] = 20
 
         Change = Temperature(self.global_module_choices,self.global_vars,self.temperature_constant_changes,self.met_constant_changes).energy_budget_method()
-        Change = Change * 60
+        #Change = Change * 60
 
-        self.assertAlmostEqual(Change, 19.997, 3)
+        self.assertAlmostEqual(Change, -5.39*10**-5, 3)
 
 
 if __name__ == '__main__':
