@@ -48,17 +48,17 @@ def GeneralConstituentKinetics(
         GC (float or np.array): General constituent concentration of a single cell or an array of cells
         TwaterC (float or np.array): Water temperature in degrees Celsius
         order (int): Order of reaction kinetics (0, 1, or 2)
-        k_rc20 (float, optional): Reaction (decay) rate at 20 degrees Celsius
-        k_theta (float, optional): Arrhenius temperature correction factor for decay rate
-        rgc_rc20 (float, optional): Sediment release rate at 20 degrees Celsius
-        rgc_theta (float, optional): Arrhenius temperature correction factor for sediment release
+        k_rc20 (float or np.array, optional): Reaction (decay) rate at 20 degrees Celsius
+        k_theta (float or np.array, optional): Arrhenius temperature correction factor for decay rate
+        rgc_rc20 (float or np.array, optional): Sediment release rate at 20 degrees Celsius
+        rgc_theta (float or np.array, optional): Arrhenius temperature correction factor for sediment release
         release (bool, optional): Compute resuspension, True = on; False = off.
         settling (bool, optional): Compute setting (i.e., bed loss, on/off)
-        settling_rate (float, optional): Settling rate (m/s)
-        depth (float, optional): Depth of the bed (meters)
+        settling_rate (float or np.array, optional): Settling rate (m/s)
+        depth (float or np.array, optional): Depth of the bed (meters)
 
     Returns:
-        dGCdt: Rate of change of general constituent concentration
+        dGCdt (float or np.array): Rate of change of general constituent concentration
     '''
 
     # Temperature corrections
