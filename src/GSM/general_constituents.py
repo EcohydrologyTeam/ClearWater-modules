@@ -22,10 +22,39 @@ Initial Version: April 10, 2021
 Last Revision Date: April 11, 2021
 '''
 
-# %%
-from EnvironmentalSystems.ClearWater.water_quality_modules.python.clearwater_modules.src import water_quality_functions
-import numpy as np
 from typing import Union, Optional
+import sys
+import os
+import numpy as np
+src_path = os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(src_path))
+from src import water_quality_functions as wqf
+
+# %%
+# need to receive TwaterC, depth, number of GCs -- from global
+
+"""
+Globals
+    GC
+    TwaterC
+    depth
+    nGC
+    r
+    nRegion
+
+GCM_Constants
+    k0_rc20 = 1
+    k1_rc20 = 1
+    k2_rc20 = 1
+    k0_theta = 1.047
+    k1_theta = 1.047
+    k2_theta = 1.047
+
+    rgc_rc20 = 1
+    rgc_theta = 1.047
+
+"""
 
 def GeneralConstituentKinetics(
                                GC: Union[float, np.array], 
@@ -41,7 +70,7 @@ def GeneralConstituentKinetics(
                                depth: Optional[Union[float, np.array]] = 1.0,
                                ) -> Union[float, np.array]:
 
-    '''
+    """
     Compute a single general constituent
 
     Args:
@@ -59,7 +88,7 @@ def GeneralConstituentKinetics(
 
     Returns:
         dGCdt (float or np.array): Rate of change of general constituent concentration
-    '''
+   """
 
     # Temperature corrections
     # k0_rc20 = k1_rc20 = k2_rc20 = 1.0
@@ -73,7 +102,7 @@ def GeneralConstituentKinetics(
     gc_settling: float = 0.0            # Settling rate (loss)
 
     # Correct reaction rate for current temperature
-    k_corr: float  = ArrheniusCorrection(TwaterC, k_rc20, k_theta)
+    k_corr: float  = wqf.ArrheniusCorrection(TwaterC, k_rc20, k_theta)
 
     if order == 0:
         # Zero-order decay rate (mg/L/d)
@@ -84,7 +113,8 @@ def GeneralConstituentKinetics(
     elif order == 2:
         gc_second_order_decay = k_corr * GC**2
     if release:
-        rgc_corr: float  = ArrheniusCorrection(TwaterC, rgc_rc20, rgc_theta)
+        rgc_corr: float  = wqf.
+        heniusCorrection(TwaterC, rgc_rc20, rgc_theta)
         gc_from_bed = rgc_corr / depth
     if settling:
         gc_settling = settling_rate * GC / depth
@@ -181,10 +211,9 @@ def mixed_array_float_test():
     print("Final concentration:   %.2f" % GC_new)
     print("============================================")
 
-# %%
-# test()
 
-# if __name__ == '__main__':
-#     float_test()
-#     array_test()
-#     mixed_array_float_test()
+
+
+if __name__ == '__main__':
+    float_test()
+
