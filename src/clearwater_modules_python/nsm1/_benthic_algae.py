@@ -157,7 +157,8 @@ class BenthicAlgae:
         # (4b)  Bottom Area Density (FSb)
 
         # Each is computed individually and then applied to the maximum growth rate to obtain the local specific growth rate
-
+        
+        # (1b) Benthic Nitrogen Limitation (FLb)
         if self.global_vars['Ab'] <= 0.0 or KEXT <= 0.0 or self.global_vars['PAR'] <= 0.0:
         # After sunset, no growth
             FLb = 0.0                                         
@@ -225,7 +226,6 @@ class BenthicAlgae:
         # Chlorophyll-a
         Chlb = self.rab * self.global_vars['Ab']
 
-     
         self.dAbdt = dAbdt
 
         Balgae_pathways = {

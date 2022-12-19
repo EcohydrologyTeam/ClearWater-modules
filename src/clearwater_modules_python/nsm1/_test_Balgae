@@ -108,5 +108,83 @@ class Test_Balgae(unittest.TestCase):
         Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
         self.assertAlmostEqual(Change, -46.50408888, 3)
 
+#Change krb
+    def test_krb (self):
+        self.Balgae_constant_changes['krb'] = 0.5
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -77.1515, 3)
+
+#Change lambda
+    def test_lambda (self):
+        self.global_vars['lambda'] = 2
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -47.9166, 3)
+
+#Change depth
+    def test_depth (self):
+        self.global_vars['depth'] = 5
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -49.7713, 3)
+
+#Change PAR
+    def test_PAR (self):
+        self.global_vars['PAR'] = 15
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -48.7118, 3)
+
+#Change kLB
+    def test_krb (self):
+        self.Balgae_constant_changes['KLb'] = 5
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -46.8107, 3)
+
+#Change NH4
+    def test_NH4 (self):
+        self.global_vars['NH4'] = 50
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -47.1527, 3)
+
+#Change NO3
+    def test_NO3 (self):
+        self.global_vars['NO3'] = 200
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -47.150, 3)
+
+#Change KsNb
+    def test_KsNb (self):
+        self.Balgae_constant_changes['KsNb'] = 0.5
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -47.1551, 3)
+
+#Change fdp
+    def test_fdp (self):
+        self.global_vars['fdp'] = 0.1
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -47.1797, 3)
+
+#Change fdp
+    def test_fdp (self):
+        self.global_vars['TIP'] = 75
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -47.1539, 3)
+
+#Change KsPb
+    def test_KsPb (self):
+        self.Balgae_constant_changes['KsPb'] = 0.25
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -47.1586, 3)
+
+#Change Ksb
+    def test_Ksb (self):
+        self.Balgae_constant_changes['Ksb'] = 2
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -49.3856, 3)
+
+#Change Kdb
+    def test_Kdb (self):
+        self.Balgae_constant_changes['kdb'] = 0.15
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -32.1515, 3)
+
 if __name__ == '__main__':
     unittest.main()
