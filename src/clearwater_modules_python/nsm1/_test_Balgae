@@ -186,5 +186,12 @@ class Test_Balgae(unittest.TestCase):
         Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
         self.assertAlmostEqual(Change, -32.1515, 3)
 
+#Change TwaterC
+    def test_TwaterC (self):
+        self.global_vars['TwaterC'] = 5
+        Change,path=BenthicAlgae(self.global_module_choices,self.global_vars, self.Balgae_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -21.9784, 3)
+
+
 if __name__ == '__main__':
     unittest.main()
