@@ -22,8 +22,9 @@ Initial Version: June 13, 2021
 '''
 
 import math
-from ._temp_correction import TempCorrection
+from _temp_correction import TempCorrection
 from collections import OrderedDict
+
 
 
 class CBOD:
@@ -47,12 +48,20 @@ class CBOD:
                 self.CBOD_constants[key] = self.CBOD_constant_changes[key]
 
     def Calculation(self) :
+        '''
+        self.CBOD_constants
+            'kbod' : 0.12           #oxidation rate 1/day Range {0.02-3.4}  
+            'ksbod' : 0,            #sedimentation rate 1/day Range {0.36-0.36}
+            'KsOxbod' : 0.5,        #Half-saturation oxygen attenuation constant for CBOD oxidation (mg-O/L)
+        '''
+        print("Calculating change in CBOD")
+
         # CBOD parameters
         # Oxidation rate (1/day), Range {0.02-3.4}
         kbod_tc=TempCorrection(self.CBOD_constants['kbod'], 1.047).arrhenius_correction(self.TwaterC)
 
         # Sedimentation rate (1/day), Range {-0.36-0.36}
-        ksbod_tc=TempCorrection(self.CBOD_constants['ksbod'], 1.047).arrhenius_correction(self.TwaterC)
+        ksbod_tc=TempCorrection(self.CBOD_constants['ksbod'], 1.024).arrhenius_correction(self.TwaterC)
 
         KsOxbod = self.CBOD_constants['KsOxbod']
         
@@ -79,6 +88,9 @@ class CBOD:
 
         CBOD_Sediment = ksbod_tc * self.CBOD
         dCBODdt = - CBOD_Oxidation - CBOD_Sediment
-
-        # TODO: is this all the output pathways needed?
-        return dCBODdt
+        print('dCBODdt', dCBODdt)
+        CBOD_pathways = OrderedDict()
+        CBOD_pathways = {
+            'ksbod_tc':ksbod_tc
+        }
+        return dCBODdt, CBOD_pathways

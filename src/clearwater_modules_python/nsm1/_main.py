@@ -9,7 +9,7 @@ from _nitrogen import Nitrogen
 from _benthic_algae import BenthicAlgae
 from _phosphorus import Phosphorus
 # from _carbon import Carbon
-# from _cbod import CBOD
+from _cbod import CBOD
 # from _dox import DOX
 # from _n2 import N2
 # from _pathogen import Pathogen
@@ -42,6 +42,7 @@ global_module_choices = {
     'use_Pathogen' : False,
     'use_Alk' : False,
     'use_POM2' : False,
+    'use_CBOD': True,
 }
 
 #User-defined global variables
@@ -61,23 +62,66 @@ global_vars = {
     #Nitrogen
     'DOX' : 100.0,
     'OrgN' : 100.0,
-    'vson' : 0.01,
 
     #Phosphrous
     'OrgP' : 100,
-    'vs' : 1,
-    'vsop' : 0.01,
 
     #CBOD
-    'nCBOD' : 2,
     'CBOD' : 100,
 
     #Parameters
     'lambda' : 1.0,
     'fdp' : 0.5,
-    'PAR' : 100.0
+    'PAR' : 100.0,
+    'vs' : 1,
+    'vson' : 0.01,
+    'vsop' : 0.01,
+    'vb' : 0.0025, 
+    'h2' : 0.1,
+
+    #SedFlux
+    'Salinity': 100,
+    'dt' : 0.1,
+    'POM2' : 100,
+    'TsedC' : 100,
+
+
 }
 
+#User-defined global variables only used in SedFlux
+global_var_sedflux = OrderedDict()
+global_var_sedflux = {
+    'NH41' : 100,
+    'NO31' : 100,
+    'TIP1' : 100,
+    'CH41' : 100,
+    'SO41' : 100,
+    'TH2S1' : 100,
+    'DIC1' : 100,
+    
+    'NH42' : 100,
+    'NO32' : 100,
+    'TIP2' : 100,
+    'CH42' : 100,
+    'SO42' : 100,
+    'TH2S2' : 100,
+    'DIC2' : 100,
+
+    'POC2_1' : 100,
+    'PON2_1' : 100,
+    'POP2_1' : 100,
+
+    'POC2_2' : 100,
+    'PON2_2' : 100,
+    'POP2_2' : 100,
+
+    'POC2_3' : 100,
+    'PON2_3' : 100,
+    'POP2_3' : 100,
+
+    # 't' : 1,
+
+}
 #Algae Module Optional Changes 
 algae_constant_changes=OrderedDict()
 algae_constant_changes = {
@@ -152,6 +196,13 @@ phosphorous_constant_changes = {
 
 }
 
+CBOD_constant_changes = OrderedDict()
+CBOD_constant_changes= {
+    # 'kbod' : 0.12,
+    # 'ksbod' : 0,
+    # 'KsOxbod' : 0.5,
+}
+
 #Call Algae module
 if global_module_choices['use_Algae'] :
     output_variables['dApdt'], algae_pathways = Algae(global_module_choices, global_vars, algae_constant_changes).Calculations()
@@ -164,6 +215,10 @@ if global_module_choices['use_BAlgae'] :
     output_variables ['dAbdt'], Balgae_pathways = BenthicAlgae(global_module_choices, global_vars, Balgae_constant_changes).Calculations()
 else :
     Balgae_pathways = {}
+
+#Call CBOD module
+if global_module_choices['use_CBOD'] :
+    output_variables['dCBODdt'] = CBOD(global_vars['CBOD'],global_vars['TwaterC'], global_vars['DOX'], global_module_choices['use_DOX'], CBOD_constant_changes).Calculation()
 
 #Call Sediment Flux module
 if global_module_choices['use_SedFlux'] :

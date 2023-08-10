@@ -9,9 +9,95 @@ Dr. Todd E. Steissberg (ERDC-EL)
 Date: April 11, 2021
 '''
 
-# %%
 import unittest
-from general_constituents import GeneralConstituentKinetics
+from numba.typed import Dict
+from numba import types
+from general_constituents import GeneralConstituent
+
+class Test_GSM (unittest.TestCase):
+    def setUp(self):
+        self.global_vars = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+        self.global_vars = {
+            "GC": 10,
+            "TwaterC": 25,
+            "depth": 1.0,
+        }
+
+        self.gsm_constant_changes = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+        self.gsm_constant_changes = {
+            "k_rc20": 0.5,
+            "k_theta" : 1.047,
+
+            "rgc_rc20" : 0.5,
+            "rgc_theta" : 1.047,
+            "order" : 1,
+            "release" : True,
+            "settling" : True,
+            "settling_rate" : 0.0002,
+        }
+
+    def test_TwaterC (self):
+        self.global_vars['TwaterC'] = 35
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -8.964160948, places=4)
+    
+    def test_depth (self):
+        self.global_vars['depth'] = 5
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -6.165349003, places=4)   
+
+    def test_k_rc20_1 (self):
+        self.gsm_constant_changes['k_rc20'] = 0.7
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -8.179993575, places=4) 
+
+    def test_k_rc20_2 (self):
+        self.gsm_constant_changes['k_rc20'] = 0.7
+        self.gsm_constant_changes['order'] =2
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -87.44362361, places=4)     
+
+    def test_k_rc20_0 (self):
+        self.gsm_constant_changes['k_rc20'] = 0.2
+        self.gsm_constant_changes['order'] =0
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, 0.375445857, places=4)     
+
+    def test_k_theta (self):
+        self.gsm_constant_changes['k_theta'] = 1.1
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -7.425473571, places=4)  
+
+    def test_rgc_rc20 (self):
+        self.gsm_constant_changes['rgc_rc20'] = 0.2
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -6.041133717, places=4)        
+
+    def test_order0 (self):
+        self.gsm_constant_changes['order'] = 0
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -0.002, places=4)  
+
+    def test_order2 (self):
+        self.gsm_constant_changes['order'] = 2
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -62.28056646, places=4)   
+
+    def test_release (self):
+        self.gsm_constant_changes['release'] = False
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -6.292764289, places=4)   
+
+    def test_settling (self):
+        self.gsm_constant_changes['settling'] = False
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -5.66168786, places=4)   
+
+    def test_settling_rate (self):
+        self.gsm_constant_changes['settling_rate'] = 0.005
+        Change = GeneralConstituent(self.global_vars, self.gsm_constant_changes).Calculations()
+        self.assertAlmostEqual(Change, -5.71168786, places=4)   
+'''            
 
 def call_GeneralConstituentKinetics(params):
     return GeneralConstituentKinetics(
@@ -27,6 +113,7 @@ def call_GeneralConstituentKinetics(params):
         depth = params["depth"],
         settling_rate = params["settling_rate"]
     )
+
 
 class Test_GeneralConstituentKinetics(unittest.TestCase):
     def setUp(self):
@@ -71,7 +158,7 @@ class Test_GeneralConstituentKinetics(unittest.TestCase):
         self.assertAlmostEqual(call_GeneralConstituentKinetics(test_params), -4.5020, places=4)
         test_params["TwaterC"] = 30.0
         self.assertAlmostEqual(call_GeneralConstituentKinetics(test_params), -7.1253, places=4)
-
+'''
 if __name__ == '__main__':
     unittest.main()
-# %%
+
