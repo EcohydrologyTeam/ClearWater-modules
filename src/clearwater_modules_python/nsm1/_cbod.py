@@ -39,7 +39,7 @@ class CBOD:
         self.CBOD_constants = OrderedDict()
         self.CBOD_constants = {
             'kbod' : 0.12,
-            'ksbod' : 0,
+            'ksbod' : 0.1,
             'KsOxbod' : 0.5,
         }
 
@@ -69,8 +69,6 @@ class CBOD:
         # CBOD oxidation into DIC (mg-O2/L/day)
         CBOD_Oxidation = 0.0
         CBOD_Sediment = 0.0  # CBOD lost to sediment
-        CBOD_Oxidation_index = 0
-        CBOD_Sediment_index = 0
 
         # Note: I am going to code this to compute a single CBOD value
         # to be consistent with the other functions in this module. Then
@@ -81,16 +79,13 @@ class CBOD:
 
         if self.use_DOX:
             CBOD_Oxidation = self.DOX / (self.DOX + KsOxbod) * kbod_tc * self.CBOD
-        if math.isnan(CBOD_Oxidation):
-            CBOD_Oxidation = 0.0
+            if math.isnan(CBOD_Oxidation):
+                CBOD_Oxidation = 0.0
         else:
             CBOD_Oxidation = kbod_tc * self.CBOD
 
         CBOD_Sediment = ksbod_tc * self.CBOD
         dCBODdt = - CBOD_Oxidation - CBOD_Sediment
         print('dCBODdt', dCBODdt)
-        CBOD_pathways = OrderedDict()
-        CBOD_pathways = {
-            'ksbod_tc':ksbod_tc
-        }
-        return dCBODdt, CBOD_pathways
+
+        return dCBODdt
