@@ -228,9 +228,10 @@ class BenthicAlgae:
 
         self.dAbdt = dAbdt
 
-        Balgae_pathways = {
+        balgae_pathways = {
         'rnb' : self.rnb,
         'rpb' : self.rpb,
+        'rcb' : self.rcb,
         'AbGrowth' : AbGrowth,
         'AbDeath' : AbDeath,
         'AbRespiration' : AbRespiration,
@@ -239,4 +240,4 @@ class BenthicAlgae:
         }
 
         print(dAbdt)
-        return dAbdt, Balgae_pathways
+        return dAbdt, balgae_pathways

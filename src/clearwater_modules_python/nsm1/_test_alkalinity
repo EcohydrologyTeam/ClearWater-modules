@@ -1,0 +1,78 @@
+from collections import OrderedDict
+
+import unittest
+from numba.typed import Dict
+from numba import types
+import os
+import sys
+
+from _alkalinity import Alkalinity
+
+class Test_alkalinity(unittest.TestCase):
+
+    def setUp(self) :
+        self.global_module_choices =OrderedDict
+        self.global_module_choices = {
+            'use_Algae' : True,
+            'use_BAlgae': True,
+            'use_NH4' : True,
+            'use_NO3' : True,
+            'use_Alk' : True,
+
+        }
+
+        #User-defined global variables
+        self.global_vars = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+        self.global_vars = {
+            'TwaterC' : 25.0,
+            'depth' : 1.0,
+            'Alk' : 10,
+            'pH' : 7,
+            'DIC' : 10,
+        }
+        
+        self.alkalinity_constant_changes= Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+        self.alkalinity_constant_changes = {
+            'ralkca' : 14/106/12/1000, #translating algal and balgal growht into Alk if NH2 is the N source (eq/ug-chla)
+            'ralkcn' : 18/106/12/1000, #ratio translating algal and balgal growth into Alk if NO3 is the N source (eq/ug-Chla)
+            'ralkn' : 2/14/1000, #nitrification
+            'ralkden' : 4/14/1000, # denitrification
+            'pH_solution' : 2,
+            'imax' : 13, # maximum iteration number for computing pH
+            'es' : 0.003, # maximum relative error for computing pH
+        }
+
+        self.algae_pathways = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+        self.algae_pathways = {
+            'ApGrowth': 100,
+            'ApRespiration' : 20,       
+            'rca': 0.04,
+        } 
+
+        self.balgae_pathways = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+        self.balgae_pathways = {
+            'rcb' : 0.4,
+            'AbGrowth' : 3,
+            'AbRespiration' : 20,
+            'Fb' : 0.1
+        }
+
+        self.nitrogen_pathways = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+        self.nitrogen_pathways = {
+            'NH4_Nitrification' : 10,
+            'NO3_Denit' : 0.1,
+            'ApUptakeFr_NH4': 0.5,
+            'AbUptakeFr_NH4': 0.5,
+        }
+
+#First run
+    def test_first (self):
+
+        dAlkdt, pH = Alkalinity(self.global_module_choices, self.global_vars, self.algae_pathways, self.balgae_pathways, self.nitrogen_pathways, self.alkalinity_constant_changes).Calculations_Alk()
+        
+        self.assertAlmostEqual(dAlkdt, 24.8049, 3)
+        self.assertAlmostEqual(pH, 24.8049, 3)
+
+
+if __name__ == '__main__':
+    unittest.main()
