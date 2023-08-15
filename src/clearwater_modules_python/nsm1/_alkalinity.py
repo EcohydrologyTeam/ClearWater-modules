@@ -73,7 +73,7 @@ class Alkalinity:
         #Benthic Algae
         if self.global_module_choices['use_BAlgae'] :
             Alk_AbGrowth = self.balgae_pathways['Fb'] * (self.alkalinity_constant['ralkca'] * self.nitrogen_pathways['AbUptakeFr_NH4'] - self.alkalinity_constant['ralkcn'] * (1.0 - self.nitrogen_pathways['AbUptakeFr_NH4'])) * self.balgae_pathways['rcb'] * self.balgae_pathways['AbGrowth'] / self.global_vars['depth'] * 50000.0
-            Alk_AbRespiration = self.balgae_pathways['Fb'] * self.alkalinity_constant['ralkca'] * self.balgae_pathways['rcb'] * self.balgae_pathways['AbRespiration'] / self.global_vars['depth'] * 50000.0
+            Alk_AbRespiration = (self.balgae_pathways['Fb'] * self.alkalinity_constant['ralkca'] * self.balgae_pathways['rcb'] * self.balgae_pathways['AbRespiration'] / self.global_vars['depth']) * 50000.0
         else :
             Alk_AbGrowth = 0.0
             Alk_AbRespiration = 0.0
@@ -91,17 +91,9 @@ class Alkalinity:
             Alk_Denit = 0.0
 
         # Kinetic rate, mgCaCO3/L/day
-        dAlkdt = - Alk_ApGrowth + Alk_ApRespiration - Alk_Nitrification + Alk_Denit - Alk_AbGrowth + Alk_AbRespiration
+        dAlkdt = Alk_ApGrowth + Alk_ApRespiration - Alk_Nitrification + Alk_Denit - Alk_AbGrowth + Alk_AbRespiration
 
         print ("dAlkdt", dAlkdt)
-        print("Alk_ApGrowth", Alk_ApGrowth)
-        print("Alk_ApRespiration", Alk_ApRespiration)
-        print("Alk_AbGrowth", Alk_AbGrowth)
-        print("Alk_AbRespiration", Alk_AbRespiration)
-        print("Alk_Nitrification", Alk_Nitrification)
-        print("Alk_Denit", Alk_Denit)
-        
-    #    return dAlkdt
     
     #def Calculation_pH (self) :
         TwaterK = self.global_vars['TwaterC'] + 273.15
@@ -116,7 +108,7 @@ class Alkalinity:
         elif self.alkalinity_constant['pH_solution'] == 2:
             self.pH=self.Bisection()
         
-        print(self.pH)
+        print("pH",self.pH)
 
         return dAlkdt, self.pH
     
@@ -137,8 +129,10 @@ class Alkalinity:
         while ea > self.alkalinity_constant['es'] : 
             i = i + 1
             hh = 10**(-pH)
-
-            pH_new = pH - self.Function(pH) / (math.log(10.0) * (self.K1 * hh * self.global_vars['DIC'] * (hh * hh + 4 * self.K2 * hh + self.K1 * self.K2) / (hh * hh + self.K1 * hh + self.K1 * self.K2)**2 + self.KW / hh + hh)) #TODO did not check the derivative
+            original = self.Function(pH)
+            der = (math.log(10.0) * (self.K1 * hh * self.global_vars['DIC'] * (hh * hh + 4 * self.K2 * hh + self.K1 * self.K2) / (hh * hh + self.K1 * hh + self.K1 * self.K2)**2 + self.KW / hh + hh))
+            pH_new = pH - self.Function(pH) / (math.log(10.0) * (self.K1 * hh * self.global_vars['DIC'] * (hh * hh + 4 * self.K2 * hh + self.K1 * self.K2) / (hh * hh + self.K1 * hh + self.K1 * self.K2)**2 + self.KW / hh + hh)) 
+ 
             if (pH_new != 0.0):
                 ea = abs(pH_new - pH) / pH_new
                 pH = pH_new
@@ -154,13 +148,13 @@ class Alkalinity:
         xup  = 13.0 
         flow = self.Function(xlow)
         fup  = self.Function(xup)
-
         if flow*fup > 0.0 :
             raise ValueError("Bad pH guesses & Try a smaller time step")
 
         for i in range(0,self.alkalinity_constant['imax']) :
             xr = (xlow + xup) / 2.0
             fr = self.Function(xr)
+
             if (flow * fr < 0.0):
                 xup = xr
             elif (flow * fr > 0.0):
@@ -172,4 +166,5 @@ class Alkalinity:
             if (abs(xup - xlow) / xr < self.alkalinity_constant['es']):
                 pH = xr
                 break
+
         return pH
