@@ -113,8 +113,7 @@ def GeneralConstituentKinetics(
     elif order == 2:
         gc_second_order_decay = k_corr * GC**2
     if release:
-        rgc_corr: float  = wqf.
-        heniusCorrection(TwaterC, rgc_rc20, rgc_theta)
+        rgc_corr: float  = wqf.ArrheniusCorrection(TwaterC, rgc_rc20, rgc_theta)
         gc_from_bed = rgc_corr / depth
     if settling:
         gc_settling = settling_rate * GC / depth
@@ -216,4 +215,3 @@ def mixed_array_float_test():
 
 if __name__ == '__main__':
     float_test()
-

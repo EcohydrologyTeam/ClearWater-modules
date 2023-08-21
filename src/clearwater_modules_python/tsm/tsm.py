@@ -20,6 +20,7 @@ Version 1.0
 
 Initial Version: April 9, 2021
 '''
+# %%
 
 import logging
 import os
@@ -115,26 +116,45 @@ class Temperature :
         Parameters:
             
             Global module choices (T/F)
-            use_SedTemp (bool):     Compute surface temperature (on/off)
+            use_SedTemp (bool):         Compute surface temperature (on/off)
 
             Global Variables
-            TwaterC (float):        Water temperature entering cell (degrees Celsius)
-            surface_area (float):   Surface area of cell face (m2?)
-            volume (float):         Volume of cell (m^3???)
+            TwaterC (float):            Water temperature entering cell (degrees C)
+            surface_area (float):       Surface area of cell face (m^2?)
+            volume (float):             Volume of cell (m^3???)
+            
+            Meteorological Constants
+            TairC (float):              Air temperature (degrees Celsius)
+            q_solar (float):            Solar radiation (W/m^2)
+            TsedC (float):              Sediment temperature (degrees Celsius)
+            pressure_mb (float):        Air pressure (mb)
+            eair_mb (float):            Vapor pressure (mb)
+            cloudiness (float):         Cloudiness (%)
+            wind_speed (float):         Wind speed (m/s)
+            wind_a (float):             "a" coefficient of the wind function 
+            wind_b (float):             "b" coefficient of the wind function
+            wind_c (float):             "c" coefficient of the wind function
+            wind_kh_kw (float):         Diffusivity ratio (unitless)
             
             Temperature Constants
-            TairC (float):          Air temperature (degrees Celsius)
-            q_solar (float):        Solar radiation (W/m2)
-            TsedC (float):          Sediment temperature (degrees Celsius)
-            pressure_mb (float):    Air pressure (mb)
-            eair_mb (float):        Vapor pressure (mb)
-            cloudiness (float):     Cloudiness (fraction)
-            wind_speed (float):     Wind speed (m/s)
-            wind_a (float):         "a" coefficient of the wind function
-            wind_b (float):         "b" coefficient of the wind function
-            wind_c (float):         "c" coefficient of the wind function
-            wind_kh_kw (float):     Diffusivity ratio (unitless)
-            
+            stefan_boltzmann (float):   Constant relating emitted radiation to temperature of matter (W/(m^2*K^4))             
+            Cp_air (float):             Specific heat capacity of air (J/kg*C)
+            emissivity_water (float):   Emissivity of water (unitless)
+            gravity (float):            Acceleration of gravity (m/s^2)
+            a0 (float):                 Saturation vapor pressure constant 0 (mb)
+            a1 (float):                 Saturation vapor pressure constant 1 
+            a2 (float):                 Saturation vapor pressure constant 2
+            a3 (float):                 Saturation vapor pressure constant 3
+            a4 (float):                 Saturation vapor pressure constant 4
+            a5 (float):                 Saturation vapor pressure constant 5
+            a6 (float):                 Saturation vapor pressure constant 6
+            pb (float):                 Sediment bulk density (kg/m^3)
+            Cps (float):                Specific heat capacity of sediments (J/Kg*C)
+            h2 (float):                 Sediment active layer thickness (m)
+            alphas (float):             Sediment thermal diffusivity (m^2/s)
+            Richardson_option (bool):   Richardson option
+
+            Not Currently Used
             num_iterations (int)    Number of iterations to use in Newton-Raphson algorithm
             tolerance (float)       Tolerance for stopping iteration
             time_step (float):      Time step for one calculation of temperature change due to heat flux (s) 
@@ -334,9 +354,12 @@ class Temperature :
         
         ##Check ri_no
         wqf.set_pathways_float(pathways, density_air, 'Density Air', 'Water Temperature', 'degC')
-        wqf.set_pathways_float(pathways, density_air_sat, 'Density Sat', 'Water Temperature', 'degC')
+        if Richardson_option == True:
+            wqf.set_pathways_float(pathways, density_air_sat, 'Density Sat', 'Water Temperature', 'degC')
+
         wqf.set_pathways_float(pathways, wind_speed, 'Wind Speed', 'Water Temperature', 'degC')
         
-        wqf.print_pathways(pathways)
         return dTwaterCdt
 
+
+# %%
