@@ -1,0 +1,17 @@
+name: clearwater_dev_env
+channels:
+  - conda-forge
+  - nodefaults
+
+dependencies:
+  - python >= 3.11
+  - numba
+
+  - pytest
+  - pytest-cov
+
+  - pylance
+  - pip
+  - mamba
+
+
