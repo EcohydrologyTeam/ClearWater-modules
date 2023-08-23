@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61", "wheel>=0.31.0", "setuptools_scm[toml]>=3.4"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clearwater_python_modules""
+dynamic = ["version", "readme"]
+
+description = "Clearwater Python module."
+authors = [
+    {name = "Todd Steissberg", email = "Todd.E.Steissberg@erdc.dren.mil"},
+]
+
+requires-python = ">=3.11"
+
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+]
+
+dependencies = [
+    'numba',
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["clearwater_python_modules*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "clearwater_python_modules.__version__"}
+readme = {file = "README.md"}
