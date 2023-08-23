@@ -1,7 +1,7 @@
 # Changes: lambda is not calcualted
 # Some options such as light calculation method was not changeable in FORTRAN but is now changeable
 
-'''
+"""
 =======================================================================================
 Nutrient Simulation Module 1 (NSM1): Algae Kinetics
 =======================================================================================
@@ -22,7 +22,7 @@ developed by:
 Version 1.0
 
 Initial Version: June 12, 2021
-'''
+"""
 
 import math
 
@@ -32,14 +32,14 @@ from numba.types import float64, unicode_type
 from numba.typed import Dict
 
 
-@njit(cache = True, fastmath = True)
-def Calculations (global_module_choices, global_vars, algae_constant_changes):
-        
-    global_module_choices=global_module_choices
-    global_vars = global_vars
-    algae_constant=algae_constant_changes
+@njit(cache=True, fastmath=True)
+def Calculations(global_module_choices, global_vars, algae_constant_changes):
 
-    '''
+    global_module_choices = global_module_choices
+    global_vars = global_vars
+    algae_constant = algae_constant_changes
+
+    """
     # Initialize genrally constant parameters
     algae_constant=Dict.empty(key_type=unicode_type, value_type=float64)
     algae_constant['AWd'] = 100
@@ -63,8 +63,8 @@ def Calculations (global_module_choices, global_vars, algae_constant_changes):
     for key in algae_constant_changes.keys() :
         if key in algae_constant:
             algae_constant[key] = algae_constant_changes[key]
-    '''
-    '''
+    """
+    """
     Compute algae kinetics (Main function)
 
     The growth rate of phytplankton algae is limited by
@@ -120,26 +120,37 @@ def Calculations (global_module_choices, global_vars, algae_constant_changes):
     dApdt: float
         Change in algae concentration
 
-    '''
+    """
 
-    #print("Calculating change in algae concentration")
-    
-    #Updating generally constant parameters
+    # print("Calculating change in algae concentration")
 
-    rna : float64 = algae_constant['AWn'] / algae_constant['AWa']             # Algal N : Chla ratio [mg-N/ugChla]
-    rpa : float64 = algae_constant['AWp'] / algae_constant['AWa']             # Algal P : Chla ratio [mg-P/ugChla]
-    rca : float64 = algae_constant['AWc'] / algae_constant['AWa']             # Algal C : Chla ratio [mg-C/ugChla]
-    rda : float64 = algae_constant['AWd'] / algae_constant['AWa']             # Algal D : Chla ratio [mg-D/ugChla]
+    # Updating generally constant parameters
+
+    # Algal N : Chla ratio [mg-N/ugChla]
+    rna: float64 = algae_constant['AWn'] / algae_constant['AWa']
+    # Algal P : Chla ratio [mg-P/ugChla]
+    rpa: float64 = algae_constant['AWp'] / algae_constant['AWa']
+    # Algal C : Chla ratio [mg-C/ugChla]
+    rca: float64 = algae_constant['AWc'] / algae_constant['AWa']
+    # Algal D : Chla ratio [mg-D/ugChla]
+    rda: float64 = algae_constant['AWd'] / algae_constant['AWa']
 
     # Parameters related to algae growth and settling
-    KL = algae_constant['KL']                                     # Light limiting constant for algal growth [W/m^2]
-    growth_rate_option = algae_constant['growth_rate_option']                    
-    light_limitation_option = algae_constant['light_limitation_option']           
+    # Light limiting constant for algal growth [W/m^2]
+    KL = algae_constant['KL']
+    growth_rate_option = algae_constant['growth_rate_option']
+    light_limitation_option = algae_constant['light_limitation_option']
 
     # Temperature correction
-    mu_max_tc = TempCorrection(algae_constant['mu_max'], 1.047,global_vars['TwaterC'])           # Maximum algal growth rate [1/d]
-    krp_tc = TempCorrection(algae_constant['krp'], 1.047,global_vars['TwaterC'])                 # algae respiration rate [1/d]
-    kdp_tc = TempCorrection(algae_constant['kdp'], 1.047,global_vars['TwaterC'])                 # algae mortality rate [1/d]
+    # Maximum algal growth rate [1/d]
+    mu_max_tc = TempCorrection(
+        algae_constant['mu_max'], 1.047, global_vars['TwaterC'])
+    # algae respiration rate [1/d]
+    krp_tc = TempCorrection(
+        algae_constant['krp'], 1.047, global_vars['TwaterC'])
+    # algae mortality rate [1/d]
+    kdp_tc = TempCorrection(
+        algae_constant['kdp'], 1.047, global_vars['TwaterC'])
 
     sqrt1 = 0.0
     sqrt2 = 0.0
@@ -147,30 +158,34 @@ def Calculations (global_module_choices, global_vars, algae_constant_changes):
     Ap = global_vars['Ap']           # algae [ug-Chla/L]
     PAR = global_vars['PAR']
     # Depth averaged light function
-    KEXT = (global_vars['lambda'] * global_vars['depth'])    # lambda is light attenuation coefficient (1/m). depth is depth from water surface (m) [unitless] TODO: other depth not initalized method
+    # lambda is light attenuation coefficient (1/m). depth is depth from water surface (m) [unitless] TODO: other depth not initalized method
+    KEXT = (global_vars['lambda'] * global_vars['depth'])
 
     # (1) Algal light limitation (FL)
 
     if (Ap <= 0.0 or KEXT <= 0.0 or PAR <= 0.0):
         # After sunset or if there is no algae present
-        FL = 0.0                                                                        # light limiting factor for algal growth [unitless]
+        # light limiting factor for algal growth [unitless]
+        FL = 0.0
     elif light_limitation_option == 1:
         # Half-saturation formulation
-        FL = (1.0 / KEXT) * math.log((KL + PAR) / (KL + PAR * math.exp(-KEXT)))         
+        FL = (1.0 / KEXT) * math.log((KL + PAR) / (KL + PAR * math.exp(-KEXT)))
     elif light_limitation_option == 2:
         # Smith's model
         if abs(KL) < 1.0E-10:
-            FL = 1.0                                                                    
+            FL = 1.0
         else:
-            sqrt1 = (1.0 + (PAR / KL)**2.0)**0.5                                        
+            sqrt1 = (1.0 + (PAR / KL)**2.0)**0.5
             sqrt2 = (1.0 + (PAR * math.exp(-KEXT) / KL)**2.0)**0.5
-            FL = (1.0 / KEXT) * math.log((PAR / KL + sqrt1) / (PAR * math.exp(-KEXT) / KL + sqrt2))
+            FL = (1.0 / KEXT) * math.log((PAR / KL + sqrt1) /
+                                         (PAR * math.exp(-KEXT) / KL + sqrt2))
     elif light_limitation_option == 3:
         # Steele's model
         if abs(KL) < 1.0E-10:
             FL = 0.0
         else:
-            FL = (2.718/KEXT) * (math.exp(-PAR/KL * math.exp(-KEXT)) - math.exp(-PAR/KL))
+            FL = (2.718/KEXT) * (math.exp(-PAR/KL *
+                                          math.exp(-KEXT)) - math.exp(-PAR/KL))
 
     # Limit factor to between 0.0 and 1.0.
     # This should never happen, but it would be a mess if it did.
@@ -183,7 +198,8 @@ def Calculations (global_module_choices, global_vars, algae_constant_changes):
     if global_module_choices['use_NH4'] or global_module_choices['use_NO3']:
         NH4 = global_vars['NH4']                         # Ammonium [mg-N/L]
         NO3 = global_vars['NO3']                         # Nitrate [mg-N/L]
-        FN = (NH4 + NO3) / (algae_constant['KsN'] + NH4 + NO3)                  # [unitless]
+        # [unitless]
+        FN = (NH4 + NO3) / (algae_constant['KsN'] + NH4 + NO3)
         if math.isnan(FN):
             FN = 0.0
         if FN > 1.0:
@@ -197,7 +213,8 @@ def Calculations (global_module_choices, global_vars, algae_constant_changes):
     TIP = global_vars['TIP']
 
     if global_module_choices['use_TIP']:
-        FP = fdp * TIP / (algae_constant['KsP'] + fdp * TIP)              # [unitless]
+        # [unitless]
+        FP = fdp * TIP / (algae_constant['KsP'] + fdp * TIP)
         if math.isnan(FP):
             FP = 0.0
         if FP > 1.0:
@@ -230,25 +247,24 @@ def Calculations (global_module_choices, global_vars, algae_constant_changes):
     ApDeath = kdp_tc * Ap                   # [ug-Chla/L/d]
 
     # Algal settling
-    ApSettling = algae_constant['vsap'] / global_vars['depth'] * Ap          # [ug-Chla/L/d]
+    ApSettling = algae_constant['vsap'] / \
+        global_vars['depth'] * Ap          # [ug-Chla/L/d]
 
     # Algal Biomass Concentration
     # dA/dt = A*(AlgalGrowthRate - AlgalRespirationRate - AlgalDeathRate - AlgalSettlingRate)(mg/L/day)
     dApdt = ApGrowth - ApRespiration - ApDeath - ApSettling     # [ug-Chla/L/d]
-    
+
     algae_pathway = Dict.empty(key_type=unicode_type, value_type=float64)
     algae_pathway = {
         'ApGrowth': ApGrowth,
-        'ApRespiration' : ApRespiration,
+        'ApRespiration': ApRespiration,
         'ApDeath': ApDeath,
         'rna': rna,
-        'rda' : rda,         
+        'rda': rda,
         'rca': rca,
         'rpa': rpa
     }
 
-    print ("print dApdt", dApdt)
+    print("print dApdt", dApdt)
 
     return dApdt, algae_pathway
-
-

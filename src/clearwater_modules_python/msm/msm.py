@@ -1,4 +1,4 @@
-'''
+"""
 =======================================================================================
 Mercury Simulation Module (MSM): Main Program
 =======================================================================================
@@ -20,9 +20,9 @@ Version 1.0
 
 Initial Version: June 15, 2021
 Last Revision Date: June 15, 2021
-'''
+"""
 
-'''
+"""
 module modMercury
   use modGlobal
   use modDLL,    only: TempCorrectionStruct, Arrhenius_TempCorrection, AddIndex
@@ -2139,4 +2139,4 @@ module modMercury
   end subroutine
 end module
 
-'''
+"""

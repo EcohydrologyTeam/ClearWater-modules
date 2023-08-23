@@ -1,4 +1,4 @@
-'''
+"""
 =======================================================================================
 Water Temperature Simulation Module (TSM)
 =======================================================================================
@@ -19,7 +19,7 @@ developed by:
 Version 1.0
 
 Initial Version: April 9, 2021
-'''
+"""
 # %%
 
 import logging
@@ -35,14 +35,14 @@ src_path = os.path.dirname(
 sys.path.append(os.path.dirname(src_path))
 from src import water_quality_functions as wqf
 
-'''
+"""
 Initialize class
 
 Parameters:
     TwaterC (float):        Water temperature (degrees Celsius)
     surface_area (float):   Cell surface area (m2)
     volume (float):         Cell volume (m3)
-'''
+"""
 
 
 # Initialize debugging log file
@@ -110,7 +110,7 @@ class Temperature :
                 self.temperature_constant[key] = self.temperature_constant_changes[key]
     
     def energy_budget_method(self):
-        '''
+        """
         Compute water temperature kinetics using the energy budget method
 
         Parameters:
@@ -161,7 +161,7 @@ class Temperature :
 
             Returns:
                 Dictionary of pathway variables
-        '''
+        """
 
         # logger.debug(
         #     f'energy_budget_method({TairC:.2f}, {q_solar:.2f}, {pressure_mb:.2f}, {eair_mb:.2f}, {cloudiness:.2f}, {wind_speed:.2f}, {wind_a:.2f}, {wind_b:.2f}, {wind_c:.2f}, {wind_kh_kw:.2f}, use_SedTemp={use_SedTemp}, TsedC={TsedC:.2f}, num_iterations={num_iterations}, tolerance={tolerance})')

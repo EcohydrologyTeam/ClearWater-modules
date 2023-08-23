@@ -1,4 +1,4 @@
-'''
+"""
 =======================================================================================
 Contaminant Simulation Module (CSM): CSM Functions
 =======================================================================================
@@ -20,22 +20,24 @@ Version 1.0
 
 Initial Version: June 15, 2021
 Last Revision Date: June 15, 2021
-'''
+"""
+
 
 def ContaminantTempCorrection(TwaterC: float, TsedC: float, nC: int, nSpecies: list):
 
-  # Volatilization transfer coefficients
-  TRK = 0.0
-  Coef_tc = 0.0
-  Coef0_tc = 0.0
-  KL = 0.0
-  KG = 0.0
+    # Volatilization transfer coefficients
+    TRK = 0.0
+    Coef_tc = 0.0
+    Coef0_tc = 0.0
+    KL = 0.0
+    KG = 0.0
 
-  # Compute temperature in Kelvins
-  TwaterK = TwaterC + 273.15
-  TsedK   = TsedC + 273.15
+    # Compute temperature in Kelvins
+    TwaterK = TwaterC + 273.15
+    TsedK = TsedC + 273.15
 
-'''
+
+"""
 
   do i = 1, nC
     do j = 1, nSpecies(i)
@@ -1648,4 +1650,4 @@ subroutine Bisection(Cd_cmp)
   end if 
 end subroutine
 
-'''
+"""
