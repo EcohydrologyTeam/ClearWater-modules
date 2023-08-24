@@ -68,39 +68,70 @@ def make_gck_instance(params: dict) -> GeneralConstituentKinetics:
 
 
 def test_GC(make_gck_instance, params) -> None:
-    test_params = params.copy()
-
-    test_params["GC"] = 0.0
+    """"Test the GeneralConstituentKinetics class with different GC values."""
+    params["GC"] = 0.0
     assert pytest.approx(
-        make_gck_instance(test_params), 
+        make_gck_instance(params), 
         tolerance,
     ) == 0.6291
 
-    test_params["GC"] = 10.0
-    assert pytest.approx(make_gck_instance(
-        test_params), -5.6637, places=4)
+    params["GC"] = 10.0
+    assert pytest.approx(
+        make_gck_instance(
+            params,
+        ), 
+        tolerance,
+    ) == -5.6637
 
-    test_params["GC"] = 20.0
-    assert pytest.approx(make_gck_instance(
-        test_params), -11.9565, places=4)
+    params["GC"] = 20.0
+    assert pytest.approx(
+        make_gck_instance(
+            params,
+        ), 
+        tolerance,
+    ) == -11.9565
 
-    test_params["GC"] = 30.0
-    assert pytest.approx(make_gck_instance(
-        test_params), -18.2492, places=4)
+    params["GC"] = 30.0
+    assert pytest.approx(
+        make_gck_instance(
+            params,
+        ), 
+        tolerance,
+    ) == -18.2492
 
 def test_TwaterC(make_gck_instance, params):
-    test_params = params.copy()
-    test_params["TwaterC"] = 0.0
-    assert pytest.approx(make_gck_instance(
-        test_params), -1.7979, places=4)
-    test_params["TwaterC"] = 10.0
-    assert pytest.approx(make_gck_instance(
-        test_params), -2.8448, places=4)
-    test_params["TwaterC"] = 20.0
-    assert pytest.approx(make_gck_instance(
-        test_params), -4.5020, places=4)
-    test_params["TwaterC"] = 30.0
-    assert pytest.approx(make_gck_instance(
-        test_params), -7.1253, places=4)
+    """Test the GeneralConstituentKinetics class with different TwaterC values."""
+    params["TwaterC"] = 0.0
+
+    assert pytest.approx(
+        make_gck_instance(
+            params,
+        ), 
+        tolerance,
+    ) == -1.7979
+    
+    params["TwaterC"] = 10.0 
+    assert pytest.approx(
+        make_gck_instance(
+            params,
+        ), 
+        tolerance,
+    ) == -2.84484
+
+    params["TwaterC"] = 20.0
+    assert pytest.approx(
+        make_gck_instance(
+            params,
+        ),
+        tolerance,
+    ) == -4.5020
+
+    params["TwaterC"] = 30.0
+    assert pytest.approx(
+        make_gck_instance(
+            params,
+        ),
+        tolerance,
+    ) == -7.1253 
 
 
