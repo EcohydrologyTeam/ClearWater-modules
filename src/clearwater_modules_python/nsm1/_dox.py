@@ -1,4 +1,4 @@
-'''
+"""
 =======================================================================================
 Nutrient Simulation Module 1 (NSM1): Dissolved Oxygen Kinetics
 =======================================================================================
@@ -20,7 +20,7 @@ Version 1.0
 
 Initial Version: June 13, 2021
 Last Revision Date: June 13, 2021
-'''
+"""
 
 import math
 
@@ -28,4 +28,4 @@ import math
 class DOX:
 
     def __init__(self):
-       pass
+        pass

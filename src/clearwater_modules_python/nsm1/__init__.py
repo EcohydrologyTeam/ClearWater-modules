@@ -1,4 +1,4 @@
-'''
+"""
 =======================================================================================
 Nutrient Simulation Module 1 (NSM1)
 =======================================================================================
@@ -19,7 +19,7 @@ developed by:
 Version 1.0
 
 Initial Version: June 5, 2021
-'''
+"""
 
 from .Split_Algae_Test._algae_split import Algae
 from ._benthic_algae import BenthicAlgae
@@ -37,6 +37,7 @@ from ._temp_correction import TempCorrection
 
 from ._kelsey_global import Kelsey_Global
 from ._kelsey_algae import Algae
+
 
 class NSM1:
     def __init__(self):

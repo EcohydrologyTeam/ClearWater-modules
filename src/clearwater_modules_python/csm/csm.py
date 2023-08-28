@@ -1,4 +1,4 @@
-'''
+"""
 =======================================================================================
 Contaminant Simulation Module (CSM): Main Program
 =======================================================================================
@@ -20,7 +20,7 @@ Version 1.0
 
 Initial Version: June 15, 2021
 Last Revision Date: June 15, 2021
-'''
+"""
 
 # ----------------------------------------------------------------------------------------------------------------------------------
 # ZZ: a check needs to be included in GUI to avoid???
@@ -434,7 +434,6 @@ def csv():
     C2_Burial_index = 0
     C2_C_Resuspension_index = 0
     C2_C_Transfer_index = 0
-    
 
     # Local variables
     fion = 0.0

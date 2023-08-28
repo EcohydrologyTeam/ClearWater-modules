@@ -1,4 +1,4 @@
-'''
+"""
 =======================================================================================
 General Constituent Simulation Module (GSM): General Constituent Kinetics Algorithm
 =======================================================================================
@@ -20,16 +20,16 @@ Version 1.0
 
 Initial Version: April 10, 2021
 Last Revision Date: April 11, 2021
-'''
+"""
 
+from src import water_quality_functions as wqf
 from typing import Union, Optional
 import sys
 import os
 import numpy as np
 src_path = os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__)))
+    os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(src_path))
-from src import water_quality_functions as wqf
 
 # %%
 # need to receive TwaterC, depth, number of GCs -- from global
@@ -56,20 +56,20 @@ GCM_Constants
 
 """
 
-def GeneralConstituentKinetics(
-                               GC: Union[float, np.array], 
-                               TwaterC: Union[float, np.array], 
-                               order: int, 
-                               k_rc20: Optional[Union[float, np.array]] = 1.0, 
-                               k_theta: Optional[Union[float, np.array]] = 1.047,
-                               rgc_rc20: Optional[Union[float, np.array]] = 1.0,
-                               rgc_theta: Optional[Union[float, np.array]] = 1.047,
-                               release: Optional[bool] = True,
-                               settling: Optional[bool] = False, 
-                               settling_rate: Optional[Union[float, np.array]] = 0.1,
-                               depth: Optional[Union[float, np.array]] = 1.0,
-                               ) -> Union[float, np.array]:
 
+def GeneralConstituentKinetics(
+    GC: Union[float, np.array],
+    TwaterC: Union[float, np.array],
+    order: int,
+    k_rc20: Optional[Union[float, np.array]] = 1.0,
+    k_theta: Optional[Union[float, np.array]] = 1.047,
+    rgc_rc20: Optional[Union[float, np.array]] = 1.0,
+    rgc_theta: Optional[Union[float, np.array]] = 1.047,
+    release: Optional[bool] = True,
+    settling: Optional[bool] = False,
+    settling_rate: Optional[Union[float, np.array]] = 0.1,
+    depth: Optional[Union[float, np.array]] = 1.0,
+) -> Union[float, np.array]:
     """
     Compute a single general constituent
 
@@ -102,7 +102,7 @@ def GeneralConstituentKinetics(
     gc_settling: float = 0.0            # Settling rate (loss)
 
     # Correct reaction rate for current temperature
-    k_corr: float  = wqf.ArrheniusCorrection(TwaterC, k_rc20, k_theta)
+    k_corr: float = wqf.ArrheniusCorrection(TwaterC, k_rc20, k_theta)
 
     if order == 0:
         # Zero-order decay rate (mg/L/d)
@@ -113,13 +113,14 @@ def GeneralConstituentKinetics(
     elif order == 2:
         gc_second_order_decay = k_corr * GC**2
     if release:
-        rgc_corr: float  = wqf.ArrheniusCorrection(TwaterC, rgc_rc20, rgc_theta)
+        rgc_corr: float = wqf.ArrheniusCorrection(TwaterC, rgc_rc20, rgc_theta)
         gc_from_bed = rgc_corr / depth
     if settling:
         gc_settling = settling_rate * GC / depth
 
     # Compute net rate of change of general constituent concentration
-    dGCdt = - gc_zero_order_decay - gc_first_order_decay - gc_second_order_decay + gc_from_bed - gc_settling
+    dGCdt = - gc_zero_order_decay - gc_first_order_decay - \
+        gc_second_order_decay + gc_from_bed - gc_settling
 
     return dGCdt
 
@@ -139,9 +140,9 @@ def float_test():
     settling_rate = 0.0002  # Settling rate
 
     # Compute change of concentration
-    dGCdt = GeneralConstituentKinetics(GC, TwaterC, order, k_rc20 = k_rc20, k_theta = k_theta, 
-        rgc_rc20 = rgc_rc20, rgc_theta = rgc_theta, release = release, settling = settling, 
-        depth = depth, settling_rate = settling_rate)
+    dGCdt = GeneralConstituentKinetics(GC, TwaterC, order, k_rc20=k_rc20, k_theta=k_theta,
+                                       rgc_rc20=rgc_rc20, rgc_theta=rgc_theta, release=release, settling=settling,
+                                       depth=depth, settling_rate=settling_rate)
 
     GC_new = GC + dGCdt
 
@@ -153,23 +154,28 @@ def float_test():
     print("Final concentration:   %.2f" % GC_new)
     print("============================================")
 
+
 def array_test():
     GC = np.array(10, 5)                        # Initial concentration
     TwaterC = np.array(25.0, 24.0)              # Water temperature
     order = 1                                   # Compute 1st order kinetics
-    k_rc20 = np.array(0.5, 0.25)                # Reaction rate at 20 degrees Celsius, decay
-    k_theta = np.array(1.047, 1.0)              # Arrhenius temperature correction factor, decay
-    rgc_rc20 = np.array(0.5, 0.4)               # Reaction rate at 20 degrees Celsius, settling
-    rgc_theta = np.array(1.047, 1.048)          # Arrhenius temperature correction factor, settling
+    # Reaction rate at 20 degrees Celsius, decay
+    k_rc20 = np.array(0.5, 0.25)
+    # Arrhenius temperature correction factor, decay
+    k_theta = np.array(1.047, 1.0)
+    # Reaction rate at 20 degrees Celsius, settling
+    rgc_rc20 = np.array(0.5, 0.4)
+    # Arrhenius temperature correction factor, settling
+    rgc_theta = np.array(1.047, 1.048)
     release = True                              # Turn suspension on
     settling = True                             # Turn settling on
     depth = np.array(1.0, 2.0)                  # Bed depth
     settling_rate = np.array(0.0002, 0.00025)   # Settling rate
 
     # Compute change of concentration
-    dGCdt = GeneralConstituentKinetics(GC, TwaterC, order, k_rc20 = k_rc20, k_theta = k_theta, 
-        rgc_rc20 = rgc_rc20, rgc_theta = rgc_theta, release = release, settling = settling, 
-        depth = depth, settling_rate = settling_rate)
+    dGCdt = GeneralConstituentKinetics(GC, TwaterC, order, k_rc20=k_rc20, k_theta=k_theta,
+                                       rgc_rc20=rgc_rc20, rgc_theta=rgc_theta, release=release, settling=settling,
+                                       depth=depth, settling_rate=settling_rate)
 
     GC_new = GC + dGCdt
 
@@ -196,9 +202,9 @@ def mixed_array_float_test():
     settling_rate = 0.0002  # Settling rate
 
     # Compute change of concentration
-    dGCdt = GeneralConstituentKinetics(GC, TwaterC, order, k_rc20 = k_rc20, k_theta = k_theta, 
-        rgc_rc20 = rgc_rc20, rgc_theta = rgc_theta, release = release, settling = settling, 
-        depth = depth, settling_rate = settling_rate)
+    dGCdt = GeneralConstituentKinetics(GC, TwaterC, order, k_rc20=k_rc20, k_theta=k_theta,
+                                       rgc_rc20=rgc_rc20, rgc_theta=rgc_theta, release=release, settling=settling,
+                                       depth=depth, settling_rate=settling_rate)
 
     GC_new = GC + dGCdt
 
@@ -209,8 +215,6 @@ def mixed_array_float_test():
     print("Change rate:           %.2f" % dGCdt)
     print("Final concentration:   %.2f" % GC_new)
     print("============================================")
-
-
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 # Changes: lambda is not calcualted
 # Some options such as light calculation method was not changeable in FORTRAN but is now changeable
 
-'''
+"""
 =======================================================================================
 Nutrient Simulation Module 1 (NSM1): Algae Kinetics
 =======================================================================================
@@ -22,7 +22,7 @@ developed by:
 Version 1.0
 
 Initial Version: June 12, 2021
-'''
+"""
 
 import math
 from collections import OrderedDict
@@ -33,16 +33,16 @@ from numba.typed import Dict
 
 
 class Algae:
-    def __init__(self, Ap, depth, vsap, ApGrowth,ApDeath,ApRespiration):
-        self.Ap=Ap
-        self.depth=depth
-        self.vsap=vsap
-        self.ApGrowth=ApGrowth
-        self.ApDeath=ApDeath
-        self.ApRespiration=ApRespiration
+    def __init__(self, Ap, depth, vsap, ApGrowth, ApDeath, ApRespiration):
+        self.Ap = Ap
+        self.depth = depth
+        self.vsap = vsap
+        self.ApGrowth = ApGrowth
+        self.ApDeath = ApDeath
+        self.ApRespiration = ApRespiration
 
-    def Calculations (self):
-        '''
+    def Calculations(self):
+        """
         Compute algae kinetics (Main function)
 
         The growth rate of phytplankton algae is limited by
@@ -98,21 +98,19 @@ class Algae:
         dApdt: float
             Change in algae concentration
 
-        '''
+        """
 
         print("Calculating change in algae concentration")
 
         # Algal settling
-        self.ApSettling = self.vsap / self.depth * self.Ap          # [ug-Chla/L/d]
+        self.ApSettling = self.vsap / self.depth * \
+            self.Ap          # [ug-Chla/L/d]
 
         # Algal Biomass Concentration
         # dA/dt = A*(AlgalGrowthRate - AlgalRespirationRate - AlgalDeathRate - AlgalSettlingRate)(mg/L/day)
-        dApdt = self.ApGrowth - self.ApRespiration - self.ApDeath - self.ApSettling     # [ug-Chla/L/d]
-        
+        dApdt = self.ApGrowth - self.ApRespiration - \
+            self.ApDeath - self.ApSettling     # [ug-Chla/L/d]
 
-        print (dApdt)
+        print(dApdt)
 
         return dApdt
-
-
-        

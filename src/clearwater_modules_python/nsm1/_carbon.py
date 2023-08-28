@@ -1,4 +1,4 @@
-'''
+"""
 =======================================================================================
 Nutrient Simulation Module 1 (NSM1): Carbon Cycling
 =======================================================================================
@@ -19,7 +19,7 @@ developed by:
 Version 1.0
 
 Initial Version: June 13, 2021
-'''
+"""
 
 import math
 from collections import OrderedDict
