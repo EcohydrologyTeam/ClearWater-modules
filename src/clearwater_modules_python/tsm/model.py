@@ -3,9 +3,9 @@ import numpy as np
 from enum import Enum
 from clearwater_modules_python.tsm import (
     constants,
-    processes,
+    equations,
 )
-import clearwater_modules_python.shared_processes as shared_processes
+import clearwater_modules_python.shared_equations as shared_equations
 from typing import (
     TypedDict,
     Protocol,
@@ -120,10 +120,10 @@ class EnergyBudget(Process):
     ) -> float:
 
         # Temperature
-        TwaterK: float = shared_processes.celsius_to_kelvin(
+        TwaterK: float = shared_equations.celsius_to_kelvin(
             variables['TwaterC'],
         )
-        TairK: float = shared_processes.celsius_to_kelvin(
+        TairK: float = shared_equations.celsius_to_kelvin(
             self.met_constants['TairC'],
         )
 
@@ -134,12 +134,12 @@ class EnergyBudget(Process):
         # Wind function, stability and flux partitioning
         # ----------------------------------------------------------------------------------------------
 
-        mixing_ratio_air: float = processes.mixing_ratio_air(
+        mixing_ratio_air: float = equations.mixing_ratio_air(
             self.met_constants['eair_mb'],
             self.met_constants['pressure_mb'],
         )
 
-        density_air: float = processes.density_air(
+        density_air: float = equations.density_air(
             self.met_constants['pressure_mb'],
             TairK,
             mixing_ratio_air,
@@ -150,12 +150,12 @@ class EnergyBudget(Process):
         #  Note: solar radiation comes in directly from the interface
         # ----------------------------------------------------------------------------------------------
 
-        emissivity_air: float = processes.emissivity_air(
+        emissivity_air: float = equations.emissivity_air(
             TairK,
         )
 
         # Atmospheric (downwelling) longwave radiation (W/m2)
-        q_longwave_down: float = shared_processes.mf_q_longwave_down(
+        q_longwave_down: float = shared_equations.mf_q_longwave_down(
             TairK,
             emissivity_air,
             self.met_constants['cloudiness'],
@@ -163,7 +163,7 @@ class EnergyBudget(Process):
         )
 
         # Wind function for latent and sensible heat (unitless)
-        wind_function: float = processes.wind_function(
+        wind_function: float = equations.wind_function(
             self.met_constants['wind_a'],
             self.met_constants['wind_b'],
             self.met_constants['wind_c'],
@@ -178,20 +178,20 @@ class EnergyBudget(Process):
         # Physical values that are functions of water temperature
 
         # Latent heat of vaporization (J/kg)
-        Lv: float = shared_processes.mf_latent_heat_vaporization(TwaterK)
+        Lv: float = shared_equations.mf_latent_heat_vaporization(TwaterK)
 
         # Density (kg/m3)
-        density_water: float = shared_processes.mf_density_water(
+        density_water: float = shared_equations.mf_density_water(
             variables['TwaterC'],
         )
 
         # Specific heat of water (J/kg/K)
-        Cp_water: float = shared_processes.mf_Cp_water(
+        Cp_water: float = shared_equations.mf_Cp_water(
             variables['TwaterC'],
         )
 
         # Saturated vapor pressure computed from water temperature at previous time step (mb)
-        esat_mb: float = shared_processes.mf_esat_mb(
+        esat_mb: float = shared_equations.mf_esat_mb(
             TwaterK,
             self.temp_constants['a0'],
             self.temp_constants['a1'],
@@ -204,7 +204,7 @@ class EnergyBudget(Process):
 
         # ------------------------------------------------------------------------
         # Upwelling (back or water surface) longwave radiation (W/m2)
-        q_longwave_up: float = shared_processes.mf_q_longwave_up(
+        q_longwave_up: float = shared_equations.mf_q_longwave_up(
             TwaterK,
             self.temp_constants['emissivity_water'],
             self.temp_constants['stephan_boltzmann'],
@@ -225,12 +225,12 @@ class EnergyBudget(Process):
 
         if (self.met_constants['wind_speed'] > 0.0 and self.temp_constants['richardson_option']):
             # Density of air computed at water surface temperature (kg/m3)
-            density_air_sat: float = shared_processes.mf_density_air_sat(
+            density_air_sat: float = shared_equations.mf_density_air_sat(
                 TwaterK,
                 esat_mb,
                 self.met_constants['pressure_mb'],
             )
-            Ri_number, Ri_function = shared_processes.RichardsonNumber(
+            Ri_number, Ri_function = shared_equations.RichardsonNumber(
                 self.met_constants['wind_speed'],
                 density_air_sat,
                 density_air,
@@ -239,7 +239,7 @@ class EnergyBudget(Process):
 
         # ------------------------------------------------------------------------
         # Latent heat flux (W/m2)
-        q_latent: float = processes.q_latent(
+        q_latent: float = equations.q_latent(
             Ri_function,
             self.met_constants['pressure_mb'],
             density_water,
@@ -251,7 +251,7 @@ class EnergyBudget(Process):
 
         # ------------------------------------------------------------------------
         # Sensible heat flux
-        q_sensible: float = processes.q_sensible(
+        q_sensible: float = equations.q_sensible(
             self.met_constants['wind_kh_kw'],
             Ri_function,
             self.temp_constants['Cp_air'],
@@ -265,7 +265,7 @@ class EnergyBudget(Process):
         q_sediment: float = 0.0
         dTsedCdt: float = 0.0
         if self.use_sed_temp:
-            q_sediment: float = processes.q_sediment(
+            q_sediment: float = equations.q_sediment(
                 self.temp_constants['pb'],
                 self.temp_constants['Cps'],
                 self.temp_constants['alphas'],
@@ -273,7 +273,7 @@ class EnergyBudget(Process):
                 self.met_constants['TsedC'],
                 variables['TwaterC'],
             )
-            dTsedCdt: float = processes.dTdt_sediment_c(
+            dTsedCdt: float = equations.dTdt_sediment_c(
                 self.temp_constants['alphas'],
                 self.temp_constants['h2'],
                 variables['TwaterC'],
@@ -282,7 +282,7 @@ class EnergyBudget(Process):
 
         # ------------------------------------------------------------------------
         # Net heat flux
-        q_net: float = processes.q_net(
+        q_net: float = equations.q_net(
             q_sensible,
             q_latent,
             q_longwave_down,
@@ -293,7 +293,7 @@ class EnergyBudget(Process):
 
         # ------------------------------------------------------------------------
         # Compute water temperature change
-        dTwaterCdt: float = processes.dTdt_water_c(
+        dTwaterCdt: float = equations.dTdt_water_c(
             q_net,
             variables['surface_area'],
             variables['volume'],
