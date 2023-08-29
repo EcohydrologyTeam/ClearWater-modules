@@ -23,7 +23,7 @@ class Temperature(TypedDict):
 
 
 class Meteorological(TypedDict):
-    Tair_C: float
+    TairC: float
     Q_solar: float
     TsedC: float
     eair_mb: float
@@ -37,7 +37,7 @@ class Meteorological(TypedDict):
 
 
 DEFAULT_METEOROLOGICAL = Meteorological(
-    Tair_C=20,
+    TairC=20,
     Q_solar=400,
     TsedC=5.0,
     eair_mb=1.0,
