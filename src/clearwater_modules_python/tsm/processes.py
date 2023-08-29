@@ -1,26 +1,4 @@
 import numba
-from typing import TypedDict
-
-# TODO: Assess if we want to output these?
-
-
-class GenericProcessOutput(TypedDict):
-    key: str
-    name: str
-    value: float | int | bool
-    units: str
-
-
-class FloatProcessOutput(TypedDict):
-    value: float
-
-
-class IntProcessOutput(TypedDict):
-    value: int
-
-
-class BoolProcessOutput(TypedDict):
-    value: bool
 
 
 @numba.njit
@@ -28,15 +6,11 @@ def mixing_ratio_air(
     eair_mb: float,
     pressure_mb: float,
 ) -> float:
-    """Calculate air mixing ratio.
+    """Calculate air mixing ratio (unitless).
 
     Args:
         eair_mb: Vapour pressure of air (mb)
         pressure_mb: Atmospheric pressure (mb)
-
-    Returns:
-        Air mixing ratio (unitless)
-
     """
     return 0.622 * eair_mb / (pressure_mb - eair_mb)
 
@@ -47,37 +21,28 @@ def density_air(
     air_temp_k: float,
     air_mixing_ratio: float,
 ) -> float:
-    """Calculate air density.
+    """Calculate air density (kg/m^3).
 
     Args:
         pressure_mb: Atmospheric pressure (mb)
         air_temp_k: Air temperature (K)
         air_mixing_ratio: Air mixing ratio (unitless)
-
-    Returns:
-        AFloatProcessOutput instance of air density (kg/m^3).
-
     """
-    air_density: float = (
+    return (
         0.348 *
         (pressure_mb / air_temp_k) *
         (1.0 + air_mixing_ratio) / (1.0 + 1.61 * air_mixing_ratio)
     )
-    return air_density
 
 
 @numba.njit
 def emissivity_air(
     air_temp_k: float,
 ) -> float:
-    """Calculate air emissivity.
+    """Calculate air emissivity (unitless).
 
     Args:
         air_temp_k: Air temperature (K)
-
-    Returns:
-        AFloatProcessOutput instance of air emissivity (unitless).
-
     """
     return 0.00000937 * air_temp_k**2.0
 
@@ -89,10 +54,13 @@ def wind_function(
     wind_c: float,
     wind_speed: float,
 ) -> float:
-    """Calculate wind function for latent and sensible heat.
+    """Calculate wind function (unitless) for latent and sensible heat.
 
-    Returns:
-        A unitless wind function output.
+    Args:
+        wind_a: Wind function coefficient (unitless)
+        wind_b: Wind function coefficient (unitless)
+        wind_c: Wind function coefficient (unitless)
+        wind_speed: Wind speed (m/s)
     """
     return wind_a / 1000000.0 + wind_b / 1000000.0 * wind_speed**wind_c
 
@@ -139,7 +107,7 @@ def q_sensible(
     """Sensible heat flux (W/m2).
 
     Args:
-        wind_kh_kw: Wind function (unitless)
+        wind_kh_kw: Diffusivity ratio (unitless)
         Ri_function: Richardson number (unitless)
         Cp_air: Specific heat of air (J/kg/K)
         density_water: Water density (kg/m^3)
