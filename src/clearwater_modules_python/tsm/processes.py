@@ -231,6 +231,7 @@ def q_net(
         q_sediment
     )
 
+
 @numba.njit
 def dTdt_water_c(
     q_net: float,
@@ -240,7 +241,7 @@ def dTdt_water_c(
     Cp_water: float,
 ) -> float:
     """Water temperature change (C).
-    
+
     Args:
         q_net: Net heat flux (W/m^2)
         surface_area: Surface area (m^2)
@@ -250,7 +251,6 @@ def dTdt_water_c(
     """
     return (
         q_net *
-        surface_area / 
+        surface_area /
         (volume * density_water * Cp_water)
-    )
     )
