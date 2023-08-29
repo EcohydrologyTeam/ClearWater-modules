@@ -1,8 +1,10 @@
 import numba
 import numpy as np
 from enum import Enum
-import constants
-import processes
+from clearwater_modules_python.tsm import (
+    constants,
+    processes,
+)
 import clearwater_modules_python.shared_processes as shared_processes
 from typing import (
     TypedDict,
@@ -22,7 +24,7 @@ class EnergyBalanceInputs(TypedDict):
     """
     TwaterC: float
     surface_area: float
-    surface_volume: float
+    volume: float
 
 
 class EnergyBalanceOutputs(TypedDict):
@@ -102,6 +104,8 @@ class EnergyBudget(Process):
                 value,
             )
 
+        self.use_sed_temp = use_sed_temp
+
     @property
     def met_constants(self) -> constants.Meteorological:
         return self.__meteo_constants
@@ -113,7 +117,7 @@ class EnergyBudget(Process):
     def run(
         self,
         variables: EnergyBalanceInputs,
-    ) -> None:
+    ) -> float:
 
         # Temperature
         TwaterK: float = shared_processes.celsius_to_kelvin(
@@ -130,12 +134,12 @@ class EnergyBudget(Process):
         # Wind function, stability and flux partitioning
         # ----------------------------------------------------------------------------------------------
 
-        mixing_ratio_air: float = processes.air_mixing_ratio(
+        mixing_ratio_air: float = processes.mixing_ratio_air(
             self.met_constants['eair_mb'],
             self.met_constants['pressure_mb'],
         )
 
-        density_air: float = processes.air_density(
+        density_air: float = processes.density_air(
             self.met_constants['pressure_mb'],
             TairK,
             mixing_ratio_air,
@@ -202,8 +206,8 @@ class EnergyBudget(Process):
         # Upwelling (back or water surface) longwave radiation (W/m2)
         q_longwave_up: float = shared_processes.mf_q_longwave_up(
             TwaterK,
-            self.met_constants['emissivity_water'],
-            self.temp_constants['stefan_boltzmann'],
+            self.temp_constants['emissivity_water'],
+            self.temp_constants['stephan_boltzmann'],
         )
 
         # ------------------------------------------------------------------------
@@ -219,18 +223,18 @@ class EnergyBudget(Process):
         # Richardson's stablility function (unitless)
         Ri_function: float = 1.0
 
-        if (self.met_constants['wind_speed'] > 0.0 and self.met_constants['richardson_option']):
+        if (self.met_constants['wind_speed'] > 0.0 and self.temp_constants['richardson_option']):
             # Density of air computed at water surface temperature (kg/m3)
             density_air_sat: float = shared_processes.mf_density_air_sat(
                 TwaterK,
                 esat_mb,
                 self.met_constants['pressure_mb'],
             )
-            (Ri_number, Ri_function): tuple[float, float]= shared_processes.RichardsonNumber(
+            Ri_number, Ri_function = shared_processes.RichardsonNumber(
                 self.met_constants['wind_speed'],
                 density_air_sat,
                 density_air,
-                self.met_constants['gravity'],
+                self.temp_constants['gravity'],
             )
 
         # ------------------------------------------------------------------------
@@ -295,15 +299,15 @@ class EnergyBudget(Process):
             variables['volume'],
             density_water,
             Cp_water,
-        ) 
+        )
         # TODO: why was the following commented out here -> TwaterC += dTwaterCdt
 
         # ------------------------------------------------------------------------------------
         # Difference between air and water temperature (Celsius or Kelvins)
-        Ta_Tw = self.met_constants['TairC'] - self.met_constants['TwaterC']
+        Ta_Tw: float = self.met_constants['TairC'] - variables['TwaterC']
 
         # Difference between saturated and current vapor pressure (mb)
-        Esat_Eair = esat_mb - self.met_constants['eair_mb']
+        Esat_Eair: float = esat_mb - self.met_constants['eair_mb']
 
         return dTwaterCdt
 
