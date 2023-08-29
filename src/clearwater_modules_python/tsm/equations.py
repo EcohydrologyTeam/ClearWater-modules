@@ -67,10 +67,10 @@ def wind_function(
 
 @numba.njit
 def q_latent(
-    Ri_function: float,
+    ri_function: float,
     pressure_mb: float,
     density_water: float,
-    Lv: float,
+    lv: float,
     wind_function: float,
     esat_mb: float,
     eair_mb: float,
@@ -80,15 +80,15 @@ def q_latent(
     Args:
         pressure_mb: Atmospheric pressure (mb)
         density_water: Water density (kg/m^3)
-        Lv: Latent heat of vaporization (J/kg)
+        lv: Latent heat of vaporization (J/kg)
         wind_function: Wind function (unitless)
         esat_mb: Saturation vapour pressure (mb)
         eair_mb: Vapour pressure of air (mb)
     """
     return (
-        Ri_function *
+        ri_function *
         (0.622 / pressure_mb) *
-        Lv * density_water * wind_function *
+        lv * density_water * wind_function *
         (esat_mb - eair_mb)
     )
 
@@ -96,8 +96,8 @@ def q_latent(
 @numba.njit
 def q_sensible(
     wind_kh_kw: float,
-    Ri_function: float,
-    Cp_air: float,
+    ri_function: float,
+    cp_air: float,
     density_water: float,
     wind_function: float,
     air_temp_k: float,
@@ -108,8 +108,8 @@ def q_sensible(
 
     Args:
         wind_kh_kw: Diffusivity ratio (unitless)
-        Ri_function: Richardson number (unitless)
-        Cp_air: Specific heat of air (J/kg/K)
+        ri_function: Richardson number (unitless)
+        cp_air: Specific heat of air (J/kg/K)
         density_water: Water density (kg/m^3)
         wind_function: Wind function (unitless)
         air_temp_k: Air temperature (K)
@@ -117,8 +117,8 @@ def q_sensible(
     """
     return (
         wind_kh_kw *
-        Ri_function *
-        Cp_air * density_water * wind_function *
+        ri_function *
+        cp_air * density_water * wind_function *
         (air_temp_k - water_temp_k)
     )
 
@@ -126,27 +126,27 @@ def q_sensible(
 @numba.njit
 def q_sediment(
     pb: float,
-    Cps: float,
+    cps: float,
     alphas: float,
     h2: float,
-    TsedC: float,
-    TwaterC: float,
+    sed_temp_c: float,
+    water_temp_c: float,
 ) -> float:
     """Sediment heat flux (W/m^2).
 
     Args:
         pb: Sediment bulk density (kg/m^3)
-        Cps: Sediment specific heat (J/kg/K)
+        cps: Sediment specific heat (J/kg/K)
         alphas: Sediment thermal diffusivity (m^2/s)
         h2: Sediment active layer thickness (m)
-        TsedC: Sediment temperature (C)
-        TwaterC: Water temperature (C)
+        sed_temp_c: Sediment temperature (C)
+        water_temp_c: Water temperature (C)
     """
     # 86400 converts the sediment thermal diffusivity from units of m^2/d to m^2/s
 
     return (
-        pb * Cps * alphas / 0.5 / h2 *
-        (TsedC - TwaterC) / 86400.0
+        pb * cps * alphas / 0.5 / h2 *
+        (sed_temp_c - water_temp_c) / 86400.0
     )
 
 
@@ -154,20 +154,20 @@ def q_sediment(
 def dTdt_sediment_c(
     alphas: float,
     h2: float,
-    TwaterC: float,
-    TsedC: float,
+    water_temp_c: float,
+    sed_temp_c: float,
 ) -> float:
     """Sediments temperature change (C).
 
     Args:
         alphas: Sediment thermal diffusivity (m^2/s)
         h2: Sediment active layer thickness (m)
-        TwaterC: Water temperature (C)
-        TsedC: Sediment temperature (C)
+        water_temp_c: Water temperature (C)
+        sed_temp_c: Sediment temperature (C)
     """
     return (
         alphas / (0.5 * h2 * h2) *
-        (TwaterC - TsedC)
+        (water_temp_c - sed_temp_c)
     )
 
 
@@ -206,7 +206,7 @@ def dTdt_water_c(
     surface_area: float,
     volume: float,
     density_water: float,
-    Cp_water: float,
+    cp_water: float,
 ) -> float:
     """Water temperature change (C).
 
@@ -215,10 +215,10 @@ def dTdt_water_c(
         surface_area: Surface area (m^2)
         volume: Volume (m^3)
         density_water: Water density (kg/m^3)
-        Cp_water: Water specific heat (J/kg/K)
+        cp_water: Water specific heat (J/kg/K)
     """
     return (
         q_net *
         surface_area /
-        (volume * density_water * Cp_water)
+        (volume * density_water * cp_water)
     )

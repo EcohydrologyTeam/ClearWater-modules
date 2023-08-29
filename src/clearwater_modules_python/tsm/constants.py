@@ -5,7 +5,7 @@ from typing import (
 
 class Temperature(TypedDict):
     stephan_boltzmann: float
-    Cp_air: float
+    cp_air: float
     emissivity_water: float
     gravity: float
     a0: float
@@ -16,16 +16,16 @@ class Temperature(TypedDict):
     a5: float
     a6: float
     pb: float
-    Cps: float
+    cps: float
     h2: float
     alphas: float
     richardson_option: bool
 
 
 class Meteorological(TypedDict):
-    TairC: float
-    Q_solar: float
-    TsedC: float
+    air_temp_c: float
+    q_solar: float
+    sed_temp_c: float
     eair_mb: float
     pressure_mb: float
     cloudiness: float
@@ -37,9 +37,9 @@ class Meteorological(TypedDict):
 
 
 DEFAULT_METEOROLOGICAL = Meteorological(
-    TairC=20,
-    Q_solar=400,
-    TsedC=5.0,
+    air_temp_c=20,
+    q_solar=400,
+    sed_temp_c=5.0,
     eair_mb=1.0,
     pressure_mb=1013.0,
     cloudiness=0.1,
@@ -52,7 +52,7 @@ DEFAULT_METEOROLOGICAL = Meteorological(
 
 DEFAULT_TEMPERATURE = Temperature(
     stephan_boltzmann=5.67e-8,
-    Cp_air=1005,
+    cp_air=1005,
     emissivity_water=0.97,
     gravity=-9.806,
     a0=6984.505294,
@@ -63,7 +63,7 @@ DEFAULT_TEMPERATURE = Temperature(
     a5=-8.023923082E-8,
     a6=6.136820929E-11,
     pb=1600.0,
-    Cps=1673.0,
+    cps=1673.0,
     h2=0.1,
     alphas=0.0432,
     richardson_option=True,
