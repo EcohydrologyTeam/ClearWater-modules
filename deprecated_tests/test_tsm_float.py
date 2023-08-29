@@ -19,7 +19,7 @@ def vars() -> typed.Dict:
         value_type=types.float64,
     )
     vars = {
-        'TwaterC': 20,
+        'water_temp_c': 20,
         'surface_area': 1,
         'volume': 1
     }
@@ -51,16 +51,16 @@ def tolerance() -> float:
 @pytest.fixture(scope='module')
 def answers() -> float:
     return {
-        'test_TwaterC_20': 19.997,
-        'test_TwaterC_40': 39.964,
+        'test_water_temp_c_20': 19.997,
+        'test_water_temp_c_40': 39.964,
         'test_surface_area_2': 19.994,
         'test_surface_area_4': 19.987,
         'test_volume_2': 19.998,
         'test_volume_4': 19.999,
-        'test_TairC_30': 20,
-        'test_TairC_40': 20.001,
-        'test_TsedC_10': 19.999,
-        'test_TsedC_15': 20.001,
+        'test_air_temp_c_30': 20,
+        'test_air_temp_c_40': 20.001,
+        'test_sed_temp_c_10': 19.999,
+        'test_sed_temp_c_15': 20.001,
         'test_q_solar_450': 19.997,
         'test_q_solar_350': 19.996,
         'test_wind_kh_kw_0_5': 19.997,
@@ -82,256 +82,269 @@ def answers() -> float:
     }
 
 
-def test_TwaterC_20(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
+def test_water_temp_c_20(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
-    vars['TwaterC'] = 20
+    vars['water_temp_c'] = 20
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_TwaterC_20']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_water_temp_c_20']
 
 
-def test_TwaterC_40(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
+def test_water_temp_c_40(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
-    vars['TwaterC'] = 40
+    vars['water_temp_c'] = 40
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_TwaterC_40']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_water_temp_c_40']
 
 
 def test_surface_area_2(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     vars['surface_area'] = 2
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_surface_area_2']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_surface_area_2']
 
 
 def test_surface_area_4(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     vars['surface_area'] = 4
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_surface_area_4']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_surface_area_4']
 
 
 def test_volume_2(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     vars['volume'] = 2
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_volume_2']
+    assert pytest.approx(water_temp_c, tolerance) == answers['test_volume_2']
 
 
 def test_volume_4(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     vars['volume'] = 4
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_volume_4']
+    assert pytest.approx(water_temp_c, tolerance) == answers['test_volume_4']
 
 
-def test_TairC_30(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
+def test_air_temp_c_30(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
-    met_changes['TairC'] = 30
+    met_changes['air_temp_c'] = 30
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_TairC_30']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_air_temp_c_30']
 
 
-def test_TairC_40(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
+def test_air_temp_c_40(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
-    met_changes['TairC'] = 40
+    met_changes['air_temp_c'] = 40
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_TairC_40']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_air_temp_c_40']
 
 
-def test_TsedC_10(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
+def test_sed_temp_c_10(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
-    met_changes['TsedC'] = 10
+    met_changes['sed_temp_c'] = 10
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_TsedC_10']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_sed_temp_c_10']
 
 
-def test_TsedC_15(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
+def test_sed_temp_c_15(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
-    met_changes['TsedC'] = 15
+    met_changes['sed_temp_c'] = 15
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_TsedC_15']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_sed_temp_c_15']
 
 
 def test_q_solar_450(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['q_solar'] = 450
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_q_solar_450']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_q_solar_450']
 
 
 def test_q_solar_350(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['q_solar'] = 350
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_q_solar_350']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_q_solar_350']
 
 
 def test_wind_kh_kw_0_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['wind_kh_kw'] = .5
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_kh_kw_0_5']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_wind_kh_kw_0_5']
 
 
 def test_wind_kh_kw_1_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['wind_kh_kw'] = 1.5
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_kh_kw_1_5']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_wind_kh_kw_1_5']
 
 
 def test_eair_mb_2(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['eair_mb'] = 2
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_eair_mb_2']
+    assert pytest.approx(water_temp_c, tolerance) == answers['test_eair_mb_2']
 
 
 def test_eair_mb_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['eair_mb'] = 5
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_eair_mb_5']
+    assert pytest.approx(water_temp_c, tolerance) == answers['test_eair_mb_5']
 
 
 def test_pressure_mb_970(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['pressure_mb'] = 970
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_pressure_mb_970']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_pressure_mb_970']
 
 
 def test_pressure_mb_1050(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['pressure_mb'] = 1050
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers[
+    assert pytest.approx(water_temp_c, tolerance) == answers[
         'test_pressure_mb_1050']
 
 
@@ -339,137 +352,145 @@ def test_cloudiness_0(use_sed_temp, vars, met_changes, t_changes, tolerance, ans
 
     met_changes['cloudiness'] = 0
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_cloudiness_0']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_cloudiness_0']
 
 
 def test_cloudiness_0_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['cloudiness'] = .5
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_cloudiness_0_5']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_cloudiness_0_5']
 
 
 def test_wind_speed_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['wind_speed'] = 5
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_speed_5']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_wind_speed_5']
 
 
 def test_wind_speed_30(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['wind_speed'] = 30
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_speed_30']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_wind_speed_30']
 
 
 def test_wind_a_1En7(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['wind_a'] = 1*10**-7
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_a_1En7']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_wind_a_1En7']
 
 
 def test_wind_a_7En7(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['wind_a'] = 7*10**-7
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_a_7En7']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_wind_a_7En7']
 
 
 def test_wind_b_1En6(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['wind_b'] = 1*10**-6
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_b_1En6']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_wind_b_1En6']
 
 
 def test_wind_b_2En6(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['wind_b'] = 2*10**-6
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_b_2En6']
+    assert pytest.approx(
+        water_temp_c, tolerance) == answers['test_wind_b_2En6']
 
 
 def test_wind_c_0_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['wind_c'] = .5
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_c_0_5']
+    assert pytest.approx(water_temp_c, tolerance) == answers['test_wind_c_0_5']
 
 
 def test_wind_c_3(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
 
     met_changes['wind_c'] = 3
 
-    dTwaterCdt = EnergyBudget(
+    dwater_temp_cdt = EnergyBudget(
         met_changes,
         t_changes,
         use_sed_temp=use_sed_temp,
     ).run(variables=vars)
-    TwaterC = vars['TwaterC'] + dTwaterCdt * 60
+    water_temp_c = vars['water_temp_c'] + dwater_temp_cdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_c_3']
+    assert pytest.approx(water_temp_c, tolerance) == answers['test_wind_c_3']
