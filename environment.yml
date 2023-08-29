@@ -4,14 +4,20 @@ channels:
   - nodefaults
 
 dependencies:
+  # main package dependencies
   - python >= 3.11
   - numba
   - xarray
 
+  # for testing and static analysis
   - pytest
   - pytest-cov
   - pyright
 
+  # for performance testing
+  - snakeviz
+
+  # for environment managment
   - pip
   - mamba
   - conda-build
