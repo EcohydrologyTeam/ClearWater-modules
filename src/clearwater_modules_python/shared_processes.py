@@ -24,14 +24,14 @@ Last Revision Date: April 11, 2021
 """
 
 
-def ArrheniusCorrection(TwaterC: float, rc20: float, theta: float):
+def ArrheniusCorrection(water_temp_c: float, rc20: float, theta: float):
     """
     Computes an adjusted kinetics reaction rate coefficient for the specified water 
     temperature using the van't Hoff form of the Arrhenius equation
 
     Parameters
     ----------
-    TwaterC : float
+    water_temp_c : float
         Water temperature in degrees Celsius
     rc20 : float
         Kinetics reaction (decay) coefficient at 20 degrees Celsius
@@ -43,7 +43,7 @@ def ArrheniusCorrection(TwaterC: float, rc20: float, theta: float):
     float
         Adjusted kinetics rate for the specified water temperature
     """
-    return rc20 * theta**(TwaterC - 20.0)
+    return rc20 * theta**(water_temp_c - 20.0)
 
 
 class TempCorrection:
@@ -55,8 +55,8 @@ class TempCorrection:
         self.rc20 = rc20
         self.theta = theta
 
-    def arrhenius_correction(self, TwaterC: float):
-        return ArrheniusCorrection(TwaterC, self.rc20, self.theta)
+    def arrhenius_correction(self, water_temp_c: float):
+        return ArrheniusCorrection(water_temp_c, self.rc20, self.theta)
 
     # Functions to set the pathways dictionary
 
@@ -223,16 +223,16 @@ def mf_latent_heat_vaporization(TwaterK: float) -> float:
 
 
 @numba.njit
-def mf_density_water(TwaterC: float) -> float:
+def mf_density_water(water_temp_c: float) -> float:
     """
     Compute density of water (kg/m3) as a function of water temperature (Celsius)
     """
 
-    # logger.debug(f'mf_density_water({TwaterC:.2f})')
+    # logger.debug(f'mf_density_water({water_temp_c:.2f})')
 
     return 999.973 * (1.0 -
-                      (((TwaterC - 3.9863) * (TwaterC - 3.9863) * (TwaterC + 288.9414)) /
-                       (508929.2 * (TwaterC + 68.12963))))
+                      (((water_temp_c - 3.9863) * (water_temp_c - 3.9863) * (water_temp_c + 288.9414)) /
+                       (508929.2 * (water_temp_c + 68.12963))))
 
 
 @numba.njit
@@ -256,29 +256,29 @@ def mf_density_air_sat(TwaterK: float, esat_mb: float, pressure_mb: float) -> fl
 
 
 @numba.njit
-def mf_Cp_water(TwaterC: float) -> float:
+def mf_cp_water(water_temp_c: float) -> float:
     """
     Compute the specific heat of water (J/kg/K) as a function of water temperature (Celsius).
     This is used in computing the source/sink term.
     """
 
-    # logger.debug(f'mf_esat_mb({TwaterC:.2f})')
+    # logger.debug(f'mf_esat_mb({water_temp_c:.2f})')
 
-    if TwaterC <= 0.0:
-        Cp_water = 4218.0
-    elif (TwaterC <= 5.0):
-        Cp_water = 4202.0
-    elif (TwaterC <= 10.0):
-        Cp_water = 4192.0
-    elif (TwaterC <= 15.0):
-        Cp_water = 4186.0
-    elif (TwaterC <= 20.0):
-        Cp_water = 4182.0
-    elif (TwaterC <= 25.0):
-        Cp_water = 4180.0
+    if water_temp_c <= 0.0:
+        cp_water = 4218.0
+    elif (water_temp_c <= 5.0):
+        cp_water = 4202.0
+    elif (water_temp_c <= 10.0):
+        cp_water = 4192.0
+    elif (water_temp_c <= 15.0):
+        cp_water = 4186.0
+    elif (water_temp_c <= 20.0):
+        cp_water = 4182.0
+    elif (water_temp_c <= 25.0):
+        cp_water = 4180.0
     else:
-        Cp_water = 4178.0
-    return Cp_water
+        cp_water = 4178.0
+    return cp_water
 
 
 def print_pathways(pathways):

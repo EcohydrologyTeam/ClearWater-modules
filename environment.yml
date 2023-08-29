@@ -6,12 +6,14 @@ channels:
 dependencies:
   - python >= 3.11
   - numba
+  - xarray
 
   - pytest
   - pytest-cov
+  - pyright
 
-  - pylance
   - pip
   - mamba
+  - conda-build
 
 

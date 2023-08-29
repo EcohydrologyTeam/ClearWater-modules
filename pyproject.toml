@@ -3,7 +3,7 @@ requires = ["setuptools>=61", "wheel>=0.31.0", "setuptools_scm[toml]>=3.4"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "clearwater_python_modules""
+name = "clearwater_modules_python"
 dynamic = ["version", "readme"]
 
 description = "Clearwater Python module."
@@ -29,8 +29,8 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["clearwater_python_modules*"]
+include = ["clearwater_modules_python*"]
 
 [tool.setuptools.dynamic]
-version = {attr = "clearwater_python_modules.__version__"}
+version = {attr = "clearwater_modules_python.__version__"}
 readme = {file = "README.md"}
