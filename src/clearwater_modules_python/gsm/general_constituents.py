@@ -22,7 +22,7 @@ Initial Version: April 10, 2021
 Last Revision Date: April 11, 2021
 """
 
-from src import water_quality_functions as wqf
+from src import shared_functions as wqf
 from typing import Union, Optional
 import sys
 import os

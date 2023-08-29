@@ -22,6 +22,7 @@ Initial Version: April 9, 2021
 """
 # %%
 
+from src import shared_functions as wqf
 import logging
 import os
 import sys
@@ -31,9 +32,8 @@ import types
 import typing
 
 src_path = os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__)))
+    os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(src_path))
-from src import water_quality_functions as wqf
 
 """
 Initialize class
@@ -54,10 +54,11 @@ logging.basicConfig(filename=log_filename, level=LOG_LEVEL,
                     format=LOG_FORMAT, filemode='w')
 logger = logging.getLogger()
 
-class Temperature :
-    
+
+class Temperature:
+
     def __init__(self, global_module_choices, global_vars, met_constant_changes, temperature_constant_changes):
-        
+
         self.global_module_choices = global_module_choices
         self.global_vars = global_vars
         self.met_constant_changes = met_constant_changes
@@ -66,55 +67,55 @@ class Temperature :
 
         self.met_constant = OrderedDict()
         self.met_constant = {
-            'TairC' : 20,
-            'q_solar' : 400,
-            'TsedC' : 5.0,
-            'eair_mb' : 1.0,
-            'pressure_mb' : 1013.0,
-            'cloudiness' : 0.1,
-            'wind_speed' : 3.0,
-            'wind_a' : 0.3,
-            'wind_b' : 1.5,
-            'wind_c' : 1.0,
-            'wind_kh_kw' : 1.0
+            'TairC': 20,
+            'q_solar': 400,
+            'TsedC': 5.0,
+            'eair_mb': 1.0,
+            'pressure_mb': 1013.0,
+            'cloudiness': 0.1,
+            'wind_speed': 3.0,
+            'wind_a': 0.3,
+            'wind_b': 1.5,
+            'wind_c': 1.0,
+            'wind_kh_kw': 1.0
 
         }
-        
-        for key in self.met_constant_changes.keys() :
+
+        for key in self.met_constant_changes.keys():
             if key in self.met_constant:
                 self.met_constant[key] = self.met_constant_changes[key]
 
         self.temperature_constant = OrderedDict()
         self.temperature_constant = {
-            'stefan_boltzmann' : 5.67E-8,
-            'Cp_air' : 1005.0,
-            'emissivity_water' : 0.97,
-            'gravity' : -9.806,
-            'a0' : 6984.505294,
-            'a1' : -188.903931,
-            'a2' : 2.133357675,
-            'a3' : -1.288580973E-2,
-            'a4' : 4.393587233E-5,
-            'a5' : -8.023923082E-8,
-            'a6' : 6.136820929E-11,
-            'pb' : 1600.0,
-            'Cps' : 1673.0,
-            'h2' : 0.1,
-            'alphas' : 0.0432,
-            'Richardson_option' : True
+            'stefan_boltzmann': 5.67E-8,
+            'Cp_air': 1005.0,
+            'emissivity_water': 0.97,
+            'gravity': -9.806,
+            'a0': 6984.505294,
+            'a1': -188.903931,
+            'a2': 2.133357675,
+            'a3': -1.288580973E-2,
+            'a4': 4.393587233E-5,
+            'a5': -8.023923082E-8,
+            'a6': 6.136820929E-11,
+            'pb': 1600.0,
+            'Cps': 1673.0,
+            'h2': 0.1,
+            'alphas': 0.0432,
+            'Richardson_option': True
 
         }
 
-        for key in self.temperature_constant_changes.keys() :
+        for key in self.temperature_constant_changes.keys():
             if key in self.temperature_constant:
                 self.temperature_constant[key] = self.temperature_constant_changes[key]
-    
+
     def energy_budget_method(self):
         """
         Compute water temperature kinetics using the energy budget method
 
         Parameters:
-            
+
             Global module choices (T/F)
             use_SedTemp (bool):         Compute surface temperature (on/off)
 
@@ -122,7 +123,7 @@ class Temperature :
             TwaterC (float):            Water temperature entering cell (degrees C)
             surface_area (float):       Surface area of cell face (m^2?)
             volume (float):             Volume of cell (m^3???)
-            
+
             Meteorological Constants
             TairC (float):              Air temperature (degrees Celsius)
             q_solar (float):            Solar radiation (W/m^2)
@@ -135,7 +136,7 @@ class Temperature :
             wind_b (float):             "b" coefficient of the wind function
             wind_c (float):             "c" coefficient of the wind function
             wind_kh_kw (float):         Diffusivity ratio (unitless)
-            
+
             Temperature Constants
             stefan_boltzmann (float):   Constant relating emitted radiation to temperature of matter (W/(m^2*K^4))             
             Cp_air (float):             Specific heat capacity of air (J/kg*C)
@@ -170,7 +171,7 @@ class Temperature :
         surface_area = self.global_vars['surface_area']
         volume = self.global_vars['volume']
 
-        pathways=OrderedDict()
+        pathways = OrderedDict()
 
         TairC = self.met_constant['TairC']
         q_solar = self.met_constant['q_solar']
@@ -184,7 +185,6 @@ class Temperature :
         wind_c = self.met_constant['wind_c']
         wind_kh_kw = self.met_constant['wind_kh_kw']
 
-        
         stefan_boltzmann = self.temperature_constant['stefan_boltzmann']
         Cp_air = self.temperature_constant['Cp_air']
         emissivity_water = self.temperature_constant['emissivity_water']
@@ -201,7 +201,6 @@ class Temperature :
         h2 = self.temperature_constant['h2']
         alphas = self.temperature_constant['alphas']
         Richardson_option = self.temperature_constant['Richardson_option']
-        
 
         # Temperature
         TwaterK: float = wqf.celsius_to_kelvin(TwaterC)
@@ -219,7 +218,7 @@ class Temperature :
 
         # Compute density of air (kg/m3)
         density_air = 0.348 * (pressure_mb / TairK) * (1.0 +
-                                                    mixing_ratio_air) / (1.0 + 1.61 * mixing_ratio_air)
+                                                       mixing_ratio_air) / (1.0 + 1.61 * mixing_ratio_air)
 
         # ----------------------------------------------------------------------------------------------
         #  Computations that are not a function of water temperature
@@ -235,7 +234,7 @@ class Temperature :
         q_longwave_down = wqf.mf_q_longwave_down(
             TairK, emissivity_air, cloudiness, stefan_boltzmann)
 
-        #pathways["q_longwave_down"] = q_longwave_down
+        # pathways["q_longwave_down"] = q_longwave_down
 
         # Wind function for latent and sensible heat (unitless)
         wind_function = wind_a / 1000000.0 + wind_b / 1000000.0 * wind_speed**wind_c
@@ -259,10 +258,10 @@ class Temperature :
         # Saturated vapor pressure computed from water temperature at previous time step (mb)
         esat_mb = wqf.mf_esat_mb(TwaterK, a0, a1, a2, a3, a4, a5, a6)
 
-
         # ------------------------------------------------------------------------
         # Upwelling (back or water surface) longwave radiation (W/m2)
-        q_longwave_up = wqf.mf_q_longwave_up(TwaterK, emissivity_water, stefan_boltzmann)
+        q_longwave_up = wqf.mf_q_longwave_up(
+            TwaterK, emissivity_water, stefan_boltzmann)
 
         # ------------------------------------------------------------------------
         # Surface fluxes
@@ -279,7 +278,8 @@ class Temperature :
 
         if (wind_speed > 0.0 and Richardson_option):
             # Density of air computed at water surface temperature (kg/m3)
-            density_air_sat = wqf.mf_density_air_sat(TwaterK, esat_mb, pressure_mb)
+            density_air_sat = wqf.mf_density_air_sat(
+                TwaterK, esat_mb, pressure_mb)
             (Ri_No, Ri_fxn) = wqf.RichardsonNumber(
                 wind_speed, density_air_sat, density_air, gravity)
 
@@ -298,7 +298,9 @@ class Temperature :
         q_sediment: float = 0.0
         dTsedCdt: float = 0.0
         if (self.global_module_choices['use_SedTemp']):
-            q_sediment = pb * Cps * alphas / 0.5 / h2 * (TsedC - TwaterC) / 86400.0 # 86400 converts the sediment thermal diffusivity from units of m^2/d to m^2/s 
+            # 86400 converts the sediment thermal diffusivity from units of m^2/d to m^2/s
+            q_sediment = pb * Cps * alphas / 0.5 / \
+                h2 * (TsedC - TwaterC) / 86400.0
             dTsedCdt = alphas / (0.5 * h2 * h2) * (TwaterC - TsedC)
 
         # ------------------------------------------------------------------------
@@ -309,8 +311,8 @@ class Temperature :
         # ------------------------------------------------------------------------
         # Compute water temperature change
         dTwaterCdt = q_net * surface_area / \
-            (volume * density_water * Cp_water) 
-        #TwaterC += dTwaterCdt
+            (volume * density_water * Cp_water)
+        # TwaterC += dTwaterCdt
 
         # ------------------------------------------------------------------------------------
         # Difference between air and water temperature (Celsius or Kelvins)
@@ -330,35 +332,45 @@ class Temperature :
         # logger.debug('wind_function = %.2f' % wind_function)
 
         # Equilibrium temperature for current met conditions (C)
-        wqf.set_pathways_float(pathways, q_net, 'q_net', 'Net Solar Radiation', "W/m2")
+        wqf.set_pathways_float(pathways, q_net, 'q_net',
+                               'Net Solar Radiation', "W/m2")
         # TODO: check why q_sensible was computed twice
-        wqf.set_pathways_float(pathways, q_sensible, 'q_sensible', 'Sensible Radiation', 'W/m2')
+        wqf.set_pathways_float(pathways, q_sensible,
+                               'q_sensible', 'Sensible Radiation', 'W/m2')
         # TODO: check why q_sediment was computed twice
-        wqf.set_pathways_float(pathways, q_sediment, 'q_sediment', 'Sediment Heat Flux', 'W/m2')
-        wqf.set_pathways_float(pathways, q_latent, 'q_latent', 'Latent Heat', 'W/m2')
+        wqf.set_pathways_float(pathways, q_sediment,
+                               'q_sediment', 'Sediment Heat Flux', 'W/m2')
+        wqf.set_pathways_float(
+            pathways, q_latent, 'q_latent', 'Latent Heat', 'W/m2')
         wqf.set_pathways_float(pathways, q_longwave_up, 'q_longwave_up',
-                        'Upwelling Longwave Radiation', 'W/m2')
+                               'Upwelling Longwave Radiation', 'W/m2')
         wqf.set_pathways_float(pathways, q_longwave_down, 'q_longwave_down',
-                        'Downwelling Longwave Radiation', 'W/m2')
+                               'Downwelling Longwave Radiation', 'W/m2')
         wqf.set_pathways_float(
             pathways, Ta_Tw, 'Ta_Tw', 'Difference between Air and Water Temperature', 'degC')
         wqf.set_pathways_float(pathways, Esat_Eair, 'Esat_Eair',
-                        'Difference between Saturation and Air Vapor Pressure', 'mb')
-        wqf.set_pathways_float(pathways, Ri_No, 'Ri_No', 'Richardson Number', '')
-        wqf.set_pathways_float(pathways, Ri_fxn, 'Ri_fxn', 'Richardson Function', '')
+                               'Difference between Saturation and Air Vapor Pressure', 'mb')
+        wqf.set_pathways_float(pathways, Ri_No, 'Ri_No',
+                               'Richardson Number', '')
+        wqf.set_pathways_float(pathways, Ri_fxn, 'Ri_fxn',
+                               'Richardson Function', '')
         wqf.set_pathways_float(pathways, dTsedCdt, 'dTsedCdt',
-                        'Sediment Temperature Rate of Change', '')
+                               'Sediment Temperature Rate of Change', '')
         wqf.set_pathways_float(pathways, dTwaterCdt, 'dTwaterCdt',
-                        'Water Temperature Rate of Change', 'degC')
-        wqf.set_pathways_float(pathways, TwaterC, 'TwaterC', 'Water Temperature', 'degC')
-        
-        ##Check ri_no
-        wqf.set_pathways_float(pathways, density_air, 'Density Air', 'Water Temperature', 'degC')
-        if Richardson_option == True:
-            wqf.set_pathways_float(pathways, density_air_sat, 'Density Sat', 'Water Temperature', 'degC')
+                               'Water Temperature Rate of Change', 'degC')
+        wqf.set_pathways_float(pathways, TwaterC, 'TwaterC',
+                               'Water Temperature', 'degC')
 
-        wqf.set_pathways_float(pathways, wind_speed, 'Wind Speed', 'Water Temperature', 'degC')
-        
+        # Check ri_no
+        wqf.set_pathways_float(pathways, density_air,
+                               'Density Air', 'Water Temperature', 'degC')
+        if Richardson_option == True:
+            wqf.set_pathways_float(
+                pathways, density_air_sat, 'Density Sat', 'Water Temperature', 'degC')
+
+        wqf.set_pathways_float(pathways, wind_speed,
+                               'Wind Speed', 'Water Temperature', 'degC')
+
         return dTwaterCdt
 
 

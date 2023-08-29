@@ -34,7 +34,7 @@ Last Revision Date: June 15, 2021
 # kdeap, kdepom, kdepom2, kdep, kdep2 cannot be 0!
 # ----------------------------------------------------------------------------------------------------------------------------------
 
-from EnvironmentalSystems.ClearWater.wq_modules.python.src.water_quality_functions import TempCorrection
+from EnvironmentalSystems.ClearWater.wq_modules.python.src.shared_functions import TempCorrection
 from EnvironmentalSystems.ClearWater.wq_modules.python.src.CSM.csm_globals import global_vals as globvals
 import math
 

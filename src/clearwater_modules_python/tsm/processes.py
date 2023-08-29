@@ -1,11 +1,19 @@
 import numba
+from typing import TypedDict
 
 
-@numba.jit
+class ProcessOutput(TypedDict):
+    key: str
+    name: str
+    value: float
+    units: str
+
+
+@numba.njit
 def air_mixing_ratio(
     eair_mb: float,
     pressure_mb: float,
-) -> float:
+) -> ProcessOutput:
     """Calculate air mixing ratio.
 
     Args:
@@ -16,15 +24,21 @@ def air_mixing_ratio(
         Air mixing ratio (unitless)
 
     """
-    return 0.622 * eair_mb / (pressure_mb - eair_mb)
+    value: float = 0.622 * eair_mb / (pressure_mb - eair_mb)
+    return ProcessOutput(
+        key='air_mixing_ratio',
+        name='Air Mixing Ratio',
+        value=value,
+        units='unitless',
+    )
 
 
-@numba.jit
+@numba.njit
 def air_density(
     pressure_mb: float,
     air_temp_k: float,
     air_mixing_ratio: float,
-) -> float:
+) -> ProcessOutput:
     """Calculate air density.
 
     Args:
@@ -33,11 +47,17 @@ def air_density(
         air_mixing_ratio: Air mixing ratio (unitless)
 
     Returns:
-        Air density (kg/m^3)
+        A ProcessOutput instance of air density (kg/m^3).
 
     """
-    return (
+    air_density: float = (
         0.348 *
         (pressure_mb / air_temp_k) *
         (1.0 + air_mixing_ratio) / (1.0 + 1.61 * air_mixing_ratio)
+    )
+    return ProcessOutput(
+        key='air_density',
+        name='Air Density',
+        value=air_density,
+        units="kg/m^3",
     )
