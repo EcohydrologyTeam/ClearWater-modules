@@ -49,8 +49,8 @@ def tolerance() -> float:
 
 
 @pytest.fixture(scope='module')
-def answers(function_name: str) -> float:
-    answers = {
+def answers() -> float:
+    return {
         'test_TwaterC_20': 19.997,
         'test_TwaterC_40': 39.964,
         'test_surface_area_2': 19.994,
@@ -80,7 +80,6 @@ def answers(function_name: str) -> float:
         'test_wind_c_0_5': 19.998,
         'test_wind_c_3': 19.980,
     }
-    return answers[function_name]
 
 
 def test_TwaterC_20(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -94,7 +93,7 @@ def test_TwaterC_20(use_sed_temp, vars, met_changes, t_changes, tolerance, answe
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_TwaterC_20')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_TwaterC_20']
 
 
 def test_TwaterC_40(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -108,7 +107,7 @@ def test_TwaterC_40(use_sed_temp, vars, met_changes, t_changes, tolerance, answe
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_TwaterC_40')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_TwaterC_40']
 
 
 def test_surface_area_2(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -122,7 +121,7 @@ def test_surface_area_2(use_sed_temp, vars, met_changes, t_changes, tolerance, a
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_surface_area_2')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_surface_area_2']
 
 
 def test_surface_area_4(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -136,7 +135,7 @@ def test_surface_area_4(use_sed_temp, vars, met_changes, t_changes, tolerance, a
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_surface_area_4')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_surface_area_4']
 
 
 def test_volume_2(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -150,7 +149,7 @@ def test_volume_2(use_sed_temp, vars, met_changes, t_changes, tolerance, answers
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_volume_2')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_volume_2']
 
 
 def test_volume_4(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -164,7 +163,7 @@ def test_volume_4(use_sed_temp, vars, met_changes, t_changes, tolerance, answers
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_volume_4')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_volume_4']
 
 
 def test_TairC_30(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -178,7 +177,7 @@ def test_TairC_30(use_sed_temp, vars, met_changes, t_changes, tolerance, answers
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_TairC_30')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_TairC_30']
 
 
 def test_TairC_40(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -192,7 +191,7 @@ def test_TairC_40(use_sed_temp, vars, met_changes, t_changes, tolerance, answers
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_TairC_40')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_TairC_40']
 
 
 def test_TsedC_10(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -206,7 +205,7 @@ def test_TsedC_10(use_sed_temp, vars, met_changes, t_changes, tolerance, answers
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_TsedC_10')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_TsedC_10']
 
 
 def test_TsedC_15(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -220,7 +219,7 @@ def test_TsedC_15(use_sed_temp, vars, met_changes, t_changes, tolerance, answers
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_TsedC_15')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_TsedC_15']
 
 
 def test_q_solar_450(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -234,7 +233,7 @@ def test_q_solar_450(use_sed_temp, vars, met_changes, t_changes, tolerance, answ
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_q_solar_450')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_q_solar_450']
 
 
 def test_q_solar_350(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -248,7 +247,7 @@ def test_q_solar_350(use_sed_temp, vars, met_changes, t_changes, tolerance, answ
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_q_solar_350')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_q_solar_350']
 
 
 def test_wind_kh_kw_0_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -262,7 +261,7 @@ def test_wind_kh_kw_0_5(use_sed_temp, vars, met_changes, t_changes, tolerance, a
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_wind_kh_kw_0_5')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_kh_kw_0_5']
 
 
 def test_wind_kh_kw_1_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -276,7 +275,7 @@ def test_wind_kh_kw_1_5(use_sed_temp, vars, met_changes, t_changes, tolerance, a
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_wind_kh_kw_1_5')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_kh_kw_1_5']
 
 
 def test_eair_mb_2(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -290,7 +289,7 @@ def test_eair_mb_2(use_sed_temp, vars, met_changes, t_changes, tolerance, answer
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_eair_mb_2')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_eair_mb_2']
 
 
 def test_eair_mb_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -304,7 +303,7 @@ def test_eair_mb_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answer
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_eair_mb_5')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_eair_mb_5']
 
 
 def test_pressure_mb_970(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -318,7 +317,7 @@ def test_pressure_mb_970(use_sed_temp, vars, met_changes, t_changes, tolerance, 
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_pressure_mb_970')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_pressure_mb_970']
 
 
 def test_pressure_mb_1050(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -332,8 +331,8 @@ def test_pressure_mb_1050(use_sed_temp, vars, met_changes, t_changes, tolerance,
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers(
-        'test_pressure_mb_1050')
+    assert pytest.approx(TwaterC, tolerance) == answers[
+        'test_pressure_mb_1050']
 
 
 def test_cloudiness_0(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -347,7 +346,7 @@ def test_cloudiness_0(use_sed_temp, vars, met_changes, t_changes, tolerance, ans
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_cloudiness_0')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_cloudiness_0']
 
 
 def test_cloudiness_0_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -361,7 +360,7 @@ def test_cloudiness_0_5(use_sed_temp, vars, met_changes, t_changes, tolerance, a
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_cloudiness_0_5')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_cloudiness_0_5']
 
 
 def test_wind_speed_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -375,7 +374,7 @@ def test_wind_speed_5(use_sed_temp, vars, met_changes, t_changes, tolerance, ans
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_wind_speed_5')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_speed_5']
 
 
 def test_wind_speed_30(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -389,7 +388,7 @@ def test_wind_speed_30(use_sed_temp, vars, met_changes, t_changes, tolerance, an
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_wind_speed_30')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_speed_30']
 
 
 def test_wind_a_1En7(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -403,7 +402,7 @@ def test_wind_a_1En7(use_sed_temp, vars, met_changes, t_changes, tolerance, answ
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_wind_a_1En7')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_a_1En7']
 
 
 def test_wind_a_7En7(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -417,7 +416,7 @@ def test_wind_a_7En7(use_sed_temp, vars, met_changes, t_changes, tolerance, answ
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_wind_a_7En7')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_a_7En7']
 
 
 def test_wind_b_1En6(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -431,7 +430,7 @@ def test_wind_b_1En6(use_sed_temp, vars, met_changes, t_changes, tolerance, answ
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_wind_b_1En6')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_b_1En6']
 
 
 def test_wind_b_2En6(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -445,7 +444,7 @@ def test_wind_b_2En6(use_sed_temp, vars, met_changes, t_changes, tolerance, answ
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_wind_b_2En6')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_b_2En6']
 
 
 def test_wind_c_0_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -459,7 +458,7 @@ def test_wind_c_0_5(use_sed_temp, vars, met_changes, t_changes, tolerance, answe
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_wind_c_0_5')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_c_0_5']
 
 
 def test_wind_c_3(use_sed_temp, vars, met_changes, t_changes, tolerance, answers) -> None:
@@ -473,4 +472,4 @@ def test_wind_c_3(use_sed_temp, vars, met_changes, t_changes, tolerance, answers
     ).run(variables=vars)
     TwaterC = vars['TwaterC'] + dTwaterCdt * 60
 
-    assert pytest.approx(TwaterC, tolerance) == answers('test_wind_c_3')
+    assert pytest.approx(TwaterC, tolerance) == answers['test_wind_c_3']

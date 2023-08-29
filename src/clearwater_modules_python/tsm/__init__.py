@@ -1,1 +1,1 @@
-from tsm import Temperature
+from .model import EnergyBudget
