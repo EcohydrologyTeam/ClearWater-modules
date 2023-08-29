@@ -18,11 +18,11 @@ class EnergyBalanceInputs(TypedDict):
     """A dictionary of energy balance inputs.
 
     Args:
-        TwaterC: Water temperature entering cell (degrees C)
+        water_temp_c: Water temperature entering cell (degrees C)
         surface_area: Surface area of cell face (m^2?)
         volume: Volume of cell (m^3???)
     """
-    TwaterC: float
+    water_temp_c: float
     surface_area: float
     volume: float
 
@@ -120,11 +120,11 @@ class EnergyBudget(Process):
     ) -> float:
 
         # Temperature
-        TwaterK: float = shared_equations.celsius_to_kelvin(
-            variables['TwaterC'],
+        water_temp_k: float = shared_equations.celsius_to_kelvin(
+            variables['water_temp_c'],
         )
-        TairK: float = shared_equations.celsius_to_kelvin(
-            self.met_constants['TairC'],
+        air_temp_k: float = shared_equations.celsius_to_kelvin(
+            self.met_constants['air_temp_c'],
         )
 
         # Pressure
@@ -141,7 +141,7 @@ class EnergyBudget(Process):
 
         density_air: float = equations.density_air(
             self.met_constants['pressure_mb'],
-            TairK,
+            air_temp_k,
             mixing_ratio_air,
         )
 
@@ -151,12 +151,12 @@ class EnergyBudget(Process):
         # ----------------------------------------------------------------------------------------------
 
         emissivity_air: float = equations.emissivity_air(
-            TairK,
+            air_temp_k,
         )
 
         # Atmospheric (downwelling) longwave radiation (W/m2)
         q_longwave_down: float = shared_equations.mf_q_longwave_down(
-            TairK,
+            air_temp_k,
             emissivity_air,
             self.met_constants['cloudiness'],
             self.temp_constants['stephan_boltzmann'],
@@ -178,21 +178,21 @@ class EnergyBudget(Process):
         # Physical values that are functions of water temperature
 
         # Latent heat of vaporization (J/kg)
-        Lv: float = shared_equations.mf_latent_heat_vaporization(TwaterK)
+        lv: float = shared_equations.mf_latent_heat_vaporization(water_temp_k)
 
         # Density (kg/m3)
         density_water: float = shared_equations.mf_density_water(
-            variables['TwaterC'],
+            variables['water_temp_c'],
         )
 
         # Specific heat of water (J/kg/K)
-        Cp_water: float = shared_equations.mf_Cp_water(
-            variables['TwaterC'],
+        cp_water: float = shared_equations.mf_cp_water(
+            variables['water_temp_c'],
         )
 
         # Saturated vapor pressure computed from water temperature at previous time step (mb)
         esat_mb: float = shared_equations.mf_esat_mb(
-            TwaterK,
+            water_temp_k,
             self.temp_constants['a0'],
             self.temp_constants['a1'],
             self.temp_constants['a2'],
@@ -205,7 +205,7 @@ class EnergyBudget(Process):
         # ------------------------------------------------------------------------
         # Upwelling (back or water surface) longwave radiation (W/m2)
         q_longwave_up: float = shared_equations.mf_q_longwave_up(
-            TwaterK,
+            water_temp_k,
             self.temp_constants['emissivity_water'],
             self.temp_constants['stephan_boltzmann'],
         )
@@ -218,19 +218,19 @@ class EnergyBudget(Process):
         # Compute Richardson number and check stability
 
         # Richardson's number (unitless)
-        Ri_number: float = 0.0
+        ri_number: float = 0.0
 
         # Richardson's stablility function (unitless)
-        Ri_function: float = 1.0
+        ri_function: float = 1.0
 
         if (self.met_constants['wind_speed'] > 0.0 and self.temp_constants['richardson_option']):
             # Density of air computed at water surface temperature (kg/m3)
             density_air_sat: float = shared_equations.mf_density_air_sat(
-                TwaterK,
+                water_temp_k,
                 esat_mb,
                 self.met_constants['pressure_mb'],
             )
-            Ri_number, Ri_function = shared_equations.RichardsonNumber(
+            ri_number, ri_function = shared_equations.RichardsonNumber(
                 self.met_constants['wind_speed'],
                 density_air_sat,
                 density_air,
@@ -240,10 +240,10 @@ class EnergyBudget(Process):
         # ------------------------------------------------------------------------
         # Latent heat flux (W/m2)
         q_latent: float = equations.q_latent(
-            Ri_function,
+            ri_function,
             self.met_constants['pressure_mb'],
             density_water,
-            Lv,
+            lv,
             wind_function,
             esat_mb,
             self.met_constants['eair_mb'],
@@ -253,31 +253,31 @@ class EnergyBudget(Process):
         # Sensible heat flux
         q_sensible: float = equations.q_sensible(
             self.met_constants['wind_kh_kw'],
-            Ri_function,
+            ri_function,
             self.temp_constants['Cp_air'],
             density_water,
             wind_function,
-            TairK,
-            TwaterK,
+            air_temp_k,
+            water_temp_k,
         )
         # ------------------------------------------------------------------------
         # Compute sediment heat flux and temperature change
         q_sediment: float = 0.0
-        dTsedCdt: float = 0.0
+        dTdt_sediment_c: float = 0.0
         if self.use_sed_temp:
             q_sediment: float = equations.q_sediment(
                 self.temp_constants['pb'],
                 self.temp_constants['Cps'],
                 self.temp_constants['alphas'],
                 self.temp_constants['h2'],
-                self.met_constants['TsedC'],
-                variables['TwaterC'],
+                self.met_constants['sed_temp_c'],
+                variables['water_temp_c'],
             )
-            dTsedCdt: float = equations.dTdt_sediment_c(
+            dTdt_sediment_c: float = equations.dTdt_sediment_c(
                 self.temp_constants['alphas'],
                 self.temp_constants['h2'],
-                variables['TwaterC'],
-                self.met_constants['TsedC'],
+                variables['water_temp_c'],
+                self.met_constants['sed_temp_c'],
             )
 
         # ------------------------------------------------------------------------
@@ -287,29 +287,30 @@ class EnergyBudget(Process):
             q_latent,
             q_longwave_down,
             q_longwave_up,
-            self.met_constants['Q_solar'],
+            self.met_constants['q_solar'],
             q_sediment,
         )
 
         # ------------------------------------------------------------------------
         # Compute water temperature change
-        dTwaterCdt: float = equations.dTdt_water_c(
+        dTdt_water_c: float = equations.dTdt_water_c(
             q_net,
             variables['surface_area'],
             variables['volume'],
             density_water,
-            Cp_water,
+            cp_water,
         )
-        # TODO: why was the following commented out here -> TwaterC += dTwaterCdt
+        # TODO: why was the following commented out here -> water_temp_c += dTdt_water_c
 
         # ------------------------------------------------------------------------------------
         # Difference between air and water temperature (Celsius or Kelvins)
-        Ta_Tw: float = self.met_constants['TairC'] - variables['TwaterC']
+        ta_tw: float = self.met_constants['air_temp_c'] - \
+            variables['water_temp_c']
 
         # Difference between saturated and current vapor pressure (mb)
-        Esat_Eair: float = esat_mb - self.met_constants['eair_mb']
+        esat_eair: float = esat_mb - self.met_constants['eair_mb']
 
-        return dTwaterCdt
+        return dTdt_water_c
 
 
 if __name__ == '__main__':
@@ -318,9 +319,9 @@ if __name__ == '__main__':
     print(constants.DEFAULT_TEMPERATURE)
     print(constants.DEFAULT_METEOROLOGICAL)
     model_const = EnergyBudget(
-        meteo_constants={'TairC': 20},
+        meteo_constants={'air_temp_c': 20},
         temp_constants={'richardson_option': False},
     )
     print(model_const.met_constants)
-    assert model_const.met_constants['TairC'] == 20
+    assert model_const.met_constants['air_temp_c'] == 20
     assert model_const.temp_constants['richardson_option'] is False
