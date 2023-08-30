@@ -5,7 +5,7 @@ from typing import (
 
 
 class Temperature(TypedDict):
-    stephan_boltzmann: float
+    stefan_boltzmann: float
     cp_air: float
     emissivity_water: float
     gravity: float
@@ -52,7 +52,7 @@ DEFAULT_METEOROLOGICAL = Meteorological(
 )
 
 DEFAULT_TEMPERATURE = Temperature(
-    stephan_boltzmann=5.67e-8,
+    stefan_boltzmann=5.67e-8,
     cp_air=1005,
     emissivity_water=0.97,
     gravity=-9.806,
