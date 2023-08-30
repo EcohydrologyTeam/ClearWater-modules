@@ -3,8 +3,13 @@ import numba
 import numpy as np
 from enum import Enum
 from clearwater_modules_python.tsm import (
-    constants,
+    parameters,
     processes,
+)
+from clearwater_modules_python.base import (
+    ParametersDict,
+    Variable,
+    Model,
 )
 import clearwater_modules_python.shared.processes as shared_processes
 from typing import (
@@ -26,41 +31,32 @@ class EnergyBalanceInputs(TypedDict):
     volume: float
 
 
-class EnergyBalanceOutputs(TypedDict):
-    """A dictionary of energy balance outputs.
-
-    Args:
-    """
-    # TODO: copy these from the original code.
-    ...
-
-
-class EnergyBudget:
+class EnergyBudget(Model):
     """"""
 
     def __init__(
         self,
-        meteo_constants: Optional[dict[str, float]] = None,
-        temp_constants: Optional[dict[str, float]] = None,
+        meteo_parameters: Optional[dict[str, float]] = None,
+        temp_parameters: Optional[dict[str, float]] = None,
         use_sed_temp: bool = False,
     ) -> None:
-        self.__meteo_constants: constants.Meteorological = constants.DEFAULT_METEOROLOGICAL
-        self.__temp_constants: constants.Temperature = constants.DEFAULT_TEMPERATURE
+        self.__meteo_parameters: parameters.Meteorological = parameters.DEFAULT_METEOROLOGICAL
+        self.__temp_parameters: parameters.Temperature = parameters.DEFAULT_TEMPERATURE
 
-        if meteo_constants is None:
-            meteo_constants = {}
-        if temp_constants is None:
-            temp_constants = {}
+        if meteo_parameters is None:
+            meteo_parameters = {}
+        if temp_parameters is None:
+            temp_parameters = {}
 
         # set default values
-        for key, value in self.__meteo_constants.items():
-            self.__meteo_constants[key] = meteo_constants.get(
+        for key, value in self.__meteo_parameters.items():
+            self.__meteo_parameters[key] = meteo_parameters.get(
                 key,
                 value,
             )
 
-        for key, value in self.__temp_constants.items():
-            self.__temp_constants[key] = temp_constants.get(
+        for key, value in self.__temp_parameters.items():
+            self.__temp_parameters[key] = temp_parameters.get(
                 key,
                 value,
             )
@@ -68,23 +64,23 @@ class EnergyBudget:
         self.use_sed_temp = use_sed_temp
 
     @property
-    def met_constants(self) -> constants.Meteorological:
-        return self.__meteo_constants
+    def met_parameters(self) -> parameters.Meteorological:
+        return self.__meteo_parameters
 
     @property
-    def temp_constants(self) -> constants.Temperature:
-        return self.__temp_constants
+    def temp_parameters(self) -> parameters.Temperature:
+        return self.__temp_parameters
 
 
 if __name__ == '__main__':
-    print(constants.Temperature)
-    print(constants.Meteorological)
-    print(constants.DEFAULT_TEMPERATURE)
-    print(constants.DEFAULT_METEOROLOGICAL)
+    print(parameters.Temperature)
+    print(parameters.Meteorological)
+    print(parameters.DEFAULT_TEMPERATURE)
+    print(parameters.DEFAULT_METEOROLOGICAL)
     model_const = EnergyBudget(
-        meteo_constants={'air_temp_c': 20},
-        temp_constants={'richardson_option': False},
+        meteo_parameters={'air_temp_c': 20},
+        temp_parameters={'richardson_option': False},
     )
-    print(model_const.met_constants)
-    assert model_const.met_constants['air_temp_c'] == 20
-    assert model_const.temp_constants['richardson_option'] is False
+    print(model_const.met_parameters)
+    assert model_const.met_parameters['air_temp_c'] == 20
+    assert model_const.temp_parameters['richardson_option'] is False

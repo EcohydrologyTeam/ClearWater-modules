@@ -7,7 +7,7 @@ Importantly this assumes processes are given names that match the required argum
 from enum import EnumMeta
 from clearwater_modules_python.shared_types import (
     Process,
-    ConstantsDict,
+    ParametersDict,
 )
 
 
@@ -20,22 +20,22 @@ def get_equation_args(equation: Process) -> tuple[Process, list[str]]:
 # TODO: Fix this, work in progress
 
 
-def get_required_constants(
+def get_required_parameters(
     processes_args: list[list[str]],
-    constants: list[ConstantsDict | EnumMeta],
+    parameters: list[ParametersDict | EnumMeta],
 ) -> dict[str, float | int | bool]:
-    """Return a dict of constants required by the processes.
+    """Return a dict of parameters required by the processes.
 
     Args:
         processes_args: A list of lists of equation arguments.
-        constants: A list of entities (Enums or TypedDicts) containing constants.
+        parameters: A list of entities (Enums or TypedDicts) containing parameters.
     """
     ...
 
 
 def order_processes(
     processes: list[Process],
-    constants: list[str],
+    parameters: list[str],
 ) -> list[Process]:
     """Return a list of processes sorted by their required arguments."""
     sorted_processes: list[Process] = []

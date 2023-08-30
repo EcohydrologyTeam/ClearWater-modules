@@ -10,7 +10,7 @@ from typing import (
 )
 
 Process = Callable[..., float]
-ConstantsDict = dict[str, float | int | bool]
+ParametersDict = dict[str, float | int | bool]
 
 
 @dataclass(slots=True, frozen=True)
@@ -27,13 +27,13 @@ class Model(abc.ABC):
     """Abstract base class for all processes."""
 
     __required_inputs: TypedDict
-    __default_constants: TypedDict
+    __default_parameters: TypedDict
     __default_variables: list[Variable]
 
     def __init__(
         self,
-        required_inputs: ConstantsDict | xr.Dataset,
-        update_constants: Optional[ConstantsDict] = None,
+        required_inputs: ParametersDict | xr.Dataset,
+        update_parameters: Optional[ParametersDict] = None,
         track_non_state_variables: bool = False,
         ignore_variables: Optional[list[Variable | str]] = None,
         **kwargs,
@@ -42,7 +42,7 @@ class Model(abc.ABC):
 
         Args:
             required_inputs: Required inputs for the model.
-            update_constants: Optional constants to update.
+            update_parameters: Optional parameters to update.
             track_non_state_variables: Track non-state variables.
             ignore_variables: Variables to ignore.
         """
@@ -54,8 +54,8 @@ class Model(abc.ABC):
         ...
 
     @abc.abstractproperty
-    def constants(self) -> ConstantsDict | xr.Dataset:
-        """Return the constants."""
+    def parameters(self) -> ParametersDict | xr.Dataset:
+        """Return the parameters."""
         ...
 
     @abc.abstractmethod
