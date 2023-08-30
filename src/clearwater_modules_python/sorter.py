@@ -6,17 +6,20 @@ Importantly this assumes equations are given names that match the required argum
 
 from enum import EnumMeta
 from clearwater_modules_python.shared_types import (
-    Equation,
+    Process,
     ConstantsDict,
 )
 
-def get_equation_args(equation: Equation) -> tuple[Equation, list[str]]:
+
+def get_equation_args(equation: Process) -> tuple[Process, list[str]]:
     """Return a tuple with the equation and its required argument names."""
     args: list[str] = list(equation.__annotations__.keys())
     args.remove('return')
     return equation, args
 
 # TODO: Fix this, work in progress
+
+
 def get_required_constants(
     equations_args: list[list[str]],
     constants: list[ConstantsDict | EnumMeta],
@@ -29,12 +32,13 @@ def get_required_constants(
     """
     ...
 
+
 def order_equations(
-    equations: list[Equation],
+    equations: list[Process],
     constants: list[str],
-) -> list[Equation]:
+) -> list[Process]:
     """Return a list of equations sorted by their required arguments."""
-    sorted_equations: list[Equation] = []
+    sorted_equations: list[Process] = []
     while len(equations) > 0:
         for equation in equations:
             equation, args = get_equation_agrs(equation)
@@ -42,4 +46,3 @@ def order_equations(
                 sorted_equations.append(equation)
                 equations.remove(equation)
     return sorted_equations
-
