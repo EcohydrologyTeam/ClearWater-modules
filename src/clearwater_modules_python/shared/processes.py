@@ -1,30 +1,22 @@
+"""Process functions used by one or more modules"""
 import numba
-"""
-=======================================================================================
-ClearWater Modules: Water quality equations
-=======================================================================================
-
-Developed by:
-* Dr. Todd E. Steissberg (ERDC-EL)
-* Dr. Billy E. Johnson (ERDC-EL, LimnoTech)
-* Dr. Zhonglong Zhang (Portland State University)
-* Mr. Mark Jensen (HEC)
-
-This module computes the water quality of a single computational cell. The algorithms 
-and structure of this program were adapted from the Fortran 95 version of this module, 
-developed by:
-* Dr. Billy E. Johnson (ERDC-EL)
-* Dr. Zhonglong Zhang (Portland State University)
-* Mr. Mark Jensen (HEC)
-
-Version 1.0
-
-Initial Version: April 10, 2021
-Last Revision Date: April 11, 2021
-"""
 
 
-def ArrheniusCorrection(water_temp_c: float, rc20: float, theta: float):
+@numba.njit
+def celsius_to_kelvin(tempc: float) -> float:
+    return tempc + 273.16
+
+
+@numba.njit
+def kelvin_to_celsius(tempk: float) -> float:
+    return tempk - 273.16
+
+
+def arrhenius_correction(
+    water_temp_c: float,
+    rc20: float,
+    theta: float,
+) -> float:
     """
     Computes an adjusted kinetics reaction rate coefficient for the specified water 
     temperature using the van't Hoff form of the Arrhenius equation
@@ -46,49 +38,16 @@ def ArrheniusCorrection(water_temp_c: float, rc20: float, theta: float):
     return rc20 * theta**(water_temp_c - 20.0)
 
 
-class TempCorrection:
-    """
-    Temperature correction class
-    """
-
-    def __init__(self, rc20: float, theta: float):
-        self.rc20 = rc20
-        self.theta = theta
-
-    def arrhenius_correction(self, water_temp_c: float):
-        return ArrheniusCorrection(water_temp_c, self.rc20, self.theta)
-
-    # Functions to set the pathways dictionary
-
-
-def set_pathways_float(pathways, value: float, name: str, full_name: str, units: str = "", absolute_min: float = -1.0e3, absolute_max: float = 1.0e3, expected_min: float = -1.0e3, expected_max: float = 1.0e3, description: str = ""):
-    """
-    Set the pathway for a floating point value
-    """
-    pathways[name] = {"value": value, "name": name, "full_name": full_name, "units": units,
-                      "absolute_min": absolute_min, "absolute_max": absolute_max, "expected_min": expected_min,
-                      "expected_max": expected_max, "description": description}
-
-
-def set_pathways_int(pathways, value: int, name: str, full_name: str, units: str = "", absolute_min: int = -1e3, absolute_max: int = 1e3, expected_min: int = -1e3, expected_max: int = 1e3, description: str = ""):
-    """
-    Set the pathway for an integer value
-    """
-    pathways[name] = {"value": value, "name": name, "full_name": full_name, "units": units,
-                      "absolute_min": absolute_min, "absolute_max": absolute_max, "expected_min": expected_min,
-                      "expected_max": expected_max, "description": description}
-
-
-def set_pathways_bool(pathways, value: bool, name: str, full_name: str, description: str = ""):
-    """
-    Set the pathway for a boolean value
-    """
-    pathways[name] = {"value": value, "name": name,
-                      "full_name": full_name, "description": description}
-
-
 @numba.njit
-def mf_d_esat_dT(TwaterK: float) -> float:
+def mf_d_esat_dT(
+    TwaterK: float,
+    a1: float,
+    a2: float,
+    a3: float,
+    a4: float,
+    a5: float,
+    a6: float,
+) -> float:
     """
     Compute the derivative of function computing saturation vapor pressure 
     as a function of water temperature (Kelvin)
@@ -96,10 +55,14 @@ def mf_d_esat_dT(TwaterK: float) -> float:
     Fitting parameters for vapor pressure:
     Brutsaert (1982) Evaporation into the Atmosphere, p42
     """
-
-    # logger.debug(f'mf_d_esat_dT({TwaterK})')
-
-    return a1 + 2.0*a2*TwaterK + 3.0*a3*TwaterK**2.0 + 4.0*a4*TwaterK**3.0 + 5.0*a5*TwaterK**4.0 + 6.0*a6*TwaterK**5.0
+    return (
+        a1 +
+        (2.0 * a2 * TwaterK) +
+        (3.0 * a3 * TwaterK**2.0) +
+        (4.0 * a4 * TwaterK**3.0) +
+        (5.0 * a5 * TwaterK**4.0) +
+        (6.0 * a6 * TwaterK**5.0)
+    )
 
 
 # -----------------------------------------------------------------------------------
@@ -107,7 +70,12 @@ def mf_d_esat_dT(TwaterK: float) -> float:
 # -----------------------------------------------------------------------------------
 
 @numba.njit
-def mf_q_longwave_down(TairK: float, emissivity_air: float, cloudiness: float, stefan_boltzmann: float) -> float:
+def mf_q_longwave_down(
+    TairK: float,
+    emissivity_air: float,
+    cloudiness: float,
+    stefan_boltzmann: float,
+) -> float:
     """
     Compute downwelling longwave radiation (W/m2)
 
@@ -120,13 +88,15 @@ def mf_q_longwave_down(TairK: float, emissivity_air: float, cloudiness: float, s
         Downwelling longwave radiation (W/m2, float)
     """
 
-    # logger.debug(f'mf_q_longwave_down({TairK:.2f}, {emissivity_air:.2f}, {cloudiness:.2f})')
-
     return (1.0 + 0.17 * cloudiness**2) * emissivity_air * stefan_boltzmann * TairK**4.0
 
 
 @numba.njit
-def mf_q_longwave_up(TwaterK: float, emissivity_water: float, stefan_boltzmann: float) -> float:
+def mf_q_longwave_up(
+    TwaterK: float,
+    emissivity_water: float,
+    stefan_boltzmann: float,
+) -> float:
     """
     Compute upwelling longwave radiation (W/m2) as a function of water temperature (Kelvin)
     """
@@ -137,7 +107,16 @@ def mf_q_longwave_up(TwaterK: float, emissivity_water: float, stefan_boltzmann: 
 
 
 @numba.njit
-def mf_esat_mb(TwaterK: float, a0: float, a1: float, a2: float, a3: float, a4: float, a5: float, a6: float) -> float:
+def mf_esat_mb(
+    TwaterK: float,
+    a0: float,
+    a1: float,
+    a2: float,
+    a3: float,
+    a4: float,
+    a5: float,
+    a6: float,
+) -> float:
     """
     Compute the saturation vapor pressure as a function of water temperature (Kelvin)
 
@@ -145,70 +124,77 @@ def mf_esat_mb(TwaterK: float, a0: float, a1: float, a2: float, a3: float, a4: f
     Brutsaert (1982) Evaporation into the Atmosphere, p42.
     """
 
-    # logger.debug(f'mf_esat_mb({TwaterK:.2f})')
-
-    return a0 + TwaterK*(a1 + TwaterK*(a2 + TwaterK * (a3 + TwaterK * (a4 + TwaterK*(a5 + TwaterK*a6)))))
+    return (
+        a0 +
+        TwaterK *
+        (
+            a1 +
+            TwaterK *
+            (
+                a2 +
+                TwaterK * (
+                    a3 +
+                    TwaterK *
+                    (a4 + TwaterK * (a5 + TwaterK * a6))
+                )
+            )
+        )
+    )
 
 
 # Temperature conversion functions
 
 @numba.njit
-def celsius_to_kelvin(tempc: float) -> float:
-    return tempc + 273.16
+def ri_number(
+    gravity: float,
+    density_air: float,
+    density_air_sat: float,
+    wind_speed: float,
+) -> float:
+    """Calculates the Richardson Number.
 
-
-@numba.njit
-def kelvin_to_celsius(tempk: float) -> float:
-    return tempk - 273.16
-
-
-@numba.njit
-def RichardsonNumber(wind_speed: float, density_air_sat: float, density_air: float, gravity: float) -> list:
+    Args:
+        gravity: Gravity (m/s2)
+        density_air: Density of air (kg/m3)
+        density_air_sat: Saturation density of air (kg/m3)
+        wind_speed: Wind speed (m/s)
     """
-    Compute the Richardson Number. This is used in latent and sensible heat flux 
-    computations to correct for atmospheric stability.
-
-    Richardson Number:
-        0.01 >= Ri_fxn        -> unstable
-        0.01 <= Ri_fxn <  2   -> stable
-        -0.01 <  Ri_fxn < 0.01 -> neutral
-
-    Parameters:
-        wind_speed (float):         Wind speed (m/s)
-        density_air_sat (float):    Saturation density of air (kg/m3)
-        density_air (float):        Density of air (kg/m3)
-
-    Returns:
-        Richardson Number and Richardson Function (list)
-    """
-
-    # logger.debug(f'RichardsonNumber({wind_speed:.2f}, {density_air_sat:.2f}, {density_air:.2f})')
-
-    Ri_fxn: float = 0.0
-    Ri_No: float = gravity * (density_air - density_air_sat) * \
+    return (
+        gravity *
+        (density_air - density_air_sat) *
         2.0 / (density_air * (wind_speed**2.0))
+    )
+
+
+@numba.njit
+def ri_function(ri_number: float) -> float:
+    """Calculates the Richardson Function from the Richardson Number.
+    Richardson Number:
+        Unstable: 0.01 >= ri_function
+        Stable: 0.01 <= ri_function < 2
+        Neutral: -0.01 <  ri_function < 0.01
+    """
 
     # Set bounds
-    if (Ri_No > 2.0):
-        Ri_No = 2.0
-    if (Ri_No < -1.0):
-        Ri_No = -1.0
+    if ri_number > 2.0:
+        ri_number = 2.0
+    elif ri_number < -1.0:
+        ri_number = -1.0
 
-    if (Ri_No < 0.0):
-        if (Ri_No >= - 0.01):
+    if ri_number < 0.0:
+        if ri_number >= - 0.01:
             # neutral
-            Ri_fxn = 1.0
+            return 1.0
         else:
             # unstable
-            Ri_fxn = (1.0 - 22.0 * Ri_No)**0.80
+            return (1.0 - 22.0 * ri_number)**0.80
     else:
-        if (Ri_No <= 0.01):
+        if ri_number <= 0.01:
             # neutral
-            Ri_fxn = 1.0
+            return 1.0
         else:
             # stable
-            Ri_fxn = (1.0 + 34.0 * Ri_No)**(-0.80)
-    return (Ri_No, Ri_fxn)
+            return (1.0 + 34.0 * ri_number)**(-0.80)
 
 
 @numba.njit
@@ -216,8 +202,6 @@ def mf_latent_heat_vaporization(TwaterK: float) -> float:
     """
     Compute the latent heat of vaporization (W/m2) as a function of water temperature (Kelvin)
     """
-
-    # logger.debug(f'mf_latent_heat_vaporization({TwaterK:.2f})')
 
     return 2499999 - 2385.74 * TwaterK
 
@@ -230,9 +214,20 @@ def mf_density_water(water_temp_c: float) -> float:
 
     # logger.debug(f'mf_density_water({water_temp_c:.2f})')
 
-    return 999.973 * (1.0 -
-                      (((water_temp_c - 3.9863) * (water_temp_c - 3.9863) * (water_temp_c + 288.9414)) /
-                       (508929.2 * (water_temp_c + 68.12963))))
+    return (
+        999.973 *
+        (1.0 - (
+            (
+                (water_temp_c - 3.9863) *
+                (water_temp_c - 3.9863) *
+                (water_temp_c + 288.9414)
+            ) /
+            (
+                508929.2 *
+                (water_temp_c + 68.12963)
+            )
+        ))
+    )
 
 
 @numba.njit
@@ -262,30 +257,17 @@ def mf_cp_water(water_temp_c: float) -> float:
     This is used in computing the source/sink term.
     """
 
-    # logger.debug(f'mf_esat_mb({water_temp_c:.2f})')
-
     if water_temp_c <= 0.0:
-        cp_water = 4218.0
-    elif (water_temp_c <= 5.0):
-        cp_water = 4202.0
-    elif (water_temp_c <= 10.0):
-        cp_water = 4192.0
-    elif (water_temp_c <= 15.0):
-        cp_water = 4186.0
-    elif (water_temp_c <= 20.0):
-        cp_water = 4182.0
-    elif (water_temp_c <= 25.0):
-        cp_water = 4180.0
+        return 4218.0
+    elif water_temp_c <= 5.0:
+        return 4202.0
+    elif water_temp_c <= 10.0:
+        return 4192.0
+    elif water_temp_c <= 15.0:
+        return 4186.0
+    elif water_temp_c <= 20.0:
+        return 4182.0
+    elif water_temp_c <= 25.0:
+        return 4180.0
     else:
-        cp_water = 4178.0
-    return cp_water
-
-
-def print_pathways(pathways):
-    """
-    Print the values of the pathway variables computed by TSM
-    """
-    print('Pathways:')
-    for key in pathways.keys():
-        p = pathways[key]
-        print("%20s%12.3f %s" % (p['name'], p['value'], p['units']))
+        return 4178.0
