@@ -1,3 +1,4 @@
+"""Constants for the TSM. The TypedDicts allow for updating upon module init"""
 from typing import (
     TypedDict,
 )

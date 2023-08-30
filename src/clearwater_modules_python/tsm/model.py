@@ -1,3 +1,4 @@
+"""Water Temperature Simulation Model (TSM) module."""
 import numba
 import numpy as np
 from enum import Enum
