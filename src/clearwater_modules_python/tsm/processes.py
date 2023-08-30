@@ -1,4 +1,4 @@
-"""JIT compiled equations for the heat model."""
+"""JIT compiled processes for the heat model."""
 import numba
 
 

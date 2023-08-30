@@ -4,7 +4,7 @@ import numpy as np
 from enum import Enum
 from clearwater_modules_python.tsm import (
     constants,
-    equations,
+    processes,
 )
 import clearwater_modules_python.shared.processes as shared_processes
 from typing import (

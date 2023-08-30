@@ -1,7 +1,7 @@
-"""Sorts and validates a stack of equations based on their annotations.
+"""Sorts and validates a stack of processes based on their annotations.
 
-The idea here is to make the manual ordering of equations unnecessary, allowing for improved flexibility and maintainability.
-Importantly this assumes equations are given names that match the required arguments of other equations.
+The idea here is to make the manual ordering of processes unnecessary, allowing for improved flexibility and maintainability.
+Importantly this assumes processes are given names that match the required arguments of other processes.
 """
 
 from enum import EnumMeta
@@ -21,28 +21,28 @@ def get_equation_args(equation: Process) -> tuple[Process, list[str]]:
 
 
 def get_required_constants(
-    equations_args: list[list[str]],
+    processes_args: list[list[str]],
     constants: list[ConstantsDict | EnumMeta],
 ) -> dict[str, float | int | bool]:
-    """Return a dict of constants required by the equations.
+    """Return a dict of constants required by the processes.
 
     Args:
-        equations_args: A list of lists of equation arguments.
+        processes_args: A list of lists of equation arguments.
         constants: A list of entities (Enums or TypedDicts) containing constants.
     """
     ...
 
 
-def order_equations(
-    equations: list[Process],
+def order_processes(
+    processes: list[Process],
     constants: list[str],
 ) -> list[Process]:
-    """Return a list of equations sorted by their required arguments."""
-    sorted_equations: list[Process] = []
-    while len(equations) > 0:
-        for equation in equations:
+    """Return a list of processes sorted by their required arguments."""
+    sorted_processes: list[Process] = []
+    while len(processes) > 0:
+        for equation in processes:
             equation, args = get_equation_agrs(equation)
-            if all(arg in sorted_equations for arg in args):
-                sorted_equations.append(equation)
-                equations.remove(equation)
-    return sorted_equations
+            if all(arg in sorted_processes for arg in args):
+                sorted_processes.append(equation)
+                processes.remove(equation)
+    return sorted_processes
