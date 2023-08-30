@@ -8,9 +8,11 @@ from typing import (
     Optional,
 )
 
-Equation = Callable[[], float]
+Equation = Callable[..., float]
+ConstantsDict = dict[str, float | int | bool]
 
-class Process(abc.ABC):
+
+class Model(abc.ABC):
     """Abstract base class for all processes."""
     
     __required_inputs: TypedDict
@@ -19,8 +21,8 @@ class Process(abc.ABC):
     
     def __init__(
         self,
-        required_inputs: TypedDict | xr.Dataset,
-        update_constants: Optional[dict[str, float | int | bool]],
+        required_inputs: ConstantsDict | xr.Dataset,
+        update_constants: Optional[ConstantsDict],
         update_equations: Optional[list[Equation]],
         **kwargs,
     ) -> None:
@@ -32,12 +34,12 @@ class Process(abc.ABC):
         ...
 
     @abc.abstractproperty
-    def constants(self) -> TypedDict | xr.Dataset:
+    def constants(self) -> ConstantsDict| xr.Dataset:
         """Return the constants."""
         ... 
 
     @abc.abstractmethod
-    def run(self) -> TypedDict | xr.Dataset:
+    def run(self) -> ConstantsDict | xr.Dataset:
         """Run the process."""
         ...
 

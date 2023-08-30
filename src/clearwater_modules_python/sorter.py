@@ -4,11 +4,13 @@ The idea here is to make the manual ordering of equations unnecessary, allowing 
 Importantly this assumes equations are given names that match the required arguments of other equations.
 """
 
-from enum import Enum
-from typing import TypedDict
-from shared_types import Equation
+from enum import EnumMeta
+from clearwater_modules_python.shared_types import (
+    Equation,
+    ConstantsDict,
+)
 
-def get_equation_agrs(equation: Equation) -> tuple[Equation, list[str]]:
+def get_equation_args(equation: Equation) -> tuple[Equation, list[str]]:
     """Return a tuple with the equation and its required argument names."""
     args: list[str] = list(equation.__annotations__.keys())
     args.remove('return')
@@ -17,7 +19,7 @@ def get_equation_agrs(equation: Equation) -> tuple[Equation, list[str]]:
 # TODO: Fix this, work in progress
 def get_required_constants(
     equations_args: list[list[str]],
-    constants: list[TypedDict | Enum],
+    constants: list[ConstantsDict | EnumMeta],
 ) -> dict[str, float | int | bool]:
     """Return a dict of constants required by the equations.
 
