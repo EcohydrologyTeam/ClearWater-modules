@@ -3,7 +3,6 @@
 The idea here is to make the manual ordering of processes unnecessary, allowing for improved flexibility and maintainability.
 Importantly this assumes processes are given names that match the required arguments of other processes.
 """
-import numba
 from typing import (
     TypedDict,
 )
@@ -48,25 +47,30 @@ def get_process_args(equation: Process) -> list[str]:
     return args
 
 
-@numba.njit
 def __rapid_sort(
     static_vars: list[str],
     variable_args_dict: dict[str, tuple[Variable, list[str]]],
 ) -> list[Variable]:
     """Sorts dynamic variables based on their required arguments."""
     ordered_vars: list[Variable] = []
-    previous_len: int = 0
+    previous_len: int = len(variable_args_dict)
     while len(variable_args_dict) > 0:
+        drop_keys: list[str] = []
         for var_name, item in variable_args_dict.items():
             var, args = item
-            if all(arg in ordered_vars + static_vars for arg in args):
+            ordered_names: list[str] = [var.name for var in ordered_vars]
+            if all(arg in ordered_names + static_vars for arg in args):
                 ordered_vars.append(var)
-                del variable_args_dict[var_name]
+                drop_keys.append(var_name)
+        for key in drop_keys:
+            variable_args_dict.pop(key)
         if len(variable_args_dict) == previous_len:
             raise ValueError(
                 f'Circular dependency detected in dynamic/state variables! '
                 f'Variables remaining: {list(variable_args_dict.keys())}'
             )
+        else:
+            previous_len = len(variable_args_dict)
     return ordered_vars
 
 
