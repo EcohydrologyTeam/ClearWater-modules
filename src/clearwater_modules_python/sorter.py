@@ -3,6 +3,7 @@
 The idea here is to make the manual ordering of processes unnecessary, allowing for improved flexibility and maintainability.
 Importantly this assumes processes are given names that match the required arguments of other processes.
 """
+import numba
 from typing import (
     TypedDict,
 )
@@ -47,24 +48,30 @@ def get_process_args(equation: Process) -> list[str]:
     return args
 
 
-def validate_state_variables(variables_dict: SplitVariablesDict) -> None:
-    """Checks that the parameters for all state variables are provided by static/dynamic variables."""
-    for var in variables_dict['state']:
-        if var.process is None:
+@numba.njit
+def __rapid_sort(
+    static_vars: list[str],
+    variable_args_dict: dict[str, tuple[Variable, list[str]]],
+) -> list[Variable]:
+    """Sorts dynamic variables based on their required arguments."""
+    ordered_vars: list[Variable] = []
+    previous_len: int = 0
+    while len(variable_args_dict) > 0:
+        for var_name, item in variable_args_dict.items():
+            var, args = item
+            if all(arg in ordered_vars + static_vars for arg in args):
+                ordered_vars.append(var)
+                del variable_args_dict[var_name]
+        if len(variable_args_dict) == previous_len:
             raise ValueError(
-                f'State variable {var.name} must be calculated by a process.'
+                f'Circular dependency detected in dynamic/state variables! '
+                f'Variables remaining: {list(variable_args_dict.keys())}'
             )
-        args: list[str] = get_process_args(var.process)
-        for arg in args:
-            if arg not in variables_dict['static'] + variables_dict['dynamic']:
-                raise ValueError(
-                    f'Parameter {arg} for state variable {var.name} must be provided by a static or dynamic variable.'
-                )
+    return ordered_vars
 
 
 def sort_dynamic_variables(variables_dict: SplitVariablesDict) -> None:
     """Sorts dynamic variables based on their required arguments."""
-    ordered_vars: list[Variable] = []
     static_vars: list[str] = []
     for static_var in variables_dict['static']:
         static_vars.append(static_var.name)
@@ -77,14 +84,4 @@ def sort_dynamic_variables(variables_dict: SplitVariablesDict) -> None:
             )
         variable_args[var.name] = var, get_process_args(var.process)
 
-    previous_len: int = 0
-    while len(variable_args) > 0:
-        for var_name, item in variable_args.items():
-            var, args = item
-            if all(arg in ordered_vars + static_vars for arg in args):
-                ordered_vars.append(var)
-                del variable_args[var_name]
-        if len(variable_args) == previous_len:
-            raise ValueError(
-                'Circular dependency detected in dynamic/state variables.'
-            )
+    return __rapid_sort(static_vars, variable_args)
