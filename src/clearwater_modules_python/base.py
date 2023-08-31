@@ -7,11 +7,12 @@ from typing import (
     TypedDict,
     Callable,
     Optional,
+    Literal,
 )
 
 Process = Callable[..., float]
 ParametersDict = dict[str, float | int | bool]
-
+VariableTypes = Literal['static', 'dynamic', 'state']
 
 @dataclass(slots=True, frozen=True)
 class Variable:
@@ -20,7 +21,8 @@ class Variable:
     long_name: str
     units: str
     description: str
-    process: Process
+    use: VariableTypes
+    process: Optional[Process] = None
 
 
 class Model(abc.ABC):
