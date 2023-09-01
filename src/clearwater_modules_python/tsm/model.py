@@ -6,30 +6,14 @@ from clearwater_modules_python.tsm import (
     parameters,
     processes,
 )
-from clearwater_modules_python.base import (
-    Model,
-)
+from clearwater_modules_python import base
 import clearwater_modules_python.shared.processes as shared_processes
 from typing import (
-    TypedDict,
     Optional,
 )
 
 
-class EnergyBalanceInputs(TypedDict):
-    """A dictionary of energy balance inputs.
-
-    Args:
-        water_temp_c: Water temperature entering cell (degrees C)
-        surface_area: Surface area of cell face (m^2?)
-        volume: Volume of cell (m^3???)
-    """
-    water_temp_c: float
-    surface_area: float
-    volume: float
-
-
-class EnergyBudget(Model):
+class EnergyBudget(base.Model):
     """"""
 
     def __init__(
@@ -70,15 +54,3 @@ class EnergyBudget(Model):
         return self.__temp_parameters
 
 
-if __name__ == '__main__':
-    print(parameters.Temperature)
-    print(parameters.Meteorological)
-    print(parameters.DEFAULT_TEMPERATURE)
-    print(parameters.DEFAULT_METEOROLOGICAL)
-    model_const = EnergyBudget(
-        meteo_parameters={'air_temp_c': 20},
-        temp_parameters={'richardson_option': False},
-    )
-    print(model_const.met_parameters)
-    assert model_const.met_parameters['air_temp_c'] == 20
-    assert model_const.temp_parameters['richardson_option'] is False
