@@ -85,3 +85,10 @@ def test_static_array(model: Model) -> None:
         assert var.name in model.dataset.data_vars
         assert len(model.dataset[var.name].dims) == 2
         assert model.dataset[var.name].shape == (10, 10)
+
+def test_state_array(model: Model) -> None:
+    """Test the state array."""
+    for var in model.state_variables:
+        assert var.name in model.dataset.data_vars
+        assert len(model.dataset[var.name].dims) == 3
+        assert model.dataset[var.name].shape == (1, 10, 10)

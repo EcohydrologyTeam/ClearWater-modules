@@ -1,8 +1,9 @@
 """Stored base types shared by all sub-modules."""
-
+import warnings
 from re import S
 import xarray as xr
 from dataclasses import dataclass
+import clearwater_modules_python.utils as utils
 from typing import (
     Iterable,
     Protocol,
@@ -56,6 +57,7 @@ class Model(CanRegisterVariable):
         initial_state_values: InitialVariablesDict,
         static_variable_values: InitialVariablesDict,
         track_dynamic_variables: bool = False,
+        hotstart_dataset: xr.Dataset | None = None,
         time_dim: Optional[str] = None,
     ) -> None:
         """Initialize the model, should be accessed by subclasses.
@@ -65,17 +67,31 @@ class Model(CanRegisterVariable):
                 values for static and (optionally) state variables as values.
         """
         self.initial_state_values = initial_state_values
+        for state_var in self.state_variables:
+            if state_var.name not in self.initial_state_values.keys():
+                 raise ValueError(
+                     f'No initial value found for state variable: {state_var.name}.'
+                 )
+
+
         self.static_variable_values = static_variable_values
         self.track_dynamic_variables = track_dynamic_variables
         if not time_dim:
             time_dim = 'time_step'
         self.time_dim = time_dim
+        
+        if hotstart_dataset is not None:
+            if self.time_dim not in hotstart_dataset.dims:
+                raise ValueError(
+                    f'Hotstart dataset must have a {self.time_dim} dimension.'
+                )
+            self.dataset = hotstart_dataset
+        else:
+            # initialize the main model dataset
+            self.dataset: xr.Dataset = self.init_state_arrays()
 
-        # initialize the main model dataset
-        self.dataset: xr.Dataset = self.init_state_arrays()
-
-        # make 2-dimensional static variable arrays
-        self.init_static_arrays()
+            # make 2-dimensional static variable arrays
+            self.init_static_arrays()
 
 
     @classmethod
@@ -117,6 +133,21 @@ class Model(CanRegisterVariable):
     def state_variables(self) -> list[Variable]:
         """Return a list of state variables."""
         return [var for var in self._variables if var.use == 'state']
+    
+    @property
+    def static_variables_names(self) -> list[str]:
+        """Return a list of static variable names."""
+        return [var.name for var in self.static_variables]
+    
+    @property
+    def dynamic_variables_names(self) -> list[str]:
+        """Return a list of dynamic variable names."""
+        return [var.name for var in self.dynamic_variables]
+
+    @property
+    def state_variables_names(self) -> list[str]:
+        """Return a list of state variable names."""
+        return [var.name for var in self.state_variables]
 
     def validate_inputs(self) -> None:
         """Validate inputs."""
@@ -128,39 +159,50 @@ class Model(CanRegisterVariable):
     
     def init_state_arrays(self) -> xr.Dataset:
         """Initializes the state arrays."""
-        ds: xr.Dataset = None
 
         match_dims: list[str] = []
-        arrays: list[xr.DataArray] = []
-
+        data_arrays: dict[str, xr.DataArray] = {}
+        
         for k, v in self.initial_state_values.items():
-            if k not in self.state_variables:
+            if k not in self.state_variables_names:
+                warnings.warn(
+                    f'Variable {k} is not a state variable, skipping.',
+                )
                 continue
             if not isinstance(v, xr.DataArray):
                 match_dims.append(k)
             else:
-                arrays.append(v)
-
-        # TODO: write this logic
-
-        for state_var in self.state_variables:
-            if state_var.name not in self.initial_state_values.keys():
-                 raise ValueError(
-                     f'No initial value found for state variable: {state_var.name}.'
-                 )
+                utils.validate_arrays(v, *list(data_arrays.values()))
+                data_arrays[k] = v
+        if len(data_arrays) > 0:
+            array_i = list(data_arrays.values())[0]
+        else:
+            array_i = xr.DataArray(
+                [[1.0]],
+                dims=['x', 'y'],
+                coords=[[1.0], [1.0]],
+            )
+        for var_name in match_dims:
+            data_arrays[var_name] = xr.full_like(
+                array_i, 
+                self.initial_state_values[var_name],
+                dtype=type(self.initial_state_values[var_name]),
+            )
+        ds = xr.Dataset(
+            data_vars=data_arrays,
+            coords=array_i.coords,
+        )
+        return ds.expand_dims({self.time_dim: [0]}) 
+   
 
     def init_static_arrays(self) -> None:
         """Return a static dataset."""
-        ds: xr.Dataset = xr.Dataset(
-            coords=self.dataset.coords,
-            name='static_variables',
-        )
         for var in self.static_variables:
             if var.name not in self.static_variable_values.keys():
                 raise ValueError(
                     f'No initial value found for static variable: {var.name}.'
                 )
-            if var.name in ds.coords.keys():
+            if var.name in self.dataset.coords.keys():
                 raise ValueError(
                     f'Variable name {var.name} already exists in coords.'
                 )
@@ -169,13 +211,12 @@ class Model(CanRegisterVariable):
                 'units': var.units,
                 'description': var.description,
             }
-            ds[var.name] = xr.DataArray(
-                data=self.static_variable_values[var.name],
-                dims=ds.dims,
-                coords=ds.coords,
-                attrs=attrs,
-            )
-        return ds
+            self.dataset[var.name] = xr.full_like(
+                self.dataset[list(self.dataset.data_vars)[0]],
+                self.static_variable_values[var.name],
+                dtype=type(self.static_variable_values[var.name]),
+            ).sel({self.time_dim: 0})
+            self.dataset[var.name].attrs = attrs
 
 
 def register_variable(models: CanRegisterVariable | Iterable[CanRegisterVariable]):
