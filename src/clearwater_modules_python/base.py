@@ -114,6 +114,15 @@ class Model(CanRegisterVariable):
             var for var in cls._variables if var.name not in variables
         ]
     
+    @classmethod
+    def get_variable(cls, name: str) -> Variable:
+        """Returns a variable dataclass by name"""
+        for var in cls._variables:
+            if var.name == name:
+                return var
+        raise ValueError(f'No variable found with name: {name}')
+
+
     @property
     def all_variables(self) -> list[Variable]:
         """Return a list of variables."""
@@ -183,10 +192,17 @@ class Model(CanRegisterVariable):
                 coords=[[1.0], [1.0]],
             )
         for var_name in match_dims:
+            variable = self.get_variable(var_name)
+            attrs = {
+                'long_name': variable.long_name,
+                'units': variable.units,
+                'description': variable.description,
+            }
             data_arrays[var_name] = xr.full_like(
                 array_i, 
                 self.initial_state_values[var_name],
                 dtype=type(self.initial_state_values[var_name]),
+                attrs=attrs,
             )
         ds = xr.Dataset(
             data_vars=data_arrays,

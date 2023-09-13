@@ -12,7 +12,12 @@ def initial_array():
     return xr.DataArray(
         data=1.0,
         dims=['y', 'x'],
-        coords={'x': range(10), 'y': range(10)}
+        coords={'x': range(10), 'y': range(10)},
+        attrs={
+            'long_name': 'Initial Array',
+            'units': 'm',
+            'description': 'An initial array.',
+        }
     )
 
 

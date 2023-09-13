@@ -85,6 +85,9 @@ def test_static_array(model: Model) -> None:
         assert var.name in model.dataset.data_vars
         assert len(model.dataset[var.name].dims) == 2
         assert model.dataset[var.name].shape == (10, 10)
+        assert 'long_name' in model.dataset[var.name].attrs
+        assert 'units' in model.dataset[var.name].attrs
+        assert 'description' in model.dataset[var.name].attrs
 
 def test_state_array(model: Model) -> None:
     """Test the state array."""
@@ -92,3 +95,8 @@ def test_state_array(model: Model) -> None:
         assert var.name in model.dataset.data_vars
         assert len(model.dataset[var.name].dims) == 3
         assert model.dataset[var.name].shape == (1, 10, 10)
+        assert 'long_name' in model.dataset[var.name].attrs
+        assert 'units' in model.dataset[var.name].attrs
+        assert 'description' in model.dataset[var.name].attrs
+
+
