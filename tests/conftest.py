@@ -1,7 +1,7 @@
 """Shared pytest fixtures."""
 import pytest
 import xarray as xr
-from clearwater_modules_python.base import (
+from clearwater_modules_python.shared.types import (
     Variable,
     Process,
 )

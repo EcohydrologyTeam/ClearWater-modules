@@ -4,43 +4,17 @@ from re import S
 import xarray as xr
 from dataclasses import dataclass
 import clearwater_modules_python.utils as utils
-from typing import (
-    Iterable,
-    Protocol,
-    TypedDict,
-    Callable,
-    Optional,
-    Literal,
-    runtime_checkable,
+import clearwater_modules_python.sorter as sorter
+from clearwater_modules_python.shared.types import (
+    InitialVariablesDict,
+    Variable,
 )
-
-Process = Callable[..., float]
-InitialVariablesDict = dict[str, float | int | bool]
-VariableTypes = Literal['static', 'dynamic', 'state']
-
-@dataclass(slots=True, frozen=True)
-class Variable:
-    """Variable type."""
-    name: str
-    long_name: str
-    units: str
-    description: str
-    use: VariableTypes
-    process: Optional[Process] = None
-
-
-class SplitVariablesDict(TypedDict):
-    """A dict containing all variables split by type.
-
-    Attributes:
-        static: A list of static variables (out).
-        dynamic: A list of dynamic variables (in).
-        state: A list of state variables (in/out).
-    """
-    static: list[Variable]
-    dynamic: list[Variable]
-    state: list[Variable]
-
+from typing import (
+    runtime_checkable,
+    Protocol,
+    Optional,
+    Iterable,
+)
 
 @runtime_checkable
 class CanRegisterVariable(Protocol):
@@ -51,7 +25,7 @@ class CanRegisterVariable(Protocol):
 
 class Model(CanRegisterVariable):
     _variables: list[Variable] = []
-    
+
     def __init__(
         self, 
         initial_state_values: InitialVariablesDict,
@@ -92,6 +66,8 @@ class Model(CanRegisterVariable):
 
             # make 2-dimensional static variable arrays
             self.init_static_arrays()
+        
+        self._sorted_variables: list[Variable] = []
 
 
     @classmethod
@@ -104,6 +80,8 @@ class Model(CanRegisterVariable):
         """Register a variable with the model."""
         if variable.name not in cls.get_variable_names():
             cls._variables.append(variable)
+            cls._sorted_variables = []
+
     
     @classmethod
     def unregister_variables(cls, variables: str | list[str]) -> None:
@@ -122,7 +100,6 @@ class Model(CanRegisterVariable):
                 return var
         raise ValueError(f'No variable found with name: {name}')
 
-
     @property
     def all_variables(self) -> list[Variable]:
         """Return a list of variables."""
@@ -131,17 +108,17 @@ class Model(CanRegisterVariable):
     @property
     def static_variables(self) -> list[Variable]:
         """Return a list of static variables."""
-        return [var for var in self._variables if var.use == 'static']
+        return [var for var in self.all_variables if var.use == 'static']
 
     @property
     def dynamic_variables(self) -> list[Variable]:
         """Return a list of dynamic variables."""
-        return [var for var in self._variables if var.use == 'dynamic']
+        return [var for var in self.all_variables if var.use == 'dynamic']
 
     @property
     def state_variables(self) -> list[Variable]:
         """Return a list of state variables."""
-        return [var for var in self._variables if var.use == 'state']
+        return [var for var in self.all_variables if var.use == 'state']
     
     @property
     def static_variables_names(self) -> list[str]:
@@ -158,9 +135,15 @@ class Model(CanRegisterVariable):
         """Return a list of state variable names."""
         return [var.name for var in self.state_variables]
 
-    def validate_inputs(self) -> None:
-        """Validate inputs."""
-        ...
+    @property
+    def sorted_dynamic_variables(self) -> list[Variable]:
+        """Return a list of variables in order."""
+        if len(self._sorted_variables) == 0:
+            self._sorted_variables = sorter.sort_dynamic_variables(
+                sorter.split_variables(self.all_variables),
+            )
+        return self.all_variables
+
 
     def run(self) -> xr.Dataset:
         """Run the process."""
@@ -168,7 +151,6 @@ class Model(CanRegisterVariable):
     
     def init_state_arrays(self) -> xr.Dataset:
         """Initializes the state arrays."""
-
         match_dims: list[str] = []
         data_arrays: dict[str, xr.DataArray] = {}
         

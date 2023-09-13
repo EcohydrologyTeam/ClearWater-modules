@@ -1,7 +1,7 @@
 """Tests the processes_sort module."""
 import pytest
 import typing
-from clearwater_modules_python.base import (
+from clearwater_modules_python.shared.types import (
     Process,
     Variable,
     VariableTypes,
