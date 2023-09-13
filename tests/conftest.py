@@ -5,6 +5,7 @@ from clearwater_modules_python.base import (
     Variable,
     Process,
 )
+
 @pytest.fixture(scope='session')
 def initial_ones_array():
     """Return a 10x10 xarray.DataArray."""
@@ -38,7 +39,7 @@ def process_functions() -> list[Process]:
 
 
 @pytest.fixture(scope='session')
-def static_vars() -> list[Variable]:
+def static_variables() -> list[Variable]:
     """Return a static Variable."""
     out_vars: list[Variable] = []
     for i in ['a', 'b']:
