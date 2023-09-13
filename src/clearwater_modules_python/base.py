@@ -48,47 +48,47 @@ class CanRegisterVariable(Protocol):
         ...
 
 class Model(CanRegisterVariable):
-    __variables: list[Variable]
+    _variables: list[Variable] = []
     
     @classmethod
     def get_variable_names(cls) -> list[str]:
         """Return a list of default variable names."""
-        return [var.name for var in cls.__variables]
+        return [var.name for var in cls._variables]
 
     @classmethod
     def register_variable(cls, variable: Variable) -> None:
         """Register a variable with the model."""
         if variable.name not in cls.get_variable_names():
-            cls.__variables.append(variable)
+            cls._variables.append(variable)
     
     @classmethod
     def unregister_variables(cls, variables: str | list[str]) -> None:
         """Unregister a variable with the model."""
         if isinstance(variables, str):
             variables = [variables]
-        cls.__variables = [
-            var for var in cls.__variables if var.name not in variables
+        cls._variables = [
+            var for var in cls._variables if var.name not in variables
         ]
     
     @property
     def all_variables(self) -> list[Variable]:
         """Return a list of variables."""
-        return self.__variables
+        return self._variables
     
     @property
     def static_variables(self) -> list[Variable]:
         """Return a list of static variables."""
-        return [var for var in self.__variables if var.use == 'static']
+        return [var for var in self._variables if var.use == 'static']
 
     @property
     def dynamic_variables(self) -> list[Variable]:
         """Return a list of dynamic variables."""
-        return [var for var in self.__variables if var.use == 'dynamic']
+        return [var for var in self._variables if var.use == 'dynamic']
 
     @property
     def state_variables(self) -> list[Variable]:
         """Return a list of state variables."""
-        return [var for var in self.__variables if var.use == 'state']
+        return [var for var in self._variables if var.use == 'state']
 
     def validate_inputs(self) -> None:
         """Validate inputs."""
