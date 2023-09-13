@@ -7,7 +7,7 @@ from clearwater_modules_python.base import (
 )
 
 @pytest.fixture(scope='session')
-def initial_ones_array():
+def initial_array():
     """Return a 10x10 xarray.DataArray."""
     return xr.DataArray(
         data=1.0,

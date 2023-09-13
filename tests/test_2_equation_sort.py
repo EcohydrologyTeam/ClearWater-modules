@@ -2,6 +2,7 @@
 import pytest
 import typing
 from clearwater_modules_python.base import (
+    Process,
     Variable,
     VariableTypes,
 )
@@ -18,7 +19,11 @@ def all_variables(static_variables, dynamic_variables) -> list[Variable]:
     return static_variables + dynamic_variables
 
 
-def test_split_variables(static_variables, dynamic_variables, all_variables) -> None:
+def test_split_variables(
+    static_variables: list[Variable],
+    dynamic_variables: list[Variable],
+    all_variables: list[Variable],
+) -> None:
     """Test the split_variables function."""
     split_dict = split_variables(all_variables)
 
@@ -37,14 +42,17 @@ def test_split_variables(static_variables, dynamic_variables, all_variables) -> 
         assert split_dict['dynamic'][i].name == dynamic_variables[i].name
 
 
-def test_get_process_args() -> None:
+def test_get_process_args(process_functions: list[Process]) -> None:
     """Test the get_process_args function."""
-    args: list[str] = get_process_args(mock_equation_1)
+    args: list[str] = get_process_args(process_functions[1])
     assert isinstance(args, list)
     assert args == ['a', 'b', 'dynamic_0']
 
 
-def test_sort_dynamic_variables(dynamic_variables, all_variables) -> None:
+def test_sort_dynamic_variables(
+    dynamic_variables: list[Variable], 
+    all_variables: list[Variable],
+) -> None:
     """Test the sort_dynamic_variables function."""
     split_dict = split_variables(all_variables)
     sorted_vars = sort_dynamic_variables(split_dict)
