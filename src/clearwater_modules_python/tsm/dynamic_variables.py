@@ -6,6 +6,7 @@ from clearwater_modules_python.tsm import processes
 class Variable(base.Variable):
     ...
 
+
 Variable(
     name='mixing_ratio_air',
     long_name='Mixing ratio of air',

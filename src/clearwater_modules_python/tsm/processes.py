@@ -223,3 +223,17 @@ def dTdt_water_c(
         surface_area /
         (volume * density_water * cp_water)
     )
+
+@numba.njit
+def t_water_c(
+    t_water_c: float,
+    dTdt_water_c: float,
+) -> float:
+    """Water temperature (C).
+
+    Args:
+        t_water_c: Water temperature (C)
+        dt_water_c: Water temperature change (C)
+    """
+    return t_water_c + dTdt_water_c 
+

@@ -1,7 +1,6 @@
 """Xarray utility functions"""
 import xarray as xr
 from clearwater_modules_python.shared.types import (
-    Process,
     Variable,
 )
 import clearwater_modules_python.sorter as sorter
@@ -19,10 +18,11 @@ def validate_arrays(array: xr.DataArray, *args: xr.DataArray) -> None:
             raise ValueError(
                 'All DataArrays must have the same dimensions.'
             )
-        if arg.coords != array.coords:
-            raise ValueError(
-                'All DataArrays must have the same coordinates.'
-            )
+        # TODO: do we want to verify coords?
+        #if arg.coords != array.coords:
+        #    raise ValueError(
+        #        'All DataArrays must have the same coordinates.'
+        #    )
 
 @numba.jit(forceobj=True)
 def iter_computations(

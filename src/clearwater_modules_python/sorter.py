@@ -71,6 +71,8 @@ def sort_variables_for_computation(variables_dict: SplitVariablesDict) -> list[V
             raise ValueError(
                 f'Dynamic/state variable {var.name} must be calculated by a process.'
             )
-        variable_args[var.name] = var, get_process_args(var.process)
-
+        arg_names: list[str] = get_process_args(var.process)
+        if var.use == 'state' and var.name in arg_names:
+            arg_names.remove(var.name)
+        variable_args[var.name] = (var, arg_names)
     return __rapid_sort(static_vars, variable_args)
