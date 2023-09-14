@@ -30,7 +30,7 @@ class Model(CanRegisterVariable):
         self, 
         initial_state_values: InitialVariablesDict,
         static_variable_values: InitialVariablesDict,
-        track_dynamic_variables: bool = False,
+        track_dynamic_variables: bool = True,
         hotstart_dataset: xr.Dataset | None = None,
         time_dim: Optional[str] = None,
     ) -> None:
@@ -91,6 +91,7 @@ class Model(CanRegisterVariable):
         cls._variables = [
             var for var in cls._variables if var.name not in variables
         ]
+        cls._sorted_variables = []
     
     @classmethod
     def get_variable(cls, name: str) -> Variable:
@@ -136,19 +137,43 @@ class Model(CanRegisterVariable):
         return [var.name for var in self.state_variables]
 
     @property
-    def sorted_dynamic_variables(self) -> list[Variable]:
-        """Return a list of variables in order."""
+    def computation_order(self) -> list[Variable]:
+        """Return a list of variables to compute in order (dynamic + state)."""
         if len(self._sorted_variables) == 0:
-            self._sorted_variables = sorter.sort_dynamic_variables(
+            self._sorted_variables = sorter.sort_variables_for_computation(
                 sorter.split_variables(self.all_variables),
             )
-        return self.all_variables
+        return self._sorted_variables
 
 
-    def run(self) -> xr.Dataset:
+    def increment_timestep(
+        self,
+        update_state_values: Optional[dict[str, xr.DataArray]] = None,
+    ) -> xr.Dataset:
         """Run the process."""
-        ...
-    
+        if update_state_values is None:
+            update_state_values = {}
+        last_timestep: int = self.dataset[self.time_dim].values[-1]
+        timestep_ds: xr.Dataset = self.dataset.isel({self.time_dim: -1}).copy(deep=True)
+        timestep_ds = timestep_ds.expand_dims({self.time_dim: [last_timestep + 1]})
+
+        # update the state variables as necessary (i.e. interacting w/ other models)
+        for var_name, value in update_state_values.items():
+            utils.validate_arrays(value, timestep_ds[var_name])
+            timestep_ds[var_name] = value
+        
+        # compute the dynamic variables in order
+        timestep_ds = utils.iter_computations(
+            timestep_ds,
+            self.computation_order,
+        )
+
+        self.dataset = xr.concat([self.dataset, timestep_ds], dim=self.time_dim)
+        if not self.track_dynamic_variables:
+            self.dataset = self.dataset.drop_vars(self.dynamic_variables_names)
+        return self.dataset
+
+
     def init_state_arrays(self) -> xr.Dataset:
         """Initializes the state arrays."""
         match_dims: list[str] = []

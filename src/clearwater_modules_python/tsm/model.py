@@ -44,6 +44,13 @@ class EnergyBudget(base.Model):
             )
 
         self.use_sed_temp = use_sed_temp
+        super().__init__(
+            initial_state_values={},
+            static_variable_values={},
+            track_dynamic_variables=True,
+            hotstart_dataset=None,
+            time_dim=None,
+        )
 
     @property
     def met_parameters(self) -> parameters.Meteorological:

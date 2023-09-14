@@ -1,5 +1,6 @@
 """This tests makes sure that shared model functionality works as expected."""
 import pytest
+import numpy as np
 from tests.conftest import initial_array
 import xarray as xr
 from clearwater_modules_python.base import (
@@ -98,5 +99,31 @@ def test_state_array(model: Model) -> None:
         assert 'long_name' in model.dataset[var.name].attrs
         assert 'units' in model.dataset[var.name].attrs
         assert 'description' in model.dataset[var.name].attrs
+
+def test_variable_compution_order(model: Model) -> None:
+    """Test that dynamic variables are sorted correctly."""
+    sorted = model.computation_order
+    print(sorted)
+    assert len(sorted) ==  (
+        len(model.dynamic_variables) +
+        len(model.state_variables)
+    )
+    assert sorted[0].name == 'dynamic_0'
+    assert sorted[-1].name == 'state_variable'
+
+def test_computation(model: Model) -> None:
+    # test without saving dynamic variables
+    model.track_dynamic_variables = False
+    ds = model.increment_timestep()
+    assert isinstance(ds, xr.Dataset)
+    assert len(model.dataset[model.time_dim]) == 2 
+    assert 'dynamic_0' not in model.dataset.data_vars
+    
+    # test with saving dynamic variables
+    model.track_dynamic_variables = True
+    ds: xr.Dataset = model.increment_timestep()
+    assert isinstance(ds, xr.Dataset)
+    assert len(model.dataset[model.time_dim]) == 3 
+    assert 'dynamic_0' in model.dataset.data_vars
 
 

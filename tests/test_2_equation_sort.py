@@ -9,7 +9,7 @@ from clearwater_modules_python.shared.types import (
 from clearwater_modules_python.sorter import (
     split_variables,
     get_process_args,
-    sort_dynamic_variables,
+    sort_variables_for_computation,
 )
 
 
@@ -49,13 +49,13 @@ def test_get_process_args(process_functions: list[Process]) -> None:
     assert args == ['a', 'b', 'dynamic_0']
 
 
-def test_sort_dynamic_variables(
+def test_sort_variables(
     dynamic_variables: list[Variable], 
     all_variables: list[Variable],
 ) -> None:
     """Test the sort_dynamic_variables function."""
     split_dict = split_variables(all_variables)
-    sorted_vars = sort_dynamic_variables(split_dict)
+    sorted_vars = sort_variables_for_computation(split_dict)
 
     # check types
     assert isinstance(sorted_vars, list)
@@ -65,6 +65,8 @@ def test_sort_dynamic_variables(
     assert len(sorted_vars) == len(dynamic_variables)
 
     # check order
+    print(split_dict)
+    print(sorted_vars)
     assert sorted_vars[0].name == 'dynamic_0'
     assert sorted_vars[1].name == 'dynamic_1'
     assert sorted_vars[2].name == 'dynamic_2'

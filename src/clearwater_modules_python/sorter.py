@@ -59,7 +59,7 @@ def __rapid_sort(
     return ordered_vars
 
 
-def sort_dynamic_variables(variables_dict: SplitVariablesDict) -> list[Variable]:
+def sort_variables_for_computation(variables_dict: SplitVariablesDict) -> list[Variable]:
     """Sorts all non-static variables based on their required arguments."""
     static_vars: list[str] = []
     for static_var in variables_dict['static']:
