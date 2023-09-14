@@ -1,8 +1,6 @@
 """Stored base types shared by all sub-modules."""
 import warnings
-from re import S
 import xarray as xr
-from dataclasses import dataclass
 import clearwater_modules_python.utils as utils
 import clearwater_modules_python.sorter as sorter
 from clearwater_modules_python.shared.types import (
