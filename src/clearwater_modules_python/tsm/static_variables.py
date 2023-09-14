@@ -1,10 +1,12 @@
 import clearwater_modules_python.base as base
 from clearwater_modules_python.tsm.model import EnergyBudget
 
+
 @base.register_variable(models=EnergyBudget)
 class Variable(base.Variable):
     ...
-#TODO: verify all these values
+# TODO: verify all these values
+
 
 Variable(
     name='stefan_boltzmann',

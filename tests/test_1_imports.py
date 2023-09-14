@@ -2,12 +2,14 @@
 import pytest
 import clearwater_modules_python
 
+
 @pytest.fixture
 def sub_modules() -> list[str]:
     """Return a list of sub-modules."""
     return [
         'tsm',
     ]
+
 
 def test_sub_modules(sub_modules) -> None:
     """Test that all sub-modules can be imported."""

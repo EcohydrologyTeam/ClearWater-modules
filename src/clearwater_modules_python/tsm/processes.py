@@ -1,5 +1,18 @@
 """JIT compiled processes for the heat model."""
+from clearwater_modules_python.shared.processes import ri_number
 import numba
+
+
+@numba.njit
+def air_temp_k(
+    air_temp_c: float,
+) -> float:
+    """Calculate air temperature (K).
+
+    Args:
+        air_temp_c: Air temperature (C)
+    """
+    return air_temp_c + 273.15
 
 
 @numba.njit
@@ -20,19 +33,20 @@ def mixing_ratio_air(
 def density_air(
     pressure_mb: float,
     air_temp_k: float,
-    air_mixing_ratio: float,
+    mixing_ratio_air: float,
 ) -> float:
     """Calculate air density (kg/m^3).
 
     Args:
         pressure_mb: Atmospheric pressure (mb)
         air_temp_k: Air temperature (K)
-        air_mixing_ratio: Air mixing ratio (unitless)
+        mixing_ratio_air: Air mixing ratio (unitless)
     """
     return (
         0.348 *
         (pressure_mb / air_temp_k) *
-        (1.0 + air_mixing_ratio) / (1.0 + 1.61 * air_mixing_ratio)
+        (1.0 + mixing_ratio_air) / (1.0 + 1.61 * mixing_ratio_air)
+
     )
 
 
@@ -64,6 +78,28 @@ def wind_function(
         wind_speed: Wind speed (m/s)
     """
     return wind_a / 1000000.0 + wind_b / 1000000.0 * wind_speed**wind_c
+
+
+@numba.njit
+def ri_function(
+    wind_speed: float,
+    richardson_option: bool,
+    density_air: float,
+    gravity: float,
+) -> float:
+    """Calculate Richardson function number (unitless).
+
+    Args:
+        wind_speed: Wind speed (m/s)
+        richardson_option: Richardson option (bool)
+        density_air: Air density (kg/m^3)
+        gravity: Gravity (m/s^2)
+    """
+    ri_function: float = 0.0
+    ri_number: float = (
+        gravity *
+        (density_air - den)
+    )
 
 
 @numba.njit
@@ -224,6 +260,7 @@ def dTdt_water_c(
         (volume * density_water * cp_water)
     )
 
+
 @numba.njit
 def t_water_c(
     t_water_c: float,
@@ -235,5 +272,4 @@ def t_water_c(
         t_water_c: Water temperature (C)
         dt_water_c: Water temperature change (C)
     """
-    return t_water_c + dTdt_water_c 
-
+    return t_water_c + dTdt_water_c

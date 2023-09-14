@@ -28,7 +28,8 @@ def split_variables(
 def get_process_args(equation: Process) -> list[str]:
     """Return a tuple with the equation and its required argument names."""
     args: list[str] = list(equation.__annotations__.keys())
-    if 'return' in args: args.remove('return')
+    if 'return' in args:
+        args.remove('return')
     return args
 
 

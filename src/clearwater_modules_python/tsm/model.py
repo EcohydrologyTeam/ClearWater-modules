@@ -46,12 +46,13 @@ class EnergyBudget(base.Model):
                 key,
                 value,
             )
-       
-        static_variable_values = {**self.__meteo_parameters, **self.__temp_parameters}
+
+        static_variable_values = {
+            **self.__meteo_parameters, **self.__temp_parameters}
 
         # TODO: make sure this feature works -> test it, but post demo
         static_variable_values['use_sed_temp'] = use_sed_temp
-        
+
         super().__init__(
             initial_state_values=initial_state_values,
             static_variable_values=static_variable_values,
@@ -67,5 +68,3 @@ class EnergyBudget(base.Model):
     @property
     def temp_parameters(self) -> constants.Temperature:
         return self.__temp_parameters
-
-

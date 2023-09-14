@@ -6,6 +6,7 @@ from clearwater_modules_python.shared.types import (
     Process,
 )
 
+
 @pytest.fixture(scope='session')
 def initial_array():
     """Return a 10x10 xarray.DataArray."""
@@ -26,7 +27,7 @@ def mock_equation_0(a: float, b: float) -> float:
 
 
 def mock_equation_1(a: float, b: float, dynamic_0: float) -> float:
-    return a * b * dynamic_0 
+    return a * b * dynamic_0
 
 
 def mock_equation_2(a: float, b: float, dynamic_1: float) -> float:
@@ -72,4 +73,3 @@ def dynamic_variables(process_functions) -> list[Variable]:
             process=func,
         ))
     return vars
-

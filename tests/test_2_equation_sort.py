@@ -50,7 +50,7 @@ def test_get_process_args(process_functions: list[Process]) -> None:
 
 
 def test_sort_variables(
-    dynamic_variables: list[Variable], 
+    dynamic_variables: list[Variable],
     all_variables: list[Variable],
 ) -> None:
     """Test the sort_dynamic_variables function."""

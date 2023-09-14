@@ -7,6 +7,7 @@ from clearwater_modules_python.tsm.constants import (
     DEFAULT_TEMPERATURE,
 )
 
+
 @pytest.fixture(scope='module')
 def initial_tsm_state(initial_array) -> dict[str, float]:
     """Return initial state values for the model."""
@@ -22,6 +23,7 @@ def tsm_state_variable_names(initial_state_values) -> list[str]:
     """Return the names of the state variables."""
     return list(initial_state_values.keys())
 
+
 @pytest.fixture(scope='module')
 def energy_budget_instance(initial_tsm_state) -> EnergyBudget:
     """Return an instance of the TSM class."""
@@ -30,6 +32,7 @@ def energy_budget_instance(initial_tsm_state) -> EnergyBudget:
         time_dim='tsm_time_step',
     )
 
+
 def test_tsm_specific_attributes(energy_budget_instance) -> None:
     """Checks that all TSM variables are present."""
     assert energy_budget_instance.time_dim == 'tsm_time_step'
@@ -37,6 +40,7 @@ def test_tsm_specific_attributes(energy_budget_instance) -> None:
     assert isinstance(energy_budget_instance.temp_parameters, dict)
     assert energy_budget_instance.met_parameters == DEFAULT_METEOROLOGICAL
     assert energy_budget_instance.temp_parameters == DEFAULT_TEMPERATURE
+
 
 def test_tsm_variable_sorting(energy_budget_instance) -> None:
     """Checks that we can auto-sort our TSM variable"""

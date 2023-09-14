@@ -2,10 +2,12 @@ from clearwater_modules_python import base
 from clearwater_modules_python.tsm.model import EnergyBudget
 from clearwater_modules_python.tsm import processes
 
+
 @base.register_variable(models=EnergyBudget)
 class Variable(base.Variable):
     """TSM state variables."""
     ...
+
 
 Variable(
     name='t_water_c',
@@ -17,8 +19,11 @@ Variable(
 )
 
 # TODO: remove mock_equation
+
+
 def mock_equation(t_water_c: float) -> float:
     return t_water_c ** 2
+
 
 Variable(
     name='surface_area',
@@ -36,4 +41,3 @@ Variable(
     use='state',
     process=mock_equation,
 )
-

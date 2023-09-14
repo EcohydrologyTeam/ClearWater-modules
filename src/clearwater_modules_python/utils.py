@@ -19,10 +19,11 @@ def validate_arrays(array: xr.DataArray, *args: xr.DataArray) -> None:
                 'All DataArrays must have the same dimensions.'
             )
         # TODO: do we want to verify coords?
-        #if arg.coords != array.coords:
+        # if arg.coords != array.coords:
         #    raise ValueError(
         #        'All DataArrays must have the same coordinates.'
         #    )
+
 
 @numba.jit(forceobj=True)
 def iter_computations(

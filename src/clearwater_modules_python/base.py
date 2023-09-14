@@ -16,6 +16,7 @@ from typing import (
     Iterable,
 )
 
+
 @runtime_checkable
 class CanRegisterVariable(Protocol):
 
@@ -23,11 +24,12 @@ class CanRegisterVariable(Protocol):
         """Register a variable with the model."""
         ...
 
+
 class Model(CanRegisterVariable):
     _variables: list[Variable] = []
 
     def __init__(
-        self, 
+        self,
         initial_state_values: InitialVariablesDict,
         static_variable_values: InitialVariablesDict,
         track_dynamic_variables: bool = True,
@@ -43,17 +45,16 @@ class Model(CanRegisterVariable):
         self.initial_state_values = initial_state_values
         for state_var in self.state_variables:
             if state_var.name not in self.initial_state_values.keys():
-                 raise ValueError(
-                     f'No initial value found for state variable: {state_var.name}.'
-                 )
-
+                raise ValueError(
+                    f'No initial value found for state variable: {state_var.name}.'
+                )
 
         self.static_variable_values = static_variable_values
         self.track_dynamic_variables = track_dynamic_variables
         if not time_dim:
             time_dim = 'time_step'
         self.time_dim = time_dim
-        
+
         if hotstart_dataset is not None:
             if self.time_dim not in hotstart_dataset.dims:
                 raise ValueError(
@@ -66,9 +67,8 @@ class Model(CanRegisterVariable):
 
             # make 2-dimensional static variable arrays
             self.init_static_arrays()
-        
-        self._sorted_variables: list[Variable] = []
 
+        self._sorted_variables: list[Variable] = []
 
     @classmethod
     def get_variable_names(cls) -> list[str]:
@@ -82,7 +82,6 @@ class Model(CanRegisterVariable):
             cls._variables.append(variable)
             cls._sorted_variables = []
 
-    
     @classmethod
     def unregister_variables(cls, variables: str | list[str]) -> None:
         """Unregister a variable with the model."""
@@ -92,7 +91,7 @@ class Model(CanRegisterVariable):
             var for var in cls._variables if var.name not in variables
         ]
         cls._sorted_variables = []
-    
+
     @classmethod
     def get_variable(cls, name: str) -> Variable:
         """Returns a variable dataclass by name"""
@@ -105,7 +104,7 @@ class Model(CanRegisterVariable):
     def all_variables(self) -> list[Variable]:
         """Return a list of variables."""
         return self._variables
-    
+
     @property
     def static_variables(self) -> list[Variable]:
         """Return a list of static variables."""
@@ -120,12 +119,12 @@ class Model(CanRegisterVariable):
     def state_variables(self) -> list[Variable]:
         """Return a list of state variables."""
         return [var for var in self.all_variables if var.use == 'state']
-    
+
     @property
     def static_variables_names(self) -> list[str]:
         """Return a list of static variable names."""
         return [var.name for var in self.static_variables]
-    
+
     @property
     def dynamic_variables_names(self) -> list[str]:
         """Return a list of dynamic variable names."""
@@ -145,7 +144,6 @@ class Model(CanRegisterVariable):
             )
         return self._sorted_variables
 
-
     def increment_timestep(
         self,
         update_state_values: Optional[dict[str, xr.DataArray]] = None,
@@ -154,31 +152,33 @@ class Model(CanRegisterVariable):
         if update_state_values is None:
             update_state_values = {}
         last_timestep: int = self.dataset[self.time_dim].values[-1]
-        timestep_ds: xr.Dataset = self.dataset.isel({self.time_dim: -1}).copy(deep=True)
-        timestep_ds = timestep_ds.expand_dims({self.time_dim: [last_timestep + 1]})
+        timestep_ds: xr.Dataset = self.dataset.isel(
+            {self.time_dim: -1}).copy(deep=True)
+        timestep_ds = timestep_ds.expand_dims(
+            {self.time_dim: [last_timestep + 1]})
 
         # update the state variables as necessary (i.e. interacting w/ other models)
         for var_name, value in update_state_values.items():
             utils.validate_arrays(value, timestep_ds[var_name])
             timestep_ds[var_name] = value
-        
+
         # compute the dynamic variables in order
         timestep_ds = utils.iter_computations(
             timestep_ds,
             self.computation_order,
         )
 
-        self.dataset = xr.concat([self.dataset, timestep_ds], dim=self.time_dim)
+        self.dataset = xr.concat(
+            [self.dataset, timestep_ds], dim=self.time_dim)
         if not self.track_dynamic_variables:
             self.dataset = self.dataset.drop_vars(self.dynamic_variables_names)
         return self.dataset
-
 
     def init_state_arrays(self) -> xr.Dataset:
         """Initializes the state arrays."""
         match_dims: list[str] = []
         data_arrays: dict[str, xr.DataArray] = {}
-        
+
         for k, v in self.initial_state_values.items():
             if k not in self.state_variables_names:
                 warnings.warn(
@@ -206,7 +206,7 @@ class Model(CanRegisterVariable):
                 'description': variable.description,
             }
             data_arrays[var_name] = xr.full_like(
-                array_i, 
+                array_i,
                 self.initial_state_values[var_name],
                 dtype=type(self.initial_state_values[var_name]),
                 attrs=attrs,
@@ -215,8 +215,7 @@ class Model(CanRegisterVariable):
             data_vars=data_arrays,
             coords=array_i.coords,
         )
-        return ds.expand_dims({self.time_dim: [0]}) 
-   
+        return ds.expand_dims({self.time_dim: [0]})
 
     def init_static_arrays(self) -> None:
         """Return a static dataset."""
@@ -246,6 +245,7 @@ def register_variable(models: CanRegisterVariable | Iterable[CanRegisterVariable
     """A decorator to register a variable with a model."""
     if not isinstance(models, Iterable):
         models = [models]
+
     def decorator(cls):
         def wrapper(*args, **kwargs):
             variable = cls(*args, **kwargs)
@@ -258,5 +258,3 @@ def register_variable(models: CanRegisterVariable | Iterable[CanRegisterVariable
             return variable
         return wrapper
     return decorator
-
-

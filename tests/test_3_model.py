@@ -9,11 +9,14 @@ from clearwater_modules_python.base import (
     InitialVariablesDict,
 )
 
+
 class MockModel(Model):
     ...
 
+
 def state_process(dynamic_2: float) -> float:
     return dynamic_2 * 2
+
 
 @pytest.fixture(scope='module')
 def initial_static_values() -> InitialVariablesDict:
@@ -25,6 +28,7 @@ def initial_state_values(
     initial_array: xr.DataArray,
 ) -> InitialVariablesDict:
     return {'state_variable': initial_array}
+
 
 @pytest.fixture(scope='module')
 def state_variable() -> Variable:
@@ -49,12 +53,13 @@ def model(
     for var in static_variables + dynamic_variables:
         MockModel.register_variable(var)
     MockModel.register_variable(state_variable)
-    
+
     model_instance = MockModel(
         initial_state_values=initial_state_values,
         static_variable_values=initial_static_values,
     )
     return model_instance
+
 
 def test_model_instance(
     model: Model,
@@ -73,12 +78,14 @@ def test_model_instance(
     print(f'State variables: {model.state_variables}\n')
     assert len(model.state_variables) == 1
 
+
 def test_initial_state(model: Model, state_variable: Variable) -> None:
     """Test the initial state."""
     assert state_variable.name in model.dataset.data_vars
-    assert len(model.dataset[state_variable.name].dims) == 3 
+    assert len(model.dataset[state_variable.name].dims) == 3
     assert 'time_step' in model.dataset[state_variable.name].dims
     assert model.dataset[state_variable.name].shape == (1, 10, 10)
+
 
 def test_static_array(model: Model) -> None:
     """Test the static array."""
@@ -90,6 +97,7 @@ def test_static_array(model: Model) -> None:
         assert 'units' in model.dataset[var.name].attrs
         assert 'description' in model.dataset[var.name].attrs
 
+
 def test_state_array(model: Model) -> None:
     """Test the state array."""
     for var in model.state_variables:
@@ -100,30 +108,30 @@ def test_state_array(model: Model) -> None:
         assert 'units' in model.dataset[var.name].attrs
         assert 'description' in model.dataset[var.name].attrs
 
+
 def test_variable_compution_order(model: Model) -> None:
     """Test that dynamic variables are sorted correctly."""
     sorted = model.computation_order
     print(sorted)
-    assert len(sorted) ==  (
+    assert len(sorted) == (
         len(model.dynamic_variables) +
         len(model.state_variables)
     )
     assert sorted[0].name == 'dynamic_0'
     assert sorted[-1].name == 'state_variable'
 
+
 def test_computation(model: Model) -> None:
     # test without saving dynamic variables
     model.track_dynamic_variables = False
     ds = model.increment_timestep()
     assert isinstance(ds, xr.Dataset)
-    assert len(model.dataset[model.time_dim]) == 2 
+    assert len(model.dataset[model.time_dim]) == 2
     assert 'dynamic_0' not in model.dataset.data_vars
-    
+
     # test with saving dynamic variables
     model.track_dynamic_variables = True
     ds: xr.Dataset = model.increment_timestep()
     assert isinstance(ds, xr.Dataset)
-    assert len(model.dataset[model.time_dim]) == 3 
+    assert len(model.dataset[model.time_dim]) == 3
     assert 'dynamic_0' in model.dataset.data_vars
-
-
