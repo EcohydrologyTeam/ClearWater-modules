@@ -145,6 +145,13 @@ Variable(
     use='static',
 )
 Variable(
+    name='eair_mb',
+    long_name='Eair MB',
+    units='mb',
+    description='The eair MB.',
+    use='static',
+)
+Variable(
     name='pressure_mb',
     long_name='Pressure',
     units='mb',
