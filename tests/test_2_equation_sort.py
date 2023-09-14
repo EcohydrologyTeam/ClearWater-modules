@@ -65,8 +65,6 @@ def test_sort_variables(
     assert len(sorted_vars) == len(dynamic_variables)
 
     # check order
-    print(split_dict)
-    print(sorted_vars)
     assert sorted_vars[0].name == 'dynamic_0'
     assert sorted_vars[1].name == 'dynamic_1'
     assert sorted_vars[2].name == 'dynamic_2'
