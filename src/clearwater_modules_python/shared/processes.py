@@ -40,7 +40,7 @@ def arrhenius_correction(
 
 @numba.njit
 def mf_d_esat_dT(
-    TwaterK: float,
+    water_temp_k: float,
     a1: float,
     a2: float,
     a3: float,
@@ -57,11 +57,11 @@ def mf_d_esat_dT(
     """
     return (
         a1 +
-        (2.0 * a2 * TwaterK) +
-        (3.0 * a3 * TwaterK**2.0) +
-        (4.0 * a4 * TwaterK**3.0) +
-        (5.0 * a5 * TwaterK**4.0) +
-        (6.0 * a6 * TwaterK**5.0)
+        (2.0 * a2 * water_temp_k) +
+        (3.0 * a3 * water_temp_k**2.0) +
+        (4.0 * a4 * water_temp_k**3.0) +
+        (5.0 * a5 * water_temp_k**4.0) +
+        (6.0 * a6 * water_temp_k**5.0)
     )
 
 
@@ -71,7 +71,7 @@ def mf_d_esat_dT(
 
 @numba.njit
 def mf_q_longwave_down(
-    TairK: float,
+    air_temp_k: float,
     emissivity_air: float,
     cloudiness: float,
     stefan_boltzmann: float,
@@ -80,7 +80,7 @@ def mf_q_longwave_down(
     Compute downwelling longwave radiation (W/m2)
 
     Parameters:
-        TairK (float):              Air temperature (Kelvin)
+        air_temp_k (float):              Air temperature (Kelvin)
         emissivity_air (float):     Emissivity of air (unitless)
         cloudiness (float):         Cloudiness (fraction)
 
@@ -88,12 +88,12 @@ def mf_q_longwave_down(
         Downwelling longwave radiation (W/m2, float)
     """
 
-    return (1.0 + 0.17 * cloudiness**2) * emissivity_air * stefan_boltzmann * TairK**4.0
+    return (1.0 + 0.17 * cloudiness**2) * emissivity_air * stefan_boltzmann * air_temp_k**4.0
 
 
 @numba.njit
 def mf_q_longwave_up(
-    TwaterK: float,
+    water_temp_k: float,
     emissivity_water: float,
     stefan_boltzmann: float,
 ) -> float:
@@ -101,14 +101,14 @@ def mf_q_longwave_up(
     Compute upwelling longwave radiation (W/m2) as a function of water temperature (Kelvin)
     """
 
-    # logger.debug(f'mf_q_longwave_up({TwaterK:.2f})')
+    # logger.debug(f'mf_q_longwave_up({water_temp_k:.2f})')
 
-    return emissivity_water * stefan_boltzmann * TwaterK**4.0
+    return emissivity_water * stefan_boltzmann * water_temp_k**4.0
 
 
 @numba.njit
 def mf_esat_mb(
-    TwaterK: float,
+    water_temp_k: float,
     a0: float,
     a1: float,
     a2: float,
@@ -126,16 +126,16 @@ def mf_esat_mb(
 
     return (
         a0 +
-        TwaterK *
+        water_temp_k *
         (
             a1 +
-            TwaterK *
+            water_temp_k *
             (
                 a2 +
-                TwaterK * (
+                water_temp_k * (
                     a3 +
-                    TwaterK *
-                    (a4 + TwaterK * (a5 + TwaterK * a6))
+                    water_temp_k *
+                    (a4 + water_temp_k * (a5 + water_temp_k * a6))
                 )
             )
         )
@@ -198,12 +198,12 @@ def ri_function(ri_number: float) -> float:
 
 
 @numba.njit
-def mf_latent_heat_vaporization(TwaterK: float) -> float:
+def mf_latent_heat_vaporization(water_temp_k: float) -> float:
     """
     Compute the latent heat of vaporization (W/m2) as a function of water temperature (Kelvin)
     """
 
-    return 2499999 - 2385.74 * TwaterK
+    return 2499999 - 2385.74 * water_temp_k
 
 
 @numba.njit
@@ -231,12 +231,12 @@ def mf_density_water(water_temp_c: float) -> float:
 
 
 @numba.njit
-def mf_density_air_sat(TwaterK: float, esat_mb: float, pressure_mb: float) -> float:
+def mf_density_air_sat(water_temp_k: float, esat_mb: float, pressure_mb: float) -> float:
     """
     Compute the density of saturated air at water surface temperature.
 
     Parameters:
-        TwaterK (float):        Water temperature (Kelvin)
+        water_temp_k (float):        Water temperature (Kelvin)
         esat_mb (float):        Saturation vapor pressure in millibars
         pressure_mb (float):    Air pressure in millibars
 
@@ -244,10 +244,10 @@ def mf_density_air_sat(TwaterK: float, esat_mb: float, pressure_mb: float) -> fl
         Density of saturated air at water surface temperature (kg/m3, float)
     """
 
-    # logger.debug(f'mf_density_air_sat({TwaterK:.2f}, {esat_mb:.2f}, {pressure_mb:.2f})')
+    # logger.debug(f'mf_density_air_sat({water_temp_k:.2f}, {esat_mb:.2f}, {pressure_mb:.2f})')
 
     mixing_ratio_sat = 0.622 * esat_mb / (pressure_mb - esat_mb)
-    return 0.348 * (pressure_mb / TwaterK) * (1.0 + mixing_ratio_sat) / (1.0 + 1.61 * mixing_ratio_sat)
+    return 0.348 * (pressure_mb / water_temp_k) * (1.0 + mixing_ratio_sat) / (1.0 + 1.61 * mixing_ratio_sat)
 
 
 @numba.njit

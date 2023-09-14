@@ -1,5 +1,7 @@
 """JIT compiled processes for the heat model."""
-from clearwater_modules_python.shared.processes import ri_number
+from clearwater_modules_python.shared.processes import (
+    celsius_to_kelvin,
+)
 import numba
 
 
@@ -12,7 +14,19 @@ def air_temp_k(
     Args:
         air_temp_c: Air temperature (C)
     """
-    return air_temp_c + 273.15
+    return celsius_to_kelvin(air_temp_c)
+
+
+@numba.njit
+def water_temp_k(
+    water_temp_c: float,
+) -> float:
+    """Calculate water temperature (K).
+
+    Args:
+        water_temp_c: Water temperature (C)
+    """
+    return celsius_to_kelvin(water_temp_c)
 
 
 @numba.njit
@@ -78,28 +92,6 @@ def wind_function(
         wind_speed: Wind speed (m/s)
     """
     return wind_a / 1000000.0 + wind_b / 1000000.0 * wind_speed**wind_c
-
-
-@numba.njit
-def ri_function(
-    wind_speed: float,
-    richardson_option: bool,
-    density_air: float,
-    gravity: float,
-) -> float:
-    """Calculate Richardson function number (unitless).
-
-    Args:
-        wind_speed: Wind speed (m/s)
-        richardson_option: Richardson option (bool)
-        density_air: Air density (kg/m^3)
-        gravity: Gravity (m/s^2)
-    """
-    ri_function: float = 0.0
-    ri_number: float = (
-        gravity *
-        (density_air - den)
-    )
 
 
 @numba.njit
