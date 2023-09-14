@@ -42,6 +42,10 @@ class Model(CanRegisterVariable):
             initial_values: A dict with variable names as keys, and initial 
                 values for static and (optionally) state variables as values.
         """
+        if not isinstance(initial_state_values, dict):
+            raise TypeError(
+                f'Expected initial state value dict, got {type(initial_state_values)} instead.'
+            )
         self.initial_state_values = initial_state_values
         for state_var in self.state_variables:
             if state_var.name not in self.initial_state_values.keys():
@@ -154,8 +158,6 @@ class Model(CanRegisterVariable):
         last_timestep: int = self.dataset[self.time_dim].values[-1]
         timestep_ds: xr.Dataset = self.dataset.isel(
             {self.time_dim: -1}).copy(deep=True)
-        timestep_ds = timestep_ds.expand_dims(
-            {self.time_dim: [last_timestep + 1]})
 
         # update the state variables as necessary (i.e. interacting w/ other models)
         for var_name, value in update_state_values.items():
@@ -167,6 +169,11 @@ class Model(CanRegisterVariable):
             timestep_ds,
             self.computation_order,
         )
+        timestep_ds = timestep_ds.expand_dims(
+            {self.time_dim: [last_timestep + 1]},
+        )
+
+        timestep_ds = timestep_ds.drop_vars(self.static_variables_names)
 
         self.dataset = xr.concat(
             [self.dataset, timestep_ds], dim=self.time_dim)
@@ -209,8 +216,8 @@ class Model(CanRegisterVariable):
                 array_i,
                 self.initial_state_values[var_name],
                 dtype=type(self.initial_state_values[var_name]),
-                attrs=attrs,
             )
+            data_arrays[var_name].attrs = attrs
         ds = xr.Dataset(
             data_vars=data_arrays,
             coords=array_i.coords,
@@ -234,10 +241,12 @@ class Model(CanRegisterVariable):
                 'description': var.description,
             }
             self.dataset[var.name] = xr.full_like(
-                self.dataset[list(self.dataset.data_vars)[0]],
+                self.dataset[
+                    list(self.dataset.data_vars)[0]
+                ].isel({self.time_dim: 0}),
                 self.static_variable_values[var.name],
                 dtype=type(self.static_variable_values[var.name]),
-            ).sel({self.time_dim: 0})
+            )
             self.dataset[var.name].attrs = attrs
 
 

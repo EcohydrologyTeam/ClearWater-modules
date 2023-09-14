@@ -255,7 +255,7 @@ def dTdt_water_c(
 
 @numba.njit
 def t_water_c(
-    t_water_c: float,
+    water_temp_c: float,
     dTdt_water_c: float,
 ) -> float:
     """Water temperature (C).
@@ -264,4 +264,4 @@ def t_water_c(
         t_water_c: Water temperature (C)
         dt_water_c: Water temperature change (C)
     """
-    return t_water_c + dTdt_water_c
+    return water_temp_c + dTdt_water_c

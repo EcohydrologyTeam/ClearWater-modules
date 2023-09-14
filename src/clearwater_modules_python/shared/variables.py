@@ -18,24 +18,9 @@ mf_d_esat_dT = Variable(
     process=processes.mf_d_esat_dT,
 )
 
-mf_q_longwave_down = Variable(
-    name='mf_q_longwave_down',
-    long_name='Downwelling longwave radiation',
-    units='W/m2',
-    description='Downwelling longwave radiation',
-    process=processes.mf_q_longwave_down,
-)
-
-mf_q_longwave_up = Variable(
-    name='mf_q_longwave_up',
-    long_name='Upwelling longwave radiation',
-    units='W/m2',
-    description='Upwelling longwave radiation',
-    process=processes.mf_q_longwave_up,
-)
 
 mf_esat_mb = Variable(
-    name='mf_esat_mb',
+    name='esat_mb',
     long_name='Saturation vapor pressure',
     units='mb',
     description='Saturation vapor pressure',

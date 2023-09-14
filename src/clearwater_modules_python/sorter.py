@@ -35,6 +35,7 @@ def get_process_args(equation: Process) -> list[str]:
 
 def __rapid_sort(
     static_vars: list[str],
+    state_vars: list[str],
     variable_args_dict: dict[str, tuple[Variable, list[str]]],
 ) -> list[Variable]:
     """Sorts dynamic variables based on their required arguments."""
@@ -45,7 +46,7 @@ def __rapid_sort(
         for var_name, item in variable_args_dict.items():
             var, args = item
             ordered_names: list[str] = [var.name for var in ordered_vars]
-            if all(arg in ordered_names + static_vars for arg in args):
+            if all(arg in ordered_names + static_vars + state_vars for arg in args):
                 ordered_vars.append(var)
                 drop_keys.append(var_name)
         for key in drop_keys:
@@ -63,8 +64,11 @@ def __rapid_sort(
 def sort_variables_for_computation(variables_dict: SplitVariablesDict) -> list[Variable]:
     """Sorts all non-static variables based on their required arguments."""
     static_vars: list[str] = []
+    state_vars: list[str] = []
     for static_var in variables_dict['static']:
         static_vars.append(static_var.name)
+    for state_var in variables_dict['state']:
+        state_vars.append(state_var.name)
 
     variable_args: dict[str, tuple[Variable, list[str]]] = {}
     for var in variables_dict['dynamic'] + variables_dict['state']:
@@ -76,4 +80,4 @@ def sort_variables_for_computation(variables_dict: SplitVariablesDict) -> list[V
         if var.use == 'state' and var.name in arg_names:
             arg_names.remove(var.name)
         variable_args[var.name] = (var, arg_names)
-    return __rapid_sort(static_vars, variable_args)
+    return __rapid_sort(static_vars, state_vars, variable_args)

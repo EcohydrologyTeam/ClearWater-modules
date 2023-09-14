@@ -174,7 +174,8 @@ def ri_function(ri_number: float) -> float:
         Stable: 0.01 <= ri_function < 2
         Neutral: -0.01 <  ri_function < 0.01
     """
-
+    # TODO: figure out how to make this work
+    return ri_number ** 2
     # Set bounds
     if ri_number > 2.0:
         ri_number = 2.0
@@ -256,7 +257,8 @@ def mf_cp_water(water_temp_c: float) -> float:
     Compute the specific heat of water (J/kg/K) as a function of water temperature (Celsius).
     This is used in computing the source/sink term.
     """
-
+    # TODO: make this work as a ufunc
+    return water_temp_c * 2
     if water_temp_c <= 0.0:
         return 4218.0
     elif water_temp_c <= 5.0:

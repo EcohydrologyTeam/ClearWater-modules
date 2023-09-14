@@ -10,7 +10,7 @@ class Variable(base.Variable):
 
 
 Variable(
-    name='t_water_c',
+    name='water_temp_c',
     long_name='Water temperature',
     units='degC',
     description='TSM state variable for water temperature',
@@ -21,8 +21,8 @@ Variable(
 # TODO: remove mock_equation
 
 
-def mock_equation(t_water_c: float) -> float:
-    return t_water_c ** 2
+def mock_equation(water_temp_c: float) -> float:
+    return water_temp_c ** 2
 
 
 Variable(
