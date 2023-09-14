@@ -12,7 +12,7 @@ from clearwater_modules_python.tsm.constants import (
 def initial_tsm_state(initial_array) -> dict[str, float]:
     """Return initial state values for the model."""
     return {
-        't_water_c': initial_array,
+        'water_temp_c': initial_array,
         'surface_area': initial_array ** 2,
         'volume': initial_array ** 3,
     }
@@ -45,3 +45,13 @@ def test_tsm_specific_attributes(energy_budget_instance) -> None:
 def test_tsm_variable_sorting(energy_budget_instance) -> None:
     """Checks that we can auto-sort our TSM variable"""
     assert isinstance(energy_budget_instance.computation_order, list)
+    assert energy_budget_instance.computation_order[-1].name == 'water_temp_c'
+
+
+def test_tsm_timestep(energy_budget_instance) -> None:
+    """Checks that we can auto-sort our TSM variable"""
+    energy_budget_instance.increment_timestep()
+    assert len(energy_budget_instance.dataset.tsm_time_step) == 2
+
+    # make sure static variables are not given a time dimension
+    #   assert len(energy_budget_instance.dataset['a0'].dims) == 2
