@@ -9,6 +9,7 @@ dependencies:
   - scipy # installs numpy, pandas and most pyData libraries
   - numba
   - xarray
+  - pooch # for xarray tutorial dataset
 
   # for testing and static analysis
   - pytest
