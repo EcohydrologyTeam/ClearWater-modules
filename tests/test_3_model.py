@@ -164,6 +164,23 @@ def test_computation_no_dynamics(model: Model) -> None:
     assert 'dynamic_0' not in model.dataset.data_vars
 
 
+def test_static_variable_dims(model: Model) -> None:
+    """Test that static variables remain 2-dimensional."""
+    ds = model.increment_timestep()
+    for var_name in model.static_variables_names:
+        assert var_name in ds.data_vars
+        assert len(ds[var_name].dims) == 2
+
+
+def test_variable_attributes(model: Model) -> None:
+    """Tests that all variables in the Model.dataset have the correct attributes."""
+    model.increment_timestep()
+    for var in model.dataset.data_vars:
+        assert 'long_name' in model.dataset[var].attrs
+        assert 'units' in model.dataset[var].attrs
+        assert 'description' in model.dataset[var].attrs
+
+
 def test_model_hotstart(model: Model) -> None:
     """Test if the hotstart works."""
     ds = model.increment_timestep()
