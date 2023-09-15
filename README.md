@@ -18,9 +18,64 @@ This Python library is a port and modernization of the algorithms and structures
 - Zhang, Z. and Johnson, B.E., 2016. Aquatic nutrient simulation modules (NSMs) developed for hydrologic and hydraulic models. Ecosystem Management and Restoration Research Program (EMRRP). ERDC/EL Technical Report 16-1. https://hdl.handle.net/11681/10112
 - Zhang, Z. and Johnson, B.E., 2016. Aquatic contaminant and mercury simulation modules developed for hydrologic and hydraulic models. Environmental Quality Technology Research Program (EQTRP). ERDC/EL Technical Report 16-8. https://hdl.handle.net/11681/20249
 
+## Repository Directories
+
+
 # Getting Started
 
 ## Installation
+
+Clearwater-modules-python was developed with **Python 3.11**. 
+
+Follow these steps to install.
+
+#### 1. Install Miniconda or Anaconda Distribution
+
+We recommend installing the light-weight [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/) that includes Python, the [conda](https://conda.io/docs/) environment and package management system, and their dependencies.
+
+If you have already installed the [**Anaconda Distribution**](https://www.anaconda.com/download), you can use it to complete the next steps, but you may need to [update to the latest version](https://docs.anaconda.com/free/anaconda/install/update-version/).
+
+
+
+#### 2. Clone or Download this `ClearWater-modules-python` repository
+
+From this Github site, click on the green "Code" dropdown button near the upper right. Select to either Open in GitHub Desktop (i.e. git clone) or "Download ZIP". We recommend using GitHub Desktop, to most easily receive updates.
+
+Place your copy of this repo folder in any convenient location on your computer.
+
+#### 3. Create a Conda Environment for this Repository (optional) 
+
+We recommend creating a custom virtual environment with the same software dependencies that we've used in development and testing, as listed in the [`environment.yml`](environment.yml) file. 
+
+Create a `ClearWater-modules-python` environment using this [conda](https://conda.io/docs/) command in your terminal or Anaconda Prompt console. If necessary, replace `environment.yml` with the full file pathway to the `environment.yml` file in the local cloned repository.
+
+
+```shell
+conda env create --file environment.yml
+```
+
+Alternatively, use the faster [`libmamba` solver](https://conda.github.io/conda-libmamba-solver/getting-started/) with:
+```shell
+conda env create -f environment.yml --solver=libmamba
+```
+
+Activate the environment using the instructions printed by conda after the environment is created successfully.
+
+For additional information on managing conda environments, see [Conda's User Guide on Managing Environments](https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-environments.html).
+
+
+#### 4. Add your `ClearWater-modules-python` Path to Miniconda/Anaconda sites-packages
+
+To have access to the `ClearWater-modules-python` module in your Python environment, it is necessary to have add it's path to enviornment's PATH variable.
+
+The easiest way to do this is to use the [conda develop](https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html) command in the console or terminal like this, replacing `/path/to/module/` with the full file pathway to the local cloned Clearwater-riverine repository:
+
+```console
+conda-develop /path/to/module/
+```
+
+You should now be able to run the examples and create your own Jupyter Notebooks!
+
 
 ## Examples
 
