@@ -42,7 +42,7 @@ def state_variable() -> Variable:
     )
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def model(
     static_variables: list[Variable],
     dynamic_variables: list[Variable],
@@ -58,25 +58,50 @@ def model(
         initial_state_values=initial_state_values,
         static_variable_values=initial_static_values,
     )
+    assert isinstance(model_instance, Model)
     return model_instance
 
 
-def test_model_instance(
+def test_model_static_variables(
     model: Model,
     static_variables: list[Variable],
-    dynamic_variables: list[Variable],
 ) -> None:
     """Test the model."""
-    assert isinstance(model, Model)
     assert isinstance(model.static_variables, list)
-    assert isinstance(model.dynamic_variables, list)
-    assert isinstance(model.state_variables, list)
     print(f'Static variables: {model.static_variables}\n')
     assert len(model.static_variables) == len(static_variables)
+    assert isinstance(model.static_variables[0], Variable)
+    assert isinstance(model.static_variables_names, list)
+    assert len(model.static_variables_names) == len(static_variables)
+    assert isinstance(model.static_variables_names[0], str)
+    assert model.static_variables_names[0] == model.static_variables[0].name
+
+
+def test_model_dynamic_variables(
+    model: Model,
+    dynamic_variables: list[Variable],
+) -> None:
+    assert isinstance(model.dynamic_variables, list)
     print(f'Dynamic variables {model.dynamic_variables}\n')
     assert len(model.dynamic_variables) == len(dynamic_variables)
+    assert isinstance(model.dynamic_variables[0], Variable)
+    assert isinstance(model.dynamic_variables_names, list)
+    assert len(model.dynamic_variables_names) == len(dynamic_variables)
+    assert isinstance(model.dynamic_variables_names[0], str)
+    assert model.dynamic_variables_names[0] == model.dynamic_variables[0].name
+
+
+def test_model_state_variables(
+    model: Model,
+) -> None:
+    assert isinstance(model.state_variables, list)
     print(f'State variables: {model.state_variables}\n')
     assert len(model.state_variables) == 1
+    assert isinstance(model.state_variables[0], Variable)
+    assert isinstance(model.state_variables_names, list)
+    assert len(model.state_variables_names) == 1
+    assert isinstance(model.state_variables_names[0], str)
+    assert model.state_variables_names[0] == model.state_variables[0].name
 
 
 def test_initial_state(model: Model, state_variable: Variable) -> None:
@@ -121,17 +146,32 @@ def test_variable_compution_order(model: Model) -> None:
     assert sorted[-1].name == 'state_variable'
 
 
-def test_computation(model: Model) -> None:
-    # test without saving dynamic variables
+def test_computation_with_dynamics(model: Model) -> None:
+    """Test that dynamic variables are saved to the dataset.""" 
+    model.track_dynamic_variables = True
+    ds: xr.Dataset = model.increment_timestep()
+    assert isinstance(ds, xr.Dataset)
+    assert len(model.dataset[model.time_dim]) == 2
+    assert 'dynamic_0' in model.dataset.data_vars
+
+
+def test_computation_no_dynamics(model: Model) -> None:
+    """Test that dynamic variables not are saved to the dataset.""" 
     model.track_dynamic_variables = False
     ds = model.increment_timestep()
     assert isinstance(ds, xr.Dataset)
     assert len(model.dataset[model.time_dim]) == 2
     assert 'dynamic_0' not in model.dataset.data_vars
 
-    # test with saving dynamic variables
-    model.track_dynamic_variables = True
-    ds: xr.Dataset = model.increment_timestep()
-    assert isinstance(ds, xr.Dataset)
-    assert len(model.dataset[model.time_dim]) == 3
-    assert 'dynamic_0' in model.dataset.data_vars
+
+def test_model_hotstart(model: Model) -> None:
+    """Test if the hotstart works."""
+    ds = model.increment_timestep()
+    ds.attrs['hotstart'] = True
+
+    hotstart_model = MockModel(
+        hotstart_dataset=ds,
+    )
+    assert isinstance(hotstart_model, Model)
+    assert len(hotstart_model.dataset[model.time_dim]) == 2
+    assert model.dataset.attrs.get('hotstart') == True
