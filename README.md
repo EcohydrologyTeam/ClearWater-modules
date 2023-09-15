@@ -1,5 +1,4 @@
-ClearWater Modules in Python
-=====
+# ClearWater Modules in Python
 
 The [ClearWater-modules-python](https://github.com/EcohydrologyTeam/ClearWater-modules-python) package is a collection of water quality and vegetation process simulation modules developed by the [U.S. Army Engineer Research and Development Center (ERDC)](https://www.erdc.usace.army.mil), [Environmental Laboratory (EL)](https://www.erdc.usace.army.mil/Locations/EL/).
 
@@ -36,7 +35,6 @@ We recommend installing the light-weight [Miniconda](https://docs.conda.io/proje
 If you have already installed the [**Anaconda Distribution**](https://www.anaconda.com/download), you can use it to complete the next steps, but you may need to [update to the latest version](https://docs.anaconda.com/free/anaconda/install/update-version/).
 
 
-
 #### 2. Clone or Download this `ClearWater-modules-python` repository
 
 From this Github site, click on the green "Code" dropdown button near the upper right. Select to either Open in GitHub Desktop (i.e. git clone) or "Download ZIP". We recommend using GitHub Desktop, to most easily receive updates.
@@ -71,7 +69,7 @@ To have access to the `ClearWater-modules-python` module in your Python environm
 The easiest way to do this is to use the [conda develop](https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html) command in the console or terminal like this, replacing `/path/to/module/` with the full file pathway to the local cloned Clearwater-riverine repository:
 
 ```console
-conda-develop /path/to/module/
+conda develop /path/to/module/
 ```
 
 You should now be able to run the examples and create your own Jupyter Notebooks!
