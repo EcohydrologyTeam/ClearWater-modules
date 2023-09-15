@@ -276,6 +276,14 @@ class Model(CanRegisterVariable):
                 sorter.split_variables(self.all_variables),
             )
         return self._sorted_variables
+    
+    @property
+    def _update_vars(self)-> list[str]:
+        """Return a list of variables to update."""
+        if self.track_dynamic_variables:
+            return self.dynamic_variables_names + self.state_variables_names 
+        else:
+            return self.state_variables_names
 
     def increment_timestep(
         self,
@@ -298,16 +306,33 @@ class Model(CanRegisterVariable):
             timestep_ds,
             self.computation_order,
         )
-        timestep_ds = timestep_ds.expand_dims(
-            {self.time_dim: [last_timestep + 1]},
-        )
+        if not self.track_dynamic_variables:
+            timestep_ds = timestep_ds.drop_vars(self.dynamic_variables_names)
 
         timestep_ds = timestep_ds.drop_vars(self.static_variables_names)
-
+        timestep_ds= timestep_ds.expand_dims(
+            {self.time_dim: [last_timestep + 1]},
+        )
+        
         self.dataset = xr.concat(
-            [self.dataset, timestep_ds], dim=self.time_dim)
-        if not self.track_dynamic_variables:
-            self.dataset = self.dataset.drop_vars(self.dynamic_variables_names)
+            [
+                self.dataset,
+                timestep_ds,
+            ],
+            dim=self.time_dim,
+            data_vars='minimal',
+        )
+        
+        # add dynamic variable attributes
+        if self.track_dynamic_variables:
+            for var in self.dynamic_variables:
+                if var.name in self.dataset.data_vars.keys():
+                    self.dataset[var.name].attrs = {
+                        'long_name': var.long_name,
+                        'units': var.units,
+                        'description': var.description,
+                    }
+
         return self.dataset
 
 def register_variable(models: CanRegisterVariable | Iterable[CanRegisterVariable]):
