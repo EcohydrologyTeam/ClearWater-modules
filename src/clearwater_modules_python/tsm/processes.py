@@ -1,4 +1,32 @@
+"""JIT compiled processes for the heat model."""
+from clearwater_modules_python.shared.processes import (
+    celsius_to_kelvin,
+)
 import numba
+
+
+@numba.njit
+def air_temp_k(
+    air_temp_c: float,
+) -> float:
+    """Calculate air temperature (K).
+
+    Args:
+        air_temp_c: Air temperature (C)
+    """
+    return celsius_to_kelvin(air_temp_c)
+
+
+@numba.njit
+def water_temp_k(
+    water_temp_c: float,
+) -> float:
+    """Calculate water temperature (K).
+
+    Args:
+        water_temp_c: Water temperature (C)
+    """
+    return celsius_to_kelvin(water_temp_c)
 
 
 @numba.njit
@@ -19,19 +47,20 @@ def mixing_ratio_air(
 def density_air(
     pressure_mb: float,
     air_temp_k: float,
-    air_mixing_ratio: float,
+    mixing_ratio_air: float,
 ) -> float:
     """Calculate air density (kg/m^3).
 
     Args:
         pressure_mb: Atmospheric pressure (mb)
         air_temp_k: Air temperature (K)
-        air_mixing_ratio: Air mixing ratio (unitless)
+        mixing_ratio_air: Air mixing ratio (unitless)
     """
     return (
         0.348 *
         (pressure_mb / air_temp_k) *
-        (1.0 + air_mixing_ratio) / (1.0 + 1.61 * air_mixing_ratio)
+        (1.0 + mixing_ratio_air) / (1.0 + 1.61 * mixing_ratio_air)
+
     )
 
 
@@ -222,3 +251,17 @@ def dTdt_water_c(
         surface_area /
         (volume * density_water * cp_water)
     )
+
+
+@numba.njit
+def t_water_c(
+    water_temp_c: float,
+    dTdt_water_c: float,
+) -> float:
+    """Water temperature (C).
+
+    Args:
+        t_water_c: Water temperature (C)
+        dt_water_c: Water temperature change (C)
+    """
+    return water_temp_c + dTdt_water_c
