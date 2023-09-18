@@ -9,13 +9,13 @@ from _nitrogen import Nitrogen
 from _benthic_algae import BenthicAlgae
 from _phosphorus import Phosphorus
 # from _carbon import Carbon
-# from _cbod import CBOD
+from _cbod import CBOD
 # from _dox import DOX
 # from _n2 import N2
 # from _pathogen import Pathogen
 # from _pom import POM
 # from _sed_flux import SedFlux
-# from _alkalinity import Alkalinity
+from _alkalinity import Alkalinity
 
 #Variables to return
 output_variables = OrderedDict()
@@ -40,8 +40,9 @@ global_module_choices = {
     'use_DIC' : False,
     'use_N2' : False,
     'use_Pathogen' : False,
-    'use_Alk' : False,
+    'use_Alk' : True,
     'use_POM2' : False,
+    'use_CBOD': True,
 }
 
 #User-defined global variables
@@ -52,7 +53,7 @@ global_vars = {
     'NH4' : 100.0,
     'NO3' : 100.0,
     'TIP' : 100.0,
-    'TwaterC' : 20.0,
+    'TwaterC' : 25.0,
     'depth' : 1.0,
 
     #Benthic algae
@@ -61,23 +62,70 @@ global_vars = {
     #Nitrogen
     'DOX' : 100.0,
     'OrgN' : 100.0,
-    'vson' : 0.01,
 
     #Phosphrous
     'OrgP' : 100,
-    'vs' : 1,
-    'vsop' : 0.01,
 
     #CBOD
-    'nCBOD' : 2,
     'CBOD' : 100,
 
     #Parameters
     'lambda' : 1.0,
     'fdp' : 0.5,
-    'PAR' : 100.0
+    'PAR' : 100.0,
+    'vs' : 1,
+    'vson' : 0.01,
+    'vsop' : 0.01,
+    'vb' : 0.0025, 
+    'h2' : 0.1,
+
+    #SedFlux
+    'Salinity': 100,
+    'dt' : 0.1,
+    'POM2' : 100,
+    'TsedC' : 100,
+
+    #Alkalinity
+    'Alk' : 100,
+    'pH' : 7,
+    'DIC' : 100,
+
 }
 
+#User-defined global variables only used in SedFlux
+global_var_sedflux = OrderedDict()
+global_var_sedflux = {
+    'NH41' : 100,
+    'NO31' : 100,
+    'TIP1' : 100,
+    'CH41' : 100,
+    'SO41' : 100,
+    'TH2S1' : 100,
+    'DIC1' : 100,
+    
+    'NH42' : 100,
+    'NO32' : 100,
+    'TIP2' : 100,
+    'CH42' : 100,
+    'SO42' : 100,
+    'TH2S2' : 100,
+    'DIC2' : 100,
+
+    'POC2_1' : 100,
+    'PON2_1' : 100,
+    'POP2_1' : 100,
+
+    'POC2_2' : 100,
+    'PON2_2' : 100,
+    'POP2_2' : 100,
+
+    'POC2_3' : 100,
+    'PON2_3' : 100,
+    'POP2_3' : 100,
+
+    # 't' : 1,
+
+}
 #Algae Module Optional Changes 
 algae_constant_changes=OrderedDict()
 algae_constant_changes = {
@@ -152,6 +200,24 @@ phosphorous_constant_changes = {
 
 }
 
+CBOD_constant_changes = OrderedDict()
+CBOD_constant_changes= {
+    # 'kbod' : 0.12,
+    # 'ksbod' : 0,
+    # 'KsOxbod' : 0.5,
+}
+
+alkalinity_constant_changes=OrderedDict()
+alkalinity_constant_changes = {
+#    'ralkca' : 14/106/12/1000, #translating algal and balgal growht into Alk if NH2 is the N source (eq/ug-chla)
+#    'ralkcn' : 18/106/12/1000, #ratio translating algal and balgal growth into Alk if NO3 is the N source (eq/ug-Chla)
+#    'ralkn' : 2/14/1000, #nitrification
+#    'ralkden' : 4/14/1000, # denitrification
+#    'pH_solution' : 2,
+#    'imax' : 13, # maximum iteration number for computing pH
+#    'es' : 0.003, # maximum relative error for computing pH
+}
+
 #Call Algae module
 if global_module_choices['use_Algae'] :
     output_variables['dApdt'], algae_pathways = Algae(global_module_choices, global_vars, algae_constant_changes).Calculations()
@@ -161,9 +227,13 @@ else:
 #Call Benthic Algae module
 if global_module_choices['use_BAlgae'] :
 # Call Benthic Algea 
-    output_variables ['dAbdt'], Balgae_pathways = BenthicAlgae(global_module_choices, global_vars, Balgae_constant_changes).Calculations()
+    output_variables ['dAbdt'], balgae_pathways = BenthicAlgae(global_module_choices, global_vars, Balgae_constant_changes).Calculations()
 else :
-    Balgae_pathways = {}
+    balgae_pathways = {}
+
+#Call CBOD module
+if global_module_choices['use_CBOD'] :
+    output_variables['dCBODdt'] = CBOD(global_vars['CBOD'],global_vars['TwaterC'], global_vars['DOX'], global_module_choices['use_DOX'], CBOD_constant_changes).Calculation()
 
 #Call Sediment Flux module
 if global_module_choices['use_SedFlux'] :
@@ -179,17 +249,23 @@ else :
 #Call Phosphorus module
 if global_module_choices['use_OrgP'] or global_module_choices['use_TIP']:
     output_variables['dOrgPdt'], output_variables['dTIPdt'], output_variables['TOP'], output_variables['TP'] \
-        = Phosphorus(global_module_choices, global_vars, algae_pathways, Balgae_pathways, sedFlux_pathways, phosphorous_constant_changes).Calculation()
+        = Phosphorus(global_module_choices, global_vars, algae_pathways, balgae_pathways, sedFlux_pathways, phosphorous_constant_changes).Calculation()
 
 #Call Nitrogen module
 if global_module_choices['use_NH4'] or global_module_choices['use_NO3'] or global_module_choices['use_OrgN'] :
-    output_variables['DIN'], output_variables['TON'], output_variables['TKN'], output_variables['TN'], output_variables['dOrgNdt'], output_variables['dNH4dt'], output_variables['dNO3dt'] \
-        = Nitrogen(global_module_choices, global_vars, algae_pathways, Balgae_pathways, sedFlux_pathways, nitrogen_constant_changes).Calculations()
-  
-#TODO create for carbon, alkalinity, DOX, CBOD, N2, Pathogen, and POM
+    output_variables['DIN'], output_variables['TON'], output_variables['TKN'], output_variables['TN'], output_variables['dOrgNdt'], output_variables['dNH4dt'], output_variables['dNO3dt'], nitrogen_pathways = Nitrogen(global_module_choices, global_vars, algae_pathways, balgae_pathways, sedFlux_pathways, nitrogen_constant_changes).Calculations()
+else:
+    nitrogen_pathways = {}
+
+#Call Alkalinity module and pH
+if global_module_choices['use_Alk'] :
+    output_variables['dAlkdt'], output_variables['pH'] = Alkalinity(global_module_choices, global_vars, algae_pathways, balgae_pathways, nitrogen_pathways, alkalinity_constant_changes).Calculations_Alk()
+else:
+    nitrogen_pathways = {}
+
+#TODO create for carbon, DOX, N2, Pathogen, and POM
 
 et = time.time()
 elapsed_time = et - st 
 
 print('Execution time:', elapsed_time, 'seconds')
-

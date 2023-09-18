@@ -13,24 +13,11 @@ class Test_phosphorus(unittest.TestCase):
         self.global_module_choices = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
         self.global_module_choices = {
             'use_Algae': True,
-            'use_NH4': True,
-            'use_NO3': True,
             'use_TIP': True,
-            'use_POC': False,
-            'use_DOC': False,
-
             'use_BAlgae': True,
-            'use_OrgN' : True,
             'use_OrgP' : True,
-
             'use_SedFlux' : False,
-            'use_DOX': True,
 
-            'use_DIC': False,
-            'use_N2' : False,
-            'use_Pathogen' : False,
-            'use_Alk' : False,
-            'use_POM2' : False,
         }
 
         self.global_vars = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
@@ -100,9 +87,44 @@ class Test_phosphorus(unittest.TestCase):
         self.assertAlmostEqual(TOP, 150, 3)
         self.assertAlmostEqual(TP, 250, 3)
 
+#Change rpo4
+    def test_rpo4 (self):
+        self.P_constant_changes['rpo4'] = 0.5
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
+        self.assertAlmostEqual(dTIPdt, -33.75, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change kop
+    def test_kop (self):
+        self.P_constant_changes['kop'] = 0.3
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, -16.95, 3)
+        self.assertAlmostEqual(dTIPdt, -14.25, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change vsop
+    def test_vsop (self):
+        self.global_vars['vsop'] = 0.1
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, -5.95, 3)
+        self.assertAlmostEqual(dTIPdt, -34.25, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change TIP
+    def test_TIP (self):
+        self.global_vars['TIP'] = 50
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
+        self.assertAlmostEqual(dTIPdt, -9.25, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 200, 3)
+
 #Change OrgP
     def test_OrgP (self):
-        
         self.global_vars['OrgP'] = 200
         dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
         self.assertAlmostEqual(dOrgPdt, -7.95, 3)
@@ -110,14 +132,190 @@ class Test_phosphorus(unittest.TestCase):
         self.assertAlmostEqual(TOP, 250, 3)
         self.assertAlmostEqual(TP, 350, 3)
 
-#Change rpo4
-    def test_rpo4 (self):
-        self.P_constant_changes['rpo4'] = 0.4
+#Change depth
+    def test_depth (self):
+        self.global_vars['depth'] = 5
         dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
-        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
-        self.assertAlmostEqual(dTIPdt, -33.85, 3)
+        self.assertAlmostEqual(dOrgPdt, 0.61, 3)
+        self.assertAlmostEqual(dTIPdt, 11.15, 3)
         self.assertAlmostEqual(TOP, 150, 3)
         self.assertAlmostEqual(TP, 250, 3)
+
+#Change TwaterC
+    def test_TwaterC (self):
+        self.global_vars['TwaterC'] = 35
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, -6.8659, 3)
+        self.assertAlmostEqual(dTIPdt, -24.334, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change vs
+    def test_vs (self):
+        self.global_vars['vs'] = 4
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
+        self.assertAlmostEqual(dTIPdt, -184.25, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change fdp
+    def test_fdp (self):
+        self.global_vars['fdp'] = 0.25
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
+        self.assertAlmostEqual(dTIPdt, -59.25, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change Ap
+    def test_Ap(self):
+        self.global_vars['Ap'] = 50
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
+        self.assertAlmostEqual(dTIPdt, -34.25, 3)
+        self.assertAlmostEqual(TOP, 125, 3)
+        self.assertAlmostEqual(TP, 225, 3)
+
+#Change rpa
+    def test_rpa(self):
+        self.algae_pathways['rpa'] = 0.25
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, -1.95, 3)
+        self.assertAlmostEqual(dTIPdt, -39.25, 3)
+        self.assertAlmostEqual(TOP, 125, 3)
+        self.assertAlmostEqual(TP, 225, 3)
+
+#Change ApDeath
+    def test_ApDeath(self):
+        self.algae_pathways['ApDeath'] = 70
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 28.05, 3)
+        self.assertAlmostEqual(dTIPdt, -34.25, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change ApRespiration
+    def test_ApRespiration(self):
+        self.algae_pathways['ApRespiration'] = 15
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
+        self.assertAlmostEqual(dTIPdt, -41.75, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change ApGrowth
+    def test_ApGrowth(self):
+        self.algae_pathways['ApGrowth'] = 30
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
+        self.assertAlmostEqual(dTIPdt, -44.25, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change rpb
+    def test_rpb(self):
+        self.Balgae_pathways['rpb'] = 0.75
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 11.15, 3)
+        self.assertAlmostEqual(dTIPdt, -42.75, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change Fw
+    def test_Fw(self):
+        self.Balgae_pathways['Fw'] = 0.5
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 1.25, 3)
+        self.assertAlmostEqual(dTIPdt, -34.25, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change Fb
+    def test_Fb(self):
+        self.Balgae_pathways['Fb'] = 0.3
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 0.35, 3)
+        self.assertAlmostEqual(dTIPdt, -29.75, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change AbGrowth
+    def test_AbGrowth(self):
+        self.Balgae_pathways['AbGrowth'] = 20
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
+        self.assertAlmostEqual(dTIPdt, -32.0, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change AbRespiration
+    def test_AbRespiration(self):
+        self.Balgae_pathways['AbRespiration'] = 50
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
+        self.assertAlmostEqual(dTIPdt, -24.25, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change AbDeath
+    def test_AbDeath(self):
+        self.Balgae_pathways['AbDeath'] = 10
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 1.025, 3)
+        self.assertAlmostEqual(dTIPdt, -34.25, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change JDIP and use_SedFlux
+    def test_JDIP_use_SedFlux(self):
+        self.global_module_choices['use_SedFlux'] = True
+        self.sedFlux_pathways['JDIP'] = 5
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
+        self.assertAlmostEqual(dTIPdt, -29.25, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)
+
+#Change use_OrgP
+    def test_use_OrgP(self):
+        self.global_module_choices['use_OrgP'] = False
+
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 0, 3)
+        self.assertAlmostEqual(dTIPdt, -44.25, 3)
+        self.assertAlmostEqual(TOP, 50, 3)
+        self.assertAlmostEqual(TP, 150, 3)
+
+#Change use_TIP
+    def test_use_OrgP(self):
+        self.global_module_choices['use_TIP'] = False
+
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, 3.05, 3)
+        self.assertAlmostEqual(dTIPdt, 0, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 150, 3)
+
+#Change use_Algae
+    def test_use_Algae(self):
+        self.global_module_choices['use_Algae'] = False
+
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, -6.95, 3)
+        self.assertAlmostEqual(dTIPdt, -44.25, 3)
+        self.assertAlmostEqual(TOP, 100, 3)
+        self.assertAlmostEqual(TP, 200, 3)        
+
+#Change use_BAlgae
+    def test_use_BAlgae(self):
+        self.global_module_choices['use_BAlgae'] = False
+
+        dOrgPdt, dTIPdt, TOP, TP = Phosphorus(self.global_module_choices, self.global_vars, self.algae_pathways, self.Balgae_pathways, self.sedFlux_pathways, self.P_constant_changes).Calculation()
+        self.assertAlmostEqual(dOrgPdt, -1, 3)
+        self.assertAlmostEqual(dTIPdt, -30, 3)
+        self.assertAlmostEqual(TOP, 150, 3)
+        self.assertAlmostEqual(TP, 250, 3)    
 
 if __name__ == '__main__':
     unittest.main()

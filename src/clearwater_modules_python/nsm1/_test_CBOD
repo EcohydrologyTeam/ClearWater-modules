@@ -1,0 +1,157 @@
+from collections import OrderedDict
+
+import unittest
+from numba.typed import Dict
+from numba import types
+import os
+import sys
+
+from _cbod import CBOD
+
+class Test_CBOD(unittest.TestCase):
+
+    def setUp(self) :
+        self.global_module_choices = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+        self.global_module_choices = {
+            'use_Algae' : True,
+            'use_BAlgae': True,
+            'use_NH4' : True,
+            'use_NO3' : True,
+            'use_TIP' : True,
+            'use_POC' : True,
+            'use_DOC' : True,
+            'use_OrgN' : True,
+            'use_OrgP' : True,
+            'use_SedFlux' : False,
+            'use_DOX' : True,
+            'use_DIC' : False,
+            'use_N2' : False,
+            'use_Pathogen' : False,
+            'use_Alk' : False,
+            'use_POM2' : False,
+            'use_CBOD': True,
+        }
+        
+        self.global_vars = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+        self.global_vars = {
+            #Algae
+            'Ap' : 100.0,
+            'NH4' : 100.0,
+            'NO3' : 100.0,
+            'TIP' : 100.0,
+            'TwaterC' : 25.0,
+            'depth' : 1.0,
+
+            #Benthic algae
+            'Ab' : 100.0,
+
+            #Nitrogen
+            'DOX' : 0.5,
+            'OrgN' : 100.0,
+
+            #Phosphrous
+            'OrgP' : 100,
+
+            #CBOD
+            'CBOD' : 0.5,
+
+            #Parameters
+            'lambda' : 1.0,
+            'fdp' : 0.5,
+            'PAR' : 100.0,
+            'vs' : 1,
+            'vson' : 0.01,
+            'vsop' : 0.01,
+            'vb' : 0.0025, 
+            'h2' : 0.1,
+
+            #SedFlux
+            'Salinity': 100,
+            'dt' : 0.1,
+            'POM2' : 100,
+            'TsedC' : 100,
+
+
+        }
+        
+        self.CBOD_constant_changes = Dict.empty(key_type=types.unicode_type, value_type=types.float64)
+        self.CBOD_constant_changes= {
+            # 'kbod' : 0.12,
+            # 'ksbod' : 0,
+            # 'KsOxbod' : 0.5,
+        }
+
+#Inital 
+    def test_inital (self):
+        Change=CBOD(self.global_vars['CBOD'], self.global_vars['TwaterC'], self.global_vars['DOX'], self.global_module_choices['use_DOX'], self.CBOD_constant_changes).Calculation()
+
+        self.assertAlmostEqual(Change, -0.094039581, 4)
+
+#Kbod
+    def test_kbod (self):
+        self.CBOD_constant_changes['kbod'] = 0.2
+        Change=CBOD(self.global_vars['CBOD'], self.global_vars['TwaterC'], self.global_vars['DOX'], self.global_module_choices['use_DOX'], self.CBOD_constant_changes).Calculation()
+
+        self.assertAlmostEqual(Change, -0.119202638, 4)
+
+#Ksbod 
+    def test_ksbod (self):
+        self.CBOD_constant_changes['ksbod'] = 0.05
+        Change=CBOD(self.global_vars['CBOD'], self.global_vars['TwaterC'], self.global_vars['DOX'], self.global_module_choices['use_DOX'], self.CBOD_constant_changes).Calculation()
+
+        self.assertAlmostEqual(Change, -0.065892083, 4)
+
+
+#KsOxbod 
+    def test_ksOxbod (self):
+        self.CBOD_constant_changes['KsOxbod'] = 0.6
+        Change=CBOD(self.global_vars['CBOD'], self.global_vars['TwaterC'], self.global_vars['DOX'], self.global_module_choices['use_DOX'], self.CBOD_constant_changes).Calculation()
+
+        self.assertAlmostEqual(Change, -0.090608255, 4)
+
+#TwaterC 
+    def test_TwaterC (self):
+        self.global_vars['TwaterC']=15
+        Change=CBOD(self.global_vars['CBOD'], self.global_vars['TwaterC'], self.global_vars['DOX'], self.global_module_choices['use_DOX'], self.CBOD_constant_changes).Calculation()
+
+        self.assertAlmostEqual(Change, -0.0682534, 4)
+
+#DOX 
+    def test_DOX (self):
+        self.global_vars['DOX']=1
+        Change=CBOD(self.global_vars['CBOD'], self.global_vars['TwaterC'], self.global_vars['DOX'], self.global_module_choices['use_DOX'], self.CBOD_constant_changes).Calculation()
+
+        self.assertAlmostEqual(Change, -0.10662111, 4)
+
+#CBOD 
+    def test_CBOD (self):
+        self.global_vars['CBOD'] = 0.25
+        Change=CBOD(self.global_vars['CBOD'], self.global_vars['TwaterC'], self.global_vars['DOX'], self.global_module_choices['use_DOX'], self.CBOD_constant_changes).Calculation()
+
+        self.assertAlmostEqual(Change, -0.047019791, 4)
+
+#use_DOX 
+    def test_use_DOX(self):
+        self.global_module_choices['use_DOX'] = False
+        Change=CBOD(self.global_vars['CBOD'], self.global_vars['TwaterC'], self.global_vars['DOX'], self.global_module_choices['use_DOX'], self.CBOD_constant_changes).Calculation()
+
+        self.assertAlmostEqual(Change, -0.131784166807132, 4)
+
+#use_DOX_ksbod 
+    def test_use_DOX_ksbod(self):
+        self.global_module_choices['use_DOX'] = False
+        self.CBOD_constant_changes['kbod'] = 0.2
+        Change=CBOD(self.global_vars['CBOD'], self.global_vars['TwaterC'], self.global_vars['DOX'], self.global_module_choices['use_DOX'], self.CBOD_constant_changes).Calculation()
+
+        self.assertAlmostEqual(Change,-0.182110281, 4)
+
+#use_DOX_CBOD 
+    def test_use_DOX_CBOD(self):
+        self.global_module_choices['use_DOX'] = False
+        self.global_vars['CBOD']=100
+        Change=CBOD(self.global_vars['CBOD'], self.global_vars['TwaterC'], self.global_vars['DOX'], self.global_module_choices['use_DOX'], self.CBOD_constant_changes).Calculation()
+
+        self.assertAlmostEqual(Change,-26.35683336, 4)
+
+if __name__ == '__main__':
+    unittest.main()

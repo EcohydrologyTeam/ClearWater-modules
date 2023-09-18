@@ -123,7 +123,9 @@ class Phosphorus:
                 AbDeath_OrgP = 0.0
 
             dOrgPdt = ApDeath_OrgP + AbDeath_OrgP - OrgP_DIP_decay - OrgP_Settling
-
+        else: 
+            dOrgPdt = 0
+        
         # Total Inorganic Phosphorus  (mg/P/day)
         """
          dTIP/dt =     OrgP Decay                (OrgP -> DIP)
@@ -166,8 +168,9 @@ class Phosphorus:
                 DIP_AbRespiration = 0.0
                 DIP_AbGrowth = 0.0
 
-            dTIPdt = OrgP_DIP_decay - TIP_Settling + DIPfromBed + \
-                DIP_ApRespiration - DIP_ApGrowth + DIP_AbRespiration - DIP_AbGrowth
+            dTIPdt = OrgP_DIP_decay - TIP_Settling + DIPfromBed + DIP_ApRespiration - DIP_ApGrowth + DIP_AbRespiration - DIP_AbGrowth 
+        else :
+            dTIPdt = 0
 
         # Derived variable calculations
         TOP = 0.0

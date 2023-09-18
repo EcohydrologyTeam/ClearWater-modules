@@ -327,6 +327,14 @@ class Nitrogen:
         TKN = TKN + TON
         TN = DIN + TON
 
+        nitrogen_pathways = {
+            'NH4_Nitrification' : NH4_Nitrification,
+            'NO3_Denit' : NO3_Denit,
+            'ApUptakeFr_NH4': ApUptakeFr_NH4,
+            'ApUptakeFr_NO3' : ApUptakeFr_NO3,
+            'AbUptakeFr_NH4': AbUptakeFr_NH4,
+        }
+
         print("dNH4dt", dNH4dt)
         print("dNO3dt", dNO3dt)
         print("dOrgNdt", dOrgNdt)
@@ -336,4 +344,4 @@ class Nitrogen:
         print("TKN", TKN)
         print("TN", TN)
 
-        return DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt
+        return DIN, TON, TKN, TN, dOrgNdt, dNH4dt, dNO3dt, nitrogen_pathways

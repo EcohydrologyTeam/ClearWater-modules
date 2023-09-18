@@ -166,7 +166,8 @@ class BenthicAlgae:
         # (4b)  Bottom Area Density (FSb)
 
         # Each is computed individually and then applied to the maximum growth rate to obtain the local specific growth rate
-
+        
+        # (1b) Benthic Nitrogen Limitation (FLb)
         if self.global_vars['Ab'] <= 0.0 or KEXT <= 0.0 or self.global_vars['PAR'] <= 0.0:
             # After sunset, no growth
             FLb = 0.0
@@ -251,9 +252,10 @@ class BenthicAlgae:
 
         self.dAbdt = dAbdt
 
-        Balgae_pathways = {
+        balgae_pathways = {
             'rnb': self.rnb,
             'rpb': self.rpb,
+            'rcb' : self.rcb,
             'AbGrowth': AbGrowth,
             'AbDeath': AbDeath,
             'AbRespiration': AbRespiration,
@@ -262,4 +264,4 @@ class BenthicAlgae:
         }
 
         print(dAbdt)
-        return dAbdt, Balgae_pathways
+        return dAbdt, balgae_pathways
