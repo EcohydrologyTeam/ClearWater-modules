@@ -20,8 +20,6 @@ class NutrientBudget(base.Model):
         self,
         initial_state_values: Optional[base.InitialVariablesDict] = None,
         algae_parameters: Optional[dict[str, float]] = None,
-
-        use_sed_temp: bool = False,
         track_dynamic_variables: bool = True,
         hotstart_dataset: Optional[xr.Dataset] = None,
         time_dim: Optional[str] = None,
@@ -40,9 +38,6 @@ class NutrientBudget(base.Model):
             
         static_variable_values = {
             **self.__algae_parameters}
-
-        # TODO: make sure this feature works -> test it, but post demo
-        static_variable_values['use_sed_temp'] = use_sed_temp
 
         super().__init__(
             initial_state_values=initial_state_values,

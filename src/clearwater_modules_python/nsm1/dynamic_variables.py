@@ -9,6 +9,42 @@ class Variable(base.Variable):
     ...
 
 Variable(
+    name='rna',
+    long_name='Algal N:Chla Ratio',
+    units='mg-N/ug Chla',
+    description='Algal N:Chla Ratio',
+    use='dynamic',
+    process=algae_processes.rna
+)
+
+Variable(
+    name='rpa',
+    long_name='Algal P:Chla Ratio',
+    units='mg-P/ug Chla',
+    description='Algal P:Chla Ratio',
+    use='dynamic',
+    process=algae_processes.rpa
+)
+
+Variable(
+    name='rca',
+    long_name='Algal C:Chla Ratio',
+    units='mg-C/ug Chla',
+    description='Algal C:Chla Ratio',
+    use='dynamic',
+    process=algae_processes.rca
+)
+
+Variable(
+    name='rda',
+    long_name='Algal D:Chla Ratio',
+    units='mg-D/ug Chla',
+    description='Algal D:Chla Ratio',
+    use='dynamic',
+    process=algae_processes.rda
+)
+
+Variable(
     name='mu_max_tc', 
     long_name='Max Algae Growth with Temperature Correction',
     units='1/d',

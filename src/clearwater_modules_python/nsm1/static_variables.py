@@ -102,40 +102,13 @@ Variable(
 )
 
 Variable(
-    name='rna',
-    long_name='Algal N:Chla Ratio',
-    units='mg-N/ug Chla',
-    description='Algal N:Chla Ratio',
+    name='AWa',
+    long_name='Algal Chlorophyll',
+    units='ug Chla',
+    description='Algal Chlorophyll',
     use='static',
-    process=algae_processes.rna
 )
 
-Variable(
-    name='rpa',
-    long_name='Algal P:Chla Ratio',
-    units='mg-P/ug Chla',
-    description='Algal P:Chla Ratio',
-    use='static',
-    process=algae_processes.rpa
-)
-
-Variable(
-    name='rca',
-    long_name='Algal C:Chla Ratio',
-    units='mg-C/ug Chla',
-    description='Algal C:Chla Ratio',
-    use='static',
-    process=algae_processes.rca
-)
-
-Variable(
-    name='rda',
-    long_name='Algal D:Chla Ratio',
-    units='mg-D/ug Chla',
-    description='Algal D:Chla Ratio',
-    use='static',
-    process=algae_processes.rda
-)
 
 Variable(
     name='KL',
@@ -162,26 +135,26 @@ Variable(
 )
 
 Variable(
-    name='mu_max',
+    name='mu_max_20',
     long_name='Max Algae Growth',
     units='1/d',
-    description='Max Algae Growth',
+    description='Max Algae Growth at 20C',
     use='static',
 )
 
 Variable(
-    name='kdp',
+    name='kdp_20',
     long_name='Algal Mortality Rate',
     units='1/d',
-    description='Algal Mortality Rate',
+    description='Algal Mortality Rate at 20C',
     use='static',
 )
 
 Variable(
-    name='krp',
+    name='krp_20',
     long_name='Algal Respiration Rate',
     units='1/d',
-    description='Algal Respiration Rate',
+    description='Algal Respiration Rate at 20C',
     use='static',
 )
 

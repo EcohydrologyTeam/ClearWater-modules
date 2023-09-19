@@ -1,5 +1,8 @@
-# Changes: lambda is not calcualted
-# Some options such as light calculation method was not changeable in FORTRAN but is now changeable
+"""
+File contains process to calculate new algae biomass concentration and associated dependent variables
+"""
+
+# TODO calculate lambda?
 
 import math
 from clearwater_modules_python.shared.processes import arrhenius_correction
@@ -10,6 +13,13 @@ def rna(
     AWn : float,
     AWa: float
 ) -> float :
+    
+    """Calculate rna (mg-N/ug-Chla).
+
+    Args:
+        AWn: Nitrogen Weight (mg)
+        AWa: Algal Chlorophyll (ug-Chla)
+    """
     return AWn/AWa
 
 @numba.njit
@@ -17,6 +27,14 @@ def rpa(
     AWp : float,
     AWa: float
 ) -> float :
+
+    """Calculate rpa (mg-P/ug-Chla).
+
+    Args:
+        AWp: Phosphours Weight (mg)
+        AWa: Algal Chlorophyll (ug-Chla)
+    """
+
     return AWp/AWa
 
 @numba.njit
@@ -24,6 +42,13 @@ def rca(
     AWc : float,
     AWa: float
 ) -> float :
+
+    """Calculate rca (mg-C/ug-Chla).
+
+    Args:
+        AWc: Carbon Weight (mg)
+        AWa: Algal Chlorophyll (ug-Chla)
+    """
     return AWc/AWa
 
 @numba.njit
@@ -31,28 +56,59 @@ def rda(
     AWd : float,
     AWa: float
 ) -> float :
+    
+    """Calculate rda (mg-D/ug-Chla).
+
+    Args:
+        AWd: Dry Algal Weight (mg)
+        AWa: Algal Chlorophyll (ug-Chla)
+    """
     return AWd/AWa
 
 @numba.njit
 def mu_max_tc(
     TwaterC : float,
-    mu_max: float
+    mu_max_20: float
 ) -> float :
-    return arrhenius_correction(TwaterC, mu_max, 1.047)
+
+    """Calculate mu_max_tc (1/d).
+
+    Args:
+        TwaterC: Water temperature (C)
+        mu_max: Max Algae growth (1/d)
+    """
+
+    return arrhenius_correction(TwaterC, mu_max_20, 1.047)
 
 @numba.njit
 def krp_tc(
     TwaterC : float,
-    krp: float
+    krp_20: float
 ) -> float :
-    return arrhenius_correction(TwaterC, krp, 1.047)
+
+    """Calculate krp_tc (1/d).
+
+    Args:
+        TwaterC: Water temperature (C)
+        krp: Algal respiration rate at 20 degree (1/d)
+    """
+
+    return arrhenius_correction(TwaterC, krp_20, 1.047)
 
 @numba.njit
 def kdp_tc(
     TwaterC : float,
-    kdp: float
+    kdp_20: float
 ) -> float :
-    return arrhenius_correction(TwaterC, kdp, 1.047)
+    
+    """Calculate kdp_tc (1/d).
+
+    Args:
+        TwaterC: Water temperature (C)
+        kdp: Algal death rate at 20 degree (1/d)
+    """
+
+    return arrhenius_correction(TwaterC, kdp_20, 1.047)
 
 @numba.njit
 def FL(
@@ -64,16 +120,23 @@ def FL(
     KL : float,
 ) -> float :
 
-    # Depth averaged light function
-    # lambda is light attenuation coefficient (1/m). depth is depth from water surface (m) [unitless] TODO: other depth not initalized method
+    """Calculate Algal light limitation: FL (unitless).
+
+    Args:
+        L: Lambda light attneuation coefficient (unitless)
+        depth: Water depth (m)
+        Ap: Algae Concentration (mg-Chla/L)
+        PAR: Surface light intensity (W/m^2)
+        light_limitation_option: Algal light limitaiton option 1) Half-saturation, 2) Smith model, 3) Steele model (unitless)
+        KL: Light limitaiton constant for algal growth (W/m^2)
+    """
+
     KEXT = L * depth
     sqrt1 = 0.0
     sqrt2 = 0.0
-    # (1) Algal light limitation (FL)
 
     if (Ap <= 0.0 or KEXT <= 0.0 or PAR <= 0.0):
         # After sunset or if there is no algae present
-        # light limiting factor for algal growth [unitless]
         FL = 0.0
     elif light_limitation_option == 1:
         # Half-saturation formulation
@@ -115,8 +178,16 @@ def FN(
 
 ) -> float :
 
-# (2) Algal nitrogen limitation (FN)
-# KsN = Michaelis-Menton half-saturation constant (mg N/L) relating inorganic N to algal growth
+    """Calculate Algal nitrogen limitation: FN (unitless).
+
+    Args:
+        use_NH4: Use NH4 module true or false (true/false)
+        use_NO3: Use NO3 module true or false (true/false)
+        NH4: Ammonium concentration (mg-N/L)
+        NO3: Nitrate concentration (mg-N/L)
+        KsN: Michaelis-Menton half-saturation constant relating inorganic N to algal growth (mg-N/L)
+    """
+
     if use_NH4 or use_NO3:
         FN = (NH4 + NO3) / (KsN + NH4 + NO3)
         if math.isnan(FN):
@@ -135,9 +206,16 @@ def FP(
     use_TIP : bool,
     KsP : float
 ) -> float :
+    
+    """Calculate Algal phosphorous limitation: FP (unitless).
 
-# (3) Algal phosphorous limitation (FP)
-# KsP = Michaelis-Menton half-saturation constant (mg-P/L) relating inorganic P to algal growth
+    Args:
+        use_TIP: Use Total Inorganic Phosphours module true or false (true/false)
+        TIP: Total Inorganic Phosphours concentration (mg-P/L)
+        KsP: Michaelis-Menton half-saturation constant relating inorganic P to algal growth (mg-P/L)
+        fdp: Fraction P dissolved (unitless)
+    """
+
     if use_TIP:
 
         FP = fdp * TIP / (KsP + fdp * TIP)
@@ -160,16 +238,24 @@ def mu(
 
 ) -> float :
 
-# Algal growth rate with three options
-# (a) Multiplicative (b) Limiting nutrient (c) Harmonic Mean
+    """Calculate Algal growth rate with three options 1) Multiplicative, 2) Limiting nutrient, 3) Harmonic Mean (1/d)
+
+    Args:
+        mu_max_tc: Max algae growth temperature corrected (1/d)
+        growth_rate_option: Algal growth rate with options 1) Multiplicative, 2) Limiting nutrient, 3) Harmonic Mean (unitless)
+        FL: Algae light limitation factor (unitless)
+        FP: Algae phosphours limitation factor (unitless)
+        FN: Algae nitrogen limitation factor (unitless)
+    """
+
     if growth_rate_option == 1:
-        # (a) Multiplicative (day-1)
-        mu = mu_max_tc * FL * FP * FN                   # [1/d]
+        # (1) Multiplicative (day-1)
+        mu = mu_max_tc * FL * FP * FN                 
     elif growth_rate_option == 2:
-        # (b) Limiting nutrient (day-1)
+        # (2) Limiting nutrient (day-1)
         mu = mu_max_tc * FL * min(FP, FN)
     elif growth_rate_option == 3:
-        # (c) Harmonic Mean Option (day-1)
+        # (3) Harmonic Mean Option (day-1)
         if FN == 0.0 or FP == 0.0:
             mu = 0.0
         else:
@@ -183,6 +269,13 @@ def ApGrowth(
     Ap: float
 ) -> float :
 
+    """Calculate Algal growth (ug-Chla/L/d)
+
+    Args:
+        mu: Algal growth rate (1/d)
+        Ap: Algae concentration (ug-Chla/L)
+    """
+
     return  mu * Ap                   
 
 @numba.njit
@@ -190,6 +283,13 @@ def ApRespiration(
     krp_tc : float,
     Ap: float
 ) -> float :
+
+    """Calculate Algal Respiration (ug-Chla/L/d)
+
+    Args:
+        krp_tc: Algal respiration rate temperature corrected (1/d)
+        Ap: Algae concentration (ug-Chla/L)
+    """
 
     return krp_tc * Ap         
 
@@ -199,6 +299,12 @@ def ApDeath(
     Ap: float
 ) -> float :
 
+    """Calculate Algal death (ug-Chla/L/d)
+
+    Args:
+        kdp_tc: Algal death rate temperature corrected (1/d)
+        Ap: Algae concentration (ug-Chla/L)
+    """
     return kdp_tc * Ap                
 
 @numba.njit
@@ -208,6 +314,13 @@ def ApSettling(
     depth: float
 ) -> float :
 
+    """Calculate Algal setting rate (ug-Chla/L/d)
+
+    Args:
+        vsap: Algal settling velocity (m/d)
+        Ap: Algae concentration (ug-Chla/L)
+        depth: Depth from Water Surface (m)s
+    """
     return vsap / depth * Ap
 
 @numba.njit
@@ -218,4 +331,27 @@ def dApdt(
     ApSettling : float
 ) -> float :
 
+    """Calculate change in algae biomass concentration (ug-Chla/L/d)
+
+    Args:
+        ApGrowth: Algal growth (ug-Chla/L/d)
+        ApRespiration: Algal respiration (ug-Chla/L/d)
+        ApDeath: Algal death (ug-Chla/L/d)
+        ApSettling: Algal settling (ug-Chla/L/d)
+    """
+
     return ApGrowth - ApRespiration - ApDeath - ApSettling
+
+@numba.njit
+def Ap(
+    Ap : float,
+    dApdt : float,
+) -> float :
+
+    """Calculate new algae concentration (ug-Chla/L)
+
+    Args:
+        Ap: Inital algae biomass concentration (ug-Chla/L)
+        dApdt: Change in algae biomass concentration (ug-Chla/L/d)
+    """
+    return Ap + dApdt

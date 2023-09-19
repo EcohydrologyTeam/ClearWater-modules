@@ -18,7 +18,7 @@ Variable(
     units='ug-Chla/L',
     description='Algal Concentration',
     use='state',
-    process=mock_equation
+    process=algae_processes.Ap 
 )
 
 Variable(
@@ -27,7 +27,7 @@ Variable(
     units='mg-N/L',
     description='Ammonium Concentration',
     use='state',
-    process=mock_equation
+    process=mock_equation #TODO this variable only changes with nitrogen module
 )
 
 Variable(
@@ -36,7 +36,7 @@ Variable(
     units='mg-N/L',
     description='Nitrate Concentration',
     use='state',
-    process=mock_equation
+    process=mock_equation #TODO this variable only changes with nitrogen module
 )
 
 Variable(
@@ -45,7 +45,7 @@ Variable(
     units='mg-P/L',
     description='Total Inorganic Phosphrous Concentration',
     use='state',
-    process=mock_equation
+    process=mock_equation #TODO this variable only changes with phosphorous module
 )
 
 #TODO not sure the order of calling with tsm
@@ -55,6 +55,6 @@ Variable(
     units='C',
     description='Water Temperature Degree Celcius',
     use='state',
-    process=processes.t_water_c
+    process=processes.t_water_c 
 )
 
