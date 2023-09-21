@@ -1,3 +1,4 @@
+import numpy as np
 from clearwater_modules_python.shared.processes import (
     arrhenius_correction,
 )        
@@ -375,3 +376,4 @@ def update_DIC(
         dDICdt:
     """
     return DIC + dDICdt
+
