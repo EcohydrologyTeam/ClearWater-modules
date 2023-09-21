@@ -24,12 +24,21 @@ Variable(
 )
 
 Variable(
+    name='Ab',
+    long_name='Benthic Algae Concentration',
+    units='g-D/m^2',
+    description='Benthic Algae Concentration',
+    use='state',
+    process=mock_equation #TODO depends on benethic algae module 
+)
+
+Variable(
     name='NH4',
     long_name='Ammonium Concentration',
     units='mg-N/L',
     description='Ammonium Concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with nitrogen module
+    process=nitrogen_processes.NH4_new
 )
 
 Variable(
@@ -38,7 +47,16 @@ Variable(
     units='mg-N/L',
     description='Nitrate Concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with nitrogen module
+    process=nitrogen_processes.NO3_new
+)
+
+Variable(
+    name='OrgN',
+    long_name='Organic Nitrogen Concentration',
+    units='mg-N/L',
+    description='Organic Nitrogen Concentration',
+    use='state',
+    process=nitrogen_processes.OrgN_new
 )
 
 Variable(
@@ -51,6 +69,69 @@ Variable(
 )
 
 Variable(
+    name='OrgP',
+    long_name='Total Organic Phosphrous',
+    units='mg-P/L',
+    description='Total Organic Phosphrous Concentration',
+    use='state',
+    process=mock_equation #TODO this variable only changes with phosphorous module
+)
+
+Variable(
+    name='POC',
+    long_name='Particulate Organic Carbon',
+    units='mg-C/L',
+    description='Particulate Organic Carbon Concentration',
+    use='state',
+    process=mock_equation #TODO this variable only changes with carbon module
+)
+
+Variable(
+    name='DOC',
+    long_name='Dissolved Organic Carbon',
+    units='mg-C/L',
+    description='Dissolved Organic Carbon Concentration',
+    use='state',
+    process=mock_equation #TODO this variable only changes with carbon module
+)
+
+Variable(
+    name='DIC',
+    long_name='Dissolved Inorganic Carbon',
+    units='mg-C/L',
+    description='Dissolved Inorganic Carbon Concentration',
+    use='state',
+    process=mock_equation #TODO this variable only changes with carbon module
+)
+
+Variable(
+    name='POM',
+    long_name='Particulate Organic Matter',
+    units='mg-D/L',
+    description='Particulate Organic Matter Concentration',
+    use='state',
+    process=mock_equation #TODO this variable only changes with pom module
+)
+
+Variable(
+    name='POM2',
+    long_name='Sediment Particulate Organic Matter',
+    units='mg-D/L',
+    description='Sediment Particulate Organic Matter Concentration',
+    use='state',
+    process=mock_equation #TODO this variable only changes with pom module
+)
+
+Variable(
+    name='CBOD',
+    long_name='Carbonaceous Biochemical Oxygen Demand',
+    units='mg-O2/L',
+    description='Carbonaceous Biochemical Oxygen Demand Concentration',
+    use='state',
+    process=mock_equation #TODO this variable only changes with cbod module
+)
+
+Variable(
     name='DOX',
     long_name='Dissolved Oxygen',
     units='mg-O2/L',
@@ -60,12 +141,21 @@ Variable(
 )
 
 Variable(
-    name='OrgN',
-    long_name='Organic Nitrogen Concentration',
-    units='mg-N/L',
-    description='Organic Nitrogen Concentration',
+    name='PX',
+    long_name='Pathogen',
+    units='cfu/100mL',
+    description='Pathogen concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with DOX module
+    process=mock_equation #TODO this variable only changes with pathogen module
+)
+
+Variable(
+    name='Alk',
+    long_name='Alkalinity',
+    units='mg-CaCO3/L',
+    description='Alkalinity concentration',
+    use='state',
+    process=mock_equation #TODO this variable only changes with alkalinity module
 )
 
 #TODO not sure the order of calling with tsm
