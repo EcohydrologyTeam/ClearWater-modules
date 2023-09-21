@@ -1,7 +1,11 @@
+"""
+File includes dynamic variables computed in Algae module. Dynamic variables may be accessed by other modules.
+"""
+
 import clearwater_modules_python.shared.processes as shared_processes
 from clearwater_modules_python import base
 from clearwater_modules_python.nsm1.model import NutrientBudget
-from clearwater_modules_python.nsm1 import algae_processes
+import clearwater_modules_python.nsm1.algae.algae_processes as algae_processes
 
 
 @base.register_variable(models=NutrientBudget)

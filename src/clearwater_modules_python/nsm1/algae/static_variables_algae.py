@@ -1,71 +1,16 @@
+"""
+File includes static variables only used in Algae module
+"""
+
 import clearwater_modules_python.base as base
 from clearwater_modules_python.nsm1.model import NutrientBudget
-from clearwater_modules_python.nsm1 import algae_processes
+import clearwater_modules_python.nsm1.algae.algae_processes as algae_processes
 
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
 # TODO: verify all these values
-
-#Global Variables that are used in Algae
-Variable(
-    name='depth',
-    long_name='Water Depth',
-    units='m',
-    description='Water depth from surface',
-    use='static',
-)
-
-Variable(
-    name='lambda',
-    long_name='Light attenuation coefficient',
-    units='unitless',
-    description='Light attenuation coefficient',
-    use='static',
-)
-
-Variable(
-    name='fdp',
-    long_name='Fraction P dissolved',
-    units='unitless',
-    description='Fraction P dissolved',
-    use='static',
-)
-
-Variable(
-    name='PAR',
-    long_name='Surface light intensity',
-    units='W/m^2',
-    description='Surface light intensity',
-    use='static',
-)
-
-#Global module options
-
-Variable(
-    name='use_NH4',
-    long_name='Use ammonium module',
-    units='unitless',
-    description='True/Fasle use ammonium module',
-    use='static',
-)
-
-Variable(
-    name='use_NO3',
-    long_name='Use nitrate module',
-    units='unitless',
-    description='True/Fasle use nitrate module',
-    use='static',
-)
-
-Variable(
-    name='use_TIP',
-    long_name='Use total organic phosphrous module',
-    units='unitless',
-    description='True/Fasle use total organic phosphrous module',
-    use='static',
-)
 
 #Only Algae Variables 
 
