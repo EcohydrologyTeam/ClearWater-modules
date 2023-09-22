@@ -12,7 +12,7 @@ class Variable(base.Variable):
 #Global parameters
 
 Variable(
-    name='lambda',
+    name='L',
     long_name='Light attenuation coefficient',
     units='unitless',
     description='Light attenuation coefficient',
@@ -48,7 +48,7 @@ Variable(
     name='use_NH4',
     long_name='Use ammonium module',
     units='unitless',
-    description='True/Fasle use ammonium module',
+    description='True/False use ammonium module',
     use='static',
 )
 
@@ -56,7 +56,7 @@ Variable(
     name='use_NO3',
     long_name='Use nitrate module',
     units='unitless',
-    description='True/Fasle use nitrate module',
+    description='True/False use nitrate module',
     use='static',
 )
 
@@ -64,7 +64,7 @@ Variable(
     name='use_OrgN',
     long_name='Use organic nitrogen module',
     units='unitless',
-    description='True/Fasle use organic nitrogen module',
+    description='True/False use organic nitrogen module',
     use='static',
 )
 
@@ -72,7 +72,7 @@ Variable(
     name='use_SedFlux',
     long_name='Use sediment flux module',
     units='unitless',
-    description='True/Fasle use sediment flux module',
+    description='True/False use sediment flux module',
     use='static',
 )
 
@@ -80,7 +80,7 @@ Variable(
     name='use_DOX',
     long_name='Use dissolved oxygen module',
     units='unitless',
-    description='True/Fasle use dissovled oxygen module',
+    description='True/False use dissolved oxygen module',
     use='static',
 )
 
@@ -88,7 +88,7 @@ Variable(
     name='use_Algae',
     long_name='Use algae module',
     units='unitless',
-    description='True/Fasle use algae module',
+    description='True/False use algae module',
     use='static',
 )
 
@@ -96,15 +96,78 @@ Variable(
     name='use_Balgae',
     long_name='Use benthic algae module',
     units='unitless',
-    description='True/Fasle use benthic algae module',
+    description='True/False use benthic algae module',
     use='static',
 )
 
 Variable(
     name='use_TIP',
-    long_name='Use total organic phosphrous module',
+    long_name='Use total inorganic phosphorus module',
     units='unitless',
-    description='True/Fasle use total organic phosphrous module',
+    description='True/False use total inorganic phosphorus module',
     use='static',
 )
 
+Variable(
+    name='use_OrgP',
+    long_name='Use total organic phosphorus module',
+    units='unitless',
+    description='True/False use total organic phosphorus module',
+    use='static',
+)
+
+Variable(
+    name='use_POC',
+    long_name='Use particulate organic carbon module',
+    units='unitless',
+    description='True/False use particulate organic carbon module',
+    use='static',
+)
+
+Variable(
+    name='use_DOC',
+    long_name='Use dissolved organic carbon module',
+    units='unitless',
+    description='True/False use dissolved organic carbon module',
+    use='static',
+)
+
+Variable(
+    name='use_DIC',
+    long_name='Use dissolved inorganic carbon module',
+    units='unitless',
+    description='True/False use dissolved inorganic carbon module',
+    use='static',
+)
+
+Variable(
+    name='use_N2',
+    long_name='Use dissolved N2 module',
+    units='unitless',
+    description='True/False use N2 module',
+    use='static',
+)
+
+Variable(
+    name='use_Pathogen',
+    long_name='Use pathogen module',
+    units='unitless',
+    description='True/False use pathogen module',
+    use='static',
+)
+
+Variable(
+    name='use_Alk',
+    long_name='Use alkalinity module',
+    units='unitless',
+    description='True/False use alkalinity module',
+    use='static',
+)
+
+Variable(
+    name='use_POM2',
+    long_name='Use particulate organic matter module',
+    units='unitless',
+    description='True/False use particulate organic matter module',
+    use='static',
+)

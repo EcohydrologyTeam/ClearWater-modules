@@ -16,9 +16,9 @@ class Variable(base.Variable):
 
 Variable(
     name='KNR',
-    long_name='Oxygen inhibitation factor for nitrification',
+    long_name='Oxygen inhabitation factor for nitrification',
     units='mg-O2/L',
-    description='Oxygen inhibitation factor for nitrification',
+    description='Oxygen inhabitation factor for nitrification',
     use='static',
 )
 
@@ -48,9 +48,9 @@ Variable(
 
 Variable(
     name='rnh4_20',
-    long_name='Sediment rlease rate of NH4 at 20C',
+    long_name='Sediment release rate of NH4 at 20C',
     units='g-N/m^2/d',
-    description='Sediment rlease rate of NH4 at 20C',
+    description='Sediment release rate of NH4 at 20C',
     use='static',
 )
 

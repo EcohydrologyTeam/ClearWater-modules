@@ -148,10 +148,19 @@ Variable(
 )
 
 Variable(
-    name='ApaDpdt', 
+    name='dApdt',
     long_name='Algal Biomass Concentration Change',
     units='ug-Chala/L/d',
     description='Algal Biomass Concentration Change',
     use='dynamic',
     process=algae_processes.dApdt,
+)
+
+Variable(
+    name='Ap_new',
+    long_name='New algal biomass concentration',
+    units='ug-Chala/L/d',
+    description='New algal biomass concentration',
+    use='dynamic',
+    process=algae_processes.Ap_new,
 )

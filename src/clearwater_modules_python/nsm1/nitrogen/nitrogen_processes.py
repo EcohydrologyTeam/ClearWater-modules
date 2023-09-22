@@ -1,5 +1,5 @@
 """
-File containes process to calculate nitrogen species concentration and associated dependent variables
+File contains process to calculate nitrogen species concentration and associated dependent variables
 """
 import math
 from clearwater_modules_python.shared.processes import arrhenius_correction
@@ -30,7 +30,7 @@ def rnh4_tc(
 
     Args:
         TwaterC: Water temperature (C)
-        rnh4_20: Sedimet release rate of NH4 (1/d)
+        rnh4_20: Sediment release rate of NH4 (1/d)
     """
 
     return arrhenius_correction(TwaterC, rnh4_20, 1.074)
@@ -280,7 +280,7 @@ def dNH4dt(
     Args:
         use_OrgN: true/false to use organic nitrogen module (unitless),
         use_Algae: true/false to use algae module (unitless),
-        use_Balgae: true/false to use benethic algae module (unitless),
+        use_Balgae: true/false to use benthic algae module (unitless),
         use_DOX: true/false to use dissolve oxygen module (unitless),
         use_SedFlux: true/false to use sediment flux module (unitless),
         use_NH4: true/false to use ammonium module (unitless),
@@ -290,7 +290,7 @@ def dNH4dt(
         rnb: Benthic algal N: Benthic Algal Dry Weight (mg-N/mg-D),
 
         Fb: Fraction of bottom area for benthic algae (unitless),
-        KNR: Oxygen inhibitation facotr for nitrification (mg-O2/L),
+        KNR: Oxygen inhabitation factor for nitrification (mg-O2/L),
         DOX: Dissolved oxygen concentration (mg-O2/L),
         NH4: Ammonium concentration (mg-N/L),
         JNH4: Sediment water flux of ammonium (g-N/m^2/d),
@@ -298,7 +298,7 @@ def dNH4dt(
         ApRespiration: Algal respiration rate (ug-Chla/L/d),
         ApGrowth: Algal growth rate (ug-Chla/L/d),
         AbRespiration: Benthic algal respiration rate (g/m^2/d),
-        AbGrowth: Benethic alga growth rate (g/m^2/d),    
+        AbGrowth: Benthic alga growth rate (g/m^2/d),    
     
     Ammonia Nitrogen (NH4)                 (mg-N/day*L)
     dNH4/dt   =    OrgN_NH4_Decay          (OrgN -> NH4)  
@@ -375,7 +375,7 @@ def dNO3dt(
 
     Args:
         use_Algae: true/false to use algae module (unitless),
-        use_Balgae: true/false to use benethic algae module (unitless),
+        use_Balgae: true/false to use benthic algae module (unitless),
         use_DOX: true/false to use dissolve oxygen module (unitless),
         use_SedFlux: true/false to use sediment flux module (unitless),
         use_NH4: true/false to use ammonium module (unitless),
@@ -392,7 +392,7 @@ def dNO3dt(
         JNO3: Sediment water flux of nitrate (g-N/m^2/d),
 
         ApGrowth: Algal growth rate (ug-Chla/L/d),
-        AbGrowth: Benethic alga growth rate (g/m^2/d),    
+        AbGrowth: Benthic alga growth rate (g/m^2/d),    
     
     Nitrite Nitrogen  (NO3)                       (mg-N/day*L)
     dNO3/dt  =      NH4 Oxidation                 (NH4 -> NO3) 
@@ -443,7 +443,7 @@ def DIN(
 
 ) -> float :
 
-    """Calculate DIN: Dissolve inorgnaic nitrogen (mg-N/L)
+    """Calculate DIN: Dissolve inorganic nitrogen (mg-N/L)
 
     Args:
         use_NH4: true/false to use ammonium module (unitless),

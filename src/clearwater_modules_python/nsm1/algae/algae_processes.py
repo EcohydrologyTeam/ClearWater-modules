@@ -31,7 +31,7 @@ def rpa(
     """Calculate rpa (mg-P/ug-Chla).
 
     Args:
-        AWp: Phosphours Weight (mg)
+        AWp: Phosphorus Weight (mg)
         AWa: Algal Chlorophyll (ug-Chla)
     """
 
@@ -123,12 +123,12 @@ def FL(
     """Calculate Algal light limitation: FL (unitless).
 
     Args:
-        L: Lambda light attneuation coefficient (unitless)
+        L: Lambda light attenuation  coefficient (unitless)
         depth: Water depth (m)
         Ap: Algae Concentration (mg-Chla/L)
         PAR: Surface light intensity (W/m^2)
-        light_limitation_option: Algal light limitaiton option 1) Half-saturation, 2) Smith model, 3) Steele model (unitless)
-        KL: Light limitaiton constant for algal growth (W/m^2)
+        light_limitation_option: Algal light limitation  option 1) Half-saturation, 2) Smith model, 3) Steele model (unitless)
+        KL: Light limitation  constant for algal growth (W/m^2)
     """
 
     KEXT = L * depth
@@ -210,8 +210,8 @@ def FP(
     """Calculate Algal phosphorous limitation: FP (unitless).
 
     Args:
-        use_TIP: Use Total Inorganic Phosphours module true or false (true/false)
-        TIP: Total Inorganic Phosphours concentration (mg-P/L)
+        use_TIP: Use Total Inorganic Phosphorus module true or false (true/false)
+        TIP: Total Inorganic Phosphorus concentration (mg-P/L)
         KsP: Michaelis-Menton half-saturation constant relating inorganic P to algal growth (mg-P/L)
         fdp: Fraction P dissolved (unitless)
     """
@@ -244,7 +244,7 @@ def mu(
         mu_max_tc: Max algae growth temperature corrected (1/d)
         growth_rate_option: Algal growth rate with options 1) Multiplicative, 2) Limiting nutrient, 3) Harmonic Mean (unitless)
         FL: Algae light limitation factor (unitless)
-        FP: Algae phosphours limitation factor (unitless)
+        FP: Algae phosphorus limitation factor (unitless)
         FN: Algae nitrogen limitation factor (unitless)
     """
 
@@ -343,7 +343,7 @@ def dApdt(
     return ApGrowth - ApRespiration - ApDeath - ApSettling
 
 @numba.njit
-def Ap(
+def Ap_new(
     Ap : float,
     dApdt : float,
 ) -> float :
@@ -351,7 +351,7 @@ def Ap(
     """Calculate new algae concentration (ug-Chla/L)
 
     Args:
-        Ap: Inital algae biomass concentration (ug-Chla/L)
+        Ap: Initial algae biomass concentration (ug-Chla/L)
         dApdt: Change in algae biomass concentration (ug-Chla/L/d)
     """
     return Ap + dApdt

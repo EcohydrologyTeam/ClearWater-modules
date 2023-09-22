@@ -29,7 +29,7 @@ Variable(
     units='g-D/m^2',
     description='Benthic Algae Concentration',
     use='state',
-    process=mock_equation #TODO depends on benethic algae module 
+    process=mock_equation #TODO depends on benthic algae module 
 )
 
 Variable(
@@ -61,18 +61,18 @@ Variable(
 
 Variable(
     name='TIP',
-    long_name='Total Inorganic Phosphrous',
+    long_name='Total Inorganic Phosphorus',
     units='mg-P/L',
-    description='Total Inorganic Phosphrous Concentration',
+    description='Total Inorganic Phosphorus Concentration',
     use='state',
     process=mock_equation #TODO this variable only changes with phosphorous module
 )
 
 Variable(
     name='OrgP',
-    long_name='Total Organic Phosphrous',
+    long_name='Total Organic Phosphorus',
     units='mg-P/L',
-    description='Total Organic Phosphrous Concentration',
+    description='Total Organic Phosphorus Concentration',
     use='state',
     process=mock_equation #TODO this variable only changes with phosphorous module
 )
@@ -163,7 +163,7 @@ Variable(
     name='TwaterC',
     long_name='Water Temperature',
     units='C',
-    description='Water Temperature Degree Celcius',
+    description='Water Temperature Degree Celsius',
     use='state',
     process=tsm_processes.t_water_c 
 )
