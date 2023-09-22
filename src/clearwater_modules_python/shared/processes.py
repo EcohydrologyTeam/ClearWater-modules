@@ -1,6 +1,11 @@
 """Process functions used by one or more modules"""
 import numba
 
+@numba.njit
+def depth_calc(
+    surface_area: float,
+    Volume: float) -> float:
+    return Volume/surface_area
 
 @numba.njit
 def celsius_to_kelvin(tempc: float) -> float:

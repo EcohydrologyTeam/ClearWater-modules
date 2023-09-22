@@ -181,7 +181,7 @@ class BenthicAlgae:
                 (self.Balgae_constant['KLb']**2.0 + (self.global_vars['PAR'] * KEXT)**2.0)**0.5)
         elif self.Balgae_constant['b_light_limitation_option'] == 3:
             # Use Steele's equation
-            if abs(self.Balgae_constant['KLbr']) < 1.0E-10:
+            if abs(self.Balgae_constant['KLb']) < 1.0E-10:
                 FLb = 0.0
         else:
             FLb = self.global_vars['PAR'] * KEXT / self.Balgae_constant['KLb'] * math.exp(
