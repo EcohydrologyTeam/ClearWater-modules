@@ -42,6 +42,23 @@ Variable(
     description='Organic N settling velocity',
     use='static',
 )
+
+Variable(
+    name='vsop',
+    long_name='Organic P settling velocity',
+    units='m/d',
+    description='Organic P settling velocity',
+    use='static',
+)
+
+Variable(
+    name='vs',
+    long_name='Sediment settling velocity',
+    units='m/d',
+    description='Sediment settling velocity',
+    use='static',
+)
+
 #Global module options
 
 Variable(

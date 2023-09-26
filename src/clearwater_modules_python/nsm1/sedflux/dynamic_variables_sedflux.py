@@ -31,3 +31,13 @@ Variable(
     use='dynamic',
     process=mock_equation #TODO this depends on sedflux module
 )
+
+
+Variable(
+    name='JDIP',
+    long_name='Sediment water flux of phosphate',
+    units='g-P/m^2/d',
+    description='Sediment water flux of phosphate',
+    use='dynamic',
+    process=mock_equation #TODO this depends on sedflux module
+)
