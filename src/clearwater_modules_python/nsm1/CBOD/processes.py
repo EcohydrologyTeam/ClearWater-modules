@@ -41,7 +41,8 @@ def CBOD_oxidation(
     DOX: float,
     CBOD_i: np.array,
     kbod_i_T: np.array,
-    KsOxbod_i: np.array
+    KsOxbod_i: np.array,
+    use_DOX: bool
 ) -> np.array:
     """Calculates CBOD oxidation for each group
     
@@ -50,11 +51,18 @@ def CBOD_oxidation(
         CBOD_i:
         kbod_i_T:
         KsOxbod_i:
+        use_DOX:
     """
     nCBOD = len(CBOD_i)
     CBOD_ox = np.array([])
-    for i in nCBOD:
-        np.append(CBOD_ox, (DOX / (KsOxbod_i[i] + DOX)) * kbod_i_T[i] * CBOD_i[i])
+
+    if use_DOX:
+        for i in nCBOD:
+            np.append(CBOD_ox, (DOX / (KsOxbod_i[i] + DOX)) * kbod_i_T[i] * CBOD_i[i])
+    else:
+        for i in nCBOD:
+            np.append(kbod_i_T[i] * CBOD_i[i])
+    
     return CBOD_ox
 
 def CBOD_sedimentation(

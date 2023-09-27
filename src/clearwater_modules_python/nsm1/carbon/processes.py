@@ -162,11 +162,26 @@ def DOC_benthic_algae_mortality(
     """
     return (1/h) * (1 - F_pocb) * kdb_T * rcb * Ab * Fb * Fw
 
+def kdoc_T(
+    water_temp_c: float,
+    kdoc_20: float,
+    theta: float
+) -> float:
+    """Calculate the temperature adjusted DOC oxidation rate (/d)
+
+    Args:
+        water_temp_c: water temperature in Celsius
+        kdoc_20: DOC oxidation rate at 20 degrees Celsius
+        theta: Arrhenius coefficient
+    """
+    return arrhenius_correction(water_temp_c, kdoc_20, theta)
+
 def DOC_oxidation(
     DOX: float,
     KsOxmc: float,
     kdoc_T: float,
-    DOC: float 
+    DOC: float,
+    use_DOX: bool 
 ) -> float:
     """Calculates the DOC lost due to oxidation
 
@@ -176,7 +191,10 @@ def DOC_oxidation(
         kdoc_T: DOC oxidation rate
         DOC: concentration of dissolved organic carbon
     """
-    return DOX / (KsOxmc + DOX) * kdoc_T * DOC
+    if use_DOX:
+        return DOX / (KsOxmc + DOX) * kdoc_T * DOC
+    else:
+        return kdoc_T * DOC
 
 def DOC_change(
     DOC_oxidation: float,
@@ -313,7 +331,8 @@ def DIC_CBOD_oxidation(
     CBOD_i: np.array,
     roc: float,
     kbod_i_T: np.array,
-    KsOxbod_i: np.array
+    KsOxbod_i: np.array,
+    use_DOX: bool
 ) -> float:
     """Calculates CBOD oxidation
     
@@ -323,12 +342,18 @@ def DIC_CBOD_oxidation(
         roc:
         kbod_i_T:
         KsOxbod_i:
+        use_DOX:
     """
     nCBOD = len(CBOD_i)
     CBOD_ox = 0
-    for i in nCBOD:
-        CBOD_ox = CBOD_ox + (DOX / (KsOxbod_i[i] + DOX)) * kbod_i_T[i] * CBOD_i[i]
-    return CBOD_ox / roc
+
+    if use_DOX:
+        for i in nCBOD:
+            CBOD_ox = CBOD_ox + (DOX / (KsOxbod_i[i] + DOX)) * kbod_i_T[i] * CBOD_i[i]
+        return CBOD_ox / roc
+    else:
+        for i in nCBOD:
+            CBOD_ox = CBOD_ox + CBOD_i[i] * kbod_i_T[i]
 
 def DIC_sed_release(
     SOD_T: float,

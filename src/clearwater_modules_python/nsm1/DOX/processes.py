@@ -205,3 +205,246 @@ def kaw_T_r(
         theta: Arrhenius coefficient
     """
     return arrhenius_correction(water_temp_c, kaw_20_r, theta)
+
+def ka_T(
+    kah_T_r: float,
+    kaw_T_r: float,
+    h: float
+) -> float:
+    """Compute the oxygen reaeration rate, adjusted for temperature (/d)
+
+    Args:
+        ka_T_r:
+        kaw_T_r:
+        h:
+    """
+    return kaw_T_r / h + kah_T_r
+
+def Atm_O2_reaeration(
+    ka_T: float,
+    DOX_sat: float,
+    DOX: float
+) -> float:
+    """Compute the atmospheric O2 reaeration flux
+    
+    Args: 
+        ka_T:
+        DOX_sat:
+        DOX:
+    """
+    return ka_T * (DOX_sat - DOX)
+
+def DOX_ApGrowth(
+    ApGrowth: float,
+    rca: float,
+    roc: float,
+    F1: float,
+    use_Algae: bool
+) -> float:
+    """Compute DOX flux due to algal photosynthesis
+
+    Args:
+        ApGrowth: algae growth computed in the algae module
+        rca: ratio of algal carbon to chlorophyll-a
+        roc: stoichiometric ratio of oxygen to carbon
+        F1: algae preference for ammonia 
+    """
+    if use_Algae:
+        return ApGrowth * rca * roc * (138 / 106 - 32 * F1 / 106)
+    else:
+        return 0
+
+def DOX_ApRespiration(
+    ApRespiration: float,
+    rca: float,
+    roc: float,
+    use_Algae: bool
+) -> float:
+    """Compute DOX flux due to algal photosynthesis
+
+    Args:
+        ApRespiration: algae respiration computed in the algae module
+        rca: ratio of algal carbon to chlorophyll-a
+        roc: stoichiometric ratio of oxygen to carbon 
+    """
+    if use_Algae:
+        return ApRespiration * rca * roc
+    else:
+        return 0
+
+def DOX_Nitrification(
+    KNR: float,
+    DOX: float,
+    ron: float,
+    knit_tc: float,
+    NH4: float,
+    use_NH4: bool
+) -> float:
+    """Compute DOX flux due to nitrification of ammonia
+
+    Args:
+        KNR:
+        DOX:
+        ron:
+        knit_tc:
+        NH4:
+    """
+    if use_NH4:
+        return  1.0 - np.exp(-KNR * DOX) * ron * knit_tc * NH4
+    else:
+        return 0
+
+def DOX_DOC_Oxidation(
+    DOC_Oxidation: float,
+    roc: float,
+    use_DOC: bool
+) -> float:
+    """Computes dissolved oxygen flux due to oxidation of dissolved organic carbon
+    
+    Args:
+        DOC_Oxidation: 
+        roc: 
+    """
+    if use_DOC:
+        return roc * DOC_Oxidation
+    else:
+        return 0
+
+def DOX_CBOD_Oxidation(
+    DIC_CBOD_Oxidation: float,
+    roc: float
+) -> float:
+    """Compute dissolved oxygen flux due to CBOD oxidation
+    
+    Args:
+        DIC_CBOD_Oxidation:
+        roc:
+    """
+    return DIC_CBOD_Oxidation * roc
+
+def DOX_AbGrowth(
+    AbUptakeFr_NH4: float,
+    roc: float,
+    rcb: float,
+    AbGrowth: float, 
+    Fb: float,
+    depth: float,
+    use_BAlgae: bool
+) -> float:
+    """Compute dissolved oxygen flux due to benthic algae growth
+    
+    Args:
+        AbUptakeFr_NH4:
+        roc:
+        rcb:
+        AbGrowth:
+        Fb:
+        depth:
+        use_BAlgae:
+    """
+    if use_BAlgae:
+        return (138 / 106 - 32 / 106 * AbUptakeFr_NH4) * roc * rcb * AbGrowth * Fb / depth 
+    else:
+        return 0
+    
+def DOX_AbRespiration(
+    roc: float,
+    rcb: float,
+    AbRespiration: float,
+    Fb: float,
+    depth: float,
+    use_BAlgae: bool
+) -> float:
+    """Compute dissolved oxygen flux due to benthic algae respiration
+    
+    Args:
+        roc:
+        rcb:
+        AbRespiration:
+        Fb:
+        depth:
+        use_BAlgae:
+    """
+    if use_BAlgae:
+        return roc * rcb * AbRespiration * Fb / depth
+    else:
+        return 0
+    
+def SOD_tc(
+    SOD_20: float,
+    t_water_C: float,
+    theta: float,
+    DOX: float,
+    KsSOD: float,
+    use_DOX: bool
+) -> float:
+    """Compute the sediment oxygen demand corrected by temperature and dissolved oxygen concentration
+    
+    Args:
+        SOD_20:
+        t_water_C:
+        theta:
+        use_DOX:
+    """
+    SOD_tc = arrhenius_correction(t_water_C, SOD_20, theta)
+    if use_DOX:
+        return SOD_tc * DOX / (DOX + KsSOD)
+    else:
+        return SOD_tc
+
+def DOX_SOD(
+    SOD_Bed: float,
+    depth: float,
+    SOD_tc: float,
+    use_SedFlux: bool
+) -> float:
+    """Compute dissolved oxygen flux due to sediment oxygen demand
+    
+    Args:
+        SOD_Bed:
+        depth:
+        SOD_tc:
+        use_SedFlux:
+    """
+    if use_SedFlux:
+        return SOD_Bed / depth
+    else:
+        return SOD_tc / depth
+    
+def DOX_change(
+    Atm_O2_reaeration: float,
+    DOX_ApGrowth: float,
+    DOX_ApRespiration: float,
+    DOX_Nitrification: float,
+    DOX_DOC_Oxidation: float,
+    DOX_CBOD_Oxidation: float,
+    DOX_AbGrowth: float,
+    DOX_AbRespiration: float,
+    DOX_SOD: float
+) -> float:
+    """Compute change in dissolved oxygen concentration for one timestep
+
+    Args:
+        Atm_O2_reaeration:
+        DOX_ApGrowth:
+        DOX_ApRespiration:
+        DOX_Nitrification:
+        DOX_DOC_Oxidation:
+        DOX_CBOD_Oxidation:
+        DOX_AbGrowth:
+        DOX_AbRespiration:
+        DOX_SOD: 
+    """
+    return Atm_O2_reaeration + DOX_ApGrowth - DOX_ApRespiration - DOX_Nitrification - DOX_DOC_Oxidation - DOX_CBOD_Oxidation + DOX_AbGrowth - DOX_AbRespiration - DOX_SOD
+
+def update_DOX(
+    DOX: float,
+    dDOXdt: float
+) -> float:
+    """Computes updated dissolved oxygen concentration
+
+    Args:
+        DOX: Dissolved oxygen concentration from previous timestep
+        dDOXdt: Change in dissolved oxygen concentration over timestep
+    """
+    return DOX + dDOXdt

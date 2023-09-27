@@ -14,7 +14,7 @@ Variable(
     name='DOX',
     long_name='Dissolved oxygen',
     units='mg/L',
-    description='Dissolved oxygen'
+    description='Dissolved oxygen',
     use='state',
-    process=process.update_DOX
+    process=processes.update_DOX
 )

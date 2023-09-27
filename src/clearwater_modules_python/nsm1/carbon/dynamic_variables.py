@@ -76,8 +76,13 @@ Variable(
 
 ##DOC
 
-Variable( #oxygen based
-    name='kdoc_T'
+Variable(
+    name='kdoc_T',
+    long_name='Dissolved organic carbon oxidation rate adjusted for temperature',
+    units='/d',
+    description='Dissolved organic carbon oxidation rate adjusted for temperature',
+    use='dynamic',
+    process=processes.kdoc_T
 )
 
 Variable(

@@ -35,6 +35,14 @@ Variable(
 )
 
 Variable(
+    name='kdoc_20',
+    long_name='Dissolved organic carbon oxidation rate',
+    units='/d',
+    description='Dissolved organic carbon oxidation rate',
+    use='static'
+)
+
+Variable(
     name='vsoc',
     long_name='POC settling velocity',
     units='m/d',
@@ -58,7 +66,6 @@ Variable(
     use='static'
 )
 
-#if we are using POM
 Variable(
     name='fcom',
     long_name='fraction of carbon in organic matter',
