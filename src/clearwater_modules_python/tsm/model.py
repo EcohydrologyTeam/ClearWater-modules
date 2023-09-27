@@ -1,4 +1,4 @@
-"""Water Temperature Simulation Model (TSM) module."""
+"""Water Nutrient Simulation Model (NSM1) module."""
 import xarray as xr
 import numpy as np
 from enum import Enum
@@ -21,7 +21,6 @@ class EnergyBudget(base.Model):
         initial_state_values: Optional[base.InitialVariablesDict] = None,
         meteo_parameters: Optional[dict[str, float]] = None,
         temp_parameters: Optional[dict[str, float]] = None,
-        use_sed_temp: bool = False,
         track_dynamic_variables: bool = True,
         hotstart_dataset: Optional[xr.Dataset] = None,
         time_dim: Optional[str] = None,
