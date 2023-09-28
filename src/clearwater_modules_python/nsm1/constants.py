@@ -114,6 +114,18 @@ class N2StaticVariables(TypedDict):
 
 DEFAULT_N2 = N2StaticVariables(
 )
+
+class PathogenStaticVariables(TypedDict):
+    kdx: float
+    apx: float
+    vx: float                  
+
+DEFAULT_PATHOGEN = PathogenStaticVariables(
+    kdx=0.8,
+    apx=1,
+    vx=1,
+)
+
 class GlobalParameters(TypedDict):
     use_NH4 : bool
     use_NO3 : bool  

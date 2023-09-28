@@ -1,46 +1,3 @@
-"""
-=======================================================================================
-Nutrient Simulation Module 1 (NSM1): N2 Kinetics
-=======================================================================================
-
-Developed by:
-* Dr. Todd E. Steissberg (ERDC-EL)
-* Dr. Billy E. Johnson (ERDC-EL, LimnoTech)
-* Dr. Zhonglong Zhang (Portland State University)
-* Mr. Mark Jensen (HEC)
-
-This module computes the water quality of a single computational cell. The algorithms 
-and structure of this program were adapted from the Fortran 95 version of this module, 
-developed by:
-* Dr. Billy E. Johnson (ERDC-EL)
-* Dr. Zhonglong Zhang (Portland State University)
-* Mr. Mark Jensen (HEC)
-
-Version 1.0
-
-Initial Version: June 12, 2021
-Last Revision Date: June 13, 2021
-"""
-
-'''
-variables in:
-
-depth
-TwaterC
-pressure_atm
-N2
-dN2dt
-DOX
-TDG
-use_N2
-use_DOX
-
-ka_tc
-O2sat
-
-TwaterK 
-'''
-
 import math
 from clearwater_modules_python.shared.processes import arrhenius_correction, celsius_to_kelvin
 import numba
@@ -112,7 +69,7 @@ def N2sat(
 
 @numba.njit    
 def dN2dt(
-    ka_tc : float,
+    ka_tc : float, #TODO this should be calculated in Carbon based on kah_tc and kaw_tc 
     N2sat : float,
     N2: float,
 ) -> float: 

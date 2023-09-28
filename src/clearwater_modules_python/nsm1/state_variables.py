@@ -3,6 +3,7 @@ from clearwater_modules_python.nsm1.model import NutrientBudget
 import clearwater_modules_python.nsm1.algae.algae_processes as algae_processes
 import clearwater_modules_python.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
 import clearwater_modules_python.nsm1.n2.n2_processes as n2_processes
+import clearwater_modules_python.nsm1.n2.pathogen_processes as pathogen_processes
 import clearwater_modules_python.shared.processes as shared_processes
 import clearwater_modules_python.tsm.processes as tsm_processes
 
@@ -156,7 +157,7 @@ Variable(
     units='cfu/100mL',
     description='Pathogen concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with pathogen module
+    process=pathogen_processes.PX_new
 )
 
 Variable(
