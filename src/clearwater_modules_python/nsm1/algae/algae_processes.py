@@ -5,7 +5,7 @@ File contains process to calculate new algae biomass concentration and associate
 # TODO calculate lambda?
 
 import math
-from clearwater_modules_python.shared.processes import arrhenius_correction
+import nsm1.algae.dynamic_variables_algae as shared 
 import numba
 
 @numba.njit

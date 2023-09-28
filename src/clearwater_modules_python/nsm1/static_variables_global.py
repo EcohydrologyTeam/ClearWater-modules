@@ -59,6 +59,15 @@ Variable(
     use='static',
 )
 
+Variable(
+    name='pressure_atm',
+    long_name='Atmospheric pressure atm',
+    units='atm',
+    description='Atmospheric pressure atm',
+    use='static',
+)
+
+
 #Global module options
 
 Variable(

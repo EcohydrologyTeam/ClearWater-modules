@@ -16,12 +16,13 @@ from _cbod import CBOD
 # from _sed_flux import SedFlux
 from _alkalinity import Alkalinity
 
+print("done")
 #Variables to return
 output_variables = OrderedDict()
 output_variables = {
 
 } 
-
+'''
 #True/False module use, user defined
 global_module_choices =OrderedDict
 global_module_choices = {
@@ -268,3 +269,4 @@ else:
 #elapsed_time = et - st 
 
 #print('Execution time:', elapsed_time, 'seconds')
+'''

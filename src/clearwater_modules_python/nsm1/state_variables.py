@@ -2,6 +2,7 @@ from clearwater_modules_python import base
 from clearwater_modules_python.nsm1.model import NutrientBudget
 import clearwater_modules_python.nsm1.algae.algae_processes as algae_processes
 import clearwater_modules_python.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
+import clearwater_modules_python.nsm1.n2.n2_processes as n2_processes
 import clearwater_modules_python.shared.processes as shared_processes
 import clearwater_modules_python.tsm.processes as tsm_processes
 
@@ -57,6 +58,15 @@ Variable(
     description='Organic Nitrogen Concentration',
     use='state',
     process=nitrogen_processes.OrgN_new
+)
+
+Variable(
+    name='N2',
+    long_name='Nitrogen concentration air',
+    units='mg-N/L',
+    description='Nitrogen concentration air',
+    use='state',
+    process=n2_processes.N2_new
 )
 
 Variable(
@@ -166,6 +176,15 @@ Variable(
     description='Water Temperature Degree Celsius',
     use='state',
     process=tsm_processes.t_water_c 
+)
+
+Variable(
+    name='TwaterK',
+    long_name='Water Temperature',
+    units='K',
+    description='Water Temperature Degree Kelvin',
+    use='state',
+    process=mock_equation #TODO not sure where to call this from shows up in TSM and N2_processes
 )
 
 Variable(

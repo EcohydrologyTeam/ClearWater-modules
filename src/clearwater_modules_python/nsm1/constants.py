@@ -109,6 +109,11 @@ DEFAULT_BALGAE = BalgaeStaticVariables(
     Fb=0.9,
 )
 
+class N2StaticVariables(TypedDict):
+    pass                  
+
+DEFAULT_N2 = N2StaticVariables(
+)
 class GlobalParameters(TypedDict):
     use_NH4 : bool
     use_NO3 : bool  
@@ -144,3 +149,4 @@ DEFAULT_GLOBALVARS = GlobalVars(
     PAR= 1, 
     vson = 0.01,
 )
+
