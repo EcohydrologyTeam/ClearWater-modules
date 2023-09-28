@@ -2,6 +2,9 @@ from clearwater_modules_python import base
 from clearwater_modules_python.nsm1.model import NutrientBudget
 import clearwater_modules_python.nsm1.algae.algae_processes as algae_processes
 import clearwater_modules_python.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
+import clearwater_modules_python.nsm1.carbon.carbon_processes as carbon_processes
+import clearwater_modules_python.nsm1.CBOD.CBOD_processes as CBOD_processes
+import clearwater_modules_python.nsm1.DOX.DOX_processes as DOX_processes
 import clearwater_modules_python.shared.processes as shared_processes
 import clearwater_modules_python.tsm.processes as tsm_processes
 
@@ -13,6 +16,8 @@ class Variable(base.Variable):
 # TODO: remove mock_equation
 def mock_equation(water_temp_c: float) -> float:
     return water_temp_c ** 2
+
+# TODO: import state variables from CWR such as surface_area volume, and timestep, as well as kah inputs
 
 Variable(
     name='Ap',
@@ -83,7 +88,7 @@ Variable(
     units='mg-C/L',
     description='Particulate Organic Carbon Concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with carbon module
+    process=carbon_processes.update_POC
 )
 
 Variable(
@@ -92,7 +97,7 @@ Variable(
     units='mg-C/L',
     description='Dissolved Organic Carbon Concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with carbon module
+    process=carbon_processes.update_DOC
 )
 
 Variable(
@@ -101,7 +106,7 @@ Variable(
     units='mg-C/L',
     description='Dissolved Inorganic Carbon Concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with carbon module
+    process=carbon_processes.update_DIC
 )
 
 Variable(
@@ -128,7 +133,7 @@ Variable(
     units='mg-O2/L',
     description='Carbonaceous Biochemical Oxygen Demand Concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with cbod module
+    process=CBOD_processes.update_CBOD
 )
 
 Variable(
@@ -137,7 +142,7 @@ Variable(
     units='mg-O2/L',
     description='Dissolved Oxygen',
     use='state',
-    process=mock_equation #TODO this variable only changes with DOX module
+    process=DOX_processes.update_DOX
 )
 
 Variable(
@@ -166,13 +171,4 @@ Variable(
     description='Water Temperature Degree Celsius',
     use='state',
     process=tsm_processes.t_water_c 
-)
-
-Variable(
-    name='depth',
-    long_name='Water Depth',
-    units='m',
-    description='Water depth from surface',
-    use='state',
-    process=shared_processes.depth_calc
 )

@@ -10,6 +10,7 @@ class Variable(base.Variable):
 
 ###
 # To get from algae/benthic: rca?, rcb?, kdp_20 (static), kdp_T (dyn), Ap (state), depth (state), Ab (state), Fw, Fb
+
 Variable(
     name='F_pocp',
     long_name='Fraction of algal mortality into POC',
@@ -42,7 +43,7 @@ Variable(
     use='static'
 )
 
-Variable(
+Variable(#Shared static variable
     name='vsoc',
     long_name='POC settling velocity',
     units='m/d',
@@ -59,19 +60,27 @@ Variable(
 )
 
 Variable(
-    name='k_poc_20',
+    name='kpoc_20',
     long_name='POC hydrolysis rate at 20 degrees Celsius',
     units='/d',
     description='POC hydrolysis rate at 20 degrees Celsius',
     use='static'
 )
 
-Variable(
+Variable( #Imported from GlobalParams in fortran, though not used...
     name='fcom',
     long_name='fraction of carbon in organic matter',
     units='mg-C/mg-D',
     description='fraction of carbon in organic matter',
     use='static'
+)
+
+Variable( #Defined in POM static variables in fortran, said to go straight to bed sediment in note
+    name='kpom_20',
+    long_name='POM dissolution rate',
+    units='/d',
+    description='POM dissolution rate',
+    use='static'    
 )
 
 Variable(
@@ -82,7 +91,8 @@ Variable(
     use='static'
 )
 
-Variable(
+
+Variable( #Imported from GlobalParams in fortran
     name='kac_20',
     long_name='CO2 reaeration rate',
     units='/d',
@@ -90,7 +100,7 @@ Variable(
     use='static'
 )
 
-Variable( ## Regional
+Variable(
     name='pCO2',
     long_name='partial atmospheric CO2 pressure',
     units='ppm',
@@ -98,7 +108,7 @@ Variable( ## Regional
     use='static'
 )
 
-Variable( ## Regional
+Variable(
     name='FCO2',
     long_name='CO2 reaeration rate',
     units='/d',

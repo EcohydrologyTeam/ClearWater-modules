@@ -2,31 +2,31 @@
 
 import clearwater_modules_python.shared.processes as shared_processes
 from clearwater_modules_python import base
-from clearwater_modules_python.tsm.model import EnergyBudget
-from clearwater_modules_python.nsm1 import processes
+from clearwater_modules_python.nsm1.carbon.model import CarbonBudget
+from clearwater_modules_python.nsm1.carbon import carbon_processes
 
 
-@base.register_variable(models=EnergyBudget)
+@base.register_variable(models=CarbonBudget)
 class Variable(base.Variable):
     ...
 
 
-Variable(
-    name='h',
+Variable( #Shared dynamic variable
+    name='depth',
     long_name='Average water depth in cell',
     units='m',
     description='Average water depth in cell computed by dividing volume by surface area',
     use='dynamic',
-    process=processes.compute_h
+    process=shared_processes.compute_depth
 )
 
 Variable(
-    name='k_poc_T',
+    name='kpoc_T',
     long_name='Temperature adjusted POC hydrolysis rate',
     units='d-1',
     description='Temperature adjusted POC hydrolysis rate',
     use='dynamic',
-    process=processes.k_poc_T,
+    process=carbon_processes.kpoc_T,
 )
 
 Variable(
@@ -35,7 +35,7 @@ Variable(
     units='mg/L/s',
     description='POC concentration removed from cell due to settling',
     use='dynamic',
-    process=processes.POC_settling,
+    process=carbon_processes.POC_settling,
 )
 
 Variable(
@@ -44,7 +44,7 @@ Variable(
     units='mg/L/s',
     description='POC concentration removed from cell due to hydrolysis',
     use='dynamic',
-    process=processes.POC_hydrolysis,
+    process=carbon_processes.POC_hydrolysis,
 )
 
 Variable(
@@ -53,7 +53,7 @@ Variable(
     units='mg/L/s',
     description='POC concentration added to cell due to algal mortality',
     use='dynamic',
-    process=processes.POC_algal_mortality,
+    process=carbon_processes.POC_algal_mortality,
 )
 
 Variable(
@@ -62,7 +62,7 @@ Variable(
     units='mg/L/s',
     description='POC concentration added to cell due to benthic algae mortality',
     use='dynamic',
-    process=processes.POC_benthic_algae_mortality,
+    process=carbon_processes.POC_benthic_algae_mortality,
 )
 
 Variable(
@@ -71,7 +71,7 @@ Variable(
     units='mg/L/s',
     description='POC concentration change per timestep',
     use='dynamic',
-    process=processes.POC_change
+    process=carbon_processes.POC_change
 )
 
 ##DOC
@@ -82,7 +82,34 @@ Variable(
     units='/d',
     description='Dissolved organic carbon oxidation rate adjusted for temperature',
     use='dynamic',
-    process=processes.kdoc_T
+    process=carbon_processes.kdoc_T
+)
+
+Variable(
+    name='kpom_T',
+    long_name='POM dissolution rate adjusted for temperature',
+    units='/d',
+    description='POM dissolution rate adjusted for temperature',
+    use='dynamic',
+    process=carbon_processes.kpom_T
+)
+
+Variable(
+    name='DOC_POM_dissolution',
+    long_name='DOC concentration change due to POM dissolution',
+    units='mg/L/d',
+    description='DOC concentration change due to POM dissolution',
+    use='dynamic',
+    process=carbon_processes.DOC_POM_dissolution
+)
+
+Variable(
+    name='DOC_denitrification',
+    long_name='DOC concentration change due to denitrification',
+    units='mg/L/d',
+    description='DOC concentration change due to denitrification',
+    use='dynamic',
+    process=carbon_processes.DOC_denitrification
 )
 
 Variable(
@@ -91,7 +118,7 @@ Variable(
     units='mg/L/s',
     description='DOC concentration added to cell due to algal mortality',
     use='dynamic',
-    process=processes.DOC_algal_mortality,
+    process=carbon_processes.DOC_algal_mortality
 )
 
 Variable(
@@ -100,7 +127,7 @@ Variable(
     units='mg/L/s',
     description='DOC concentration added to cell due to benthic algae mortality',
     use='dynamic',
-    process=processes.DOC_benthic_algae_mortality,
+    process=carbon_processes.DOC_benthic_algae_mortality,
 )
 
 Variable(
@@ -109,7 +136,7 @@ Variable(
     units='mg/L/s',
     description='DOC concentration lost to cell due to oxidation',
     use='dynamic',
-    process=processes.DOC_oxidation    
+    process=carbon_processes.DOC_oxidation    
 )
 
 Variable(
@@ -118,17 +145,18 @@ Variable(
     units='mg/L/s',
     description='DOC concentration change per timestep',
     use='dynamic',
-    process=processes.DOC_change
+    process=carbon_processes.DOC_change
 )
 
 #DIC
+
 Variable(
     name='K_H',
     long_name='Henrys coefficient',
     units='mol/L-atm',
     description='Henrys coefficient controlling the relative proportion of gaseous and aqueous phase CO2',
     use='dynamic',
-    process=processes.Henrys_k
+    process=carbon_processes.Henrys_k
 )
 
 Variable(
@@ -137,7 +165,7 @@ Variable(
     units='/d',
     description='temperature dependent CO2 reaeration rate',
     use='dynamic',
-    process=processes.kac_T
+    process=carbon_processes.kac_T
 )
 
 Variable(
@@ -146,7 +174,7 @@ Variable(
     units='mg/L/t',
     description='Amount of DIC flux due to atmospheric exchange',
     use='dynamic',
-    process=processes.Atmospheric_CO2_reaeration
+    process=carbon_processes.Atmospheric_CO2_reaeration
 )
 
 Variable(
@@ -155,7 +183,7 @@ Variable(
     units='mg/L/t',
     description='DIC generated by algal respiration',
     use='dynamic',
-    process=processes.DIC_algal_respiration
+    process=carbon_processes.DIC_algal_respiration
 )
 
 Variable(
@@ -164,7 +192,7 @@ Variable(
     units='mg/L/t',
     description='DIC consumed by algal photosynthesis',
     use='dynamic',
-    process=processes.DIC_algal_photosynthesis
+    process=carbon_processes.DIC_algal_photosynthesis
 )
 
 Variable(
@@ -173,7 +201,7 @@ Variable(
     units='mg/L/t',
     description='DIC generated by benthic algae respiration',
     use='dynamic',
-    process=processes.DIC_benthic_algae_respiration
+    process=carbon_processes.DIC_benthic_algae_respiration
 )
 
 Variable(
@@ -182,7 +210,7 @@ Variable(
     units='mg/L/t',
     description='DIC consumed by benthic algae photosynthesis',
     use='dynamic',
-    process=processes.DIC_benthic_algae_photosynthesis
+    process=carbon_processes.DIC_benthic_algae_photosynthesis
 )
 
 Variable(
@@ -191,7 +219,7 @@ Variable(
     units='mg/L/t',
     description='DIC flux due to CBOD oxidation',
     use='dynamic',
-    process=processes.DIC_CBOD_oxidation
+    process=carbon_processes.DIC_CBOD_oxidation
 )
 
 Variable(
@@ -200,7 +228,7 @@ Variable(
     units='mg/L/t',
     description='DIC flux due to sediment release',
     use='dynamic',
-    process=processes.DIC_sed_release
+    process=carbon_processes.DIC_sed_release
 )
 
 Variable(
@@ -209,6 +237,6 @@ Variable(
     units='mg/L/t',
     description='DIC flux per timestep',
     use='dynamic',
-    process=processes.DIC_change
+    process=carbon_processes.DIC_change
 )
 

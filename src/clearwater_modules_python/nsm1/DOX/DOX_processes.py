@@ -1,28 +1,32 @@
 import numpy as np
+import numba
 from clearwater_modules_python.shared.processes import (
     arrhenius_correction,
 )     
 
+@numba.njit
 def pwv(
     t_water_k: float
 ) -> float:
     """Calculate partial pressure of water vapor
 
     Args:
-        t_water_k: water temperature kelvin
+        t_water_k: Water temperature kelvin
     """
     return np.exp(11.8571 - 3840.70 / t_water_k - 216961 / t_water_k **2)
 
+@numba.njit
 def DOs_atm_alpha(
     t_water_k: float
 ) -> float:
     """Calculate DO saturation atmospheric correction coefficient
     
     Args:
-        t_water_k: water temperature kelvin
+        t_water_k: Water temperature kelvin
     """
     return .000975 - 1.426 * 10 ** -5 * t_water_k + 6.436 * 10 ** -8 * t_water_k ** 2
 
+@numba.njit
 def DOX_sat(
     t_water_k: float,
     patm: float,
@@ -32,10 +36,10 @@ def DOX_sat(
     """Calculate DO saturation value
     
     Args:
-        t_water_k: water temperature kelvin
-        patm:
-        pwv:
-        DOs_atm_alpha:
+        t_water_k: Water temperature kelvin
+        patm: Atmospheric pressure (atm)
+        pwv: Patrial pressure of water vapor (atm)
+        DOs_atm_alpha: DO saturation atmospheric correction coefficient
     """
     DOX_sat_uncorrected = np.exp(-139.34410 + 1.575701 * 10 ** 5 / t_water_k - 6.642308 * 10 ** 7 / t_water_k ** 2 
                   + 1.243800 * 10 ** 10 / t_water_k - 8.621949 * 10 ** 11 / t_water_k)
@@ -43,8 +47,9 @@ def DOX_sat(
     DOX_sat_corrected = DOX_sat_uncorrected * patm * (1 - pwv / patm) * (1 - DOs_atm_alpha * patm) / ((1 - pwv) * (1 - DOs_atm_alpha))
     return DOX_sat_corrected
 
-def kah_20_r(
-    kah_20: float,
+@numba.njit
+def kah_20(
+    kah_20_user: float,
     hydraulic_reaeration_option: int,
     velocity: float,
     depth: float,
@@ -53,20 +58,20 @@ def kah_20_r(
     slope: float,
     shear_velocity: float
 ) -> float:
-    """Calculate hydraulic oxygen reaeration rate based on flow parameters in different cells, r stands for regional
+    """Calculate hydraulic oxygen reaeration rate based on flow parameters in different cells
     
     Args:
-        kah_20:
-        hydraulic_reaeration_option:
-        velocity:
-        depth:
-        flow:
-        topwidth:
-        slope:
-        shear_velocity:
+        kah_20_user: User defined O2 reaeration rate at 20 degrees (1/d)
+        hydraulic_reaeration_option: Integer value which selects method for computing O2 reaeration rate 
+        velocity: Average water velocity in cell (m/s)
+        depth: Average water depth in cell (m)
+        flow: Average flow rate in cell (m3/s)
+        topwidth: Average topwidth of cell (m)
+        slope: Average slope of bottom surface 
+        shear_velocity: Average shear velocity on bottom surface (m/s)
     """
     if hydraulic_reaeration_option == 1:
-        return kah_20
+        return kah_20_user
     
     elif hydraulic_reaeration_option == 2:
         return (3.93 * velocity**0.5) / (depth**1.5)
@@ -110,36 +115,38 @@ def kah_20_r(
     else:
         raise ValueError('Hydraulic Reaeration Option not properly selected')
 
-def kah_T_r(
+@numba.njit
+def kah_T(
     water_temp_c: float,
-    kah_20_r: float,
+    kah_20: float,
     theta: float
 ) -> float:
     """Calculate the temperature adjusted hydraulic oxygen reaeration rate (/d)
 
     Args:
-        water_temp_c: water temperature in Celsius
-        kah_20: hydraulic oxygen reaeration rate at 20 degrees Celsius
+        water_temp_c: Water temperature in Celsius
+        kah_20: Hydraulic oxygen reaeration rate at 20 degrees Celsius
         theta: Arrhenius coefficient
     """
-    return arrhenius_correction(water_temp_c, kah_20_r, theta)
+    return arrhenius_correction(water_temp_c, kah_20, theta)
 
-def kaw_20_r(
-    kaw_20: float,
+@numba.njit
+def kaw_20(
+    kaw_20_user: float,
     wind_speed: float,
     wind_reaeration_option: int
 ) -> float:
     """Calculate the wind oxygen reaeration velocity (m/d) based on wind speed, r stands for regional
     
     Args:
-        kaw_20:
-        wind_speed:
-        wind_reaeration_option:
+        kaw_20_user: User defined wind oxygen reaeration velocity at 20 degrees C (m/d)
+        wind_speed: Wind speed at 10 meters above the water surface (m/s)
+        wind_reaeration_option: Integer value which selects method for computing wind oxygen reaeration velocity
     """
     Uw10 = wind_speed * (10 / 2)**0.143
     
     if wind_reaeration_option == 1:
-        return kaw_20
+        return kaw_20_user
     
     elif wind_reaeration_option == 2:
         return 0.864 * Uw10
@@ -192,7 +199,8 @@ def kaw_20_r(
     else:
         raise ValueError('Wind Reaeration Option not properly selected')
 
-def kaw_T_r(
+@numba.njit
+def kaw_T(
     water_temp_c: float,
     kaw_20_r: float,
     theta: float
@@ -200,26 +208,28 @@ def kaw_T_r(
     """Calculate the temperature adjusted wind oxygen reaeration velocity (m/d)
 
     Args:
-        water_temp_c: water temperature in Celsius
-        kaw_20: wind oxygen reaeration velocity at 20 degrees Celsius
+        water_temp_c: Water temperature in Celsius
+        kaw_20: Wind oxygen reaeration velocity at 20 degrees Celsius
         theta: Arrhenius coefficient
     """
-    return arrhenius_correction(water_temp_c, kaw_20_r, theta)
+    return arrhenius_correction(water_temp_c, kaw_20, theta)
 
+@numba.njit
 def ka_T(
-    kah_T_r: float,
-    kaw_T_r: float,
-    h: float
+    kah_T: float,
+    kaw_T: float,
+    depth: float
 ) -> float:
-    """Compute the oxygen reaeration rate, adjusted for temperature (/d)
+    """Compute the oxygen reaeration rate, adjusted for temperature (1/d)
 
     Args:
-        ka_T_r:
-        kaw_T_r:
-        h:
+        kah_T: Oxygen reaeration rate adjusted for temperature (1/d)
+        kaw_T: Wind oxygen reaeration velocity adjusted for temperature (m/d)
+        depth: Average water depth in cell (m)
     """
-    return kaw_T_r / h + kah_T_r
+    return kaw_T / depth + kah_T
 
+@numba.njit
 def Atm_O2_reaeration(
     ka_T: float,
     DOX_sat: float,
@@ -228,12 +238,13 @@ def Atm_O2_reaeration(
     """Compute the atmospheric O2 reaeration flux
     
     Args: 
-        ka_T:
-        DOX_sat:
-        DOX:
+        ka_T: Oxygen reaeration rate adjusted for temperature (1/d)
+        DOX_sat: Dissolved oxygen saturation concentration (mg/L)
+        DOX: Dissolved oxygen concentration (mg/L)
     """
     return ka_T * (DOX_sat - DOX)
 
+@numba.njit
 def DOX_ApGrowth(
     ApGrowth: float,
     rca: float,
@@ -244,16 +255,17 @@ def DOX_ApGrowth(
     """Compute DOX flux due to algal photosynthesis
 
     Args:
-        ApGrowth: algae growth computed in the algae module
-        rca: ratio of algal carbon to chlorophyll-a
-        roc: stoichiometric ratio of oxygen to carbon
-        F1: algae preference for ammonia 
+        ApGrowth: Algae photosynthesis, calculated in the algae module (ug-Chla/L/d)
+        rca: Ratio of algal carbon to chlorophyll-a (mg-C/ug-Chla)
+        roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
+        F1: Algae preference for ammonia 
     """
     if use_Algae:
         return ApGrowth * rca * roc * (138 / 106 - 32 * F1 / 106)
     else:
         return 0
 
+@numba.njit
 def DOX_ApRespiration(
     ApRespiration: float,
     rca: float,
@@ -263,15 +275,16 @@ def DOX_ApRespiration(
     """Compute DOX flux due to algal photosynthesis
 
     Args:
-        ApRespiration: algae respiration computed in the algae module
-        rca: ratio of algal carbon to chlorophyll-a
-        roc: stoichiometric ratio of oxygen to carbon 
+        ApRespiration: algae respiration, calculated in the algae module
+        rca: Ratio of algal carbon to chlorophyll-a (mg-C/ug-Chla)
+        roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C) 
     """
     if use_Algae:
         return ApRespiration * rca * roc
     else:
         return 0
 
+@numba.njit
 def DOX_Nitrification(
     KNR: float,
     DOX: float,
@@ -283,17 +296,18 @@ def DOX_Nitrification(
     """Compute DOX flux due to nitrification of ammonia
 
     Args:
-        KNR:
-        DOX:
-        ron:
-        knit_tc:
-        NH4:
+        KNR: Oxygen inhibition factor for nitrification (mg-O2/L)
+        DOX: Dissolved oxygen concentration (mg/L)
+        ron: Ratio of oxygen to nitrogen for nitrificiation (mg-O2/mg-N)
+        knit_tc: Nitrification rate of NH4 to NO3 (1/d)
+        NH4: Ammonia/ammonium concentration
     """
     if use_NH4:
-        return  1.0 - np.exp(-KNR * DOX) * ron * knit_tc * NH4
+        return  (1.0 - np.exp(-KNR * DOX)) * ron * knit_tc * NH4
     else:
         return 0
 
+@numba.njit
 def DOX_DOC_Oxidation(
     DOC_Oxidation: float,
     roc: float,
@@ -302,14 +316,15 @@ def DOX_DOC_Oxidation(
     """Computes dissolved oxygen flux due to oxidation of dissolved organic carbon
     
     Args:
-        DOC_Oxidation: 
-        roc: 
+        DOC_Oxidation: Dissolved organic carbon oxidation, calculated in carbon module (mg/L/d)
+        roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
     """
     if use_DOC:
         return roc * DOC_Oxidation
     else:
         return 0
 
+@numba.njit
 def DOX_CBOD_Oxidation(
     DIC_CBOD_Oxidation: float,
     roc: float
@@ -317,11 +332,12 @@ def DOX_CBOD_Oxidation(
     """Compute dissolved oxygen flux due to CBOD oxidation
     
     Args:
-        DIC_CBOD_Oxidation:
-        roc:
+        DIC_CBOD_Oxidation: Carbonaceous biochemical oxygen demand oxidation, calculated in CBOD module (mg/L/d)
+        roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
     """
     return DIC_CBOD_Oxidation * roc
 
+@numba.njit
 def DOX_AbGrowth(
     AbUptakeFr_NH4: float,
     roc: float,
@@ -334,19 +350,20 @@ def DOX_AbGrowth(
     """Compute dissolved oxygen flux due to benthic algae growth
     
     Args:
-        AbUptakeFr_NH4:
-        roc:
-        rcb:
-        AbGrowth:
-        Fb:
-        depth:
-        use_BAlgae:
+        AbUptakeFr_NH4: Fraction of actual benthic algal uptake that is form the ammonia pool, calculated in nitrogen module
+        roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
+        rcb: Benthic algae carbon to dry weight ratio (mg-C/mg-D)
+        AbGrowth: Benthic algae photosynthesis, calculated in benthic algae module (mg/L/d)
+        Fb: Fraction of bottom area available for benthic algae growth
+        depth: Water depth (m)
+        use_BAlgae: Option to consider benthic algae in the DOX budget
     """
     if use_BAlgae:
         return (138 / 106 - 32 / 106 * AbUptakeFr_NH4) * roc * rcb * AbGrowth * Fb / depth 
     else:
         return 0
     
+@numba.njit
 def DOX_AbRespiration(
     roc: float,
     rcb: float,
@@ -358,18 +375,19 @@ def DOX_AbRespiration(
     """Compute dissolved oxygen flux due to benthic algae respiration
     
     Args:
-        roc:
-        rcb:
-        AbRespiration:
-        Fb:
-        depth:
-        use_BAlgae:
+        roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
+        rcb: Benthic algae carbon to dry weight ratio (mg-C/mg-D)
+        AbRespiration: Benthic algae respiration, calculated in the benthic algae module
+        Fb: Fraction of bottom area available for benthic algae growth
+        depth: Water depth (m)
+        use_BAlgae: Option to consider benthic algae in the DOX budget
     """
     if use_BAlgae:
         return roc * rcb * AbRespiration * Fb / depth
     else:
         return 0
-    
+
+@numba.njit
 def SOD_tc(
     SOD_20: float,
     t_water_C: float,
@@ -381,10 +399,10 @@ def SOD_tc(
     """Compute the sediment oxygen demand corrected by temperature and dissolved oxygen concentration
     
     Args:
-        SOD_20:
-        t_water_C:
-        theta:
-        use_DOX:
+        SOD_20: Sediment oxygen demand at 20 degrees celsius (mg-O2/m2)
+        t_water_C: Water temperature in degrees C
+        theta: Arrhenius coefficient
+        use_DOX: Option to consider DOX concentration in water in calculation of sediment oxygen demand
     """
     SOD_tc = arrhenius_correction(t_water_C, SOD_20, theta)
     if use_DOX:
@@ -392,6 +410,7 @@ def SOD_tc(
     else:
         return SOD_tc
 
+@numba.njit
 def DOX_SOD(
     SOD_Bed: float,
     depth: float,
@@ -401,16 +420,17 @@ def DOX_SOD(
     """Compute dissolved oxygen flux due to sediment oxygen demand
     
     Args:
-        SOD_Bed:
-        depth:
-        SOD_tc:
-        use_SedFlux:
+        SOD_Bed: Sediment oxygen demand if calculated using the SedFlux module (mg-O2/m2)
+        depth: Water depth (m)
+        SOD_tc: Sediment oxygen demand not considering the SedFlux budget (mg-O2/m2)
+        use_SedFlux: Option to consider sediment flux in DOX budget (boolean)
     """
     if use_SedFlux:
         return SOD_Bed / depth
     else:
         return SOD_tc / depth
-    
+
+@numba.njit
 def DOX_change(
     Atm_O2_reaeration: float,
     DOX_ApGrowth: float,
@@ -425,26 +445,29 @@ def DOX_change(
     """Compute change in dissolved oxygen concentration for one timestep
 
     Args:
-        Atm_O2_reaeration:
-        DOX_ApGrowth:
-        DOX_ApRespiration:
-        DOX_Nitrification:
-        DOX_DOC_Oxidation:
-        DOX_CBOD_Oxidation:
-        DOX_AbGrowth:
-        DOX_AbRespiration:
-        DOX_SOD: 
+        Atm_O2_reaeration: DOX concentration change due to atmospheric O2 reaeration (mg/L/d)
+        DOX_ApGrowth: DOX concentration change due to algal photosynthesis (mg/L/d)
+        DOX_ApRespiration: DOX concentration change due to algal respiration (mg/L/d)
+        DOX_Nitrification: DOX concentration change due to nitrification (mg/L/d)
+        DOX_DOC_Oxidation: DOX concentration change due to DOC oxidation (mg/L/d)
+        DOX_CBOD_Oxidation: DOX concentration change due to CBOD oxidation (mg/L/d)
+        DOX_AbGrowth: DOX concentration change due to benthic algae photosynthesis (mg/L/d)
+        DOX_AbRespiration: DOX concentration change due to benthic algae respiration (mg/L/d)
+        DOX_SOD: DOX concentration change due to sediment oxygen demand (mg/L/d)
     """
     return Atm_O2_reaeration + DOX_ApGrowth - DOX_ApRespiration - DOX_Nitrification - DOX_DOC_Oxidation - DOX_CBOD_Oxidation + DOX_AbGrowth - DOX_AbRespiration - DOX_SOD
 
+@numba.njit
 def update_DOX(
     DOX: float,
-    dDOXdt: float
+    dDOXdt: float,
+    timestep: float
 ) -> float:
     """Computes updated dissolved oxygen concentration
 
     Args:
         DOX: Dissolved oxygen concentration from previous timestep
         dDOXdt: Change in dissolved oxygen concentration over timestep
+        timestep: Current iteration timestep (d)
     """
-    return DOX + dDOXdt
+    return DOX + dDOXdt * timestep

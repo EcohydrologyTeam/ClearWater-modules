@@ -8,7 +8,7 @@ class Variable(base.Variable):
     ...
 
 Variable(
-    name='kaw_20',
+    name='kaw_20_user',
     long_name='Wind oxygen reaeration velocity at 20C',
     units='m/d',
     description='Wind oxygen reaeration velocity at 20C',
@@ -16,10 +16,26 @@ Variable(
 )
 
 Variable(
-    name='kah_20',
+    name='kah_20_user',
     long_name='Hydraulic oxygen reaeration rate at 20C',
     units='/d',
     description='Hydraulic oxygen reaeration rate at 20C',
+    use='static'
+)
+
+Variable(
+    name='hydraulic_reaeration_option',
+    long_name='Option for chosing the method by which O2 reaeration rate is calculated',
+    units='unitless',
+    description='Selects method for computing O2 reaeration rate',
+    use='static'
+)
+
+Variable(
+    name='wind_reaeration_option',
+    long_name='Option for chosing the method by which wind reaeration is calculated',
+    units='unitless',
+    description='Selects method for computing O2 reaeration due to wind',
     use='static'
 )
 
