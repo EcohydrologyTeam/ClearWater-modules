@@ -431,7 +431,7 @@ def DOX_SOD(
         return SOD_tc / depth
 
 @numba.njit
-def DOX_change(
+def dDOXdt(
     Atm_O2_reaeration: float,
     DOX_ApGrowth: float,
     DOX_ApRespiration: float,
@@ -458,7 +458,7 @@ def DOX_change(
     return Atm_O2_reaeration + DOX_ApGrowth - DOX_ApRespiration - DOX_Nitrification - DOX_DOC_Oxidation - DOX_CBOD_Oxidation + DOX_AbGrowth - DOX_AbRespiration - DOX_SOD
 
 @numba.njit
-def update_DOX(
+def DOX_new(
     DOX: float,
     dDOXdt: float,
     timestep: float

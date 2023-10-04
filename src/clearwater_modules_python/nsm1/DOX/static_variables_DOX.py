@@ -18,7 +18,7 @@ Variable(
 Variable(
     name='kah_20_user',
     long_name='Hydraulic oxygen reaeration rate at 20C',
-    units='/d',
+    units='1/d',
     description='Hydraulic oxygen reaeration rate at 20C',
     use='static'
 )

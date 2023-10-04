@@ -87,7 +87,7 @@ def CBOD_sedimentation(
     return CBOD_sedimentation
 
 @numba.njit
-def CBOD_change(
+def dCBODdt(
     CBOD_oxidation: np.array,
     CBOD_sedimentation: np.array
 ) -> np.array:
@@ -100,7 +100,7 @@ def CBOD_change(
     return - CBOD_oxidation - CBOD_sedimentation
 
 @numba.njit
-def update_CBOD(
+def CBOD_new(
     CBOD: np.array,
     dCBODdt: np.array,
     timestep: float

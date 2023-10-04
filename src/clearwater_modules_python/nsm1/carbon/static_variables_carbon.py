@@ -19,7 +19,7 @@ Variable(
     use='static'
 )
 
-Variable( ##regional?
+Variable(
     name='rca',
     long_name='algal C : Chla ratio',
     units='mg-C/ug-Chla',
@@ -38,12 +38,12 @@ Variable(
 Variable(
     name='kdoc_20',
     long_name='Dissolved organic carbon oxidation rate',
-    units='/d',
+    units='1/d',
     description='Dissolved organic carbon oxidation rate',
     use='static'
 )
 
-Variable(#Shared static variable
+Variable(
     name='vsoc',
     long_name='POC settling velocity',
     units='m/d',
@@ -62,25 +62,9 @@ Variable(
 Variable(
     name='kpoc_20',
     long_name='POC hydrolysis rate at 20 degrees Celsius',
-    units='/d',
+    units='1/d',
     description='POC hydrolysis rate at 20 degrees Celsius',
     use='static'
-)
-
-Variable( #Imported from GlobalParams in fortran, though not used...
-    name='fcom',
-    long_name='fraction of carbon in organic matter',
-    units='mg-C/mg-D',
-    description='fraction of carbon in organic matter',
-    use='static'
-)
-
-Variable( #Defined in POM static variables in fortran, said to go straight to bed sediment in note
-    name='kpom_20',
-    long_name='POM dissolution rate',
-    units='/d',
-    description='POM dissolution rate',
-    use='static'    
 )
 
 Variable(
@@ -92,10 +76,10 @@ Variable(
 )
 
 
-Variable( #Imported from GlobalParams in fortran
+Variable(
     name='kac_20',
     long_name='CO2 reaeration rate',
-    units='/d',
+    units='1/d',
     description='CO2 reaeration rate',
     use='static'
 )
@@ -111,7 +95,7 @@ Variable(
 Variable(
     name='FCO2',
     long_name='CO2 reaeration rate',
-    units='/d',
+    units='1/d',
     description='CO2 reaeration rate',
     use='static'
 )

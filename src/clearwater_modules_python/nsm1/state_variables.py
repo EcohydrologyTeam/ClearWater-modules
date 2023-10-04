@@ -88,7 +88,7 @@ Variable(
     units='mg-C/L',
     description='Particulate Organic Carbon Concentration',
     use='state',
-    process=carbon_processes.update_POC
+    process=carbon_processes.POC_new
 )
 
 Variable(
@@ -97,7 +97,7 @@ Variable(
     units='mg-C/L',
     description='Dissolved Organic Carbon Concentration',
     use='state',
-    process=carbon_processes.update_DOC
+    process=carbon_processes.DOC_new
 )
 
 Variable(
@@ -106,7 +106,7 @@ Variable(
     units='mg-C/L',
     description='Dissolved Inorganic Carbon Concentration',
     use='state',
-    process=carbon_processes.update_DIC
+    process=carbon_processes.DIC_new
 )
 
 Variable(
@@ -133,7 +133,7 @@ Variable(
     units='mg-O2/L',
     description='Carbonaceous Biochemical Oxygen Demand Concentration',
     use='state',
-    process=CBOD_processes.update_CBOD
+    process=CBOD_processes.CBOD_new
 )
 
 Variable(
@@ -142,7 +142,7 @@ Variable(
     units='mg-O2/L',
     description='Dissolved Oxygen',
     use='state',
-    process=DOX_processes.update_DOX
+    process=DOX_processes.DOX_new
 )
 
 Variable(

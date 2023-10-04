@@ -40,7 +40,7 @@ Variable(
 Variable(
     name='kah_20',
     long_name='Hydraulic oxygen reaeration rate adjusted for hydraulics',
-    units='/d',
+    units='1/d',
     description='Hydraulic oxygen reaeration rate adjusted for hydraulic parameters according to XX lit',
     use='dynamic',
     process=DOX_processes.kah_20
@@ -49,7 +49,7 @@ Variable(
 Variable(
     name='kah_T',
     long_name='Hydraulic oxygen reaeration rate adjusted for temperature',
-    units='/d',
+    units='1/d',
     description='Hydraulic oxygen reaeration rate adjusted for temperature',
     use='dynamic',
     process=DOX_processes.kah_T
@@ -76,7 +76,7 @@ Variable(
 Variable(
     name='ka_T',
     long_name='Oxygen reaeration rate',
-    units='/d',
+    units='1/d',
     description='Oxygen reaeration rate',
     use='dynamic',
     process=DOX_processes.ka_T
@@ -108,7 +108,7 @@ Variable(
     units='mg/L/d',
     description='Dissolved oxygen flux due to algal respiration',
     use='dynamic',
-    process=DOX_processes.DOX_algal_respiration
+    process=DOX_processes.DOX_ApRespiration
 )
 
 Variable(
@@ -180,5 +180,5 @@ Variable(
     units='mg/L/d',
     description='Change in dissolved oxygen concentration for one timestep',
     use='dynamic',
-    process=DOX_processes.DOX_change
+    process=DOX_processes.dDOXdt
 )

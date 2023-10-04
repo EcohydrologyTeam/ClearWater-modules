@@ -11,7 +11,7 @@ class Variable(base.Variable):
 Variable(
     name='kbod_i_20',
     long_name='CBOD oxidation rate for each CBOD group at 20C',
-    units='/d',
+    units='1/d',
     description='CBOD oxidation rate for each CBOD group at 20C, array',
     use='static'
 )

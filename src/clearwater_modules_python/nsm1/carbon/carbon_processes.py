@@ -104,7 +104,7 @@ def POC_benthic_algae_mortality(
         return 0
 
 @numba.njit
-def POC_change(
+def dPOCdt(
     POC_settling: float,
     POC_hydrolysis: float,
     POC_algal_mortality: float,
@@ -121,7 +121,7 @@ def POC_change(
     return POC_algal_mortality + POC_benthic_algae_mortality - POC_settling - POC_hydrolysis
 
 @numba.njit
-def update_POC(
+def POC_new(
     POC: float,
     dPOCdt: float,
     timestep: float
@@ -135,7 +135,6 @@ def update_POC(
     """
     return POC + dPOCdt * timestep
 
-        #DOC###################################################################
 
 @numba.njit
 def DOC_algal_mortality(
@@ -154,7 +153,10 @@ def DOC_algal_mortality(
         Ap: Algae concentration (mg/L)
         use_Algae: Option for considering algae in DOC budget (boolean)
     """
-    return (1 - f_pocp) * kdp_T * rca * Ap
+    if use_Algae:
+        return (1 - f_pocp) * kdp_T * rca * Ap
+    else:
+        return 0
 
 @numba.njit
 def DOC_benthic_algae_mortality(
@@ -179,7 +181,10 @@ def DOC_benthic_algae_mortality(
         Fw: Fraction of benthic algae mortality into water column
         use_Balgae: Option for considering benthic algae in DOC budget (boolean)
     """
-    return (1 / depth) * (1 - F_pocb) * kdb_T * rcb * Ab * Fb * Fw
+    if use_Balgae:
+        return (1 / depth) * (1 - F_pocb) * kdb_T * rcb * Ab * Fb * Fw
+    else:
+        return 0
 
 @numba.njit
 def kdoc_T(
@@ -195,58 +200,6 @@ def kdoc_T(
         theta: Arrhenius coefficient
     """
     return arrhenius_correction(water_temp_c, kdoc_20, theta)
-
-@numba.njit
-def kpom_T(
-    water_temp_c: float,
-    kpom_20: float,
-    theta: float
-) -> float:
-    """Calculate the temperature adjusted POM dissolution rate (1/d)
-
-    Args:
-        water_temp_c: Water temperature in Celsius
-        kpom_20: POM dissolution rate at 20 degrees Celsius (1/d)
-        theta: Arrhenius coefficient
-    """
-    return arrhenius_correction(water_temp_c, kpom_20, theta)
-
-@numba.njit
-def DOC_POM_dissolution(
-    kpom_T: float,
-    fcom: float,
-    POM: float,
-)-> float:
-    """Calculates the DOC concentration change due to dissolution of particulate organic matter
-
-    Args:
-        kpom_T: POM dissolution rate (1/d)
-        fcom: Fraction of carbon in organic matter (mg-C/mg-D)
-        POM: Particulate organic matter concentration (mg/L)
-    """
-    return kpom_T * fcom * POM
-
-@numba.njit
-def DOC_denitrification(
-    DOX: float,
-    NO3: float,
-    kdnit_T: float,
-    KsOxdn: float,
-    use_DOX: bool
-) -> float:
-    """Calculates the DOC concentration change due to denitrification
-    
-    Args:
-        DOX: Dissolved oxygen concentration (mg/L)
-        NO3: Nitrate concentration (mg/L)
-        kdnit_T: Denitrification rate (1/d)
-        KsOxdn: Half-saturation oxygen inhibition constant for denitrification (mg-O2/L) 
-        use_DOX: Option for considering dissolved oxygen concentration in DOC denitrification calculation (boolean) 
-    """
-    if use_DOX:
-        return (5 / 4) * (12 / 14) * (1 - DOX / KsOxdn + DOX) * kdnit_T * NO3
-    else:
-        return  (5 / 4) * (12 / 14) * kdnit_T * NO3 
 
 @numba.njit
 def DOC_oxidation(
@@ -271,13 +224,11 @@ def DOC_oxidation(
         return kdoc_T * DOC
 
 @numba.njit
-def DOC_change(
+def dDOCdt(
     DOC_oxidation: float,
     POC_hydrolysis: float,
     DOC_algal_mortality: float,
-    DOC_benthic_algae_mortality: float,
-    DOC_POM_dissolution: float,
-    DOC_denitrification: float
+    DOC_benthic_algae_mortality: float
 ) -> float:
     """Calculates the change in DOC concentration
 
@@ -289,10 +240,10 @@ def DOC_change(
         DOC_benthic_algae_mortality: DOC concentration change due to benthic algae mortality (mg/L/d)
         DOC_oxidation: DOC concentration change due to DOC oxidation (mg/L/d)
     """
-    return POC_hydrolysis + DOC_POM_dissolution - DOC_denitrification + DOC_algal_mortality + DOC_benthic_algae_mortality - DOC_oxidation
+    return POC_hydrolysis + DOC_algal_mortality + DOC_benthic_algae_mortality - DOC_oxidation
 
 @numba.njit
-def update_DOC(
+def DOC_new(
     DOC: float,
     dDOCdt: float,
     timestep: float
@@ -306,8 +257,6 @@ def update_DOC(
     """
     return DOC + dDOCdt * timestep
 
-
-        #DIC####################################################################
 
 @numba.njit
 def Henrys_k(
@@ -487,7 +436,7 @@ def DIC_sed_release(
         return SOD_tc / roc / depth
 
 @numba.njit
-def DIC_change(
+def dDICdt(
     Atm_CO2_reaeration: float,
     DIC_algal_respiration: float,
     DIC_algal_photosynthesis: float,
@@ -510,7 +459,7 @@ def DIC_change(
     return Atm_CO2_reaeration + DIC_algal_respiration + DIC_benthic_algae_respiration + DIC_CBOD_oxidation + DIC_sed_release - DIC_algal_photosynthesis - DIC_benthic_algae_photosynthesis
 
 @numba.njit
-def update_DIC(
+def DIC_new(
     DIC: float,
     dDICdt: float,
     timestep: float
