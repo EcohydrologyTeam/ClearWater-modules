@@ -44,6 +44,31 @@ Variable(
 )
 
 Variable(
+    name='vsoc',
+    long_name='POC settling velocity',
+    units='m/d',
+    description='POC settling velocity',
+    use='static'
+)
+
+Variable(
+    name='SOD_20',
+    long_name='Sediment oxygen demand at 20 degrees C',
+    units='g-O2/m/d',
+    description='Sediment oxygen demand at 20 degrees C',
+    use='static'
+)
+
+Variable(
+    name='SOD_theta',
+    long_name='Arrhenius coefficient for sediment oxygen demand',
+    units='unitless',
+    description='Arrhenius coefficient for sediment oxygen demand',
+    use='static'
+)
+
+
+Variable(
     name='vsop',
     long_name='Organic P settling velocity',
     units='m/d',
