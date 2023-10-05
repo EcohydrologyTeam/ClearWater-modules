@@ -1,6 +1,6 @@
 from clearwater_modules_python import base
 from clearwater_modules_python.tsm.model import EnergyBudget
-from clearwater_modules_python.tsm import processes
+from clearwater_modules_python.tsm import tsm_processes
 
 
 @base.register_variable(models=EnergyBudget)
@@ -15,7 +15,7 @@ Variable(
     units='degC',
     description='TSM state variable for water temperature',
     use='state',
-    process=processes.t_water_c,
+    process=tsm_processes.t_water_c,
 )
 
 # TODO: remove mock_equation
