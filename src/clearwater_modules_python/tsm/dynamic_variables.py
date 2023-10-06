@@ -113,6 +113,7 @@ Variable(
     use='dynamic',
     process=tsm_processes.wind_function,
 )
+
 Variable(
     name='q_latent',
     long_name='Latent heat flux',

@@ -50,7 +50,7 @@ class EnergyBudget(base.Model):
             **self.__meteo_parameters, **self.__temp_parameters}
 
         # TODO: make sure this feature works -> test it, but post demo
-        static_variable_values['use_sed_temp'] = use_sed_temp
+        #static_variable_values['use_sed_temp'] = use_sed_temp
 
         super().__init__(
             initial_state_values=initial_state_values,
