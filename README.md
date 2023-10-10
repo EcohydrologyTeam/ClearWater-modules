@@ -2,11 +2,11 @@
 
 The [ClearWater-modules-python](https://github.com/EcohydrologyTeam/ClearWater-modules-python) package is a collection of water quality and vegetation process simulation modules developed by the [U.S. Army Engineer Research and Development Center (ERDC)](https://www.erdc.usace.army.mil), [Environmental Laboratory (EL)](https://www.erdc.usace.army.mil/Locations/EL/).
 
-- [TSM: Temperature Simulation Module](src/clearwater_modules_python/tsm) (formerly TEMP)
-- [NSM: Nutrient Simulation Modules](src/clearwater_modules_python/nsm1) ([NSM-I](src/clearwater_modules_python/nsm1) and [NSM-II](src/clearwater_modules_python/nsm2))
-- [GSM: General Constituent Simulation Module](src/clearwater_modules_python/gsm)
-- [CSM: Contaminant Simulation Module](src/clearwater_modules_python/csm)
-- [MSM: Mercury Simulation Module](src/clearwater_modules_python/msm)
+- [TSM: Temperature Simulation Module](src/clearwater_modules/tsm) (formerly TEMP)
+- [NSM: Nutrient Simulation Modules](src/clearwater_modules/nsm1) ([NSM-I](src/clearwater_modules/nsm1) and [NSM-II](src/clearwater_modules/nsm2))
+- [GSM: General Constituent Simulation Module](src/clearwater_modules/gsm)
+- [CSM: Contaminant Simulation Module](src/clearwater_modules/csm)
+- [MSM: Mercury Simulation Module](src/clearwater_modules/msm)
 - SSM: Solids Simulation Module (Fortran only)
 - RVSM: Riparian Vegetation Simulation Module (Fortran only)
 

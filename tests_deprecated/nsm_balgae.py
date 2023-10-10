@@ -8,9 +8,9 @@ from numba import (
 import os
 import sys
 
-# TODO: there is BenthicAlgae in clearwater_modules_python.nsm1 and clearwater_modules_python.nsm2
+# TODO: there is BenthicAlgae in clearwater_modules.nsm1 and clearwater_modules.nsm2
 # I am not sure which one is the correct one to use
-from clearwater_modules_python.nsm1 import BenthicAlgae
+from clearwater_modules.nsm1 import BenthicAlgae
 
 @pyest.fixture(scope='module')
 def tolerance() -> float:
