@@ -2,15 +2,16 @@
 File includes dynamic variables computed in Algae module. Dynamic variables may be accessed by other modules.
 """
 
-import clearwater_modules_python.shared.processes as shared_processes
-from clearwater_modules_python import base
-from clearwater_modules_python.nsm1.model import NutrientBudget
-import clearwater_modules_python.nsm1.algae.algae_processes as algae_processes
+import clearwater_modules.shared.processes as shared_processes
+from clearwater_modules import base
+from clearwater_modules.nsm1.model import NutrientBudget
+import clearwater_modules.nsm1.algae.algae_processes as algae_processes
 
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
+
 
 Variable(
     name='rna',
@@ -49,7 +50,7 @@ Variable(
 )
 
 Variable(
-    name='mu_max_tc', 
+    name='mu_max_tc',
     long_name='Max Algae Growth with Temperature Correction',
     units='1/d',
     description='Max Algae Growth with Temperature Correction',
@@ -58,7 +59,7 @@ Variable(
 )
 
 Variable(
-    name='krp_tc', 
+    name='krp_tc',
     long_name='Algal Respiration Rate with Temperature Correction',
     units='1/d',
     description='Algal Respiration Rate with Temperature Correction',
@@ -67,7 +68,7 @@ Variable(
 )
 
 Variable(
-    name='kdp_tc', 
+    name='kdp_tc',
     long_name='Algal Mortality Rate with Temperature Correction',
     units='1/d',
     description='Algal Mortality Rate with Temperature Correction',
@@ -76,7 +77,7 @@ Variable(
 )
 
 Variable(
-    name='FL', 
+    name='FL',
     long_name='Algal Light Limitation',
     units='unitless',
     description='Algal Light Limitation',
@@ -85,7 +86,7 @@ Variable(
 )
 
 Variable(
-    name='FN', 
+    name='FN',
     long_name='Algal Nitrogen Limitation',
     units='unitless',
     description='Algal Nitrogen Limitation',
@@ -94,7 +95,7 @@ Variable(
 )
 
 Variable(
-    name='FP', 
+    name='FP',
     long_name='Algal Phosphorus Limitation',
     units='unitless',
     description='Algal Phosphorus Limitation',
@@ -103,7 +104,7 @@ Variable(
 )
 
 Variable(
-    name='mu', 
+    name='mu',
     long_name='Algal Growth Rate',
     units='1/d',
     description='Algal Growth Rate',
@@ -112,7 +113,7 @@ Variable(
 )
 
 Variable(
-    name='ApGrowth', 
+    name='ApGrowth',
     long_name='Algal Growth',
     units='ug-Chala/L/d',
     description='Algal Growth',
@@ -121,7 +122,7 @@ Variable(
 )
 
 Variable(
-    name='ApRespiration', 
+    name='ApRespiration',
     long_name='Algal Respiration',
     units='ug-Chala/L/d',
     description='Algal Respiration',
@@ -130,7 +131,7 @@ Variable(
 )
 
 Variable(
-    name='ApDeath', 
+    name='ApDeath',
     long_name='Algal Death',
     units='ug-Chala/L/d',
     description='Algal Death',
@@ -139,7 +140,7 @@ Variable(
 )
 
 Variable(
-    name='ApSettling', 
+    name='ApSettling',
     long_name='Algal Settling',
     units='ug-Chala/L/d',
     description='Algal Settling',

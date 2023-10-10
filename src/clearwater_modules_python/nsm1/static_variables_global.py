@@ -1,7 +1,7 @@
-import clearwater_modules_python.base as base
-from clearwater_modules_python.nsm1.model import NutrientBudget
-import clearwater_modules_python.nsm1.algae.algae_processes as algae_processes
-import clearwater_modules_python.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
+import clearwater_modules.base as base
+from clearwater_modules.nsm1.model import NutrientBudget
+import clearwater_modules.nsm1.algae.algae_processes as algae_processes
+import clearwater_modules.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
 
 
 @base.register_variable(models=NutrientBudget)
@@ -9,7 +9,8 @@ class Variable(base.Variable):
     ...
 # TODO: verify all these values
 
-#Global parameters
+# Global parameters
+
 
 Variable(
     name='L',
@@ -67,7 +68,7 @@ Variable(
     use='static'
 )
 
-#Global module options
+# Global module options
 
 Variable(
     name='use_NH4',

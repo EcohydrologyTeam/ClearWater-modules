@@ -2,15 +2,15 @@
 File contains process to calculate nitrogen species concentration and associated dependent variables
 """
 import math
-from clearwater_modules_python.shared.processes import arrhenius_correction
+from clearwater_modules.shared.processes import arrhenius_correction
 import numba
+
 
 @numba.njit
 def knit_tc(
-    TwaterC : float,
+    TwaterC: float,
     knit_20: float
-) -> float :
-
+) -> float:
     """Calculate knit_tc: Nitrification rate ammonia decay NH4 to NO3 temperature correction (1/d). #TODO only if use_NH4 = true
 
     Args:
@@ -20,12 +20,12 @@ def knit_tc(
 
     return arrhenius_correction(TwaterC, knit_20, 1.083)
 
+
 @numba.njit
 def rnh4_tc(
-    TwaterC : float,
+    TwaterC: float,
     rnh4_20: float
-) -> float :
-
+) -> float:
     """Calculate rnh4_tc: Sediment release rate of NH4 temperature correction(1/d). #TODO only if use_sedflux = true
 
     Args:
@@ -35,12 +35,12 @@ def rnh4_tc(
 
     return arrhenius_correction(TwaterC, rnh4_20, 1.074)
 
+
 @numba.njit
 def vno3_tc(
-    TwaterC : float,
+    TwaterC: float,
     vno3_20: float
-) -> float :
-
+) -> float:
     """Calculate vno3_tc: Sediment denitrification velocity temperature correction (m/d). #TODO only if use_sedflux = true
 
     Args:
@@ -50,12 +50,12 @@ def vno3_tc(
 
     return arrhenius_correction(TwaterC, vno3_20, 1.08)
 
+
 @numba.njit
 def kon_tc(
-    TwaterC : float,
+    TwaterC: float,
     kon_20: float
-) -> float :
-
+) -> float:
     """Calculate kon_tc: Decay rate of OrgN to NH4 temperature correction(1/d). #TODO only if use_OrgN = true
 
     Args:
@@ -65,12 +65,12 @@ def kon_tc(
 
     return arrhenius_correction(TwaterC, kon_20, 1.074)
 
+
 @numba.njit
 def kdnit_tc(
-    TwaterC : float,
+    TwaterC: float,
     kdnit_20: float
-) -> float :
-
+) -> float:
     """Calculate kdnit_tc: Denitrification rate temperature correction (1/d). #TODO only if use_NO3 = true
 
     Args:
@@ -79,6 +79,7 @@ def kdnit_tc(
     """
 
     return arrhenius_correction(TwaterC, kdnit_20, 1.045)
+
 
 @numba.njit
 def ApUptakeFr_NH4(
@@ -89,8 +90,7 @@ def ApUptakeFr_NH4(
     NH4: float,
     NO3: float,
 
-) -> float :
-
+) -> float:
     """Calculate ApUptakeFr_NH4: 
 
     Args:
@@ -113,25 +113,26 @@ def ApUptakeFr_NH4(
 
     #  Calculating Nitrogen Kinetics
     if use_Algae and use_NH4 and use_NO3:
-        ApUptakeFr_NH4 = PN * NH4 / (PN * NH4 + (1.0 - PN) * NO3)   
+        ApUptakeFr_NH4 = PN * NH4 / (PN * NH4 + (1.0 - PN) * NO3)
     # Check for case when NH4 and NO3 are very small.  If so, force uptake_fractions appropriately.
         if math.isnan(ApUptakeFr_NH4):
             ApUptakeFr_NH4 = PN
 
     return ApUptakeFr_NH4
 
+
 @numba.njit
 def ApUptakeFr_NO3(
     ApUptakeFr_NH4: float
-) -> float :
-
+) -> float:
     """Calculate ApUptakeFr_NO3: Fraction of actual floating algal uptake from nitrate pool (unitless)
 
     Args:
         ApUptakeFr_NH4: Fraction of actual floating algal uptake from ammonia pool
     """
 
-    return 1- ApUptakeFr_NH4
+    return 1 - ApUptakeFr_NH4
+
 
 @numba.njit
 def AbUptakeFr_NH4(
@@ -142,8 +143,7 @@ def AbUptakeFr_NH4(
     NH4: float,
     NO3: float,
 
-) -> float :
-
+) -> float:
     """Calculate AbUptakeFr_NH4: Fraction of actual benthic algal uptake from ammonia pool
 
     Args:
@@ -172,21 +172,22 @@ def AbUptakeFr_NH4(
     # Check if NH4 and NO3 are very small.  If so, force uptake_fractions appropriately.
         if math.isnan(AbUptakeFr_NH4):
             AbUptakeFr_NH4 = PNb
-    
+
     return AbUptakeFr_NH4
+
 
 @numba.njit
 def AbUptakeFr_NO3(
     AbUptakeFr_NH4: float
-) -> float :
-
+) -> float:
     """Calculate AbUptakeFr_NO3: Fraction of actual benthic algal uptake from nitrate pool (unitless)
 
     Args:
         AbUptakeFr_NH4: Fraction of actual benthic algal uptake from ammonia pool
     """
 
-    return 1- AbUptakeFr_NH4
+    return 1 - AbUptakeFr_NH4
+
 
 @numba.njit
 def dOrgNdt(
@@ -204,8 +205,7 @@ def dOrgNdt(
     ApDeath: float,
     AbDeath: float,
 
-) -> float :
-
+) -> float:
     """Calculate dOrgNdt: Change in Organic Nitrogen (mg-N/L)
 
     Args:
@@ -222,13 +222,13 @@ def dOrgNdt(
         Fb: Fraction of bottom area for benthic algae (unitless)
         ApDeath: Algal death rate (ug-Chla/L/d)
         AbDeath: Benthic algal death rate (g/m^2/d)
-    
+
     Organic Nitrogen                     (mg-N/d*L)
     dOrgN/dt =   Algae_OrgN              (Floating Algae -> OrgN)
                 - OrgN_NH4_Decay         (OrgN -> NH4)
                 - OrgN_Settling          (OrgN -> bed)
                 + Benthic Death          (Benthic Algae -> OrgN)	
-        
+
     """
     if use_OrgN:
         OrgN_NH4_Decay = kon_tc * OrgN
@@ -247,8 +247,9 @@ def dOrgNdt(
         dOrgNdt = ApDeath_OrgN + AbDeath_OrgN - OrgN_NH4_Decay - OrgN_Settling
     else:
         dOrgNdt = 0
-    
+
     return dOrgNdt
+
 
 @numba.njit
 def dNH4dt(
@@ -273,8 +274,7 @@ def dNH4dt(
     AbRespiration: float,
     AbGrowth: float,
 
-) -> float :
-
+) -> float:
     """Calculate dNH4dt: Change in Ammonium (mg-N/L)
 
     Args:
@@ -299,20 +299,20 @@ def dNH4dt(
         ApGrowth: Algal growth rate (ug-Chla/L/d),
         AbRespiration: Benthic algal respiration rate (g/m^2/d),
         AbGrowth: Benthic alga growth rate (g/m^2/d),    
-    
+
     Ammonia Nitrogen (NH4)                 (mg-N/day*L)
     dNH4/dt   =    OrgN_NH4_Decay          (OrgN -> NH4)  
                     - NH4 Oxidation         (NH4 -> NO3)
                     - NH4AlgalUptake        (NH4 -> Floating Algae)
                     + Benthos NH4           (Benthos -> NH4)
                     - Benthic Algae Uptake  (NH4 -> Benthic Algae)		
-                
+
     """
     NitrificationInhibition = 0
 
-    if use_NH4 :
+    if use_NH4:
         if use_DOX:
-            NitrificationInhibition = 1.0 -math.exp(-KNR * DOX)
+            NitrificationInhibition = 1.0 - math.exp(-KNR * DOX)
         else:
             NitrificationInhibition = 1.0
 
@@ -333,7 +333,7 @@ def dNH4dt(
         if use_Balgae:
             # TODO changed the calculation for respiration from the inital FORTRAN due to conflict with the reference guide
             NH4_AbRespiration = rnb * AbRespiration
-            NH4_AbGrowth = (AbUptakeFr_NH4 * rnb * Fb* AbGrowth) / depth
+            NH4_AbGrowth = (AbUptakeFr_NH4 * rnb * Fb * AbGrowth) / depth
         else:
             NH4_AbRespiration = 0.0
             NH4_AbGrowth = 0.0
@@ -341,11 +341,13 @@ def dNH4dt(
         if not use_OrgN:
             OrgN_NH4_Decay = 0.0
 
-        dNH4dt = OrgN_NH4_Decay - NH4_Nitrification + NH4fromBed + NH4_ApRespiration - NH4_ApGrowth + NH4_AbRespiration - NH4_AbGrowth
+        dNH4dt = OrgN_NH4_Decay - NH4_Nitrification + NH4fromBed + \
+            NH4_ApRespiration - NH4_ApGrowth + NH4_AbRespiration - NH4_AbGrowth
     else:
         dNH4dt = 0
 
     return dNH4dt
+
 
 @numba.njit
 def dNO3dt(
@@ -369,8 +371,7 @@ def dNO3dt(
     ApGrowth: float,
     AbGrowth: float,
 
-) -> float :
-
+) -> float:
     """Calculate dNO3dt: Change in nitrate (mg-N/L)
 
     Args:
@@ -393,13 +394,13 @@ def dNO3dt(
 
         ApGrowth: Algal growth rate (ug-Chla/L/d),
         AbGrowth: Benthic alga growth rate (g/m^2/d),    
-    
+
     Nitrite Nitrogen  (NO3)                       (mg-N/day*L)
     dNO3/dt  =      NH4 Oxidation                 (NH4 -> NO3) 
                     - NO3 Sediment Denitrification
                     - NO3 Algal Uptake            (NO3-> Floating Algae) 
                     - NO3 Benthic Algal Uptake    (NO3-> Benthic  Algae) 	
-               
+
     """
 
     if use_NO3:
@@ -416,7 +417,7 @@ def dNO3dt(
             NO3_BedDenit = vno3_tc * NO3 / depth
 
         if use_Algae:
-            NO3_ApGrowth = ApUptakeFr_NO3 * rna* ApGrowth
+            NO3_ApGrowth = ApUptakeFr_NO3 * rna * ApGrowth
         else:
             NO3_ApGrowth = 0.0
 
@@ -428,11 +429,13 @@ def dNO3dt(
         if not use_NH4:
             NH4_Nitrification = 0.0
 
-        dNO3dt = NH4_Nitrification - NO3_Denit - NO3_BedDenit - NO3_ApGrowth - NO3_AbGrowth
+        dNO3dt = NH4_Nitrification - NO3_Denit - \
+            NO3_BedDenit - NO3_ApGrowth - NO3_AbGrowth
     else:
         dNO3dt = 0
-    
+
     return dNO3dt
+
 
 @numba.njit
 def DIN(
@@ -441,8 +444,7 @@ def DIN(
     NH4: float,
     NO3: float,
 
-) -> float :
-
+) -> float:
     """Calculate DIN: Dissolve inorganic nitrogen (mg-N/L)
 
     Args:
@@ -460,6 +462,7 @@ def DIN(
 
     return DIN
 
+
 @numba.njit
 def TON(
     use_OrgN: bool,
@@ -468,8 +471,7 @@ def TON(
     rna: float,
     Ap: float
 
-) -> float :
-
+) -> float:
     """Calculate TON: Total organic nitrogen (mg-N/L)
 
     Args:
@@ -489,14 +491,14 @@ def TON(
 
     return TON
 
+
 @numba.njit
 def TKN(
     use_NH4: bool,
     NH4: float,
     TON: float
 
-) -> float :
-
+) -> float:
     """Calculate TKN: Total kjeldhl (mg-N/L)
 
     Args:
@@ -510,13 +512,13 @@ def TKN(
 
     return TKN + TON
 
+
 @numba.njit
 def TN(
     DIN: float,
     TON: float,
 
-) -> float :
-
+) -> float:
     """Calculate TN: Total nitrogen (mg-N/L)
 
     Args:

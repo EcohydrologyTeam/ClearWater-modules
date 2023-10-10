@@ -1,14 +1,15 @@
 # TODO: figure out imports
 
-import clearwater_modules_python.shared.processes as shared_processes
-from clearwater_modules_python import base
-from clearwater_modules_python.tsm.model import EnergyBudget
-from clearwater_modules_python.nsm1.CBOD import CBOD_processes
+import clearwater_modules.shared.processes as shared_processes
+from clearwater_modules import base
+from clearwater_modules.tsm.model import EnergyBudget
+from clearwater_modules.nsm1.CBOD import CBOD_processes
 
 
 @base.register_variable(models=EnergyBudget)
 class Variable(base.Variable):
     ...
+
 
 Variable(
     name='kbod_i_T',

@@ -1,5 +1,5 @@
-import clearwater_modules_python.base as base
-from clearwater_modules_python.tsm.model import EnergyBudget
+import clearwater_modules.base as base
+from clearwater_modules.tsm.model import EnergyBudget
 
 
 @base.register_variable(models=EnergyBudget)

@@ -1,9 +1,9 @@
 """Stored base types shared by all sub-modules."""
 import warnings
 import xarray as xr
-import clearwater_modules_python.utils as utils
-import clearwater_modules_python.sorter as sorter
-from clearwater_modules_python.shared.types import (
+import clearwater_modules.utils as utils
+import clearwater_modules.sorter as sorter
+from clearwater_modules.shared.types import (
     InitialVariablesDict,
     Variable,
 )
@@ -59,7 +59,7 @@ class Model(CanRegisterVariable):
         if not time_dim:
             time_dim = 'time_step'
         self.time_dim = time_dim
-       
+
         if isinstance(self.initial_state_values, dict) and isinstance(self.static_variable_values, dict):
             print('Initializing from dicts...')
             self.dataset: xr.Dataset = self._init_dataset_from_dicts(
@@ -69,7 +69,8 @@ class Model(CanRegisterVariable):
 
         elif isinstance(hotstart_dataset, xr.Dataset):
             print('Initializing from hotstart dataset...')
-            self.dataset: xr.Dataset = self._init_from_dataset(hotstart_dataset)
+            self.dataset: xr.Dataset = self._init_from_dataset(
+                hotstart_dataset)
             self.hotstart_dataset = None
 
         else:
@@ -78,7 +79,7 @@ class Model(CanRegisterVariable):
             )
 
         self._sorted_variables: list[Variable] = []
-    
+
     def _init_dataset_from_dicts(
         self,
         initial_state_values: InitialVariablesDict,
@@ -102,7 +103,7 @@ class Model(CanRegisterVariable):
         # initialize the main model dataset
         dataset: xr.Dataset = self._init_state_arrays(initial_state_values)
         dataset: xr.Dataset = self._init_static_arrays(
-            dataset, 
+            dataset,
             static_variable_values,
         )
 
@@ -164,12 +165,12 @@ class Model(CanRegisterVariable):
         return ds.expand_dims({self.time_dim: [0]})
 
     def _init_static_arrays(
-        self, 
+        self,
         dataset: xr.Dataset,
         static_variable_values: InitialVariablesDict,
     ) -> xr.Dataset:
         """Broadcasts static variables to an existing dataset.
-        
+
         Args:
             dataset: The dataset to broadcast to.
             static_variable_values: A dictionary of static variable names and 
@@ -201,7 +202,6 @@ class Model(CanRegisterVariable):
             )
             dataset[var.name].attrs = attrs
         return dataset
-
 
     @classmethod
     def get_variable_names(cls) -> list[str]:
@@ -276,12 +276,12 @@ class Model(CanRegisterVariable):
                 sorter.split_variables(self.all_variables),
             )
         return self._sorted_variables
-    
+
     @property
-    def _update_vars(self)-> list[str]:
+    def _update_vars(self) -> list[str]:
         """Return a list of variables to update."""
         if self.track_dynamic_variables:
-            return self.dynamic_variables_names + self.state_variables_names 
+            return self.dynamic_variables_names + self.state_variables_names
         else:
             return self.state_variables_names
 
@@ -310,10 +310,10 @@ class Model(CanRegisterVariable):
             timestep_ds = timestep_ds.drop_vars(self.dynamic_variables_names)
 
         timestep_ds = timestep_ds.drop_vars(self.static_variables_names)
-        timestep_ds= timestep_ds.expand_dims(
+        timestep_ds = timestep_ds.expand_dims(
             {self.time_dim: [last_timestep + 1]},
         )
-        
+
         self.dataset = xr.concat(
             [
                 self.dataset,
@@ -322,7 +322,7 @@ class Model(CanRegisterVariable):
             dim=self.time_dim,
             data_vars='minimal',
         )
-        
+
         # add dynamic variable attributes
         if self.track_dynamic_variables:
             for var in self.dynamic_variables:
@@ -334,6 +334,7 @@ class Model(CanRegisterVariable):
                     }
 
         return self.dataset
+
 
 def register_variable(models: CanRegisterVariable | Iterable[CanRegisterVariable]):
     """A decorator to register a variable with a model."""

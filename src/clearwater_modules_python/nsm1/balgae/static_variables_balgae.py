@@ -2,9 +2,9 @@
 File includes static variables only used in Algae module
 """
 
-import clearwater_modules_python.base as base
-from clearwater_modules_python.nsm1.model import NutrientBudget
-import clearwater_modules_python.nsm1.algae.algae_processes as algae_processes
+import clearwater_modules.base as base
+from clearwater_modules.nsm1.model import NutrientBudget
+import clearwater_modules.nsm1.algae.algae_processes as algae_processes
 
 
 @base.register_variable(models=NutrientBudget)

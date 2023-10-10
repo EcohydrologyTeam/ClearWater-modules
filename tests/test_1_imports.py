@@ -1,6 +1,6 @@
 """Tests that everything can be imported as we expect."""
 import pytest
-import clearwater_modules_python
+import clearwater_modules
 
 
 @pytest.fixture
@@ -14,4 +14,4 @@ def sub_modules() -> list[str]:
 def test_sub_modules(sub_modules) -> None:
     """Test that all sub-modules can be imported."""
     for sub_module in sub_modules:
-        assert hasattr(clearwater_modules_python, sub_module)
+        assert hasattr(clearwater_modules, sub_module)

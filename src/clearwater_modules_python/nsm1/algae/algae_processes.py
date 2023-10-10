@@ -5,15 +5,15 @@ File contains process to calculate new algae biomass concentration and associate
 # TODO calculate lambda?
 
 import math
-from clearwater_modules_python.shared.processes import arrhenius_correction
+from clearwater_modules.shared.processes import arrhenius_correction
 import numba
+
 
 @numba.njit
 def rna(
-    AWn : float,
+    AWn: float,
     AWa: float
-) -> float :
-    
+) -> float:
     """Calculate rna (mg-N/ug-Chla).
 
     Args:
@@ -22,12 +22,12 @@ def rna(
     """
     return AWn/AWa
 
+
 @numba.njit
 def rpa(
-    AWp : float,
+    AWp: float,
     AWa: float
-) -> float :
-
+) -> float:
     """Calculate rpa (mg-P/ug-Chla).
 
     Args:
@@ -37,12 +37,12 @@ def rpa(
 
     return AWp/AWa
 
+
 @numba.njit
 def rca(
-    AWc : float,
+    AWc: float,
     AWa: float
-) -> float :
-
+) -> float:
     """Calculate rca (mg-C/ug-Chla).
 
     Args:
@@ -51,12 +51,12 @@ def rca(
     """
     return AWc/AWa
 
+
 @numba.njit
 def rda(
-    AWd : float,
+    AWd: float,
     AWa: float
-) -> float :
-    
+) -> float:
     """Calculate rda (mg-D/ug-Chla).
 
     Args:
@@ -65,12 +65,12 @@ def rda(
     """
     return AWd/AWa
 
+
 @numba.njit
 def mu_max_tc(
-    TwaterC : float,
+    TwaterC: float,
     mu_max_20: float
-) -> float :
-
+) -> float:
     """Calculate mu_max_tc (1/d).
 
     Args:
@@ -80,12 +80,12 @@ def mu_max_tc(
 
     return arrhenius_correction(TwaterC, mu_max_20, 1.047)
 
+
 @numba.njit
 def krp_tc(
-    TwaterC : float,
+    TwaterC: float,
     krp_20: float
-) -> float :
-
+) -> float:
     """Calculate krp_tc (1/d).
 
     Args:
@@ -95,12 +95,12 @@ def krp_tc(
 
     return arrhenius_correction(TwaterC, krp_20, 1.047)
 
+
 @numba.njit
 def kdp_tc(
-    TwaterC : float,
+    TwaterC: float,
     kdp_20: float
-) -> float :
-    
+) -> float:
     """Calculate kdp_tc (1/d).
 
     Args:
@@ -110,16 +110,16 @@ def kdp_tc(
 
     return arrhenius_correction(TwaterC, kdp_20, 1.047)
 
+
 @numba.njit
 def FL(
-    L : float,
+    L: float,
     depth: float,
     Ap: float,
     PAR: float,
     light_limitation_option: int,
-    KL : float,
-) -> float :
-
+    KL: float,
+) -> float:
     """Calculate Algal light limitation: FL (unitless).
 
     Args:
@@ -141,7 +141,7 @@ def FL(
     elif light_limitation_option == 1:
         # Half-saturation formulation
         FL = (1.0 / KEXT) * math.log((KL + PAR) /
-                                        (KL + PAR * math.exp(-KEXT)))
+                                     (KL + PAR * math.exp(-KEXT)))
     elif light_limitation_option == 2:
         # Smith's model
         if abs(KL) < 1.0E-10:
@@ -150,14 +150,14 @@ def FL(
             sqrt1 = (1.0 + (PAR / KL)**2.0)**0.5
             sqrt2 = (1.0 + (PAR * math.exp(-KEXT) / KL)**2.0)**0.5
             FL = (1.0 / KEXT) * math.log((PAR / KL + sqrt1) /
-                                            (PAR * math.exp(-KEXT) / KL + sqrt2))
+                                         (PAR * math.exp(-KEXT) / KL + sqrt2))
     elif light_limitation_option == 3:
         # Steele's model
         if abs(KL) < 1.0E-10:
             FL = 0.0
         else:
             FL = (2.718/KEXT) * (math.exp(-PAR/KL *
-                                            math.exp(-KEXT)) - math.exp(-PAR/KL))
+                                          math.exp(-KEXT)) - math.exp(-PAR/KL))
 
     # Limit factor to between 0.0 and 1.0.
     # This should never happen, but it would be a mess if it did.
@@ -168,16 +168,16 @@ def FL(
 
     return FL
 
+
 @numba.njit
 def FN(
-    use_NH4 : bool,
-    use_NO3 : bool,
-    NH4 : float,
-    NO3 : float,
-    KsN : float,
+    use_NH4: bool,
+    use_NO3: bool,
+    NH4: float,
+    NO3: float,
+    KsN: float,
 
-) -> float :
-
+) -> float:
     """Calculate Algal nitrogen limitation: FN (unitless).
 
     Args:
@@ -196,17 +196,17 @@ def FN(
             FN = 1.0
     else:
         FN = 1.0
-    
+
     return FN
+
 
 @numba.njit
 def FP(
-    fdp : float,
+    fdp: float,
     TIP: float,
-    use_TIP : bool,
-    KsP : float
-) -> float :
-    
+    use_TIP: bool,
+    KsP: float
+) -> float:
     """Calculate Algal phosphorous limitation: FP (unitless).
 
     Args:
@@ -225,19 +225,19 @@ def FP(
             FP = 1.0
     else:
         FP = 1.0
-    
+
     return FP
+
 
 @numba.njit
 def mu(
-    mu_max_tc : float,
+    mu_max_tc: float,
     growth_rate_option: int,
     FL: float,
     FP: float,
     FN: float
 
-) -> float :
-
+) -> float:
     """Calculate Algal growth rate with three options 1) Multiplicative, 2) Limiting nutrient, 3) Harmonic Mean (1/d)
 
     Args:
@@ -250,7 +250,7 @@ def mu(
 
     if growth_rate_option == 1:
         # (1) Multiplicative (day-1)
-        mu = mu_max_tc * FL * FP * FN                 
+        mu = mu_max_tc * FL * FP * FN
     elif growth_rate_option == 2:
         # (2) Limiting nutrient (day-1)
         mu = mu_max_tc * FL * min(FP, FN)
@@ -260,15 +260,15 @@ def mu(
             mu = 0.0
         else:
             mu = mu_max_tc * FL * 2.0 / (1.0 / FN + 1.0 / FP)
-    
+
     return mu
+
 
 @numba.njit
 def ApGrowth(
-    mu : float,
+    mu: float,
     Ap: float
-) -> float :
-
+) -> float:
     """Calculate Algal growth (ug-Chla/L/d)
 
     Args:
@@ -276,14 +276,14 @@ def ApGrowth(
         Ap: Algae concentration (ug-Chla/L)
     """
 
-    return  mu * Ap                   
+    return mu * Ap
+
 
 @numba.njit
 def ApRespiration(
-    krp_tc : float,
+    krp_tc: float,
     Ap: float
-) -> float :
-
+) -> float:
     """Calculate Algal Respiration (ug-Chla/L/d)
 
     Args:
@@ -291,29 +291,29 @@ def ApRespiration(
         Ap: Algae concentration (ug-Chla/L)
     """
 
-    return krp_tc * Ap         
+    return krp_tc * Ap
+
 
 @numba.njit
 def ApDeath(
-    kdp_tc : float,
+    kdp_tc: float,
     Ap: float
-) -> float :
-
+) -> float:
     """Calculate Algal death (ug-Chla/L/d)
 
     Args:
         kdp_tc: Algal death rate temperature corrected (1/d)
         Ap: Algae concentration (ug-Chla/L)
     """
-    return kdp_tc * Ap                
+    return kdp_tc * Ap
+
 
 @numba.njit
 def ApSettling(
-    vsap : float,
+    vsap: float,
     Ap: float,
     depth: float
-) -> float :
-
+) -> float:
     """Calculate Algal setting rate (ug-Chla/L/d)
 
     Args:
@@ -323,14 +323,14 @@ def ApSettling(
     """
     return vsap / depth * Ap
 
+
 @numba.njit
 def dApdt(
     ApGrowth: float,
     ApRespiration: float,
-    ApDeath : float,
-    ApSettling : float
-) -> float :
-
+    ApDeath: float,
+    ApSettling: float
+) -> float:
     """Calculate change in algae biomass concentration (ug-Chla/L/d)
 
     Args:
@@ -342,12 +342,12 @@ def dApdt(
 
     return ApGrowth - ApRespiration - ApDeath - ApSettling
 
+
 @numba.njit
 def Ap_new(
-    Ap : float,
-    dApdt : float,
-) -> float :
-
+    Ap: float,
+    dApdt: float,
+) -> float:
     """Calculate new algae concentration (ug-Chla/L)
 
     Args:

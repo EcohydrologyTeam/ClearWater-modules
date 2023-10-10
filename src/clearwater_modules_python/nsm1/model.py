@@ -2,11 +2,11 @@
 import xarray as xr
 import numpy as np
 from enum import Enum
-from clearwater_modules_python.nsm1 import (
+from clearwater_modules.nsm1 import (
     constants,
 )
-from clearwater_modules_python import base
-import clearwater_modules_python.shared.processes as shared_processes
+from clearwater_modules import base
+import clearwater_modules.shared.processes as shared_processes
 from typing import (
     Optional,
 )
@@ -35,7 +35,7 @@ class NutrientBudget(base.Model):
                 key,
                 value,
             )
-            
+
         static_variable_values = {
             **self.__algae_parameters}
 
@@ -50,4 +50,3 @@ class NutrientBudget(base.Model):
     @property
     def algae_parameters(self) -> constants.algae:
         return self.__algae_parameters
-

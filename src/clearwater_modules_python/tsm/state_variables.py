@@ -1,6 +1,6 @@
-from clearwater_modules_python import base
-from clearwater_modules_python.tsm.model import EnergyBudget
-from clearwater_modules_python.tsm import processes
+from clearwater_modules import base
+from clearwater_modules.tsm.model import EnergyBudget
+from clearwater_modules.tsm import processes
 
 
 @base.register_variable(models=EnergyBudget)

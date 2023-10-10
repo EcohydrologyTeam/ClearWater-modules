@@ -1,8 +1,9 @@
 import numpy as np
 import numba
-from clearwater_modules_python.shared.processes import (
+from clearwater_modules.shared.processes import (
     arrhenius_correction,
 )
+
 
 @numba.njit
 def kbod_i_T(
@@ -19,8 +20,9 @@ def kbod_i_T(
     """
     kbod_i_T = np.array([])
     for i in kbod_i_20:
-        np.append(kbod_i_T,arrhenius_correction(water_temp_c, i, theta))        
+        np.append(kbod_i_T, arrhenius_correction(water_temp_c, i, theta))
     return kbod_i_T
+
 
 @numba.njit
 def ksbod_i_T(
@@ -37,8 +39,9 @@ def ksbod_i_T(
     """
     ksbod_i_T = np.array([])
     for i in ksbod_i_20:
-        np.append(ksbod_i_T,arrhenius_correction(water_temp_c, i, theta))        
+        np.append(ksbod_i_T, arrhenius_correction(water_temp_c, i, theta))
     return ksbod_i_T
+
 
 @numba.njit
 def CBOD_oxidation(
@@ -49,7 +52,7 @@ def CBOD_oxidation(
     use_DOX: bool
 ) -> np.array:
     """Calculates CBOD oxidation for each group
-    
+
     Args:
         DOX: Dissolved oxygen concentration (mg-O2/L)
         CBOD: Carbonaceous biochemical oxygen demand for each CBOD group (mg-O2/L, array)
@@ -62,12 +65,14 @@ def CBOD_oxidation(
 
     if use_DOX:
         for i in nCBOD:
-            np.append(CBOD_ox, (DOX / (KsOxbod_i[i] + DOX)) * kbod_i_T[i] * CBOD[i])
+            np.append(
+                CBOD_ox, (DOX / (KsOxbod_i[i] + DOX)) * kbod_i_T[i] * CBOD[i])
     else:
         for i in nCBOD:
             np.append(kbod_i_T[i] * CBOD[i])
-    
+
     return CBOD_ox
+
 
 @numba.njit
 def CBOD_sedimentation(
@@ -75,7 +80,7 @@ def CBOD_sedimentation(
     ksbod_i_T: np.array
 ) -> np.array:
     """Calculates CBOD sedimentation for each group
-    
+
     Args:
         CBOD: CBOD concentration for each CBOD group (mg-O2/L)
         ksbod_i_T: Temperature adjusted sedimentation rate for each CBOD group (m/d, array)
@@ -86,18 +91,20 @@ def CBOD_sedimentation(
         np.append(CBOD_sedimentation, CBOD[i] * ksbod_i_T[i])
     return CBOD_sedimentation
 
+
 @numba.njit
 def dCBODdt(
     CBOD_oxidation: np.array,
     CBOD_sedimentation: np.array
 ) -> np.array:
     """Computes change in each CBOD group for a given timestep
-    
+
     Args:
         CBOD_oxidation: CBOD concentration change due to oxidation (mg/L/d)
         CBOD_sedimentation: CBOD concentration change due to sedimentation (mg/L/d)
     """
     return - CBOD_oxidation - CBOD_sedimentation
+
 
 @numba.njit
 def CBOD_new(
@@ -106,7 +113,7 @@ def CBOD_new(
     timestep: float
 ) -> np.array:
     """Calculates new CBOD concentration for next timestep
-    
+
     Args:
         CBOD: CBOD concentration from previous timestep (mg/L)
         dCBODdt: CBOD concentration change for current timestep (mg/L/d)

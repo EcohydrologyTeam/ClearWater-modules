@@ -34,7 +34,7 @@ src_path = os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(src_path))
 
-from clearwater_modules_python import water_quality_functions as wqf
+from clearwater_modules import water_quality_functions as wqf
 
 """
 Globals

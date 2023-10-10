@@ -1,13 +1,13 @@
 import numpy as np
 import numba
-from clearwater_modules_python.shared.processes import (
+from clearwater_modules.shared.processes import (
     arrhenius_correction
 )
-from clearwater_modules_python.nsm1.carbon import dynamic_variables_carbon
-from clearwater_modules_python.nsm1.carbon import static_variables_carbon
-from clearwater_modules_python.nsm1 import static_variables_global
-#from clearwater_modules_python.nsm1 import dynamic_variables_global
-from clearwater_modules_python.nsm1 import state_variables
+from clearwater_modules.nsm1.carbon import dynamic_variables_carbon
+from clearwater_modules.nsm1.carbon import static_variables_carbon
+from clearwater_modules.nsm1 import static_variables_global
+# from clearwater_modules.nsm1 import dynamic_variables_global
+from clearwater_modules.nsm1 import state_variables
 
 
 @numba.njit
@@ -25,6 +25,7 @@ def kpoc_T(
     """
     return arrhenius_correction(water_temp_c, kpoc_20, theta)
 
+
 @numba.njit
 def POC_hydrolysis(
     kpoc_T: float,
@@ -37,6 +38,7 @@ def POC_hydrolysis(
         POC: POC concentration (mg/L)
     """
     return kpoc_T * POC
+
 
 @numba.njit
 def POC_settling(
@@ -52,6 +54,7 @@ def POC_settling(
         POC: POC concentration (mg/L)
     """
     return vsoc / depth * POC
+
 
 @numba.njit
 def POC_algal_mortality(
@@ -74,6 +77,7 @@ def POC_algal_mortality(
         return f_pocp * kdp_T * rca * Ap
     else:
         return 0
+
 
 @numba.njit
 def POC_benthic_algae_mortality(
@@ -103,12 +107,13 @@ def POC_benthic_algae_mortality(
     else:
         return 0
 
+
 @numba.njit
 def dPOCdt(
     POC_settling: float,
     POC_hydrolysis: float,
     POC_algal_mortality: float,
-    POC_benthic_algae_mortality: float 
+    POC_benthic_algae_mortality: float
 ) -> float:
     """Calculate the change in POC concentration
 
@@ -119,6 +124,7 @@ def dPOCdt(
         POC_benthic_algae_mortality: Concentration change of POC due to benthic algae mortality (mg/L/d)
     """
     return POC_algal_mortality + POC_benthic_algae_mortality - POC_settling - POC_hydrolysis
+
 
 @numba.njit
 def POC_new(
@@ -158,6 +164,7 @@ def DOC_algal_mortality(
     else:
         return 0
 
+
 @numba.njit
 def DOC_benthic_algae_mortality(
     depth: float,
@@ -186,6 +193,7 @@ def DOC_benthic_algae_mortality(
     else:
         return 0
 
+
 @numba.njit
 def kdoc_T(
     water_temp_c: float,
@@ -201,13 +209,14 @@ def kdoc_T(
     """
     return arrhenius_correction(water_temp_c, kdoc_20, theta)
 
+
 @numba.njit
 def DOC_oxidation(
     DOX: float,
     KsOxmc: float,
     kdoc_T: float,
     DOC: float,
-    use_DOX: bool 
+    use_DOX: bool
 ) -> float:
     """Calculates the DOC concentration change due to oxidation
 
@@ -222,6 +231,7 @@ def DOC_oxidation(
         return DOX / (KsOxmc + DOX) * kdoc_T * DOC
     else:
         return kdoc_T * DOC
+
 
 @numba.njit
 def dDOCdt(
@@ -242,6 +252,7 @@ def dDOCdt(
     """
     return POC_hydrolysis + DOC_algal_mortality + DOC_benthic_algae_mortality - DOC_oxidation
 
+
 @numba.njit
 def DOC_new(
     DOC: float,
@@ -261,13 +272,14 @@ def DOC_new(
 @numba.njit
 def Henrys_k(
     water_temp_c: float
-)-> float:
+) -> float:
     """Calculates the temperature dependent Henry's coefficient (mol/L/atm)
 
     Args:
         water_temp_c: Water temperature in celsius
     """
     return 10**(2385.73 / (water_temp_c + 273.15) + .0152642 * (water_temp_c + 273.15) - 14.0184)
+
 
 @numba.njit
 def kac_T(
@@ -283,6 +295,7 @@ def kac_T(
         theta: Arrhenius coefficient
     """
     return arrhenius_correction(water_temp_c, kac_20, theta)
+
 
 @numba.njit
 def Atmospheric_CO2_reaeration(
@@ -303,6 +316,7 @@ def Atmospheric_CO2_reaeration(
     """
     return 12 * kac_T * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
 
+
 @numba.njit
 def DIC_algal_respiration(
     ApRespiration: float,
@@ -319,7 +333,8 @@ def DIC_algal_respiration(
     if use_Algae:
         return ApRespiration * rca
     else:
-        return 0 
+        return 0
+
 
 @numba.njit
 def DIC_algal_photosynthesis(
@@ -338,6 +353,7 @@ def DIC_algal_photosynthesis(
         return ApGrowth * rca
     else:
         return 0
+
 
 @numba.njit
 def DIC_benthic_algae_respiration(
@@ -361,6 +377,7 @@ def DIC_benthic_algae_respiration(
     else:
         return 0
 
+
 @numba.njit
 def DIC_benthic_algae_photosynthesis(
     AbGrowth: float,
@@ -383,6 +400,7 @@ def DIC_benthic_algae_photosynthesis(
     else:
         return 0
 
+
 @numba.njit
 def DIC_CBOD_oxidation(
     DOX: float,
@@ -393,7 +411,7 @@ def DIC_CBOD_oxidation(
     use_DOX: bool
 ) -> float:
     """Calculates DIC concentration change due to CBOD oxidation
-    
+
     Args:
         DOX: Dissolved oxygen concentration (mg/L)
         CBOD: Carbonaceous biochemical oxygen demand concentration for multiple groups (mg/L, array) 
@@ -407,11 +425,13 @@ def DIC_CBOD_oxidation(
 
     if use_DOX:
         for i in nCBOD:
-            CBOD_ox = CBOD_ox + (DOX / (KsOxbod_i[i] + DOX)) * kbod_i_T[i] * CBOD[i]
+            CBOD_ox = CBOD_ox + \
+                (DOX / (KsOxbod_i[i] + DOX)) * kbod_i_T[i] * CBOD[i]
         return CBOD_ox / roc
     else:
         for i in nCBOD:
             CBOD_ox = CBOD_ox + CBOD[i] * kbod_i_T[i]
+
 
 @numba.njit
 def DIC_sed_release(
@@ -431,9 +451,10 @@ def DIC_sed_release(
         use_SedFlux: Option to consider full sediment flux budget in DIC sediment contribution (bool)
     """
     if use_SedFlux:
-        return JDIC / depth 
+        return JDIC / depth
     else:
         return SOD_tc / roc / depth
+
 
 @numba.njit
 def dDICdt(
@@ -458,6 +479,7 @@ def dDICdt(
     """
     return Atm_CO2_reaeration + DIC_algal_respiration + DIC_benthic_algae_respiration + DIC_CBOD_oxidation + DIC_sed_release - DIC_algal_photosynthesis - DIC_benthic_algae_photosynthesis
 
+
 @numba.njit
 def DIC_new(
     DIC: float,
@@ -472,4 +494,3 @@ def DIC_new(
         timestep: current iteration timestep (d)
     """
     return DIC + dDICdt * timestep
-

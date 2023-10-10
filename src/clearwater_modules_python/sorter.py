@@ -3,7 +3,7 @@
 The idea here is to make the manual ordering of processes unnecessary, allowing for improved flexibility and maintainability.
 Importantly this assumes processes are given names that match the required arguments of other processes.
 """
-from clearwater_modules_python.shared.types import (
+from clearwater_modules.shared.types import (
     Process,
     Variable,
     SplitVariablesDict,

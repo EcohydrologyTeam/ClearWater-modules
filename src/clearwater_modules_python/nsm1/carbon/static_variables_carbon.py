@@ -1,6 +1,6 @@
 # TODO: figure out what 'model' to import
-import clearwater_modules_python.base as base
-from clearwater_modules_python.tsm.model import EnergyBudget
+import clearwater_modules.base as base
+from clearwater_modules.tsm.model import EnergyBudget
 
 
 @base.register_variable(models=EnergyBudget)
@@ -10,6 +10,7 @@ class Variable(base.Variable):
 
 ###
 # To get from algae/benthic: rca?, rcb?, kdp_20 (static), kdp_T (dyn), Ap (state), depth (state), Ab (state), Fw, Fb
+
 
 Variable(
     name='F_pocp',
@@ -99,11 +100,3 @@ Variable(
     description='CO2 reaeration rate',
     use='static'
 )
-
-
-
-
-
-
-
-

@@ -1,9 +1,9 @@
 """Xarray utility functions"""
 import xarray as xr
-from clearwater_modules_python.shared.types import (
+from clearwater_modules.shared.types import (
     Variable,
 )
-import clearwater_modules_python.sorter as sorter
+import clearwater_modules.sorter as sorter
 import numba
 
 

@@ -1,13 +1,14 @@
 # TODO: figure out what 'model' to import
-import clearwater_modules_python.base as base
-from clearwater_modules_python.tsm.model import EnergyBudget
+import clearwater_modules.base as base
+from clearwater_modules.tsm.model import EnergyBudget
 
 
 @base.register_variable(models=EnergyBudget)
 class Variable(base.Variable):
     ...
 
-#CBOD variables for each CBOD group - array
+
+# CBOD variables for each CBOD group - array
 Variable(
     name='kbod_i_20',
     long_name='CBOD oxidation rate for each CBOD group at 20C',

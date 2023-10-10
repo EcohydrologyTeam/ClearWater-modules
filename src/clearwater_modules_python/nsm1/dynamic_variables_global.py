@@ -1,10 +1,12 @@
-import clearwater_modules_python.base as base
-from clearwater_modules_python.nsm1.model import NutrientBudget
-import clearwater_modules_python.shared.processes as shared_processes
+import clearwater_modules.base as base
+from clearwater_modules.nsm1.model import NutrientBudget
+import clearwater_modules.shared.processes as shared_processes
+
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
+
 
 Variable(
     name='depth',

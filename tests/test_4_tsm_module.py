@@ -1,10 +1,10 @@
 import pytest
 
-from clearwater_modules_python.tsm.model import (
+from clearwater_modules.tsm.model import (
     EnergyBudget
 )
 
-from clearwater_modules_python.tsm.constants import (
+from clearwater_modules.tsm.constants import (
     DEFAULT_METEOROLOGICAL,
     DEFAULT_TEMPERATURE,
 )

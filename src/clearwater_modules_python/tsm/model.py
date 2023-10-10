@@ -2,11 +2,11 @@
 import xarray as xr
 import numpy as np
 from enum import Enum
-from clearwater_modules_python.tsm import (
+from clearwater_modules.tsm import (
     constants,
 )
-from clearwater_modules_python import base
-import clearwater_modules_python.shared.processes as shared_processes
+from clearwater_modules import base
+import clearwater_modules.shared.processes as shared_processes
 from typing import (
     Optional,
 )

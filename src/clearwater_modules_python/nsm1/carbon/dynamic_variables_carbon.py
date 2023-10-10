@@ -1,9 +1,9 @@
 # TODO: figure out imports
 
-import clearwater_modules_python.shared.processes as shared_processes
-from clearwater_modules_python import base
-from clearwater_modules_python.nsm1.carbon.model import CarbonBudget
-from clearwater_modules_python.nsm1.carbon import carbon_processes
+import clearwater_modules.shared.processes as shared_processes
+from clearwater_modules import base
+from clearwater_modules.nsm1.carbon.model import CarbonBudget
+from clearwater_modules.nsm1.carbon import carbon_processes
 
 
 @base.register_variable(models=CarbonBudget)
@@ -107,7 +107,7 @@ Variable(
     units='mg/L/d',
     description='DOC concentration lost to cell due to oxidation',
     use='dynamic',
-    process=carbon_processes.DOC_oxidation    
+    process=carbon_processes.DOC_oxidation
 )
 
 Variable(
@@ -208,4 +208,3 @@ Variable(
     use='dynamic',
     process=carbon_processes.dDICdt
 )
-

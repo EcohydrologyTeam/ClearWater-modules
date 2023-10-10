@@ -1,14 +1,15 @@
 # TODO: figure out imports
 
-import clearwater_modules_python.shared.processes as shared_processes
-from clearwater_modules_python import base
-from clearwater_modules_python.tsm.model import EnergyBudget
-from clearwater_modules_python.nsm1.DOX import DOX_processes
+import clearwater_modules.shared.processes as shared_processes
+from clearwater_modules import base
+from clearwater_modules.tsm.model import EnergyBudget
+from clearwater_modules.nsm1.DOX import DOX_processes
 
 
 @base.register_variable(models=EnergyBudget)
 class Variable(base.Variable):
     ...
+
 
 Variable(
     name='DOX_sat',
@@ -91,7 +92,7 @@ Variable(
     process=DOX_processes.Atm_O2_reaeration
 )
 
-## TODO: UPDATE BASED ON FORTRAN
+# TODO: UPDATE BASED ON FORTRAN
 Variable(
     name='DOX_ApGrowth',
     long_name='Dissolved oxygen flux due to algal photosynthesis',
@@ -101,7 +102,7 @@ Variable(
     process=DOX_processes.DOX_ApGrowth
 )
 
-## TODO: UPDATE BASED ON FORTRAN
+# TODO: UPDATE BASED ON FORTRAN
 Variable(
     name='DOX_algal_respiration',
     long_name='Dissolved oxygen flux due to algal respiration',
@@ -160,7 +161,7 @@ Variable(
     name='SOD_tc',
     long_name='Sediment oxygen demand corrected by temperature and dissolved oxygen concentration',
     units='g/m^3/d',
-    description='Sediment oxygen demand corrected by temperature and dissolved oxygen concentration', 
+    description='Sediment oxygen demand corrected by temperature and dissolved oxygen concentration',
     use='dynamic',
     process=DOX_processes.SOD_tc
 )
