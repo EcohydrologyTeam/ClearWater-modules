@@ -14,7 +14,8 @@ def validate_arrays(array: xr.DataArray, *args: xr.DataArray) -> None:
             raise TypeError(
                 'All arguments must be of type xarray.DataArray.'
             )
-        if arg.dims != array.dims:
+        if tuple(arg.dims) != tuple(array.dims):
+            print(tuple(arg.dims), tuple(array.dims))
             raise ValueError(
                 'All DataArrays must have the same dimensions.'
             )

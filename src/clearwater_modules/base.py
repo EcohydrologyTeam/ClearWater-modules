@@ -209,6 +209,14 @@ class Model(CanRegisterVariable):
         return [var.name for var in cls._variables]
 
     @classmethod
+    def get_state_variables(cls) -> list[Variable]:
+        """Returns a list of state variable names and types.
+        This can be used to inform the 'initial_state_values' argument 
+        pre-initialization.
+        """
+        return [var for var in cls._variables if var.use == 'state']
+
+    @classmethod
     def register_variable(cls, variable: Variable) -> None:
         """Register a variable with the model."""
         if variable.name not in cls.get_variable_names():
@@ -251,7 +259,7 @@ class Model(CanRegisterVariable):
     @property
     def state_variables(self) -> list[Variable]:
         """Return a list of state variables."""
-        return [var for var in self.all_variables if var.use == 'state']
+        return self.get_state_variables()
 
     @property
     def static_variables_names(self) -> list[str]:

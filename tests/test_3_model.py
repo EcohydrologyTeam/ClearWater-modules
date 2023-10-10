@@ -54,6 +54,9 @@ def model(
         MockModel.register_variable(var)
     MockModel.register_variable(state_variable)
 
+    assert isinstance(MockModel.get_state_variables(), list)
+    assert len(MockModel.get_state_variables()) == 1
+    assert isinstance(MockModel.get_state_variables()[0], Variable)
     model_instance = MockModel(
         initial_state_values=initial_state_values,
         static_variable_values=initial_static_values,
