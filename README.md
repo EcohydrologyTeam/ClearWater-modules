@@ -1,3 +1,6 @@
+[![Tests Status](https://github.com/EcohydrologyTeam/ClearWater-modules-python/actions/workflows/tests.yml/badge.svg)](https://github.com/EcohydrologyTeam/ClearWater-modules-python/actions/workflows/tests.yml)
+[![Coverage](https://codecov.io/gh/EcohydrologyTeam/ClearWater-modules-python/graph/badge.svg)](https://codecov.io/gh/EcohydrologyTeam/ClearWater-modules-python)
+
 # ClearWater Modules in Python
 
 The [ClearWater-modules-python](https://github.com/EcohydrologyTeam/ClearWater-modules-python) package is a collection of water quality and vegetation process simulation modules developed by the [U.S. Army Engineer Research and Development Center (ERDC)](https://www.erdc.usace.army.mil), [Environmental Laboratory (EL)](https://www.erdc.usace.army.mil/Locations/EL/).
