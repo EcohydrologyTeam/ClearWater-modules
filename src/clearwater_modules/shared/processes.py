@@ -252,24 +252,16 @@ def mf_density_air_sat(water_temp_k: float, esat_mb: float, pressure_mb: float) 
     return 0.348 * (pressure_mb / water_temp_k) * (1.0 + mixing_ratio_sat) / (1.0 + 1.61 * mixing_ratio_sat)
 
 
-def mf_cp_water(water_temp_c: float) -> float:
+def mf_cp_water(water_temp_c: float) -> xr.DataArray:
     """
     Compute the specific heat of water (J/kg/K) as a function of water temperature (Celsius).
     This is used in computing the source/sink term.
     """
-    # TODO: make this work as a ufunc
-    return water_temp_c * 2
-#    if water_temp_c <= 0.0:
-#        return 4218.0
-#    elif water    
-#        return 4202.0
-#    elif water_temp_c <= 10.0:
-#        return 4192.0
-#    elif water_temp_c <= 15.0:
-#        return 4186.0
-#    elif water_temp_c <= 20.0:
-#        return 4182.0
-#    elif water_temp_c <= 25.0:
-#        return 4180.0
-#    else:
-#        return 4178.0
+    return xr.where(water_temp_c <= 0.0, 4218.0,
+        xr.where(water_temp_c <= 5.0, 4202.0,
+        xr.where(water_temp_c <= 10.0, 4192.0,
+        xr.where(water_temp_c <= 15.0, 4186.0,
+        xr.where(water_temp_c <= 20.0, 4182.0,
+        xr.where(water_temp_c <= 25.0, 4180.0, 4178.0
+    ))))))
+
