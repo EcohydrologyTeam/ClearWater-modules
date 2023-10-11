@@ -14,8 +14,8 @@ class MockModel(Model):
     ...
 
 
-def state_process(dynamic_2: float) -> float:
-    return dynamic_2 * 2
+def state_process(dynamic_2: float, state_variable: float) -> float:
+    return (dynamic_2 * 2) + state_variable
 
 
 @pytest.fixture(scope='module')
@@ -195,3 +195,16 @@ def test_model_hotstart(model: Model) -> None:
     assert isinstance(hotstart_model, Model)
     assert len(hotstart_model.dataset[model.time_dim]) == 2
     assert model.dataset.attrs.get('hotstart') == True
+
+
+def test_model_update_state(model: Model) -> None:
+    """Tests that we can update the state variable between timesteps"""
+    ds = model.increment_timestep()
+    mean_i: float = ds.state_variable.isel(time_step=-1).mean().item()
+    updated_state = ds['state_variable'].isel(time_step=-1) * 100
+    ds = model.increment_timestep(
+        update_state_values={'state_variable': updated_state},
+    )
+    assert isinstance(ds, xr.Dataset)
+    mean_f: float = ds.state_variable.isel(time_step=-1).mean().item()
+    assert mean_f > mean_i * 100
