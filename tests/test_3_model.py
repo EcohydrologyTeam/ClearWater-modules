@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 from tests.conftest import initial_array
 import xarray as xr
-from clearwater_modules_python.base import (
+from clearwater_modules.base import (
     Model,
     Variable,
     InitialVariablesDict,
@@ -54,6 +54,9 @@ def model(
         MockModel.register_variable(var)
     MockModel.register_variable(state_variable)
 
+    assert isinstance(MockModel.get_state_variables(), list)
+    assert len(MockModel.get_state_variables()) == 1
+    assert isinstance(MockModel.get_state_variables()[0], Variable)
     model_instance = MockModel(
         initial_state_values=initial_state_values,
         static_variable_values=initial_static_values,
@@ -147,7 +150,7 @@ def test_variable_compution_order(model: Model) -> None:
 
 
 def test_computation_with_dynamics(model: Model) -> None:
-    """Test that dynamic variables are saved to the dataset.""" 
+    """Test that dynamic variables are saved to the dataset."""
     model.track_dynamic_variables = True
     ds: xr.Dataset = model.increment_timestep()
     assert isinstance(ds, xr.Dataset)
@@ -156,7 +159,7 @@ def test_computation_with_dynamics(model: Model) -> None:
 
 
 def test_computation_no_dynamics(model: Model) -> None:
-    """Test that dynamic variables not are saved to the dataset.""" 
+    """Test that dynamic variables not are saved to the dataset."""
     model.track_dynamic_variables = False
     ds = model.increment_timestep()
     assert isinstance(ds, xr.Dataset)

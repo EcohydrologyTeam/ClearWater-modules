@@ -1,12 +1,12 @@
 """Tests the processes_sort module."""
 import pytest
 import typing
-from clearwater_modules_python.shared.types import (
+from clearwater_modules.shared.types import (
     Process,
     Variable,
     VariableTypes,
 )
-from clearwater_modules_python.sorter import (
+from clearwater_modules.sorter import (
     split_variables,
     get_process_args,
     sort_variables_for_computation,

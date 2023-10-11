@@ -4,7 +4,7 @@ from numba import (
 )
 import pytest
 
-from clearwater_modules_python.tsm import EnergyBudget
+from clearwater_modules.tsm import EnergyBudget
 
 
 @pytest.fixture(scope='module')
