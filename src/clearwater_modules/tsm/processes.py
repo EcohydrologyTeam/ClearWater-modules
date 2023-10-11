@@ -1,5 +1,5 @@
 """JIT compiled processes for the heat model."""
-from clearwater_modules_python.shared.processes import (
+from clearwater_modules.shared.processes import (
     celsius_to_kelvin,
 )
 import numba

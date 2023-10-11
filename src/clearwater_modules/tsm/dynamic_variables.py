@@ -1,7 +1,7 @@
-import clearwater_modules_python.shared.processes as shared_processes
-from clearwater_modules_python import base
-from clearwater_modules_python.tsm.model import EnergyBudget
-from clearwater_modules_python.tsm import tsm_processes
+import clearwater_modules.shared.processes as shared_processes
+from clearwater_modules import base
+from clearwater_modules.tsm.model import EnergyBudget
+from clearwater_modules.tsm import processes
 
 
 @base.register_variable(models=EnergyBudget)
@@ -15,7 +15,7 @@ Variable(
     units='K',
     description='Air temperature',
     use='dynamic',
-    process=tsm_processes.air_temp_k,
+    process=processes.air_temp_k,
 )
 Variable(
     name='water_temp_k',
@@ -23,7 +23,7 @@ Variable(
     units='K',
     description='Water temperature',
     use='dynamic',
-    process=tsm_processes.water_temp_k,
+    process=processes.water_temp_k,
 )
 Variable(
     name='mixing_ratio_air',
@@ -31,7 +31,7 @@ Variable(
     units='unitless',
     description='Mixing ratio of air',
     use='dynamic',
-    process=tsm_processes.mixing_ratio_air,
+    process=processes.mixing_ratio_air,
 )
 Variable(
     name='density_air',
@@ -39,7 +39,7 @@ Variable(
     units='kg/m^3',
     description='Density of air',
     use='dynamic',
-    process=tsm_processes.density_air,
+    process=processes.density_air,
 )
 Variable(
     name='density_water',
@@ -47,7 +47,7 @@ Variable(
     units='kg/m^3',
     description='Density of water',
     use='dynamic',
-    process=tsm_processes.mf_density_water,
+    process=processes.mf_density_water,
 )
 Variable(
     name='esat_mb',
@@ -55,7 +55,7 @@ Variable(
     units='mb',
     description='Saturation vapor pressure',
     use='dynamic',
-    process=tsm_processes.mf_esat_mb,
+    process=processes.mf_esat_mb,
 )
 Variable(
     name='density_air_sat',
@@ -63,7 +63,7 @@ Variable(
     units='kg/m^3',
     description='Density of air at saturation',
     use='dynamic',
-    process=tsm_processes.mf_density_air_sat,
+    process=processes.mf_density_air_sat,
 )
 Variable(
     name='ri_number',
@@ -71,7 +71,7 @@ Variable(
     units='unitless',
     description='Richardson number',
     use='dynamic',
-    process=tsm_processes.ri_number,
+    process=processes.ri_number,
 )
 Variable(
     name='ri_function',
@@ -79,7 +79,7 @@ Variable(
     units='unitless',
     description='Richardson function',
     use='dynamic',
-    process=tsm_processes.ri_function,
+    process=processes.ri_function,
 )
 Variable(
     name='lv',
@@ -87,7 +87,7 @@ Variable(
     units='J/kg',
     description='Latent heat of vaporization',
     use='dynamic',
-    process=tsm_processes.mf_latent_heat_vaporization,
+    process=processes.mf_latent_heat_vaporization,
 )
 Variable(
     name='cp_water',
@@ -95,7 +95,7 @@ Variable(
     units='J/kg/K',
     description='Specific heat of water',
     use='dynamic',
-    process=tsm_processes.mf_cp_water,
+    process=processes.mf_cp_water,
 )
 Variable(
     name='emissivity_air',
@@ -103,7 +103,7 @@ Variable(
     units='unitless',
     description='Emissivity of air',
     use='dynamic',
-    process=tsm_processes.emissivity_air,
+    process=processes.emissivity_air,
 )
 Variable(
     name='wind_function',
@@ -111,7 +111,7 @@ Variable(
     units='unitless',
     description='Wind function',
     use='dynamic',
-    process=tsm_processes.wind_function,
+    process=processes.wind_function,
 )
 
 Variable(
@@ -120,7 +120,7 @@ Variable(
     units='W/m^2',
     description='Latent heat flux',
     use='dynamic',
-    process=tsm_processes.q_latent,
+    process=processes.q_latent,
 )
 Variable(
     name='q_sensible',
@@ -128,7 +128,7 @@ Variable(
     units='W/m^2',
     description='Sensible heat flux',
     use='dynamic',
-    process=tsm_processes.q_sensible,
+    process=processes.q_sensible,
 )
 Variable(
     name='q_sediment',
@@ -136,7 +136,7 @@ Variable(
     units='W/m^2',
     description='Sediment heat flux',
     use='dynamic',
-    process=tsm_processes.q_sediment,
+    process=processes.q_sediment,
 )
 Variable(
     name='dTdt_sediment_c',
@@ -144,7 +144,7 @@ Variable(
     units='degC',
     description='Sediment temperature change',
     use='dynamic',
-    process=tsm_processes.dTdt_sediment_c,
+    process=processes.dTdt_sediment_c,
 )
 Variable(
     name='q_net',
@@ -152,7 +152,7 @@ Variable(
     units='W/m^2',
     description='Net heat flux',
     use='dynamic',
-    process=tsm_processes.q_net,
+    process=processes.q_net,
 )
 Variable(
     name='q_longwave_down',
@@ -160,7 +160,7 @@ Variable(
     units='W/m2',
     description='Downwelling longwave radiation',
     use='dynamic',
-    process=tsm_processes.mf_q_longwave_down,
+    process=processes.mf_q_longwave_down,
 )
 
 Variable(
@@ -169,7 +169,7 @@ Variable(
     units='W/m2',
     description='Upwelling longwave radiation',
     use='dynamic',
-    process=tsm_processes.mf_q_longwave_up,
+    process=processes.mf_q_longwave_up,
 )
 
 Variable(
@@ -178,5 +178,5 @@ Variable(
     units='degC',
     description='Water temperature change',
     use='dynamic',
-    process=tsm_processes.dTdt_water_c,
+    process=processes.dTdt_water_c,
 )
