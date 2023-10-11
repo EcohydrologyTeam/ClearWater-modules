@@ -1,13 +1,12 @@
-from clearwater_modules import base
-from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.algae.algae_processes as algae_processes
-import clearwater_modules.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
-import clearwater_modules.nsm1.carbon.carbon_processes as carbon_processes
-import clearwater_modules.nsm1.CBOD.CBOD_processes as CBOD_processes
-import clearwater_modules.nsm1.DOX.DOX_processes as DOX_processes
-import clearwater_modules.shared.processes as shared_processes
-import clearwater_modules.tsm.processes as tsm_processes
-
+from clearwater_modules_python import base
+from clearwater_modules_python.nsm1.model import NutrientBudget
+import clearwater_modules_python.nsm1.algae.algae_processes as algae_processes
+import clearwater_modules_python.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
+import clearwater_modules_python.nsm1.carbon.carbon_processes as carbon_processes
+import clearwater_modules_python.nsm1.CBOD.CBOD_processes as CBOD_processes
+import clearwater_modules_python.nsm1.DOX.DOX_processes as DOX_processes
+import clearwater_modules_python.shared.processes as shared_processes
+import clearwater_modules_python.tsm as tsm
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
@@ -15,13 +14,10 @@ class Variable(base.Variable):
     ...
 
 # TODO: remove mock_equation
-
-
 def mock_equation(water_temp_c: float) -> float:
     return water_temp_c ** 2
 
 # TODO: import state variables from CWR such as surface_area volume, and timestep, as well as kah inputs
-
 
 Variable(
     name='Ap',
@@ -29,7 +25,7 @@ Variable(
     units='ug-Chla/L',
     description='Algal Concentration',
     use='state',
-    process=algae_processes.Ap
+    process=algae_processes.Ap 
 )
 
 Variable(
@@ -38,7 +34,7 @@ Variable(
     units='g-D/m^2',
     description='Benthic Algae Concentration',
     use='state',
-    process=mock_equation  # TODO depends on benthic algae module
+    process=mock_equation #TODO depends on benthic algae module 
 )
 
 Variable(
@@ -74,7 +70,7 @@ Variable(
     units='mg-P/L',
     description='Total Inorganic Phosphorus Concentration',
     use='state',
-    process=mock_equation  # TODO this variable only changes with phosphorous module
+    process=mock_equation #TODO this variable only changes with phosphorous module
 )
 
 Variable(
@@ -83,7 +79,7 @@ Variable(
     units='mg-P/L',
     description='Total Organic Phosphorus Concentration',
     use='state',
-    process=mock_equation  # TODO this variable only changes with phosphorous module
+    process=mock_equation #TODO this variable only changes with phosphorous module
 )
 
 Variable(
@@ -119,7 +115,7 @@ Variable(
     units='mg-D/L',
     description='Particulate Organic Matter Concentration',
     use='state',
-    process=mock_equation  # TODO this variable only changes with pom module
+    process=mock_equation #TODO this variable only changes with pom module
 )
 
 Variable(
@@ -128,7 +124,7 @@ Variable(
     units='mg-D/L',
     description='Sediment Particulate Organic Matter Concentration',
     use='state',
-    process=mock_equation  # TODO this variable only changes with pom module
+    process=mock_equation #TODO this variable only changes with pom module
 )
 
 Variable(
@@ -155,7 +151,7 @@ Variable(
     units='cfu/100mL',
     description='Pathogen concentration',
     use='state',
-    process=mock_equation  # TODO this variable only changes with pathogen module
+    process=mock_equation #TODO this variable only changes with pathogen module
 )
 
 Variable(
@@ -164,15 +160,15 @@ Variable(
     units='mg-CaCO3/L',
     description='Alkalinity concentration',
     use='state',
-    process=mock_equation  # TODO this variable only changes with alkalinity module
+    process=mock_equation #TODO this variable only changes with alkalinity module
 )
 
-# TODO not sure the order of calling with tsm
+#TODO not sure the order of calling with tsm
 Variable(
     name='TwaterC',
     long_name='Water Temperature',
     units='C',
     description='Water Temperature Degree Celsius',
     use='state',
-    process=tsm_processes.t_water_c
+    process=tsm.processes.t_water_c 
 )
