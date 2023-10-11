@@ -6,7 +6,7 @@ import clearwater_modules_python.nsm1.carbon.carbon_processes as carbon_processe
 import clearwater_modules_python.nsm1.CBOD.CBOD_processes as CBOD_processes
 import clearwater_modules_python.nsm1.DOX.DOX_processes as DOX_processes
 import clearwater_modules_python.shared.processes as shared_processes
-import clearwater_modules_python.tsm.tsm_processes as tsm_processes
+import clearwater_modules_python.tsm as tsm
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
@@ -170,5 +170,5 @@ Variable(
     units='C',
     description='Water Temperature Degree Celsius',
     use='state',
-    process=tsm_processes.t_water_c 
+    process=tsm.processes.t_water_c 
 )
