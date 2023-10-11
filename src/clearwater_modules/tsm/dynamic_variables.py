@@ -47,7 +47,7 @@ Variable(
     units='kg/m^3',
     description='Density of water',
     use='dynamic',
-    process=shared_processes.mf_density_water,
+    process=processes.mf_density_water,
 )
 Variable(
     name='esat_mb',
@@ -55,7 +55,7 @@ Variable(
     units='mb',
     description='Saturation vapor pressure',
     use='dynamic',
-    process=shared_processes.mf_esat_mb,
+    process=processes.mf_esat_mb,
 )
 Variable(
     name='density_air_sat',
@@ -63,7 +63,7 @@ Variable(
     units='kg/m^3',
     description='Density of air at saturation',
     use='dynamic',
-    process=shared_processes.mf_density_air_sat,
+    process=processes.mf_density_air_sat,
 )
 Variable(
     name='ri_number',
@@ -71,7 +71,7 @@ Variable(
     units='unitless',
     description='Richardson number',
     use='dynamic',
-    process=shared_processes.ri_number,
+    process=processes.ri_number,
 )
 Variable(
     name='ri_function',
@@ -79,7 +79,7 @@ Variable(
     units='unitless',
     description='Richardson function',
     use='dynamic',
-    process=shared_processes.ri_function,
+    process=processes.ri_function,
 )
 Variable(
     name='lv',
@@ -87,7 +87,7 @@ Variable(
     units='J/kg',
     description='Latent heat of vaporization',
     use='dynamic',
-    process=shared_processes.mf_latent_heat_vaporization,
+    process=processes.mf_latent_heat_vaporization,
 )
 Variable(
     name='cp_water',
@@ -95,7 +95,7 @@ Variable(
     units='J/kg/K',
     description='Specific heat of water',
     use='dynamic',
-    process=shared_processes.mf_cp_water,
+    process=processes.mf_cp_water,
 )
 Variable(
     name='emissivity_air',
@@ -113,6 +113,7 @@ Variable(
     use='dynamic',
     process=processes.wind_function,
 )
+
 Variable(
     name='q_latent',
     long_name='Latent heat flux',
@@ -159,7 +160,7 @@ Variable(
     units='W/m2',
     description='Downwelling longwave radiation',
     use='dynamic',
-    process=shared_processes.mf_q_longwave_down,
+    process=processes.mf_q_longwave_down,
 )
 
 Variable(
@@ -168,7 +169,7 @@ Variable(
     units='W/m2',
     description='Upwelling longwave radiation',
     use='dynamic',
-    process=shared_processes.mf_q_longwave_up,
+    process=processes.mf_q_longwave_up,
 )
 
 Variable(
