@@ -1,9 +1,9 @@
-[![Tests Status](https://github.com/EcohydrologyTeam/ClearWater-modules-python/actions/workflows/tests.yml/badge.svg)](https://github.com/EcohydrologyTeam/ClearWater-modules-python/actions/workflows/tests.yml)
-[![Coverage](https://codecov.io/gh/EcohydrologyTeam/ClearWater-modules-python/graph/badge.svg)](https://codecov.io/gh/EcohydrologyTeam/ClearWater-modules-python)
+[![Tests Status](https://github.com/EcohydrologyTeam/ClearWater-modules/actions/workflows/tests.yml/badge.svg)](https://github.com/EcohydrologyTeam/ClearWater-modules/actions/workflows/tests.yml)
+[![Coverage](https://codecov.io/gh/EcohydrologyTeam/ClearWater-modules/graph/badge.svg)](https://codecov.io/gh/EcohydrologyTeam/ClearWater-modules)
 
 # ClearWater Modules in Python
 
-The [ClearWater-modules-python](https://github.com/EcohydrologyTeam/ClearWater-modules-python) package is a collection of water quality and vegetation process simulation modules developed by the [U.S. Army Engineer Research and Development Center (ERDC)](https://www.erdc.usace.army.mil), [Environmental Laboratory (EL)](https://www.erdc.usace.army.mil/Locations/EL/).
+The [ClearWater-modules](https://github.com/EcohydrologyTeam/ClearWater-modules) package is a collection of water quality and vegetation process simulation modules developed by the [U.S. Army Engineer Research and Development Center (ERDC)](https://www.erdc.usace.army.mil), [Environmental Laboratory (EL)](https://www.erdc.usace.army.mil/Locations/EL/).
 
 - [TSM: Temperature Simulation Module](src/clearwater_modules/tsm) (formerly TEMP)
 - [NSM: Nutrient Simulation Modules](src/clearwater_modules/nsm1) ([NSM-I](src/clearwater_modules/nsm1) and [NSM-II](src/clearwater_modules/nsm2))
@@ -29,7 +29,7 @@ This Python library is a port and modernization of the algorithms and structures
 
 ### Installation
 
-Clearwater-modules-python was developed with **Python 3.11**. 
+Clearwater-modules was developed with **Python 3.11**. 
 
 Follow these steps to install.
 
@@ -40,7 +40,7 @@ We recommend installing the light-weight [Miniconda](https://docs.conda.io/proje
 If you have already installed the [**Anaconda Distribution**](https://www.anaconda.com/download), you can use it to complete the next steps, but you may need to [update to the latest version](https://docs.anaconda.com/free/anaconda/install/update-version/).
 
 
-#### 2. Clone or Download this `ClearWater-modules-python` repository
+#### 2. Clone or Download this `ClearWater-modules` repository
 
 From this Github site, click on the green "Code" dropdown button near the upper right. Select to either Open in GitHub Desktop (i.e. git clone) or "Download ZIP". We recommend using GitHub Desktop, to most easily receive updates.
 
@@ -50,7 +50,7 @@ Place your copy of this repo folder in any convenient location on your computer.
 
 We recommend creating a custom virtual environment with the same software dependencies that we've used in development and testing, as listed in the [`environment.yml`](environment.yml) file. 
 
-Create a `ClearWater-modules-python` environment using this [conda](https://conda.io/docs/) command in your terminal or Anaconda Prompt console. If necessary, replace `environment.yml` with the full file pathway to the `environment.yml` file in the local cloned repository.
+Create a `ClearWater-modules` environment using this [conda](https://conda.io/docs/) command in your terminal or Anaconda Prompt console. If necessary, replace `environment.yml` with the full file pathway to the `environment.yml` file in the local cloned repository.
 
 
 ```shell
@@ -67,9 +67,9 @@ Activate the environment using the instructions printed by conda after the envir
 For additional information on managing conda environments, see [Conda's User Guide on Managing Environments](https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-environments.html).
 
 
-#### 4. Add your `ClearWater-modules-python` Path to Miniconda/Anaconda sites-packages
+#### 4. Add your `ClearWater-modules` Path to Miniconda/Anaconda sites-packages
 
-To have access to the `ClearWater-modules-python` module in your Python environment, it is necessary to have add it's path to enviornment's PATH variable.
+To have access to the `ClearWater-modules` module in your Python environment, it is necessary to have add it's path to enviornment's PATH variable.
 
 The easiest way to do this is to use the [conda develop](https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html) command in the console or terminal like this, replacing `/path/to/module/` with the full file pathway to the local cloned Clearwater-riverine repository:
 
