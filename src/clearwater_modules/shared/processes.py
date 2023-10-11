@@ -1,7 +1,5 @@
 """Process functions used by one or more modules"""
 import numba
-import warnings
-import xarray as xr
 
 
 @numba.njit
@@ -180,23 +178,36 @@ def ri_number(
     )
 
 
-def ri_function(ri_number: float) -> xr.DataArray:
+@numba.njit
+def ri_function(ri_number: float) -> float:
     """Calculates the Richardson Function from the Richardson Number.
     Richardson Number:
         Unstable: 0.01 >= ri_function
         Stable: 0.01 <= ri_function < 2
         Neutral: -0.01 <  ri_function < 0.01
     """
+    # TODO: figure out how to make this work
+    return ri_number ** 2
     # Set bounds
-    warnings.filterwarnings("ignore", category=RuntimeWarning)
-    da: xr.DataArray = xr.where(ri_number > 2.0, 2.0, 
-        xr.where(ri_number < -1.0, -1.0,
-        xr.where((ri_number < 0.0) & (ri_number >= -0.01), 1.0,
-        xr.where(ri_number < -0.01, (1.0 - 22.0 * ri_number)**0.80, 
-        xr.where((ri_number >= 0.0) & (ri_number <= 0.01), 1.0, (1.0 + 34.0 * ri_number)**(-0.80)
-    )))))
-    warnings.filterwarnings("default", category=RuntimeWarning)
-    return da
+    if ri_number > 2.0:
+        ri_number = 2.0
+    elif ri_number < -1.0:
+        ri_number = -1.0
+
+    if ri_number < 0.0:
+        if ri_number >= - 0.01:
+            # neutral
+            return 1.0
+        else:
+            # unstable
+            return (1.0 - 22.0 * ri_number)**0.80
+    else:
+        if ri_number <= 0.01:
+            # neutral
+            return 1.0
+        else:
+            # stable
+            return (1.0 + 34.0 * ri_number)**(-0.80)
 
 
 @numba.njit
@@ -252,6 +263,7 @@ def mf_density_air_sat(water_temp_k: float, esat_mb: float, pressure_mb: float) 
     return 0.348 * (pressure_mb / water_temp_k) * (1.0 + mixing_ratio_sat) / (1.0 + 1.61 * mixing_ratio_sat)
 
 
+@numba.njit
 def mf_cp_water(water_temp_c: float) -> float:
     """
     Compute the specific heat of water (J/kg/K) as a function of water temperature (Celsius).
@@ -259,17 +271,17 @@ def mf_cp_water(water_temp_c: float) -> float:
     """
     # TODO: make this work as a ufunc
     return water_temp_c * 2
-#    if water_temp_c <= 0.0:
-#        return 4218.0
-#    elif water    
-#        return 4202.0
-#    elif water_temp_c <= 10.0:
-#        return 4192.0
-#    elif water_temp_c <= 15.0:
-#        return 4186.0
-#    elif water_temp_c <= 20.0:
-#        return 4182.0
-#    elif water_temp_c <= 25.0:
-#        return 4180.0
-#    else:
-#        return 4178.0
+    if water_temp_c <= 0.0:
+        return 4218.0
+    elif water_temp_c <= 5.0:
+        return 4202.0
+    elif water_temp_c <= 10.0:
+        return 4192.0
+    elif water_temp_c <= 15.0:
+        return 4186.0
+    elif water_temp_c <= 20.0:
+        return 4182.0
+    elif water_temp_c <= 25.0:
+        return 4180.0
+    else:
+        return 4178.0
