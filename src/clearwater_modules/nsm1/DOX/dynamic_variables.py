@@ -3,7 +3,7 @@
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.tsm.model import EnergyBudget
-from clearwater_modules.nsm1.DOX import DOX_processes
+from clearwater_modules.nsm1.DOX import processes
 
 
 @base.register_variable(models=EnergyBudget)
@@ -17,7 +17,7 @@ Variable(
     units='mg/L',
     description='DO saturation concentration in water as a function of water temperature (K)',
     use='dynamic',
-    process=DOX_processes.DOX_sat
+    process=processes.DOX_sat
 )
 
 Variable(
@@ -26,7 +26,7 @@ Variable(
     units='atm',
     description='Partial pressure of water vapor',
     use='dynamic',
-    process=DOX_processes.pwv
+    process=processes.pwv
 )
 
 Variable(
@@ -35,7 +35,7 @@ Variable(
     units='unitless',
     description='DO saturation atmospheric correction coefficient',
     use='dynamic',
-    process=DOX_processes.DOs_atm_alpha
+    process=processes.DOs_atm_alpha
 )
 
 Variable(
@@ -44,7 +44,7 @@ Variable(
     units='1/d',
     description='Hydraulic oxygen reaeration rate adjusted for hydraulic parameters according to XX lit',
     use='dynamic',
-    process=DOX_processes.kah_20
+    process=processes.kah_20
 )
 
 Variable(
@@ -53,7 +53,7 @@ Variable(
     units='1/d',
     description='Hydraulic oxygen reaeration rate adjusted for temperature',
     use='dynamic',
-    process=DOX_processes.kah_T
+    process=processes.kah_T
 )
 
 Variable(
@@ -62,7 +62,7 @@ Variable(
     units='m/d',
     description='Wind oxygen reaeration velocity adjusted for hydraulic parameters according to XX lit',
     use='dynamic',
-    process=DOX_processes.kaw_20
+    process=processes.kaw_20
 )
 
 Variable(
@@ -71,7 +71,7 @@ Variable(
     units='m/d',
     description='Wind oxygen reaeration velocity adjusted for temperature',
     use='dynamic',
-    process=DOX_processes.kaw_T
+    process=processes.kaw_T
 )
 
 Variable(
@@ -80,7 +80,7 @@ Variable(
     units='1/d',
     description='Oxygen reaeration rate',
     use='dynamic',
-    process=DOX_processes.ka_T
+    process=processes.ka_T
 )
 
 Variable(
@@ -89,7 +89,7 @@ Variable(
     units='mg/L/d',
     description='Atmospheric oxygen reaeration, can fluctuate both in and out of waterbody',
     use='dynamic',
-    process=DOX_processes.Atm_O2_reaeration
+    process=processes.Atm_O2_reaeration
 )
 
 # TODO: UPDATE BASED ON FORTRAN
@@ -99,7 +99,7 @@ Variable(
     units='mg/L/d',
     description='Dissolved oxygen flux due to algal photosynthesis',
     use='dynamics',
-    process=DOX_processes.DOX_ApGrowth
+    process=processes.DOX_ApGrowth
 )
 
 # TODO: UPDATE BASED ON FORTRAN
@@ -109,7 +109,7 @@ Variable(
     units='mg/L/d',
     description='Dissolved oxygen flux due to algal respiration',
     use='dynamic',
-    process=DOX_processes.DOX_ApRespiration
+    process=processes.DOX_ApRespiration
 )
 
 Variable(
@@ -118,7 +118,7 @@ Variable(
     units='mg/L/d',
     description='Dissolved oxygen flux due to nitrification',
     use='dynamic',
-    process=DOX_processes.DOX_Nitrification
+    process=processes.DOX_Nitrification
 )
 
 Variable(
@@ -127,7 +127,7 @@ Variable(
     units='mg/L/d',
     description='Dissolved oxygen flux due to DOC oxidation',
     use='dynamic',
-    process=DOX_processes.DOX_DOC_Oxidation
+    process=processes.DOX_DOC_Oxidation
 )
 
 Variable(
@@ -136,7 +136,7 @@ Variable(
     units='mg/L/d',
     description='Dissolved oxygen flux due to CBOD oxidation',
     use='dynamic',
-    process=DOX_processes.DOX_CBOD_Oxidation
+    process=processes.DOX_CBOD_Oxidation
 )
 
 Variable(
@@ -145,7 +145,7 @@ Variable(
     units='mg/L/d',
     description='Dissolved oxygen flux due to benthic algae photosynthesis',
     use='dynamics',
-    process=DOX_processes.DOX_AbGrowth
+    process=processes.DOX_AbGrowth
 )
 
 Variable(
@@ -154,7 +154,7 @@ Variable(
     units='mg/L/d',
     description='Dissolved oxygen flux due to benthic algae respiration',
     use='dynamic',
-    process=DOX_processes.DOX_AbRespiration
+    process=processes.DOX_AbRespiration
 )
 
 Variable(
@@ -163,7 +163,7 @@ Variable(
     units='g/m^3/d',
     description='Sediment oxygen demand corrected by temperature and dissolved oxygen concentration',
     use='dynamic',
-    process=DOX_processes.SOD_tc
+    process=processes.SOD_tc
 )
 
 Variable(
@@ -172,7 +172,7 @@ Variable(
     units='mg/L/d',
     description='Dissolved oxygen flux due to sediment oxygen demand',
     use='dynamic',
-    process=DOX_processes.DOX_SOD
+    process=processes.DOX_SOD
 )
 
 Variable(
@@ -181,5 +181,5 @@ Variable(
     units='mg/L/d',
     description='Change in dissolved oxygen concentration for one timestep',
     use='dynamic',
-    process=DOX_processes.dDOXdt
+    process=processes.dDOXdt
 )

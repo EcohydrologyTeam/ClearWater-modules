@@ -1,10 +1,11 @@
 import numpy as np
 import numba
+import xarray as xr
 from clearwater_modules.shared.processes import (
     arrhenius_correction
 )
-from clearwater_modules.nsm1.carbon import dynamic_variables_carbon
-from clearwater_modules.nsm1.carbon import static_variables_carbon
+from clearwater_modules.nsm1.carbon import dynamic_variables
+from clearwater_modules.nsm1.carbon import static_variables
 from clearwater_modules.nsm1 import static_variables_global
 # from clearwater_modules.nsm1 import dynamic_variables_global
 from clearwater_modules.nsm1 import state_variables
@@ -12,10 +13,10 @@ from clearwater_modules.nsm1 import state_variables
 
 @numba.njit
 def kpoc_T(
-    water_temp_c: float,
-    kpoc_20: float,
-    theta: float
-) -> float:
+    water_temp_c: xr.DataArray,
+    kpoc_20: xr.DataArray,
+    theta: xr.DataArray
+) -> xr.DataArray:
     """Calculate the temperature adjusted POC hydrolysis rate (/d)
 
     Args:
@@ -28,9 +29,9 @@ def kpoc_T(
 
 @numba.njit
 def POC_hydrolysis(
-    kpoc_T: float,
-    POC: float,
-) -> float:
+    kpoc_T: xr.DataArray,
+    POC: xr.DataArray,
+) -> xr.DataArray:
     """Calculate the POC concentration change due to hydrolysis for a given timestep
 
     Args:
@@ -42,10 +43,10 @@ def POC_hydrolysis(
 
 @numba.njit
 def POC_settling(
-    vsoc: float,
-    depth: float,
-    POC: float
-) -> float:
+    vsoc: xr.DataArray,
+    depth: xr.DataArray,
+    POC: xr.DataArray
+) -> xr.DataArray:
     """Calculate the POC concentration change due to settling for a given timestep
 
     Args:
@@ -58,12 +59,12 @@ def POC_settling(
 
 @numba.njit
 def POC_algal_mortality(
-    f_pocp: float,
-    kdp_T: float,
-    rca: float,
-    Ap: float,
-    use_Algae: bool
-) -> float:
+    f_pocp: xr.DataArray,
+    kdp_T: xr.DataArray,
+    rca: xr.DataArray,
+    Ap: xr.DataArray,
+    use_Algae:xr.DataArray
+) -> xr.DataArray:
     """Calculate the POC concentration change due to algal mortality
 
     Args:
@@ -81,15 +82,15 @@ def POC_algal_mortality(
 
 @numba.njit
 def POC_benthic_algae_mortality(
-    depth: float,
-    F_pocb: float,
-    kdb_T: float,
-    rcb: float,
-    Ab: float,
-    Fb: float,
-    Fw: float,
-    use_Balgae: bool
-) -> float:
+    depth: xr.DataArray,
+    F_pocb: xr.DataArray,
+    kdb_T: xr.DataArray,
+    rcb: xr.DataArray,
+    Ab: xr.DataArray,
+    Fb: xr.DataArray,
+    Fw: xr.DataArray,
+    use_Balgae:xr.DataArray
+) -> xr.DataArray:
     """Calculate the POC concentration change due to benthic algae mortality
 
     Args: 
@@ -110,11 +111,11 @@ def POC_benthic_algae_mortality(
 
 @numba.njit
 def dPOCdt(
-    POC_settling: float,
-    POC_hydrolysis: float,
-    POC_algal_mortality: float,
-    POC_benthic_algae_mortality: float
-) -> float:
+    POC_settling: xr.DataArray,
+    POC_hydrolysis: xr.DataArray,
+    POC_algal_mortality: xr.DataArray,
+    POC_benthic_algae_mortality: xr.DataArray
+) -> xr.DataArray:
     """Calculate the change in POC concentration
 
     Args:
@@ -128,10 +129,10 @@ def dPOCdt(
 
 @numba.njit
 def POC_new(
-    POC: float,
-    dPOCdt: float,
-    timestep: float
-) -> float:
+    POC: xr.DataArray,
+    dPOCdt: xr.DataArray,
+    timestep: xr.DataArray
+) -> xr.DataArray:
     """Calculate the POC concentration at the next time step
 
     Args:
@@ -144,12 +145,12 @@ def POC_new(
 
 @numba.njit
 def DOC_algal_mortality(
-        f_pocp: float,
-        kdp_T: float,
-        rca: float,
-        Ap: float,
-        use_Algae: bool
-) -> float:
+        f_pocp: xr.DataArray,
+        kdp_T: xr.DataArray,
+        rca: xr.DataArray,
+        Ap: xr.DataArray,
+        use_Algae:xr.DataArray
+) -> xr.DataArray:
     """Calculate the DOC concentration change due to algal mortality
 
     Args:
@@ -167,15 +168,15 @@ def DOC_algal_mortality(
 
 @numba.njit
 def DOC_benthic_algae_mortality(
-    depth: float,
-    F_pocb: float,
-    kdb_T: float,
-    rcb: float,
-    Ab: float,
-    Fb: float,
-    Fw: float,
-    use_Balgae: bool
-) -> float:
+    depth: xr.DataArray,
+    F_pocb: xr.DataArray,
+    kdb_T: xr.DataArray,
+    rcb: xr.DataArray,
+    Ab: xr.DataArray,
+    Fb: xr.DataArray,
+    Fw: xr.DataArray,
+    use_Balgae:xr.DataArray
+) -> xr.DataArray:
     """Calculate the DOC concentration change due to benthic algae mortality
 
     Args: 
@@ -196,10 +197,10 @@ def DOC_benthic_algae_mortality(
 
 @numba.njit
 def kdoc_T(
-    water_temp_c: float,
-    kdoc_20: float,
-    theta: float
-) -> float:
+    water_temp_c: xr.DataArray,
+    kdoc_20: xr.DataArray,
+    theta: xr.DataArray
+) -> xr.DataArray:
     """Calculate the temperature adjusted DOC oxidation rate (1/d)
 
     Args:
@@ -212,12 +213,12 @@ def kdoc_T(
 
 @numba.njit
 def DOC_oxidation(
-    DOX: float,
-    KsOxmc: float,
-    kdoc_T: float,
-    DOC: float,
-    use_DOX: bool
-) -> float:
+    DOX: xr.DataArray,
+    KsOxmc: xr.DataArray,
+    kdoc_T: xr.DataArray,
+    DOC: xr.DataArray,
+    use_DOX:xr.DataArray
+) -> xr.DataArray:
     """Calculates the DOC concentration change due to oxidation
 
     Args:
@@ -235,11 +236,11 @@ def DOC_oxidation(
 
 @numba.njit
 def dDOCdt(
-    DOC_oxidation: float,
-    POC_hydrolysis: float,
-    DOC_algal_mortality: float,
-    DOC_benthic_algae_mortality: float
-) -> float:
+    DOC_oxidation: xr.DataArray,
+    POC_hydrolysis: xr.DataArray,
+    DOC_algal_mortality: xr.DataArray,
+    DOC_benthic_algae_mortality: xr.DataArray
+) -> xr.DataArray:
     """Calculates the change in DOC concentration
 
     Args:
@@ -255,10 +256,10 @@ def dDOCdt(
 
 @numba.njit
 def DOC_new(
-    DOC: float,
-    dDOCdt: float,
-    timestep: float
-) -> float:
+    DOC: xr.DataArray,
+    dDOCdt: xr.DataArray,
+    timestep: xr.DataArray
+) -> xr.DataArray:
     """Calculate the DOC concentration at the next time step
 
     Args:
@@ -271,8 +272,8 @@ def DOC_new(
 
 @numba.njit
 def Henrys_k(
-    water_temp_c: float
-) -> float:
+    water_temp_c: xr.DataArray
+) -> xr.DataArray:
     """Calculates the temperature dependent Henry's coefficient (mol/L/atm)
 
     Args:
@@ -283,10 +284,10 @@ def Henrys_k(
 
 @numba.njit
 def kac_T(
-    water_temp_c: float,
-    kac_20: float,
-    theta: float
-) -> float:
+    water_temp_c: xr.DataArray,
+    kac_20: xr.DataArray,
+    theta: xr.DataArray
+) -> xr.DataArray:
     """Calculate the temperature adjusted CO2 reaeration rate (1/d)
 
     Args:
@@ -299,12 +300,12 @@ def kac_T(
 
 @numba.njit
 def Atmospheric_CO2_reaeration(
-    kac_T: float,
-    K_H: float,
-    pCO2: float,
-    FCO2: float,
-    DIC: float
-) -> float:
+    kac_T: xr.DataArray,
+    K_H: xr.DataArray,
+    pCO2: xr.DataArray,
+    FCO2: xr.DataArray,
+    DIC: xr.DataArray
+) -> xr.DataArray:
     """Calculates the atmospheric input of CO2 into the waterbody
 
     Args:
@@ -319,10 +320,10 @@ def Atmospheric_CO2_reaeration(
 
 @numba.njit
 def DIC_algal_respiration(
-    ApRespiration: float,
-    rca: float,
-    use_Algae: bool
-) -> float:
+    ApRespiration: xr.DataArray,
+    rca: xr.DataArray,
+    use_Algae:xr.DataArray
+) -> xr.DataArray:
     """Calculates DIC concentration change due to algal respiration
 
     Args:
@@ -338,10 +339,10 @@ def DIC_algal_respiration(
 
 @numba.njit
 def DIC_algal_photosynthesis(
-    ApGrowth: float,
-    rca: float,
-    use_Algae: bool
-) -> float:
+    ApGrowth: xr.DataArray,
+    rca: xr.DataArray,
+    use_Algae:xr.DataArray
+) -> xr.DataArray:
     """Calculates DIC concentration change due to algal photosynthesis
 
     Args:
@@ -357,12 +358,12 @@ def DIC_algal_photosynthesis(
 
 @numba.njit
 def DIC_benthic_algae_respiration(
-    AbRespiration: float,
-    rcb: float,
-    Fb: float,
-    depth: float,
-    use_Balgae: bool
-) -> float:
+    AbRespiration: xr.DataArray,
+    rcb: xr.DataArray,
+    Fb: xr.DataArray,
+    depth: xr.DataArray,
+    use_Balgae:xr.DataArray
+) -> xr.DataArray:
     """Calculates DIC flux due to benthic algae respiration
 
     Args:
@@ -380,12 +381,12 @@ def DIC_benthic_algae_respiration(
 
 @numba.njit
 def DIC_benthic_algae_photosynthesis(
-    AbGrowth: float,
-    rcb: float,
-    Fb: float,
-    depth: float,
-    use_Balgae: bool
-) -> float:
+    AbGrowth: xr.DataArray,
+    rcb: xr.DataArray,
+    Fb: xr.DataArray,
+    depth: xr.DataArray,
+    use_Balgae:xr.DataArray
+) -> xr.DataArray:
     """Calculates DIC flux due to benthic algae growth
 
     Args:
@@ -403,13 +404,13 @@ def DIC_benthic_algae_photosynthesis(
 
 @numba.njit
 def DIC_CBOD_oxidation(
-    DOX: float,
+    DOX: xr.DataArray,
     CBOD: np.array,
-    roc: float,
+    roc: xr.DataArray,
     kbod_i_T: np.array,
     KsOxbod_i: np.array,
-    use_DOX: bool
-) -> float:
+    use_DOX:xr.DataArray
+) -> xr.DataArray:
     """Calculates DIC concentration change due to CBOD oxidation
 
     Args:
@@ -435,12 +436,12 @@ def DIC_CBOD_oxidation(
 
 @numba.njit
 def DIC_sed_release(
-    SOD_tc: float,
-    roc: float,
-    depth: float,
-    JDIC: float,
-    use_SedFlux: bool
-) -> float:
+    SOD_tc: xr.DataArray,
+    roc: xr.DataArray,
+    depth: xr.DataArray,
+    JDIC: xr.DataArray,
+    use_SedFlux:xr.DataArray
+) -> xr.DataArray:
     """Computes the sediment release of DIC
 
     Args:
@@ -458,14 +459,14 @@ def DIC_sed_release(
 
 @numba.njit
 def dDICdt(
-    Atm_CO2_reaeration: float,
-    DIC_algal_respiration: float,
-    DIC_algal_photosynthesis: float,
-    DIC_benthic_algae_respiration: float,
-    DIC_benthic_algae_photosynthesis: float,
-    DIC_CBOD_oxidation: float,
-    DIC_sed_release: float
-) -> float:
+    Atm_CO2_reaeration: xr.DataArray,
+    DIC_algal_respiration: xr.DataArray,
+    DIC_algal_photosynthesis: xr.DataArray,
+    DIC_benthic_algae_respiration: xr.DataArray,
+    DIC_benthic_algae_photosynthesis: xr.DataArray,
+    DIC_CBOD_oxidation: xr.DataArray,
+    DIC_sed_release: xr.DataArray
+) -> xr.DataArray:
     """Calculates the change in DIC
 
     Args:
@@ -482,10 +483,10 @@ def dDICdt(
 
 @numba.njit
 def DIC_new(
-    DIC: float,
-    dDICdt: float,
-    timestep: float
-) -> float:
+    DIC: xr.DataArray,
+    dDICdt: xr.DataArray,
+    timestep: xr.DataArray
+) -> xr.DataArray:
     """Calculate the DIC concentration at the next time step
 
     Args:

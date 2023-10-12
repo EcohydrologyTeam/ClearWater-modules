@@ -1,5 +1,6 @@
 import numpy as np
 import numba
+import xarray as xr
 from clearwater_modules.shared.processes import (
     arrhenius_correction,
 )
@@ -7,8 +8,8 @@ from clearwater_modules.shared.processes import (
 
 @numba.njit
 def pwv(
-    t_water_k: float
-) -> float:
+    t_water_k: xr.DataArray
+) -> xr.DataArray:
     """Calculate partial pressure of water vapor
 
     Args:
@@ -19,8 +20,8 @@ def pwv(
 
 @numba.njit
 def DOs_atm_alpha(
-    t_water_k: float
-) -> float:
+    t_water_k: xr.DataArray
+) -> xr.DataArray:
     """Calculate DO saturation atmospheric correction coefficient
 
     Args:
@@ -31,11 +32,11 @@ def DOs_atm_alpha(
 
 @numba.njit
 def DOX_sat(
-    t_water_k: float,
-    patm: float,
-    pwv: float,
-    DOs_atm_alpha: float
-) -> float:
+    t_water_k: xr.DataArray,
+    patm: xr.DataArray,
+    pwv: xr.DataArray,
+    DOs_atm_alpha: xr.DataArray
+) -> xr.DataArray:
     """Calculate DO saturation value
 
     Args:
@@ -55,15 +56,15 @@ def DOX_sat(
 
 @numba.njit
 def kah_20(
-    kah_20_user: float,
+    kah_20_user: xr.DataArray,
     hydraulic_reaeration_option: int,
-    velocity: float,
-    depth: float,
-    flow: float,
-    topwidth: float,
-    slope: float,
-    shear_velocity: float
-) -> float:
+    velocity: xr.DataArray,
+    depth: xr.DataArray,
+    flow: xr.DataArray,
+    topwidth: xr.DataArray,
+    slope: xr.DataArray,
+    shear_velocity: xr.DataArray
+) -> xr.DataArray:
     """Calculate hydraulic oxygen reaeration rate based on flow parameters in different cells
 
     Args:
@@ -124,10 +125,10 @@ def kah_20(
 
 @numba.njit
 def kah_T(
-    water_temp_c: float,
-    kah_20: float,
-    theta: float
-) -> float:
+    water_temp_c: xr.DataArray,
+    kah_20: xr.DataArray,
+    theta: xr.DataArray
+) -> xr.DataArray:
     """Calculate the temperature adjusted hydraulic oxygen reaeration rate (/d)
 
     Args:
@@ -140,10 +141,10 @@ def kah_T(
 
 @numba.njit
 def kaw_20(
-    kaw_20_user: float,
-    wind_speed: float,
+    kaw_20_user: xr.DataArray,
+    wind_speed: xr.DataArray,
     wind_reaeration_option: int
-) -> float:
+) -> xr.DataArray:
     """Calculate the wind oxygen reaeration velocity (m/d) based on wind speed, r stands for regional
 
     Args:
@@ -210,10 +211,10 @@ def kaw_20(
 
 @numba.njit
 def kaw_T(
-    water_temp_c: float,
-    kaw_20_r: float,
-    theta: float
-) -> float:
+    water_temp_c: xr.DataArray,
+    kaw_20_r: xr.DataArray,
+    theta: xr.DataArray
+) -> xr.DataArray:
     """Calculate the temperature adjusted wind oxygen reaeration velocity (m/d)
 
     Args:
@@ -226,10 +227,10 @@ def kaw_T(
 
 @numba.njit
 def ka_T(
-    kah_T: float,
-    kaw_T: float,
-    depth: float
-) -> float:
+    kah_T: xr.DataArray,
+    kaw_T: xr.DataArray,
+    depth: xr.DataArray
+) -> xr.DataArray:
     """Compute the oxygen reaeration rate, adjusted for temperature (1/d)
 
     Args:
@@ -242,10 +243,10 @@ def ka_T(
 
 @numba.njit
 def Atm_O2_reaeration(
-    ka_T: float,
-    DOX_sat: float,
-    DOX: float
-) -> float:
+    ka_T: xr.DataArray,
+    DOX_sat: xr.DataArray,
+    DOX: xr.DataArray
+) -> xr.DataArray:
     """Compute the atmospheric O2 reaeration flux
 
     Args: 
@@ -258,12 +259,12 @@ def Atm_O2_reaeration(
 
 @numba.njit
 def DOX_ApGrowth(
-    ApGrowth: float,
-    rca: float,
-    roc: float,
-    F1: float,
-    use_Algae: bool
-) -> float:
+    ApGrowth: xr.DataArray,
+    rca: xr.DataArray,
+    roc: xr.DataArray,
+    F1: xr.DataArray,
+    use_Algae:xr.DataArray
+) -> xr.DataArray:
     """Compute DOX flux due to algal photosynthesis
 
     Args:
@@ -280,11 +281,11 @@ def DOX_ApGrowth(
 
 @numba.njit
 def DOX_ApRespiration(
-    ApRespiration: float,
-    rca: float,
-    roc: float,
-    use_Algae: bool
-) -> float:
+    ApRespiration: xr.DataArray,
+    rca: xr.DataArray,
+    roc: xr.DataArray,
+    use_Algae:xr.DataArray
+) -> xr.DataArray:
     """Compute DOX flux due to algal photosynthesis
 
     Args:
@@ -300,13 +301,13 @@ def DOX_ApRespiration(
 
 @numba.njit
 def DOX_Nitrification(
-    KNR: float,
-    DOX: float,
-    ron: float,
-    knit_tc: float,
-    NH4: float,
-    use_NH4: bool
-) -> float:
+    KNR: xr.DataArray,
+    DOX: xr.DataArray,
+    ron: xr.DataArray,
+    knit_tc: xr.DataArray,
+    NH4: xr.DataArray,
+    use_NH4:xr.DataArray
+) -> xr.DataArray:
     """Compute DOX flux due to nitrification of ammonia
 
     Args:
@@ -324,10 +325,10 @@ def DOX_Nitrification(
 
 @numba.njit
 def DOX_DOC_Oxidation(
-    DOC_Oxidation: float,
-    roc: float,
-    use_DOC: bool
-) -> float:
+    DOC_Oxidation: xr.DataArray,
+    roc: xr.DataArray,
+    use_DOC:xr.DataArray
+) -> xr.DataArray:
     """Computes dissolved oxygen flux due to oxidation of dissolved organic carbon
 
     Args:
@@ -342,9 +343,9 @@ def DOX_DOC_Oxidation(
 
 @numba.njit
 def DOX_CBOD_Oxidation(
-    DIC_CBOD_Oxidation: float,
-    roc: float
-) -> float:
+    DIC_CBOD_Oxidation: xr.DataArray,
+    roc: xr.DataArray
+) -> xr.DataArray:
     """Compute dissolved oxygen flux due to CBOD oxidation
 
     Args:
@@ -356,14 +357,14 @@ def DOX_CBOD_Oxidation(
 
 @numba.njit
 def DOX_AbGrowth(
-    AbUptakeFr_NH4: float,
-    roc: float,
-    rcb: float,
-    AbGrowth: float,
-    Fb: float,
-    depth: float,
-    use_BAlgae: bool
-) -> float:
+    AbUptakeFr_NH4: xr.DataArray,
+    roc: xr.DataArray,
+    rcb: xr.DataArray,
+    AbGrowth: xr.DataArray,
+    Fb: xr.DataArray,
+    depth: xr.DataArray,
+    use_BAlgae:xr.DataArray
+) -> xr.DataArray:
     """Compute dissolved oxygen flux due to benthic algae growth
 
     Args:
@@ -383,13 +384,13 @@ def DOX_AbGrowth(
 
 @numba.njit
 def DOX_AbRespiration(
-    roc: float,
-    rcb: float,
-    AbRespiration: float,
-    Fb: float,
-    depth: float,
-    use_BAlgae: bool
-) -> float:
+    roc: xr.DataArray,
+    rcb: xr.DataArray,
+    AbRespiration: xr.DataArray,
+    Fb: xr.DataArray,
+    depth: xr.DataArray,
+    use_BAlgae:xr.DataArray
+) -> xr.DataArray:
     """Compute dissolved oxygen flux due to benthic algae respiration
 
     Args:
@@ -408,13 +409,13 @@ def DOX_AbRespiration(
 
 @numba.njit
 def SOD_tc(
-    SOD_20: float,
-    t_water_C: float,
-    theta: float,
-    DOX: float,
-    KsSOD: float,
-    use_DOX: bool
-) -> float:
+    SOD_20: xr.DataArray,
+    t_water_C: xr.DataArray,
+    theta: xr.DataArray,
+    DOX: xr.DataArray,
+    KsSOD: xr.DataArray,
+    use_DOX:xr.DataArray
+) -> xr.DataArray:
     """Compute the sediment oxygen demand corrected by temperature and dissolved oxygen concentration
 
     Args:
@@ -432,11 +433,11 @@ def SOD_tc(
 
 @numba.njit
 def DOX_SOD(
-    SOD_Bed: float,
-    depth: float,
-    SOD_tc: float,
-    use_SedFlux: bool
-) -> float:
+    SOD_Bed: xr.DataArray,
+    depth: xr.DataArray,
+    SOD_tc: xr.DataArray,
+    use_SedFlux:xr.DataArray
+) -> xr.DataArray:
     """Compute dissolved oxygen flux due to sediment oxygen demand
 
     Args:
@@ -453,16 +454,16 @@ def DOX_SOD(
 
 @numba.njit
 def dDOXdt(
-    Atm_O2_reaeration: float,
-    DOX_ApGrowth: float,
-    DOX_ApRespiration: float,
-    DOX_Nitrification: float,
-    DOX_DOC_Oxidation: float,
-    DOX_CBOD_Oxidation: float,
-    DOX_AbGrowth: float,
-    DOX_AbRespiration: float,
-    DOX_SOD: float
-) -> float:
+    Atm_O2_reaeration: xr.DataArray,
+    DOX_ApGrowth: xr.DataArray,
+    DOX_ApRespiration: xr.DataArray,
+    DOX_Nitrification: xr.DataArray,
+    DOX_DOC_Oxidation: xr.DataArray,
+    DOX_CBOD_Oxidation: xr.DataArray,
+    DOX_AbGrowth: xr.DataArray,
+    DOX_AbRespiration: xr.DataArray,
+    DOX_SOD: xr.DataArray
+) -> xr.DataArray:
     """Compute change in dissolved oxygen concentration for one timestep
 
     Args:
@@ -481,10 +482,10 @@ def dDOXdt(
 
 @numba.njit
 def DOX_new(
-    DOX: float,
-    dDOXdt: float,
-    timestep: float
-) -> float:
+    DOX: xr.DataArray,
+    dDOXdt: xr.DataArray,
+    timestep: xr.DataArray
+) -> xr.DataArray:
     """Computes updated dissolved oxygen concentration
 
     Args:

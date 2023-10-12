@@ -1,16 +1,18 @@
 import numpy as np
 import numba
+import xarray as xr
 from clearwater_modules.shared.processes import (
     arrhenius_correction,
 )
 
+# TODO: Figure out how to handle multiple CBOD groups... right now using np.append...xr.concat? Or build the multiple groups outside of modules
 
 @numba.njit
 def kbod_i_T(
-    water_temp_c: float,
-    kbod_i_20: np.array,
-    theta: float
-) -> np.array:
+    water_temp_c: xr.DataArray,
+    kbod_i_20: xr.DataArray,
+    theta: xr.DataArray
+) -> xr.DataArray:
     """Calculate the temperature adjusted CBOD oxidation rates for each group (1/d)
 
     Args:
@@ -18,7 +20,7 @@ def kbod_i_T(
         kbod_i_20: CBOD oxidation rate at 20 degrees Celsius for each CBOD group (1/d)
         theta: Arrhenius coefficient
     """
-    kbod_i_T = np.array([])
+    kbod_i_T = xr.DataArray([])
     for i in kbod_i_20:
         np.append(kbod_i_T, arrhenius_correction(water_temp_c, i, theta))
     return kbod_i_T
@@ -26,10 +28,10 @@ def kbod_i_T(
 
 @numba.njit
 def ksbod_i_T(
-    water_temp_c: float,
-    ksbod_i_20: np.array,
-    theta: float
-) -> np.array:
+    water_temp_c: xr.DataArray,
+    ksbod_i_20: xr.DataArray,
+    theta: xr.DataArray
+) -> xr.DataArray:
     """Calculate the temperature adjusted CBOD sedimentation rates for each group (m/d)
 
     Args:
@@ -37,7 +39,7 @@ def ksbod_i_T(
         ksbod_i_20: CBOD sedimentation rate at 20 degrees Celsius for each CBOD group (m/d)
         theta: Arrhenius coefficient
     """
-    ksbod_i_T = np.array([])
+    ksbod_i_T = xr.DataArray([])
     for i in ksbod_i_20:
         np.append(ksbod_i_T, arrhenius_correction(water_temp_c, i, theta))
     return ksbod_i_T
@@ -45,12 +47,12 @@ def ksbod_i_T(
 
 @numba.njit
 def CBOD_oxidation(
-    DOX: float,
-    CBOD: np.array,
-    kbod_i_T: np.array,
-    KsOxbod_i: np.array,
-    use_DOX: bool
-) -> np.array:
+    DOX: xr.DataArray,
+    CBOD: xr.DataArray,
+    kbod_i_T: xr.DataArray,
+    KsOxbod_i: xr.DataArray,
+    use_DOX:xr.DataArray
+) -> xr.DataArray:
     """Calculates CBOD oxidation for each group
 
     Args:
@@ -61,7 +63,7 @@ def CBOD_oxidation(
         use_DOX: Option to consider DOX concentration in calculation of CBOD oxidation
     """
     nCBOD = len(CBOD)
-    CBOD_ox = np.array([])
+    CBOD_ox = xr.DataArray([])
 
     if use_DOX:
         for i in nCBOD:
@@ -76,9 +78,9 @@ def CBOD_oxidation(
 
 @numba.njit
 def CBOD_sedimentation(
-    CBOD: np.array,
-    ksbod_i_T: np.array
-) -> np.array:
+    CBOD: xr.DataArray,
+    ksbod_i_T: xr.DataArray
+) -> xr.DataArray:
     """Calculates CBOD sedimentation for each group
 
     Args:
@@ -86,7 +88,7 @@ def CBOD_sedimentation(
         ksbod_i_T: Temperature adjusted sedimentation rate for each CBOD group (m/d, array)
     """
     nCBOD = len(CBOD)
-    CBOD_sedimentation = np.array([])
+    CBOD_sedimentation = xr.DataArray([])
     for i in nCBOD:
         np.append(CBOD_sedimentation, CBOD[i] * ksbod_i_T[i])
     return CBOD_sedimentation
@@ -94,9 +96,9 @@ def CBOD_sedimentation(
 
 @numba.njit
 def dCBODdt(
-    CBOD_oxidation: np.array,
-    CBOD_sedimentation: np.array
-) -> np.array:
+    CBOD_oxidation: xr.DataArray,
+    CBOD_sedimentation: xr.DataArray
+) -> xr.DataArray:
     """Computes change in each CBOD group for a given timestep
 
     Args:
@@ -108,10 +110,10 @@ def dCBODdt(
 
 @numba.njit
 def CBOD_new(
-    CBOD: np.array,
-    dCBODdt: np.array,
-    timestep: float
-) -> np.array:
+    CBOD: xr.DataArray,
+    dCBODdt: xr.DataArray,
+    timestep: xr.DataArray
+) -> xr.DataArray:
     """Calculates new CBOD concentration for next timestep
 
     Args:

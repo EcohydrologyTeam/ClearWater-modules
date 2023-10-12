@@ -3,7 +3,7 @@
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.tsm.model import EnergyBudget
-from clearwater_modules.nsm1.CBOD import CBOD_processes
+from clearwater_modules.nsm1.CBOD import processes
 
 
 @base.register_variable(models=EnergyBudget)
@@ -17,7 +17,7 @@ Variable(
     units='1/d',
     description='Temperature adjusted oxidation rate for each CBOD group, array',
     use='dynamic',
-    process=CBOD_processes.kbod_i_T
+    process=processes.kbod_i_T
 )
 
 Variable(
@@ -26,7 +26,7 @@ Variable(
     units='m/d',
     description='Temperature adjusted sedimentation rate for each CBOD group, array',
     use='dynamic',
-    process=CBOD_processes.ksbod_i_T
+    process=processes.ksbod_i_T
 )
 
 Variable(
@@ -35,7 +35,7 @@ Variable(
     units='mg/L/d',
     description='CBOD oxidation for all CBOD groups, array',
     use='dynamic',
-    process=CBOD_processes.CBOD_oxidation
+    process=processes.CBOD_oxidation
 )
 
 Variable(
@@ -44,7 +44,7 @@ Variable(
     units='mg/L/d',
     description='CBOD sedimentation for all CBOD groups, array',
     use='dynamic',
-    process=CBOD_processes.CBOD_sedimentation
+    process=processes.CBOD_sedimentation
 )
 
 Variable(
@@ -53,5 +53,5 @@ Variable(
     units='mg/L/d',
     description='Change in each CBOD group concentration for the given timestep, arrayChange in each CBOD group concentration for the given timestep, array',
     use='dynamic',
-    process=CBOD_processes.dCBODdt
+    process=processes.dCBODdt
 )
