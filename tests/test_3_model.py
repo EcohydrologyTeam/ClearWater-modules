@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 from tests.conftest import initial_array
 import xarray as xr
-from clearwater_modules_python.base import (
+from clearwater_modules.base import (
     Model,
     Variable,
     InitialVariablesDict,
@@ -14,8 +14,8 @@ class MockModel(Model):
     ...
 
 
-def state_process(dynamic_2: float) -> float:
-    return dynamic_2 * 2
+def state_process(dynamic_2: float, state_variable: float) -> float:
+    return (dynamic_2 * 2) + state_variable
 
 
 @pytest.fixture(scope='module')
@@ -54,6 +54,9 @@ def model(
         MockModel.register_variable(var)
     MockModel.register_variable(state_variable)
 
+    assert isinstance(MockModel.get_state_variables(), list)
+    assert len(MockModel.get_state_variables()) == 1
+    assert isinstance(MockModel.get_state_variables()[0], Variable)
     model_instance = MockModel(
         initial_state_values=initial_state_values,
         static_variable_values=initial_static_values,
@@ -147,7 +150,7 @@ def test_variable_compution_order(model: Model) -> None:
 
 
 def test_computation_with_dynamics(model: Model) -> None:
-    """Test that dynamic variables are saved to the dataset.""" 
+    """Test that dynamic variables are saved to the dataset."""
     model.track_dynamic_variables = True
     ds: xr.Dataset = model.increment_timestep()
     assert isinstance(ds, xr.Dataset)
@@ -156,7 +159,7 @@ def test_computation_with_dynamics(model: Model) -> None:
 
 
 def test_computation_no_dynamics(model: Model) -> None:
-    """Test that dynamic variables not are saved to the dataset.""" 
+    """Test that dynamic variables not are saved to the dataset."""
     model.track_dynamic_variables = False
     ds = model.increment_timestep()
     assert isinstance(ds, xr.Dataset)
@@ -192,3 +195,16 @@ def test_model_hotstart(model: Model) -> None:
     assert isinstance(hotstart_model, Model)
     assert len(hotstart_model.dataset[model.time_dim]) == 2
     assert model.dataset.attrs.get('hotstart') == True
+
+
+def test_model_update_state(model: Model) -> None:
+    """Tests that we can update the state variable between timesteps"""
+    ds = model.increment_timestep()
+    mean_i: float = ds.state_variable.isel(time_step=-1).mean().item()
+    updated_state = ds['state_variable'].isel(time_step=-1) * 100
+    ds = model.increment_timestep(
+        update_state_values={'state_variable': updated_state},
+    )
+    assert isinstance(ds, xr.Dataset)
+    mean_f: float = ds.state_variable.isel(time_step=-1).mean().item()
+    assert mean_f > mean_i * 100

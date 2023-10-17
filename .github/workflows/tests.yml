@@ -1,0 +1,41 @@
+name: tests
+
+on:
+  pull_request:
+
+jobs:
+  run:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Micromamba
+        uses: mamba-org/provision-with-micromamba@v15
+        with:
+          environment-file: false
+
+      - name: Python ${{ matrix.python-version }}
+        shell: bash -l {0}
+        run: >
+          micromamba create --name DEV_ENV python=${{ matrix.python-version }} --file environment.yml --channel conda-forge
+          && micromamba activate DEV_ENV
+          && pip install -e . --no-deps --force-reinstall
+          && micromamba info
+          && micromamba list
+
+      - name: tests
+        shell: bash -l {0}
+        run: >
+          micromamba activate DEV_ENV
+          && pytest --cov=clearwater_modules --cov-report=xml tests/
+      
+      - name: Upload coverage reports to CodeCov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        
