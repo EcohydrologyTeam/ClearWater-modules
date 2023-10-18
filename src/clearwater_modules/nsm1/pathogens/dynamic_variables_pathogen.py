@@ -2,10 +2,10 @@
 File includes dynamic variables computed in pathogen module. Dynamic variables may be accessed by other modules.
 """
 
-import clearwater_modules_python.shared.processes as shared_processes
-from clearwater_modules_python import base
-from clearwater_modules_python.nsm1.model import NutrientBudget
-import clearwater_modules_python.nsm1.pathogens.pathogen_processes as pathogen_processes
+import clearwater_modules.shared.processes as shared_processes
+from clearwater_modules import base
+from clearwater_modules.nsm1.model import NutrientBudget
+import clearwater_modules.nsm1.pathogens.pathogen_processes as pathogen_processes
 
 
 @base.register_variable(models=NutrientBudget)

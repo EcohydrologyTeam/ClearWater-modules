@@ -3,18 +3,15 @@ File contains process to calculate new algae biomass concentration and associate
 """
 
 import math
-from clearwater_modules_python.shared.processes import arrhenius_correction
+from clearwater_modules.shared.processes import arrhenius_correction
 import numba
-
-kdx=0.8
-apx=1
-vx=1
+import xarray as xr
 
 @numba.njit
 def kdx_tc(
-    TwaterC : float,
-    kdx_20: float
-) -> float :
+    TwaterC : xr.DataArray,
+    kdx_20: xr.DataArray
+) -> xr.DataArray :
 
     """Calculate kdx_tc: pathogen death rate (1/d).
 
@@ -27,9 +24,9 @@ def kdx_tc(
 
 @numba.njit
 def PathogenDeath(
-    kdx_tc : float,
-    PX: float
-) -> float :
+    kdx_tc : xr.DataArray,
+    PX: xr.DataArray
+) -> xr.DataArray :
 
     """Calculate PathogenDeath: pathogen natural death (cfu/100mL/d).
 
@@ -42,12 +39,12 @@ def PathogenDeath(
 
 @numba.njit
 def PathogenDecay(
-  apx: float,
-  q_solar: float,
-  L: float,
-  depth: float,
-  PX: float
-) -> float :
+  apx: xr.DataArray,
+  q_solar: xr.DataArray,
+  L: xr.DataArray,
+  depth: xr.DataArray,
+  PX: xr.DataArray
+) -> xr.DataArray :
 
     """Calculate PathogenDecay: pathogen death due to light (cfu/100mL/d).
 
@@ -63,10 +60,10 @@ def PathogenDecay(
 
 @numba.njit
 def PathogenSettling(
-  vx: float,
-  depth: float,
-  PX: float
-) -> float :
+  vx: xr.DataArray,
+  depth: xr.DataArray,
+  PX: xr.DataArray
+) -> xr.DataArray :
 
     """Calculate PathogenSettling: pathogen settling (cfu/100mL/d).
 
@@ -79,11 +76,11 @@ def PathogenSettling(
 
 @numba.njit
 def dPXdt(
-  PathogenDeath: float,
-  PathogenDecay: float,
-  PathogenSettling: float,
+  PathogenDeath: xr.DataArray,
+  PathogenDecay: xr.DataArray,
+  PathogenSettling: xr.DataArray,
 
-) -> float :
+) -> xr.DataArray :
 
     """Calculate dPXdt: change in pathogen concentration (cfu/100mL/d).
 
@@ -97,10 +94,10 @@ def dPXdt(
 
 @numba.njit
 def PX_new(
-  PX:float,
-  dPXdt: float
+  PX:xr.DataArray,
+  dPXdt: xr.DataArray
 
-) -> float :
+) -> xr.DataArray :
 
     """Calculate PX_new: New pathogen concentration (cfu/100mL).
 

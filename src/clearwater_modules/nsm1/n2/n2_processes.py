@@ -1,11 +1,12 @@
 import math
-from clearwater_modules_python.shared.processes import arrhenius_correction, celsius_to_kelvin
+from clearwater_modules.shared.processes import arrhenius_correction, celsius_to_kelvin
 import numba
+import xarray as xr
 
 @numba.njit
 def TwaterK(
-    TwaterC : float,
-) -> float :
+    TwaterC : xr.DataArray,
+) -> xr.DataArray :
     """Calculate temperature in kelvin (K)
     Args:
         TwaterC: water temperature celcius (C)
@@ -14,8 +15,8 @@ def TwaterK(
 
 @numba.njit
 def KHN2_tc(
-    TwaterK : float,
-) -> float :
+    TwaterK : xr.DataArray,
+) -> xr.DataArray :
     
     """Calculate Henry's law constant (mol/L/atm)
     
@@ -32,8 +33,8 @@ def KHN2_tc(
         
 @numba.njit
 def P_wv(
-    TwaterK : float,
-) -> float :
+    TwaterK : xr.DataArray,
+) -> xr.DataArray :
         
     """Calculate partial pressure water vapor (atm)
 
@@ -48,10 +49,10 @@ def P_wv(
 @numba.njit     
 #N2 saturation
 def N2sat(
-    KHN2_tc : float,
-    pressure_atm: float,
-    P_wv: float
-) -> float:
+    KHN2_tc : xr.DataArray,
+    pressure_atm: xr.DataArray,
+    P_wv: xr.DataArray
+) -> xr.DataArray:
     
     """Calculate N2 at saturation f(Twater and atm pressure) (mg-N/L)
 
@@ -69,10 +70,10 @@ def N2sat(
 
 @numba.njit    
 def dN2dt(
-    ka_tc : float, #TODO this should be calculated in Carbon based on kah_tc and kaw_tc 
-    N2sat : float,
-    N2: float,
-) -> float: 
+    ka_tc : xr.DataArray, #TODO this should be calculated in Carbon based on kah_tc and kaw_tc 
+    N2sat : xr.DataArray,
+    N2: xr.DataArray,
+) -> xr.DataArray: 
     
     """Calculate change in N2 air concentration (mg-N/L/d)
 
@@ -86,9 +87,9 @@ def dN2dt(
 
 @numba.njit    
 def N2_new(
-    N2: float,
-    dN2dt : float,
-) -> float: 
+    N2: xr.DataArray,
+    dN2dt : xr.DataArray,
+) -> xr.DataArray: 
     
     """Calculate change in N2 air concentration (mg-N/L/d)
 
@@ -101,12 +102,12 @@ def N2_new(
 
 @numba.njit    
 def TDG(
-    N2: float,
-    N2sat : float,
-    DOX: float,
-    O2sat: float,
+    N2: xr.DataArray,
+    N2sat : xr.DataArray,
+    DOX: xr.DataArray,
+    O2sat: xr.DataArray,
     use_DOX: bool,
-) -> float: 
+) -> xr.DataArray: 
     
     """Calculate total dissolved gas (%)
 

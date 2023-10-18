@@ -46,14 +46,15 @@ from SedFlux
         
 """
 import math
-from clearwater_modules_python.shared.processes import arrhenius_correction
+from clearwater_modules.shared.processes import arrhenius_correction
 import numba
+import xarray as xr
 
 @numba.njit
 def kop_tc(
-    TwaterC : float,
-    kop_20: float
-) -> float :
+    TwaterC : xr.DataArray,
+    kop_20: xr.DataArray
+) -> xr.DataArray :
 
     """Calculate kop_tc: Decay rate of organic P to DIP temperature correction (1/d).
 
@@ -66,9 +67,9 @@ def kop_tc(
 
 @numba.njit
 def rop4_tc(
-    TwaterC : float,
-    rop4_20: float
-) -> float :
+    TwaterC : xr.DataArray,
+    rop4_20: xr.DataArray
+) -> xr.DataArray :
 
     """Calculate rop4_tc: Benthic sediment release rate of DIP temperature correction(g-P/m2/d).
 
@@ -81,9 +82,9 @@ def rop4_tc(
 
 @numba.njit
 def OrgP_DIP_decay(
-    kop_tc : float,
-    OrgP: float,
-) -> float :
+    kop_tc : xr.DataArray,
+    OrgP: xr.DataArray,
+) -> xr.DataArray :
     
     """Calculate OrgP_DIP: organic phosphorus decay to dissolve inorganic phosphorus (mg-P/L/d).
 
@@ -95,10 +96,10 @@ def OrgP_DIP_decay(
 
 @numba.njit
 def OrgP_Settling(
-    vsop : float,
-    depth: float,
-    OrgP: float,
-) -> float :
+    vsop : xr.DataArray,
+    depth: xr.DataArray,
+    OrgP: xr.DataArray,
+) -> xr.DataArray :
     
     """Calculate OrgP_Settling: organic phosphorus settling to sediment (mg-P/L/d).
 
@@ -111,9 +112,9 @@ def OrgP_Settling(
 
 @numba.njit
 def ApDeath_OrgP(
-    rpa : float,
-    ApDeath: float,
-) -> float :
+    rpa : xr.DataArray,
+    ApDeath: xr.DataArray,
+) -> xr.DataArray :
     
     """Calculate ApDeath_OrgP: Algal death turning into organic phosphorus  (mg-P/L/d).
 
@@ -127,12 +128,12 @@ def ApDeath_OrgP(
 
 @numba.njit
 def AbDeath_OrgP(
-    rpb : float,
-    AbDeath: float,
-    Fw: float,
-    Fb: float,
-    depth: float
-) -> float :
+    rpb : xr.DataArray,
+    AbDeath: xr.DataArray,
+    Fw: xr.DataArray,
+    Fb: xr.DataArray,
+    depth: xr.DataArray
+) -> xr.DataArray :
     
     """Calculate AbDeath_OrgP: Benthic algal death turning into organic phosphorus (mg-P/L/d).
 
@@ -149,14 +150,14 @@ def AbDeath_OrgP(
 
 @numba.njit
 def dOrgPdt(
-    ApDeath_OrgP : float,
-    AbDeath_OrgP: float,
-    OrgP_DIP_decay: float,
-    OrgP_Settling: float,
+    ApDeath_OrgP : xr.DataArray,
+    AbDeath_OrgP: xr.DataArray,
+    OrgP_DIP_decay: xr.DataArray,
+    OrgP_Settling: xr.DataArray,
     use_OrgP: bool,
     use_Algae: bool,
     use_Balgae: bool,
-) -> float :
+) -> xr.DataArray :
     """Calculate dOrgPdt: change in organic phosphorus concentration (mg-P/L/d).
 
     Args:
@@ -182,9 +183,9 @@ def dOrgPdt(
 
 @numba.njit
 def DIPfromBed_SedFlux(
-    JDIP: float,
-    depth:float
-) -> float :
+    JDIP: xr.DataArray,
+    depth:xr.DataArray
+) -> xr.DataArray :
     """Calculate DIPfromBed_SedFlux: Dissolved Organic Phosphorus coming from Bed calculated using SedFlux modules (mg-P/L/d).
 
     Args:
@@ -195,9 +196,9 @@ def DIPfromBed_SedFlux(
 
 @numba.njit
 def DIPfromBed_NoSedFlux(
-    rpo4_tc: float,
-    depth:float
-) -> float :
+    rpo4_tc: xr.DataArray,
+    depth:xr.DataArray
+) -> xr.DataArray :
     """Calculate DIPfromBed_NoSedFlux: Dissolved Organic Phosphorus coming from Bed calculated without SedFlux modules (mg-P/L/d).
 
     Args:
@@ -208,11 +209,11 @@ def DIPfromBed_NoSedFlux(
 
 @numba.njit
 def TIP_Settling(
-    vs: float,
-    depth: float,
-    fdp: float,
-    TIP: float
-) -> float :
+    vs: xr.DataArray,
+    depth: xr.DataArray,
+    fdp: xr.DataArray,
+    TIP: xr.DataArray
+) -> xr.DataArray :
 
     """Calculate TIP_Settling: Total inorganic phosphorus settling from water to bed (mg-P/L/d).
 
@@ -226,10 +227,10 @@ def TIP_Settling(
 
 @numba.njit
 def OrgP_DIP_decay(
-    kop_tc: float,
-    OrgP: float,
+    kop_tc: xr.DataArray,
+    OrgP: xr.DataArray,
 
-) -> float :
+) -> xr.DataArray :
     """Calculate OrgP_DIP_decay: Total organic phosphorus decaying to dissolved inorganic phosphrous (mg-P/L/d).
 
     Args:
@@ -240,10 +241,10 @@ def OrgP_DIP_decay(
 
 @numba.njit
 def DIP_ApRespiration(
-    rpa: float,
-    ApRespiration: float,
+    rpa: xr.DataArray,
+    ApRespiration: xr.DataArray,
 
-) -> float :
+) -> xr.DataArray :
     """Calculate DIP_ApRespiration: Dissolved inorganic phosphorus released from algal respiration (mg-P/L/d).
 
     Args:
@@ -254,10 +255,10 @@ def DIP_ApRespiration(
 
 @numba.njit
 def DIP_ApGrowth(
-    rpa: float,
-    ApGrowth: float,
+    rpa: xr.DataArray,
+    ApGrowth: xr.DataArray,
 
-) -> float :
+) -> xr.DataArray :
     """Calculate DIP_ApGrowth: Dissolved inorganic phosphorus consumed for algal growth (mg-P/L/d).
 
     Args:
@@ -268,10 +269,10 @@ def DIP_ApGrowth(
 
 @numba.njit
 def DIP_AbRespiration(
-    rpb: float,
-    AbRespiration: float,
+    rpb: xr.DataArray,
+    AbRespiration: xr.DataArray,
 
-) -> float :
+) -> xr.DataArray :
     """Calculate DIP_AbRespiration: Dissolved inorganic phosphorus released for benthic algal respiration (mg-P/L/d).
 
     Args:
@@ -282,12 +283,12 @@ def DIP_AbRespiration(
 
 @numba.njit
 def DIP_AbGrowth(
-    rpb: float,
-    AbGrowth: float,
-    Fb: float,
-    depth: float
+    rpb: xr.DataArray,
+    AbGrowth: xr.DataArray,
+    Fb: xr.DataArray,
+    depth: xr.DataArray
 
-) -> float :
+) -> xr.DataArray :
     """Calculate DIP_AbGrowth: Dissolved inorganic phosphorus consumed for benthic algal growth (mg-P/L/d).
 
     Args:
@@ -300,20 +301,20 @@ def DIP_AbGrowth(
 
 @numba.njit
 def dTIPdt(
-    OrgP_DIP_decay: float,
-    TIP_Settling: float,
-    DIPfromBed_NoSedFlux: float,
-    DIPfromBed_SedFlux: float,
-    DIP_ApRespiration: float,
-    DIP_ApGrowth: float,
-    DIP_AbRespiration: float,
-    DIP_AbGrowth: float,
+    OrgP_DIP_decay: xr.DataArray,
+    TIP_Settling: xr.DataArray,
+    DIPfromBed_NoSedFlux: xr.DataArray,
+    DIPfromBed_SedFlux: xr.DataArray,
+    DIP_ApRespiration: xr.DataArray,
+    DIP_ApGrowth: xr.DataArray,
+    DIP_AbRespiration: xr.DataArray,
+    DIP_AbGrowth: xr.DataArray,
     use_TIP: bool, 
     use_SedFlux: bool,
     use_OrgP: bool,
     use_Algae: bool,
     use_Balgae: bool,
-) -> float :    
+) -> xr.DataArray :    
     
     """Calculate dTIPdt: Change in dissolved inorganic phosphorus water concentration (mg-P/L/d).
 
@@ -333,8 +334,8 @@ def dTIPdt(
         use_Balgae: true/false to use benthic algae module (true/false),
 
     dTIP/dt =     OrgP Decay                (OrgP -> DIP)
-                - DIP AlgalUptake           (DIP -> Floating Algae)
-                - DIP BenthicAlgae Uptake   (DIP -> Floating Algae)	
+                - DIP AlgalUptake           (DIP -> xr.DataArraying Algae)
+                - DIP BenthicAlgae Uptake   (DIP -> xr.DataArraying Algae)	
                 - TIP Settling              (TIP -> bed)
                 + DIP From Benthos          (Benthos -> DIP) 
     """
@@ -356,10 +357,10 @@ def dTIPdt(
 
 @numba.njit
 def TIP_new(
-    TIP: float,
-    dTIPdt: float,
+    TIP: xr.DataArray,
+    dTIPdt: xr.DataArray,
 
-) -> float :
+) -> xr.DataArray :
     """Calculate TIP_new: New total inorganic phosphorus (mg-P/L).
 
     Args:
@@ -370,10 +371,10 @@ def TIP_new(
     return TIP+dTIPdt
 @numba.njit
 def OrgP_new(
-    OrgP: float,
-    dOrgPdt: float,
+    OrgP: xr.DataArray,
+    dOrgPdt: xr.DataArray,
 
-) -> float :
+) -> xr.DataArray :
     """Calculate OrgP_new: New total organic phosphorus (mg-P/L).
 
     Args:
@@ -386,12 +387,12 @@ def OrgP_new(
 @numba.njit
 def TOP(
     use_OrgP: bool,
-    OrgP_new: float,
+    OrgP_new: xr.DataArray,
     use_Algae: bool,
-    rpa: float,
-    Ap: float
+    rpa: xr.DataArray,
+    Ap: xr.DataArray
 
-) -> float :
+) -> xr.DataArray :
     """Calculate TOP: Total organic phosphorus (mg-P/L).
 
     Args:
@@ -412,10 +413,10 @@ def TOP(
 @numba.njit
 def TP(
     use_TIP: bool,
-    TOP: float,
-    TIP_new: float
+    TOP: xr.DataArray,
+    TIP_new: xr.DataArray
 
-) -> float :
+) -> xr.DataArray :
     """Calculate TP: Total phosphorus (mg-P/L).
 
     Args:
@@ -429,10 +430,10 @@ def TP(
 
 @numba.njit
 def DIP(
-    fdp: float,
-    TIP_new: float
+    fdp: xr.DataArray,
+    TIP_new: xr.DataArray
 
-) -> float :
+) -> xr.DataArray :
     """Calculate DIP: Dissolve inorganich phosphorus (mg-P/L).
 
     Args:
