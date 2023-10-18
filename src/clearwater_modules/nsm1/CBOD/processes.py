@@ -5,92 +5,78 @@ from clearwater_modules.shared.processes import (
     arrhenius_correction,
 )
 
-# TODO: Figure out how to handle multiple CBOD groups... right now using np.append...xr.concat? Or build the multiple groups outside of modules
 
 @numba.njit
-def kbod_i_T(
+def kbod_T(
     water_temp_c: xr.DataArray,
-    kbod_i_20: xr.DataArray,
+    kbod_20: xr.DataArray,
     theta: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate the temperature adjusted CBOD oxidation rates for each group (1/d)
+    """Calculate the temperature adjusted CBOD oxidation rate (1/d)
 
     Args:
         water_temp_c: water temperature in Celsius
-        kbod_i_20: CBOD oxidation rate at 20 degrees Celsius for each CBOD group (1/d)
+        kbod_20: CBOD oxidation rate at 20 degrees Celsius (1/d)
         theta: Arrhenius coefficient
     """
-    kbod_i_T = xr.DataArray([])
-    for i in kbod_i_20:
-        np.append(kbod_i_T, arrhenius_correction(water_temp_c, i, theta))
-    return kbod_i_T
+
+    kbod_T = arrhenius_correction(water_temp_c, kbod_20, theta)
+    return kbod_T
 
 
 @numba.njit
-def ksbod_i_T(
+def ksbod_T(
     water_temp_c: xr.DataArray,
-    ksbod_i_20: xr.DataArray,
+    ksbod_20: xr.DataArray,
     theta: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate the temperature adjusted CBOD sedimentation rates for each group (m/d)
+    """Calculate the temperature adjusted CBOD sedimentation rate (m/d)
 
     Args:
         water_temp_c: water temperature in Celsius
-        ksbod_i_20: CBOD sedimentation rate at 20 degrees Celsius for each CBOD group (m/d)
+        ksbod_20: CBOD sedimentation rate at 20 degrees Celsius (m/d)
         theta: Arrhenius coefficient
     """
-    ksbod_i_T = xr.DataArray([])
-    for i in ksbod_i_20:
-        np.append(ksbod_i_T, arrhenius_correction(water_temp_c, i, theta))
-    return ksbod_i_T
+
+    ksbod_T = arrhenius_correction(water_temp_c, ksbod_20, theta)
+    return ksbod_T
 
 
 @numba.njit
 def CBOD_oxidation(
     DOX: xr.DataArray,
     CBOD: xr.DataArray,
-    kbod_i_T: xr.DataArray,
-    KsOxbod_i: xr.DataArray,
-    use_DOX:xr.DataArray
+    kbod_T: xr.DataArray,
+    KsOxbod: xr.DataArray,
+    use_DOX: xr.DataArray
 ) -> xr.DataArray:
-    """Calculates CBOD oxidation for each group
+    """Calculates CBOD oxidation
 
     Args:
         DOX: Dissolved oxygen concentration (mg-O2/L)
-        CBOD: Carbonaceous biochemical oxygen demand for each CBOD group (mg-O2/L, array)
-        kbod_i_T: Temperature adjusted CBOD oxidation rate for each CBOD group (1/d, array)
-        KsOxbod_i: Half-saturation oxygen attenuation for CBOD oxidation for each CBOD group (mg-O2/L, array)
+        CBOD: Carbonaceous biochemical oxygen demand (mg-O2/L)
+        kbod_T: Temperature adjusted CBOD oxidation rate (1/d)
+        KsOxbod: Half-saturation oxygen attenuation for CBOD oxidation (mg-O2/L)
         use_DOX: Option to consider DOX concentration in calculation of CBOD oxidation
     """
-    nCBOD = len(CBOD)
-    CBOD_ox = xr.DataArray([])
-
-    if use_DOX:
-        for i in nCBOD:
-            np.append(
-                CBOD_ox, (DOX / (KsOxbod_i[i] + DOX)) * kbod_i_T[i] * CBOD[i])
-    else:
-        for i in nCBOD:
-            np.append(kbod_i_T[i] * CBOD[i])
-
-    return CBOD_ox
+    da: xr.DataArray = xr.where(use_DOX == True, (DOX / (KsOxbod + DOX)) * kbod_T * CBOD, kbod_T * CBOD)
+    
+    return da
 
 
 @numba.njit
 def CBOD_sedimentation(
     CBOD: xr.DataArray,
-    ksbod_i_T: xr.DataArray
+    ksbod_T: xr.DataArray
 ) -> xr.DataArray:
     """Calculates CBOD sedimentation for each group
 
     Args:
-        CBOD: CBOD concentration for each CBOD group (mg-O2/L)
-        ksbod_i_T: Temperature adjusted sedimentation rate for each CBOD group (m/d, array)
+        CBOD: CBOD concentration (mg-O2/L)
+        ksbod_T: Temperature adjusted sedimentation rate (m/d)
     """
-    nCBOD = len(CBOD)
-    CBOD_sedimentation = xr.DataArray([])
-    for i in nCBOD:
-        np.append(CBOD_sedimentation, CBOD[i] * ksbod_i_T[i])
+    
+    CBOD_sedimentation = CBOD * ksbod_T
     return CBOD_sedimentation
 
 

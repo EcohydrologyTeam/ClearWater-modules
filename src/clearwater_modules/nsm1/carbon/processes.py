@@ -57,13 +57,12 @@ def POC_settling(
     return vsoc / depth * POC
 
 
-@numba.njit
 def POC_algal_mortality(
     f_pocp: xr.DataArray,
     kdp_T: xr.DataArray,
     rca: xr.DataArray,
     Ap: xr.DataArray,
-    use_Algae:xr.DataArray
+    use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the POC concentration change due to algal mortality
 
@@ -74,13 +73,11 @@ def POC_algal_mortality(
         Ap: Algae concentration (mg/L)
         use_Algae: Option for considering algae in POC budget (boolean)
     """
-    if use_Algae:
-        return f_pocp * kdp_T * rca * Ap
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_Algae == True, f_pocp * kdp_T * rca * Ap, 0)
+
+    return da
 
 
-@numba.njit
 def POC_benthic_algae_mortality(
     depth: xr.DataArray,
     F_pocb: xr.DataArray,
@@ -89,7 +86,7 @@ def POC_benthic_algae_mortality(
     Ab: xr.DataArray,
     Fb: xr.DataArray,
     Fw: xr.DataArray,
-    use_Balgae:xr.DataArray
+    use_Balgae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the POC concentration change due to benthic algae mortality
 
@@ -103,11 +100,9 @@ def POC_benthic_algae_mortality(
         Fw: Fraction of benthic algae mortality into water column
         use_Balgae: Option for considering benthic algae in POC budget (boolean)
     """
-    if use_Balgae:
-        return (1 / depth) * F_pocb * kdb_T * rcb * Ab * Fb * Fw
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * F_pocb * kdb_T * rcb * Ab * Fb * Fw, 0)
 
+    return da
 
 @numba.njit
 def dPOCdt(
@@ -143,13 +138,12 @@ def POC_new(
     return POC + dPOCdt * timestep
 
 
-@numba.njit
 def DOC_algal_mortality(
         f_pocp: xr.DataArray,
         kdp_T: xr.DataArray,
         rca: xr.DataArray,
         Ap: xr.DataArray,
-        use_Algae:xr.DataArray
+        use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the DOC concentration change due to algal mortality
 
@@ -160,13 +154,11 @@ def DOC_algal_mortality(
         Ap: Algae concentration (mg/L)
         use_Algae: Option for considering algae in DOC budget (boolean)
     """
-    if use_Algae:
-        return (1 - f_pocp) * kdp_T * rca * Ap
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_Algae == True, (1 - f_pocp) * kdp_T * rca * Ap, 0)
+
+    return da
 
 
-@numba.njit
 def DOC_benthic_algae_mortality(
     depth: xr.DataArray,
     F_pocb: xr.DataArray,
@@ -175,7 +167,7 @@ def DOC_benthic_algae_mortality(
     Ab: xr.DataArray,
     Fb: xr.DataArray,
     Fw: xr.DataArray,
-    use_Balgae:xr.DataArray
+    use_Balgae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the DOC concentration change due to benthic algae mortality
 
@@ -189,10 +181,9 @@ def DOC_benthic_algae_mortality(
         Fw: Fraction of benthic algae mortality into water column
         use_Balgae: Option for considering benthic algae in DOC budget (boolean)
     """
-    if use_Balgae:
-        return (1 / depth) * (1 - F_pocb) * kdb_T * rcb * Ab * Fb * Fw
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * (1 - F_pocb) * kdb_T * rcb * Ab * Fb * Fw, 0)
+
+    return da
 
 
 @numba.njit
@@ -211,13 +202,12 @@ def kdoc_T(
     return arrhenius_correction(water_temp_c, kdoc_20, theta)
 
 
-@numba.njit
 def DOC_oxidation(
     DOX: xr.DataArray,
     KsOxmc: xr.DataArray,
     kdoc_T: xr.DataArray,
     DOC: xr.DataArray,
-    use_DOX:xr.DataArray
+    use_DOX: xr.DataArray
 ) -> xr.DataArray:
     """Calculates the DOC concentration change due to oxidation
 
@@ -228,10 +218,9 @@ def DOC_oxidation(
         DOC: Concentration of dissolved organic carbon (mg/L)
         use_DOX: Option for considering dissolved oxygen concentration in DOC oxidation calculation (boolean)
     """
-    if use_DOX:
-        return DOX / (KsOxmc + DOX) * kdoc_T * DOC
-    else:
-        return kdoc_T * DOC
+    da: xr.DataArray = xr.where(use_DOX == True, DOX / (KsOxmc + DOX) * kdoc_T * DOC, kdoc_T * DOC)
+
+    return da
 
 
 @numba.njit
@@ -318,11 +307,10 @@ def Atmospheric_CO2_reaeration(
     return 12 * kac_T * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
 
 
-@numba.njit
 def DIC_algal_respiration(
     ApRespiration: xr.DataArray,
     rca: xr.DataArray,
-    use_Algae:xr.DataArray
+    use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Calculates DIC concentration change due to algal respiration
 
@@ -331,17 +319,15 @@ def DIC_algal_respiration(
         rca: Ratio of carbon to chlorophyll-a (mg-C/ug-Chla)
         use_Algae: Option to consider algae in the DIC budget (boolean)
     """
-    if use_Algae:
-        return ApRespiration * rca
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_Algae == True, ApRespiration * rca, 0)
+
+    return da
 
 
-@numba.njit
 def DIC_algal_photosynthesis(
     ApGrowth: xr.DataArray,
     rca: xr.DataArray,
-    use_Algae:xr.DataArray
+    use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Calculates DIC concentration change due to algal photosynthesis
 
@@ -350,19 +336,17 @@ def DIC_algal_photosynthesis(
         rca: Ratio of carbon to chlorophyll-a (mg-C/ug-Chla)
         use_Algae: Option to consider algae in the DIC budget (boolean)
     """
-    if use_Algae:
-        return ApGrowth * rca
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_Algae == True, ApGrowth * rca, 0)
+
+    return da
 
 
-@numba.njit
 def DIC_benthic_algae_respiration(
     AbRespiration: xr.DataArray,
     rcb: xr.DataArray,
     Fb: xr.DataArray,
     depth: xr.DataArray,
-    use_Balgae:xr.DataArray
+    use_Balgae: xr.DataArray
 ) -> xr.DataArray:
     """Calculates DIC flux due to benthic algae respiration
 
@@ -373,19 +357,17 @@ def DIC_benthic_algae_respiration(
         depth: Depth of water (m)
         use_Balgae: Option to consider benthic algae in the DIC budget (boolean)
     """
-    if use_Balgae:
-        return AbRespiration * rcb * Fb * (1 / depth)
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_Balgae == True, AbRespiration * rcb * Fb * (1 / depth), 0)
+
+    return da
 
 
-@numba.njit
 def DIC_benthic_algae_photosynthesis(
     AbGrowth: xr.DataArray,
     rcb: xr.DataArray,
     Fb: xr.DataArray,
     depth: xr.DataArray,
-    use_Balgae:xr.DataArray
+    use_Balgae: xr.DataArray
 ) -> xr.DataArray:
     """Calculates DIC flux due to benthic algae growth
 
@@ -396,51 +378,44 @@ def DIC_benthic_algae_photosynthesis(
         depth: Depth of water (m)
         use_Balgae: Option to consider benthic algae in the DIC budget (boolean)
     """
-    if use_Balgae:
-        return AbGrowth * rcb * Fb * (1 / depth)
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_Balgae == True, AbGrowth * rcb * Fb * (1 / depth), 0)
 
+    return da
 
+#TODO Fix CBOD type architecture... 
 @numba.njit
 def DIC_CBOD_oxidation(
     DOX: xr.DataArray,
-    CBOD: np.array,
+    CBOD: xr.DataArray,
     roc: xr.DataArray,
-    kbod_i_T: np.array,
-    KsOxbod_i: np.array,
-    use_DOX:xr.DataArray
+    kbod_T: xr.DataArray, #imported from CBOD module
+    KsOxbod: xr.DataArray, #imported from CBOD module
+    use_DOX: xr.DataArray
 ) -> xr.DataArray:
     """Calculates DIC concentration change due to CBOD oxidation
 
     Args:
         DOX: Dissolved oxygen concentration (mg/L)
-        CBOD: Carbonaceous biochemical oxygen demand concentration for multiple groups (mg/L, array) 
+        CBOD: Carbonaceous biochemical oxygen demand concentration (mg/L) 
         roc: Ratio of O2 to carbon for carbon oxidation (mg-O2/mg-C)
-        kbod_i_T: CBOD oxidation rate (1/d, array)
-        KsOxbod_i: Half saturation oxygen attenuation constant for CBOD oxidation (mg-O2/L, array)
+        kbod_T: CBOD oxidation rate (1/d)
+        KsOxbod: Half saturation oxygen attenuation constant for CBOD oxidation (mg-O2/L)
         use_DOX: Option to consider dissolved oxygen in CBOD oxidation calculation (boolean)
     """
-    nCBOD = len(CBOD)
-    CBOD_ox = 0
+    
+    da: xr.DataArray = xr.where(use_DOX == True, (1 / roc) * (DOX / (KsOxbod + DOX)) * kbod_T * CBOD, CBOD * kbod_T)
 
-    if use_DOX:
-        for i in nCBOD:
-            CBOD_ox = CBOD_ox + \
-                (DOX / (KsOxbod_i[i] + DOX)) * kbod_i_T[i] * CBOD[i]
-        return CBOD_ox / roc
-    else:
-        for i in nCBOD:
-            CBOD_ox = CBOD_ox + CBOD[i] * kbod_i_T[i]
+    return da
 
 
-@numba.njit
+
+
 def DIC_sed_release(
     SOD_tc: xr.DataArray,
     roc: xr.DataArray,
     depth: xr.DataArray,
     JDIC: xr.DataArray,
-    use_SedFlux:xr.DataArray
+    use_SedFlux: xr.DataArray
 ) -> xr.DataArray:
     """Computes the sediment release of DIC
 
@@ -451,11 +426,9 @@ def DIC_sed_release(
         JDIC: Sediment-water flux of dissolved inorganic carbon (g-C/m2/d)
         use_SedFlux: Option to consider full sediment flux budget in DIC sediment contribution (bool)
     """
-    if use_SedFlux:
-        return JDIC / depth
-    else:
-        return SOD_tc / roc / depth
+    da: xr.DataArray = xr.where(use_SedFlux == True, JDIC / depth, SOD_tc / roc / depth)
 
+    return da
 
 @numba.njit
 def dDICdt(
@@ -464,6 +437,7 @@ def dDICdt(
     DIC_algal_photosynthesis: xr.DataArray,
     DIC_benthic_algae_respiration: xr.DataArray,
     DIC_benthic_algae_photosynthesis: xr.DataArray,
+    DIC_DOC_oxidation: xr.DataArray,
     DIC_CBOD_oxidation: xr.DataArray,
     DIC_sed_release: xr.DataArray
 ) -> xr.DataArray:
@@ -478,7 +452,7 @@ def dDICdt(
         DIC_CBOD_oxidation: DIC concentration change due to CBOD oxidation (mg/L/d)
         DIC_sed_release: DIC concentration change due to sediment release (mg/L/d)
     """
-    return Atm_CO2_reaeration + DIC_algal_respiration + DIC_benthic_algae_respiration + DIC_CBOD_oxidation + DIC_sed_release - DIC_algal_photosynthesis - DIC_benthic_algae_photosynthesis
+    return Atm_CO2_reaeration + DIC_algal_respiration + DIC_benthic_algae_respiration + DIC_DOC_oxidation + DIC_CBOD_oxidation + DIC_sed_release - DIC_algal_photosynthesis - DIC_benthic_algae_photosynthesis
 
 
 @numba.njit

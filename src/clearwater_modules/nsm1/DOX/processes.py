@@ -6,6 +6,7 @@ from clearwater_modules.shared.processes import (
 )
 
 
+#TODO: make sure np.exp will work here...
 @numba.njit
 def pwv(
     t_water_k: xr.DataArray
@@ -54,10 +55,9 @@ def DOX_sat(
     return DOX_sat_corrected
 
 
-@numba.njit
 def kah_20(
     kah_20_user: xr.DataArray,
-    hydraulic_reaeration_option: int,
+    hydraulic_reaeration_option: xr.DataArray,
     velocity: xr.DataArray,
     depth: xr.DataArray,
     flow: xr.DataArray,
@@ -77,50 +77,18 @@ def kah_20(
         slope: Average slope of bottom surface 
         shear_velocity: Average shear velocity on bottom surface (m/s)
     """
-    if hydraulic_reaeration_option == 1:
-        return kah_20_user
 
-    elif hydraulic_reaeration_option == 2:
-        return (3.93 * velocity**0.5) / (depth**1.5)
-
-    elif hydraulic_reaeration_option == 3:
-        return (5.32 * velocity**0.67) / (depth**1.85)
-
-    elif hydraulic_reaeration_option == 4:
-        return (5.026 * velocity) / (depth**1.67)
-
-    elif hydraulic_reaeration_option == 5:
-        if depth < 0.61:
-            return (5.32 * velocity**0.67) / (depth**1.85)
-        elif depth > 0.61:
-            return (3.93 * velocity**0.5) / (depth**1.5)
-        else:
-            return (5.026 * velocity) / (depth**1.67)
-
-    elif hydraulic_reaeration_option == 6:
-        if flow < 0.556:
-            return 517 * (velocity * slope)**0.524 * flow**-0.242
-        elif flow >= 0.556:
-            return 596 * (velocity * slope)**0.528 * flow**-0.136
-
-    elif hydraulic_reaeration_option == 7:
-        if flow < 0.556:
-            return 88 * (velocity * slope)**0.313 * depth**-0.353
-        elif flow >= 0.556:
-            return 142 * (velocity * slope)**0.333 * depth**-0.66 * topwidth**-0.243
-
-    elif hydraulic_reaeration_option == 8:
-        if flow < 0.425:
-            return 31183 * velocity * slope
-        elif flow >= 0.425:
-            return 15308 * velocity * slope
-
-    elif hydraulic_reaeration_option == 9:
-        froude = velocity / (9.81 * depth)**0.5
-        return 2.16 * (1 + 9 * froude**0.25) * shear_velocity / depth
-
-    else:
-        raise ValueError('Hydraulic Reaeration Option not properly selected')
+    da: xr.DataArray = xr.where(hydraulic_reaeration_option == 1, kah_20_user,
+                        xr.where(hydraulic_reaeration_option == 2, (3.93 * velocity**0.5) / (depth**1.5),
+                        xr.where(hydraulic_reaeration_option == 3, (5.32 * velocity**0.67) / (depth**1.85),
+                        xr.where(hydraulic_reaeration_option == 4, (5.026 * velocity) / (depth**1.67),
+                        xr.where(hydraulic_reaeration_option == 5, xr.where(depth < 0.61, (5.32 * velocity**0.67) / (depth**1.85), xr.where(depth > 0.61, (3.93 * velocity**0.5) / (depth**1.5), (5.026 * velocity) / (depth**1.67))),
+                        xr.where(hydraulic_reaeration_option == 6, xr.where(flow < 0.556, 517 * (velocity * slope)**0.524 * flow**-0.242, 596 * (velocity * slope)**0.528 * flow**-0.136),
+                        xr.where(hydraulic_reaeration_option == 7, xr.where(flow < 0.556, 88 * (velocity * slope)**0.313 * depth**-0.353, 142 * (velocity * slope)**0.333 * depth**-0.66 * topwidth**-0.243),
+                        xr.where(hydraulic_reaeration_option == 8, xr.where(flow < 0.425, 31183 * velocity * slope, 15308 * velocity * slope),
+                        xr.where(hydraulic_reaeration_option == 9, 2.16 * (1 + 9 * (velocity / (9.81 * depth)**0.5)**0.25) * shear_velocity / depth, -9999
+                                 )))))))))
+    return da
 
 
 @numba.njit
@@ -139,11 +107,10 @@ def kah_T(
     return arrhenius_correction(water_temp_c, kah_20, theta)
 
 
-@numba.njit
 def kaw_20(
     kaw_20_user: xr.DataArray,
     wind_speed: xr.DataArray,
-    wind_reaeration_option: int
+    wind_reaeration_option: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the wind oxygen reaeration velocity (m/d) based on wind speed, r stands for regional
 
@@ -154,65 +121,28 @@ def kaw_20(
     """
     Uw10 = wind_speed * (10 / 2)**0.143
 
-    if wind_reaeration_option == 1:
-        return kaw_20_user
-
-    elif wind_reaeration_option == 2:
-        return 0.864 * Uw10
-
-    elif wind_reaeration_option == 3:
-        if Uw10 <= 3.5:
-            return 0.2 * Uw10
-        else:
-            return 0.057 * Uw10**2
-
-    elif wind_reaeration_option == 4:
-        return 0.728 * Uw10**0.5 - 0.317 * Uw10 + 0.0372 * Uw10**2
-
-    elif wind_reaeration_option == 5:
-        return 0.0986 * Uw10**1.64
-
-    elif wind_reaeration_option == 6:
-        return 0.5 + 0.05 * Uw10**2
-
-    elif wind_reaeration_option == 7:
-        if Uw10 <= 5.5:
-            return 0.362 * Uw10**0.5
-        else:
-            return 0.0277 * Uw10**2
-
-    elif wind_reaeration_option == 8:
-        return 0.64 + 0.128 * Uw10**2
-
-    elif wind_reaeration_option == 9:
-        if Uw10 <= 4.1:
-            return 0.156 * Uw10**0.63
-        else:
-            return 0.0269 * Uw10**1.9
-
-    elif wind_reaeration_option == 10:
-        return 0.0276 * Uw10**2
-
-    elif wind_reaeration_option == 11:
-        return 0.0432 * Uw10**2
-
-    elif wind_reaeration_option == 12:
-        return 0.319 * Uw10
-
-    elif wind_reaeration_option == 13:
-        if Uw10 < 1.6:
-            return 0.398
-        else:
-            return 0.155 * Uw10**2
-
-    else:
-        raise ValueError('Wind Reaeration Option not properly selected')
+    da: xr.DataArray = xr.where(wind_reaeration_option == 1, kaw_20_user,
+                        xr.where(wind_reaeration_option == 2, 0.864 * Uw10,
+                        xr.where(wind_reaeration_option == 3, xr.where(Uw10 <= 3.5, 0.2 * Uw10, 0.057 * Uw10**2),
+                        xr.where(wind_reaeration_option == 4, 0.728 * Uw10**0.5 - 0.317 * Uw10 + 0.0372 * Uw10**2,
+                        xr.where(wind_reaeration_option == 5, 0.0986 * Uw10**1.64,
+                        xr.where(wind_reaeration_option == 6, 0.5 + 0.05 * Uw10**2,
+                        xr.where(wind_reaeration_option == 7, xr.where(Uw10 <= 5.5, 0.362 * Uw10**0.5, 0.0277 * Uw10**2),
+                        xr.where(wind_reaeration_option == 8, 0.64 + 0.128 * Uw10**2,
+                        xr.where(wind_reaeration_option == 9, xr.where(Uw10 <= 4.1, 0.156 * Uw10**0.63, 0.0269 * Uw10**1.9),
+                        xr.where(wind_reaeration_option == 10, 0.0276 * Uw10**2,
+                        xr.where(wind_reaeration_option == 11, 0.0432 * Uw10**2,
+                        xr.where(wind_reaeration_option == 12, 0.319 * Uw10,
+                        xr.where(wind_reaeration_option == 13, xr.where(Uw10 < 1.6, 0.398, 0.155 * Uw10**2), -9999
+                                 )))))))))))))
+    
+    return da
 
 
 @numba.njit
 def kaw_T(
     water_temp_c: xr.DataArray,
-    kaw_20_r: xr.DataArray,
+    kaw_20: xr.DataArray,
     theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted wind oxygen reaeration velocity (m/d)
@@ -257,13 +187,12 @@ def Atm_O2_reaeration(
     return ka_T * (DOX_sat - DOX)
 
 
-@numba.njit
 def DOX_ApGrowth(
     ApGrowth: xr.DataArray,
     rca: xr.DataArray,
     roc: xr.DataArray,
     F1: xr.DataArray,
-    use_Algae:xr.DataArray
+    use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Compute DOX flux due to algal photosynthesis
 
@@ -273,18 +202,16 @@ def DOX_ApGrowth(
         roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
         F1: Algae preference for ammonia 
     """
-    if use_Algae:
-        return ApGrowth * rca * roc * (138 / 106 - 32 * F1 / 106)
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_Algae == True, ApGrowth * rca * roc * (138 / 106 - 32 * F1 / 106), 0)
+
+    return da
 
 
-@numba.njit
 def DOX_ApRespiration(
     ApRespiration: xr.DataArray,
     rca: xr.DataArray,
     roc: xr.DataArray,
-    use_Algae:xr.DataArray
+    use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Compute DOX flux due to algal photosynthesis
 
@@ -293,20 +220,18 @@ def DOX_ApRespiration(
         rca: Ratio of algal carbon to chlorophyll-a (mg-C/ug-Chla)
         roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C) 
     """
-    if use_Algae:
-        return ApRespiration * rca * roc
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_Algae == True, ApRespiration * rca * roc, 0)
+
+    return da
 
 
-@numba.njit
 def DOX_Nitrification(
     KNR: xr.DataArray,
     DOX: xr.DataArray,
     ron: xr.DataArray,
     knit_tc: xr.DataArray,
     NH4: xr.DataArray,
-    use_NH4:xr.DataArray
+    use_NH4: xr.DataArray
 ) -> xr.DataArray:
     """Compute DOX flux due to nitrification of ammonia
 
@@ -317,17 +242,15 @@ def DOX_Nitrification(
         knit_tc: Nitrification rate of NH4 to NO3 (1/d)
         NH4: Ammonia/ammonium concentration
     """
-    if use_NH4:
-        return (1.0 - np.exp(-KNR * DOX)) * ron * knit_tc * NH4
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_NH4 == True, (1.0 - np.exp(-KNR * DOX)) * ron * knit_tc * NH4, 0)
+
+    return da
 
 
-@numba.njit
 def DOX_DOC_Oxidation(
     DOC_Oxidation: xr.DataArray,
     roc: xr.DataArray,
-    use_DOC:xr.DataArray
+    use_DOC: xr.DataArray
 ) -> xr.DataArray:
     """Computes dissolved oxygen flux due to oxidation of dissolved organic carbon
 
@@ -335,10 +258,9 @@ def DOX_DOC_Oxidation(
         DOC_Oxidation: Dissolved organic carbon oxidation, calculated in carbon module (mg/L/d)
         roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
     """
-    if use_DOC:
-        return roc * DOC_Oxidation
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_DOC == True, roc * DOC_Oxidation, 0)
+
+    return da
 
 
 @numba.njit
@@ -355,7 +277,6 @@ def DOX_CBOD_Oxidation(
     return DIC_CBOD_Oxidation * roc
 
 
-@numba.njit
 def DOX_AbGrowth(
     AbUptakeFr_NH4: xr.DataArray,
     roc: xr.DataArray,
@@ -363,7 +284,7 @@ def DOX_AbGrowth(
     AbGrowth: xr.DataArray,
     Fb: xr.DataArray,
     depth: xr.DataArray,
-    use_BAlgae:xr.DataArray
+    use_BAlgae: xr.DataArray
 ) -> xr.DataArray:
     """Compute dissolved oxygen flux due to benthic algae growth
 
@@ -376,20 +297,18 @@ def DOX_AbGrowth(
         depth: Water depth (m)
         use_BAlgae: Option to consider benthic algae in the DOX budget
     """
-    if use_BAlgae:
-        return (138 / 106 - 32 / 106 * AbUptakeFr_NH4) * roc * rcb * AbGrowth * Fb / depth
-    else:
-        return 0
+    da: xr.DataArray = xr.where(use_BAlgae == True, (138 / 106 - 32 / 106 * AbUptakeFr_NH4) * roc * rcb * AbGrowth * Fb / depth, 0)
+
+    return da
 
 
-@numba.njit
 def DOX_AbRespiration(
     roc: xr.DataArray,
     rcb: xr.DataArray,
     AbRespiration: xr.DataArray,
     Fb: xr.DataArray,
     depth: xr.DataArray,
-    use_BAlgae:xr.DataArray
+    use_BAlgae: xr.DataArray
 ) -> xr.DataArray:
     """Compute dissolved oxygen flux due to benthic algae respiration
 
@@ -401,20 +320,19 @@ def DOX_AbRespiration(
         depth: Water depth (m)
         use_BAlgae: Option to consider benthic algae in the DOX budget
     """
-    if use_BAlgae:
-        return roc * rcb * AbRespiration * Fb / depth
-    else:
-        return 0
+
+    da: xr.DataArray = xr.where(use_BAlgae == True, roc * rcb * AbRespiration * Fb / depth, 0)
+
+    return da
 
 
-@numba.njit
 def SOD_tc(
     SOD_20: xr.DataArray,
     t_water_C: xr.DataArray,
     theta: xr.DataArray,
     DOX: xr.DataArray,
     KsSOD: xr.DataArray,
-    use_DOX:xr.DataArray
+    use_DOX: xr.DataArray
 ) -> xr.DataArray:
     """Compute the sediment oxygen demand corrected by temperature and dissolved oxygen concentration
 
@@ -425,18 +343,17 @@ def SOD_tc(
         use_DOX: Option to consider DOX concentration in water in calculation of sediment oxygen demand
     """
     SOD_tc = arrhenius_correction(t_water_C, SOD_20, theta)
-    if use_DOX:
-        return SOD_tc * DOX / (DOX + KsSOD)
-    else:
-        return SOD_tc
+
+    da: xr.DataArray = xr.where(use_DOX == True, SOD_tc * DOX / (DOX + KsSOD), SOD_tc)
+
+    return da
 
 
-@numba.njit
 def DOX_SOD(
     SOD_Bed: xr.DataArray,
     depth: xr.DataArray,
     SOD_tc: xr.DataArray,
-    use_SedFlux:xr.DataArray
+    use_SedFlux: xr.DataArray
 ) -> xr.DataArray:
     """Compute dissolved oxygen flux due to sediment oxygen demand
 
@@ -446,11 +363,10 @@ def DOX_SOD(
         SOD_tc: Sediment oxygen demand not considering the SedFlux budget (mg-O2/m2)
         use_SedFlux: Option to consider sediment flux in DOX budget (boolean)
     """
-    if use_SedFlux:
-        return SOD_Bed / depth
-    else:
-        return SOD_tc / depth
 
+    da: xr.DataArray = xr.where(use_SedFlux == 1, SOD_Bed / depth, SOD_tc / depth)
+
+    return da
 
 @numba.njit
 def dDOXdt(
