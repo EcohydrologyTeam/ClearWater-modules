@@ -382,8 +382,7 @@ def DIC_benthic_algae_photosynthesis(
 
     return da
 
-#TODO Fix CBOD type architecture... 
-@numba.njit
+
 def DIC_CBOD_oxidation(
     DOX: xr.DataArray,
     CBOD: xr.DataArray,
@@ -406,7 +405,6 @@ def DIC_CBOD_oxidation(
     da: xr.DataArray = xr.where(use_DOX == True, (1 / roc) * (DOX / (KsOxbod + DOX)) * kbod_T * CBOD, CBOD * kbod_T)
 
     return da
-
 
 
 

@@ -42,7 +42,7 @@ def ksbod_T(
     return ksbod_T
 
 
-@numba.njit
+
 def CBOD_oxidation(
     DOX: xr.DataArray,
     CBOD: xr.DataArray,
