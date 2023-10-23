@@ -1,4 +1,3 @@
-import numpy as np
 import numba
 import math
 from clearwater_modules.shared.processes import (

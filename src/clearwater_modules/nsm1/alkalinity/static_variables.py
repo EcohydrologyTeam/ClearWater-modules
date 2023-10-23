@@ -9,34 +9,34 @@ class Variable(base.Variable):
 
 Variable(
     name='KsOxdn',
-    long_name='',
-    units='',
-    description='',
-    use='static'
+    long_name='Half-saturation oxygen inhibition constant for denitrification',
+    units='mg-O2/L',
+    description='Half-saturation oxygen inhibition constant for denitrification',
+    use='static',
 )
 
 Variable(
     name='kdnit_20',
-    long_name='',
-    units='',
-    description='',
-    use='static'
+    long_name='Denitrification rate at 20C',
+    units='1/d',
+    description='Denitrification rate at 20C',
+    use='static',
 )
 
 Variable(
     name='knit_20',
-    long_name='',
-    units='',
-    description='',
-    use='static'
+    long_name='Nitrification Rate Ammonia decay at 20C',
+    units='1/d',
+    description='Nitrification Rate Ammonia NH4 -> NO3 decay at 20C',
+    use='static',
 )
 
 Variable(
     name='KNR',
-    long_name='',
-    units='',
-    description='',
-    use='static'
+    long_name='Oxygen inhabitation factor for nitrification',
+    units='mg-O2/L',
+    description='Oxygen inhabitation factor for nitrification',
+    use='static',
 )
 
 Variable(
