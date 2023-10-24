@@ -1,0 +1,10 @@
+import xarray as xr 
+import numpy as np
+
+x=1
+y=1
+z=2
+e=xr.where(x==y or y==z, "true","false")
+print(e)
+
+
