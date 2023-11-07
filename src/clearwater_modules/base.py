@@ -30,6 +30,7 @@ class Model(CanRegisterVariable):
         self,
         initial_state_values: Optional[InitialVariablesDict] = None,
         static_variable_values: Optional[InitialVariablesDict] = None,
+        updateable_static_variables: Optional[list[str]] = None,
         track_dynamic_variables: bool = True,
         hotstart_dataset: Optional[xr.Dataset] = None,
         time_dim: Optional[str] = None,
@@ -42,6 +43,9 @@ class Model(CanRegisterVariable):
             static_variable_values: A dict with variable names as keys, and static
                 values as values. All Model.static_variables must be present.
                 NOTE: This may be triggered in a subclass __init__ method.
+            updateable_static_variables: A list of static variable names that should
+                be converted to state variables. This allows them to be updated
+                between timesteps. Note that these still don't have process functions.
             track_dynamic_variables: If True, dynamic variables will be tracked
                 in the model dataset. If False, they will not be tracked.
             hotstart_dataset: An optional dataset to use as a hotstart. 
@@ -59,12 +63,17 @@ class Model(CanRegisterVariable):
         if not time_dim:
             time_dim = 'time_step'
         self.time_dim = time_dim
+        
+        if not isinstance(updateable_static_variables, list):
+            updateable_static_variables = []
+        self.updateable_static_variables = updateable_static_variables
 
         if isinstance(self.initial_state_values, dict) and isinstance(self.static_variable_values, dict):
             print('Initializing from dicts...')
             self.dataset: xr.Dataset = self._init_dataset_from_dicts(
                 initial_state_values=self.initial_state_values,
                 static_variable_values=self.static_variable_values,
+                updateable_static_variables=self.updateable_static_variables,
             )
 
         elif isinstance(hotstart_dataset, xr.Dataset):
@@ -84,6 +93,7 @@ class Model(CanRegisterVariable):
         self,
         initial_state_values: InitialVariablesDict,
         static_variable_values: InitialVariablesDict,
+        updateable_static_variables: list[str],
     ) -> None:
         """Initialize Model.dataset from dicts."""
         if not isinstance(initial_state_values, dict):
@@ -99,6 +109,15 @@ class Model(CanRegisterVariable):
                 raise ValueError(
                     f'No initial value found for state variable: {state_var.name}.'
                 )
+        
+        # reassign updateable_static_variables to state variables
+        for static in updateable_static_variables:
+            if static not in static_variable_values.keys():
+                warnings.warn(
+                    f'Variable name = {static} is not a static variable, skipping.'
+                )
+                continue
+            initial_state_values[static] = static_variable_values.pop(static)
 
         # initialize the main model dataset
         dataset: xr.Dataset = self._init_state_arrays(initial_state_values)
@@ -127,7 +146,7 @@ class Model(CanRegisterVariable):
         data_arrays: dict[str, xr.DataArray] = {}
 
         for k, v in initial_state_values.items():
-            if k not in self.state_variables_names:
+            if k not in self.state_variables_names and k not in self.updateable_static_variables:
                 warnings.warn(
                     f'Variable {k} is not a state variable, skipping.',
                 )
@@ -306,6 +325,10 @@ class Model(CanRegisterVariable):
 
         # update the state variables as necessary (i.e. interacting w/ other models)
         for var_name, value in update_state_values.items():
+            if var_name not in (self.state_variables_names + self.updateable_static_variables):
+                raise ValueError(
+                    f'Variable {var_name} cannot be updated between timesteps, skipping.',
+                )
             utils.validate_arrays(value, timestep_ds[var_name])
             timestep_ds[var_name] = value
 
