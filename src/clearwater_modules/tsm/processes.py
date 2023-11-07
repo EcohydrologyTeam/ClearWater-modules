@@ -1,6 +1,7 @@
 """JIT compiled processes for the heat model."""
 import warnings
 import numba
+import numpy as np
 import xarray as xr
 from clearwater_modules.shared.processes import (
     celsius_to_kelvin,
@@ -201,6 +202,7 @@ def dTdt_sediment_c(
         (water_temp_c - sed_temp_c)
     )
 
+
 @numba.njit
 def mf_d_esat_dT(
     water_temp_k: xr.DataArray,
@@ -329,7 +331,7 @@ def ri_number(
     )
 
 
-def ri_function(ri_number: xr.DataArray) -> xr.DataArray:
+def ri_function(ri_number: xr.DataArray) -> np.ndarray:
     """Calculates the Richardson Function from the Richardson Number.
     Richardson Number:
         Unstable: 0.01 >= ri_function
@@ -338,14 +340,35 @@ def ri_function(ri_number: xr.DataArray) -> xr.DataArray:
     """
     warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-    da: xr.DataArray = xr.where(ri_number > 2.0, 2.0, 
-        xr.where(ri_number < -1.0, -1.0,
-        xr.where((ri_number < 0.0) & (ri_number >= -0.01), 1.0,
-        xr.where(ri_number < -0.01, (1.0 - 22.0 * ri_number)**0.80, 
-        xr.where((ri_number >= 0.0) & (ri_number <= 0.01), 1.0, (1.0 + 34.0 * ri_number)**(-0.80)
-    )))))
+    # note: conditions are evaluated in orderreturn
+    out: np.ndarray = np.select(
+        condlist=[
+            ri_number > 2.0,
+            ri_number < -1.0,
+            (ri_number < 0.0) & (ri_number >= -0.01),
+            ri_number < -0.01,
+            (ri_number >= 0.0) & (ri_number <= 0.01),
+
+        ],
+        choicelist=[
+            (1.0 + (34.0 * 2.0)) ** (-0.80),
+            (1.0 - (22.0 * (-1.0))) ** (-0.80),
+            1.0,
+            (1.0 - 22.0 * ri_number) ** 0.80,
+            1.0,
+        ],
+        default=(1.0 + 34.0 * ri_number) ** (-0.80),
+    )
     warnings.filterwarnings("default", category=RuntimeWarning)
-    return da
+    return out
+
+    # old method with where, same logic
+    #da: xr.DataArray = xr.where(ri_number > 2.0, (1.0 + 34.0*2.0)**(-0.80),
+    #                   xr.where(ri_number < -1.0,  (1.0 - 22.0*-1.0)**(-0.80),
+    #                   xr.where((ri_number < 0.0) & (ri_number >= -0.01), 1.0,
+    #                   xr.where(ri_number < -0.01, (1.0 - 22.0 * ri_number)**0.80,
+    #                   xr.where((ri_number >= 0.0) & (ri_number <= 0.01), 1.0, (1.0 + 34.0 * ri_number)**(-0.80)
+    #)))))
 
 
 @numba.njit
@@ -407,21 +430,21 @@ def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     This is used in computing the source/sink term.
     """
     return (
-        (4.65e-6 * water_temp_c - 0.001) * 
-        (water_temp_c + 0.085858) * 
+        (4.65e-6 * water_temp_c - 0.001) *
+        (water_temp_c + 0.085858) *
         (water_temp_c - 3.1331) *
-        water_temp_c + 
+        water_temp_c +
         4219.793
     )
-    
-    # previous code 
+
+    # previous code
     return xr.where(water_temp_c <= 0.0, 4218.0,
-        xr.where(water_temp_c <= 5.0, 4202.0,
-        xr.where(water_temp_c <= 10.0, 4192.0,
-        xr.where(water_temp_c <= 15.0, 4186.0,
-        xr.where(water_temp_c <= 20.0, 4182.0,
-        xr.where(water_temp_c <= 25.0, 4180.0, 4178.0
-    ))))))
+                    xr.where(water_temp_c <= 5.0, 4202.0,
+                             xr.where(water_temp_c <= 10.0, 4192.0,
+                                      xr.where(water_temp_c <= 15.0, 4186.0,
+                                               xr.where(water_temp_c <= 20.0, 4182.0,
+                                                        xr.where(water_temp_c <= 25.0, 4180.0, 4178.0
+                                                                 ))))))
 
 
 @numba.njit
