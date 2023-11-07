@@ -438,13 +438,13 @@ def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     )
 
     # previous code
-    return xr.where(water_temp_c <= 0.0, 4218.0,
-                    xr.where(water_temp_c <= 5.0, 4202.0,
-                             xr.where(water_temp_c <= 10.0, 4192.0,
-                                      xr.where(water_temp_c <= 15.0, 4186.0,
-                                               xr.where(water_temp_c <= 20.0, 4182.0,
-                                                        xr.where(water_temp_c <= 25.0, 4180.0, 4178.0
-                                                                 ))))))
+    #return xr.where(water_temp_c <= 0.0, 4218.0,
+    #    xr.where(water_temp_c <= 5.0, 4202.0,
+    #       xr.where(water_temp_c <= 10.0, 4192.0,
+    #  xr.where(water_temp_c <= 15.0, 4186.0,
+    # xr.where(water_temp_c <= 20.0, 4182.0,
+    # xr.where(water_temp_c <= 25.0, 4180.0, 4178.0
+    #      ))))))
 
 
 @numba.njit
