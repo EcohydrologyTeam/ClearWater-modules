@@ -337,6 +337,7 @@ def ri_function(ri_number: xr.DataArray) -> xr.DataArray:
         Neutral: -0.01 <  ri_function < 0.01
     """
     warnings.filterwarnings("ignore", category=RuntimeWarning)
+
     da: xr.DataArray = xr.where(ri_number > 2.0, 2.0, 
         xr.where(ri_number < -1.0, -1.0,
         xr.where((ri_number < 0.0) & (ri_number >= -0.01), 1.0,
@@ -405,6 +406,15 @@ def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     Compute the specific heat of water (J/kg/K) as a function of water temperature (Celsius).
     This is used in computing the source/sink term.
     """
+    return (
+        (4.65e-6 * water_temp_c - 0.001) * 
+        (water_temp_c + 0.085858) * 
+        (water_temp_c - 3.1331) *
+        water_temp_c + 
+        4219.793
+    )
+    
+    # previous code 
     return xr.where(water_temp_c <= 0.0, 4218.0,
         xr.where(water_temp_c <= 5.0, 4202.0,
         xr.where(water_temp_c <= 10.0, 4192.0,
