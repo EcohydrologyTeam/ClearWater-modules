@@ -1,33 +1,34 @@
 """Process functions used by one or more modules"""
 import numba
+import xarray as xr
 
 
 @numba.njit
-def celsius_to_kelvin(tempc: float) -> float:
+def celsius_to_kelvin(tempc: xr.DataArray) -> xr.DataArray:
     return tempc + 273.16
 
 
 @numba.njit
-def kelvin_to_celsius(tempk: float) -> float:
+def kelvin_to_celsius(tempk: xr.DataArray) -> xr.DataArray:
     return tempk - 273.16
 
 @numba.njit
 def arrhenius_correction(
-    water_temp_c: float,
-    rc20: float,
-    theta: float,
-) -> float:
+    water_temp_c: xr.DataArray,
+    rc20: xr.DataArray,
+    theta: xr.DataArray,
+) -> xr.DataArray:
     """
     Computes an adjusted kinetics reaction rate coefficient for the specified water 
     temperature using the van't Hoff form of the Arrhenius equation
 
     Parameters
     ----------
-    water_temp_c : float
+    water_temp_c : xr.DataArray
         Water temperature in degrees Celsius
-    rc20 : float
+    rc20 : xr.DataArray
         Kinetics reaction (decay) coefficient at 20 degrees Celsius
-    theta : float
+    theta : xr.DataArray
         Temperature correction factor
 
     Returns
@@ -39,9 +40,9 @@ def arrhenius_correction(
 
 @numba.njit
 def compute_depth(
-    surface_area: float,
-    volume: float
-) -> float:
+    surface_area: xr.DataArray,
+    volume: xr.DataArray
+) -> xr.DataArray:
     """Compute depth of a computation cell
 
     Args:
