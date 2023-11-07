@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+import numpy as np
+import xarray as xr
 from typing import (
     TypedDict,
     Callable,
@@ -6,7 +8,7 @@ from typing import (
     Literal,
 )
 
-Process = Callable[..., float]
+Process = Callable[..., xr.DataArray | np.ndarray]
 InitialVariablesDict = dict[str, float | int | bool]
 VariableTypes = Literal['static', 'dynamic', 'state']
 
