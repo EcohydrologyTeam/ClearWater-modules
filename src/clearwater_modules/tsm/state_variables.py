@@ -1,3 +1,4 @@
+import xarray as xr
 from clearwater_modules import base
 from clearwater_modules.tsm.model import EnergyBudget
 from clearwater_modules.tsm import processes
@@ -21,8 +22,11 @@ Variable(
 # TODO: remove mock_equation
 
 
-def mock_equation(water_temp_c: float) -> float:
-    return water_temp_c ** 2
+def mock_surface_area(surface_area: xr.DataArray) -> xr.DataArray:
+    return surface_area
+
+def mock_volume(volume: xr.DataArray) -> xr.DataArray:
+    return volume
 
 
 Variable(
@@ -31,7 +35,7 @@ Variable(
     units='m^2',
     description='Surface area',
     use='state',
-    process=mock_equation,
+    process=mock_surface_area,
 )
 Variable(
     name='volume',
@@ -39,5 +43,5 @@ Variable(
     units='m^3',
     description='Volume',
     use='state',
-    process=mock_equation,
+    process=mock_volume,
 )
