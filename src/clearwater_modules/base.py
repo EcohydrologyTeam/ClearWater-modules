@@ -30,6 +30,7 @@ class Model(CanRegisterVariable):
         self,
         initial_state_values: Optional[InitialVariablesDict] = None,
         static_variable_values: Optional[InitialVariablesDict] = None,
+        updateable_static_variables: Optional[list[str]] = None,
         track_dynamic_variables: bool = True,
         hotstart_dataset: Optional[xr.Dataset] = None,
         time_dim: Optional[str] = None,
@@ -42,6 +43,9 @@ class Model(CanRegisterVariable):
             static_variable_values: A dict with variable names as keys, and static
                 values as values. All Model.static_variables must be present.
                 NOTE: This may be triggered in a subclass __init__ method.
+            updateable_static_variables: A list of static variable names that should
+                be converted to state variables. This allows them to be updated
+                between timesteps. Note that these still don't have process functions.
             track_dynamic_variables: If True, dynamic variables will be tracked
                 in the model dataset. If False, they will not be tracked.
             hotstart_dataset: An optional dataset to use as a hotstart. 
@@ -59,18 +63,25 @@ class Model(CanRegisterVariable):
         if not time_dim:
             time_dim = 'time_step'
         self.time_dim = time_dim
+        
+        if not isinstance(updateable_static_variables, list):
+            updateable_static_variables = []
+        self.updateable_static_variables = updateable_static_variables
+        self.__non_updateable_static_variables: list[str] | None = None
 
         if isinstance(self.initial_state_values, dict) and isinstance(self.static_variable_values, dict):
             print('Initializing from dicts...')
             self.dataset: xr.Dataset = self._init_dataset_from_dicts(
                 initial_state_values=self.initial_state_values,
                 static_variable_values=self.static_variable_values,
+                updateable_static_variables=self.updateable_static_variables,
             )
 
         elif isinstance(hotstart_dataset, xr.Dataset):
             print('Initializing from hotstart dataset...')
             self.dataset: xr.Dataset = self._init_from_dataset(
-                hotstart_dataset)
+                hotstart_dataset,
+            )
             self.hotstart_dataset = None
 
         else:
@@ -84,21 +95,34 @@ class Model(CanRegisterVariable):
         self,
         initial_state_values: InitialVariablesDict,
         static_variable_values: InitialVariablesDict,
-    ) -> None:
+        updateable_static_variables: list[str],
+    ) -> xr.Dataset:
         """Initialize Model.dataset from dicts."""
         if not isinstance(initial_state_values, dict):
             raise TypeError(
-                f'Expected initial state value dict, got {type(self.initial_state_values)} instead.'
+                f'Expected initial state value dict, got {type(initial_state_values)} instead.'
             )
         if not isinstance(static_variable_values, dict):
             raise TypeError(
-                f'Expected static variable value dict, got {type(self.static_variable_values)} instead.'
+                f'Expected static variable value dict, got {type(static_variable_values)} instead.'
             )
+        static_variable_values = static_variable_values.copy()
+
         for state_var in self.state_variables:
             if state_var.name not in initial_state_values.keys():
                 raise ValueError(
                     f'No initial value found for state variable: {state_var.name}.'
                 )
+        
+        # reassign updateable_static_variables to state variables
+        for static in updateable_static_variables:
+            if static not in static_variable_values.keys():
+                warnings.warn(
+                    f'Variable name = {static} is not a static variable, skipping.'
+                )
+                continue
+            else:
+                initial_state_values[static] = static_variable_values.pop(static)
 
         # initialize the main model dataset
         dataset: xr.Dataset = self._init_state_arrays(initial_state_values)
@@ -127,7 +151,7 @@ class Model(CanRegisterVariable):
         data_arrays: dict[str, xr.DataArray] = {}
 
         for k, v in initial_state_values.items():
-            if k not in self.state_variables_names:
+            if k not in (self.state_variables_names + self.updateable_static_variables):
                 warnings.warn(
                     f'Variable {k} is not a state variable, skipping.',
                 )
@@ -180,6 +204,8 @@ class Model(CanRegisterVariable):
             The dataset with the static variables added.
         """
         for var in self.static_variables:
+            if var.name in self.updateable_static_variables:
+                continue
             if var.name not in static_variable_values.keys():
                 raise ValueError(
                     f'No initial value found for static variable: {var.name}.'
@@ -292,6 +318,16 @@ class Model(CanRegisterVariable):
             return self.dynamic_variables_names + self.state_variables_names
         else:
             return self.state_variables_names
+ 
+    @property
+    def _non_updateable_static_variables(self) -> list[str]:
+        """Return a list of static variable names that are non-updateable (2-D)."""
+        if self.__non_updateable_static_variables is None:
+            self.__non_updateable_static_variables = [
+                var.name for var in self.static_variables if var.name not in self.updateable_static_variables
+            ]
+        return self.__non_updateable_static_variables
+
 
     def increment_timestep(
         self,
@@ -300,12 +336,19 @@ class Model(CanRegisterVariable):
         """Run the process."""
         if update_state_values is None:
             update_state_values = {}
+        
+        # get the last timestep as a xr.DataArray
         last_timestep: int = self.dataset[self.time_dim].values[-1]
         timestep_ds: xr.Dataset = self.dataset.isel(
-            {self.time_dim: -1}).copy(deep=True)
+            {self.time_dim: -1},
+        ).copy(deep=True)
 
         # update the state variables as necessary (i.e. interacting w/ other models)
         for var_name, value in update_state_values.items():
+            if var_name not in (self.state_variables_names + self.updateable_static_variables):
+                raise ValueError(
+                    f'Variable {var_name} cannot be updated between timesteps, skipping.',
+                )
             utils.validate_arrays(value, timestep_ds[var_name])
             timestep_ds[var_name] = value
 
@@ -316,8 +359,8 @@ class Model(CanRegisterVariable):
         )
         if not self.track_dynamic_variables:
             timestep_ds = timestep_ds.drop_vars(self.dynamic_variables_names)
-
-        timestep_ds = timestep_ds.drop_vars(self.static_variables_names)
+        
+        timestep_ds = timestep_ds.drop_vars(self._non_updateable_static_variables)
         timestep_ds = timestep_ds.expand_dims(
             {self.time_dim: [last_timestep + 1]},
         )
