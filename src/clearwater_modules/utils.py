@@ -28,14 +28,14 @@ def validate_arrays(array: xr.DataArray, *args: xr.DataArray) -> None:
 
 @numba.jit(forceobj=True)
 def iter_computations(
-    input_array: xr.DataArray,
+    input_dataset: xr.Dataset,
     compute_order: list[Variable],
-) -> xr.DataArray:
+) -> xr.Dataset:
     """Iterate over the computation order."""
     for var in compute_order:
         input_vars: list[str] = sorter.get_process_args(var.process)
-        input_array[var.name] = xr.apply_ufunc(
+        input_dataset[var.name] = xr.apply_ufunc(
             var.process,
-            *[input_array[name] for name in input_vars],
+            *[input_dataset[name] for name in input_vars],
         )
-    return input_array
+    return input_dataset
