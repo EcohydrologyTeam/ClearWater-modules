@@ -341,23 +341,30 @@ def ri_function(ri_number: xr.DataArray) -> np.ndarray:
     warnings.filterwarnings("ignore", category=RuntimeWarning)
 
     # note: conditions are evaluated in orderreturn
-    out: np.ndarray = np.select(
+    bounds: np.ndarray = np.select(
         condlist=[
             ri_number > 2.0,
             ri_number < -1.0,
-            (ri_number < 0.0) & (ri_number >= -0.01),
-            ri_number < -0.01,
-            (ri_number >= 0.0) & (ri_number <= 0.01),
-
         ],
         choicelist=[
-            (1.0 + (34.0 * 2.0)) ** (-0.80),
-            (1.0 - (22.0 * (-1.0))) ** (-0.80),
-            1.0,
-            (1.0 - 22.0 * ri_number) ** 0.80,
-            1.0,
+            2.0,
+            -1.0,
         ],
-        default=(1.0 + 34.0 * ri_number) ** (-0.80),
+        default=ri_number,
+    )
+    out: np.ndarray = np.select(
+        condlist=[
+            (bounds < 0.0) & (bounds >= -0.01),
+            (bounds < 0.0) & (bounds < -0.01),
+            (bounds >= 0.0) & (bounds <= 0.01),
+            (bounds >= 0.0) & (bounds > 0.01),
+        ],
+        choicelist=[
+            1.0,
+            (1.0 - 22.0 * bounds) ** 0.80,
+            1.0,
+            (1.0 + 34.0 * bounds) ** (-0.80),
+        ],
     )
     warnings.filterwarnings("default", category=RuntimeWarning)
     return out
