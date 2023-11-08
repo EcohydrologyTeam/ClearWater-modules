@@ -151,7 +151,7 @@ class Model(CanRegisterVariable):
         data_arrays: dict[str, xr.DataArray] = {}
 
         for k, v in initial_state_values.items():
-            if k not in self.state_variables_names and k not in self.updateable_static_variables:
+            if k not in (self.state_variables_names + self.updateable_static_variables):
                 warnings.warn(
                     f'Variable {k} is not a state variable, skipping.',
                 )
