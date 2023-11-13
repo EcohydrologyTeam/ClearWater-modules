@@ -432,6 +432,7 @@ def mf_density_air_sat(water_temp_k: xr.DataArray, esat_mb: float, pressure_mb: 
     return 0.348 * (pressure_mb / water_temp_k) * (1.0 + mixing_ratio_sat) / (1.0 + 1.61 * mixing_ratio_sat)
 
 
+@numba.njit
 def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     """
     Compute the specific heat of water (J/kg/K) as a function of water temperature (Celsius).
