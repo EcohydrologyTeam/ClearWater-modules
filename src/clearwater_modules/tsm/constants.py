@@ -38,8 +38,8 @@ class Meteorological(TypedDict):
 
 
 DEFAULT_METEOROLOGICAL = Meteorological(
-    air_temp_c=20,
-    q_solar=400,
+    air_temp_c=20.0,
+    q_solar=400.0,
     sed_temp_c=5.0,
     eair_mb=1.0,
     pressure_mb=1013.0,
@@ -53,7 +53,7 @@ DEFAULT_METEOROLOGICAL = Meteorological(
 
 DEFAULT_TEMPERATURE = Temperature(
     stefan_boltzmann=5.67e-8,
-    cp_air=1005,
+    cp_air=1005.0,
     emissivity_water=0.97,
     gravity=-9.806,
     a0=6984.505294,
