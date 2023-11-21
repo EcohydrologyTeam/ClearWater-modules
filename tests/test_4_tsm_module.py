@@ -32,6 +32,7 @@ def energy_budget_instance(initial_tsm_state) -> EnergyBudget:
     return EnergyBudget(
         initial_state_values=initial_tsm_state,
         time_dim='tsm_time_step',
+        updateable_static_variables=['air_temp_c'],
     )
 
 
