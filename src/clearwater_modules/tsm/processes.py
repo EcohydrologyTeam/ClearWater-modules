@@ -355,28 +355,28 @@ def ri_function(ri_number: xr.DataArray) -> np.ndarray:
     )
     out: np.ndarray = np.select(
         condlist=[
-            (ri_number_bounded < 0.0) & (ri_number_bounded >= -0.01), # neutral
+            (ri_number_bounded < 0.0) & (ri_number_bounded >= -0.01),  # neutral
             (ri_number_bounded < 0.0) & (ri_number_bounded < -0.01),  # unstable
-            (ri_number_bounded >= 0.0) & (ri_number_bounded <= 0.01), # neutral
+            (ri_number_bounded >= 0.0) & (ri_number_bounded <= 0.01),  # neutral
             (ri_number_bounded >= 0.0) & (ri_number_bounded > 0.01),  # stable
         ],
         choicelist=[
             1.0,                                         # neutral
             (1.0 - 22.0 * ri_number_bounded) ** 0.80,    # unstable
             1.0,                                         # neutral
-            (1.0 + 34.0 * ri_number_bounded) ** (-0.80), # stable
+            (1.0 + 34.0 * ri_number_bounded) ** (-0.80),  # stable
         ],
     )
     warnings.filterwarnings("default", category=RuntimeWarning)
     return out
 
     # old method with where, same logic
-    #da: xr.DataArray = xr.where(ri_number > 2.0, (1.0 + 34.0*2.0)**(-0.80),
+    # da: xr.DataArray = xr.where(ri_number > 2.0, (1.0 + 34.0*2.0)**(-0.80),
     #                   xr.where(ri_number < -1.0,  (1.0 - 22.0*-1.0)**(-0.80),
     #                   xr.where((ri_number < 0.0) & (ri_number >= -0.01), 1.0,
     #                   xr.where(ri_number < -0.01, (1.0 - 22.0 * ri_number)**0.80,
     #                   xr.where((ri_number >= 0.0) & (ri_number <= 0.01), 1.0, (1.0 + 34.0 * ri_number)**(-0.80)
-    #)))))
+    # )))))
 
 
 @numba.njit
@@ -447,7 +447,7 @@ def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     )
 
     # previous code
-    #return xr.where(water_temp_c <= 0.0, 4218.0,
+    # return xr.where(water_temp_c <= 0.0, 4218.0,
     #    xr.where(water_temp_c <= 5.0, 4202.0,
     #       xr.where(water_temp_c <= 10.0, 4192.0,
     #  xr.where(water_temp_c <= 15.0, 4186.0,
@@ -476,12 +476,12 @@ def q_net(
         q_sediment: Sediment heat flux (W/m^2)
     """
     return (
-        q_sensible -
-        q_latent -
-        q_longwave_up -
-        q_longwave_down +
+        q_sensible +
         q_solar +
-        q_sediment
+        q_sediment +
+        q_longwave_down -
+        q_longwave_up -
+        q_latent
     )
 
 
