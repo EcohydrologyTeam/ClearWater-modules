@@ -19,6 +19,7 @@ class EnergyBudget(base.Model):
     def __init__(
         self,
         initial_state_values: Optional[base.InitialVariablesDict] = None,
+        updateable_static_variables: Optional[list[str]] = None,
         meteo_parameters: Optional[dict[str, float]] = None,
         temp_parameters: Optional[dict[str, float]] = None,
         track_dynamic_variables: bool = True,
@@ -55,6 +56,7 @@ class EnergyBudget(base.Model):
         super().__init__(
             initial_state_values=initial_state_values,
             static_variable_values=static_variable_values,
+            updateable_static_variables=updateable_static_variables,
             track_dynamic_variables=track_dynamic_variables,
             hotstart_dataset=hotstart_dataset,
             time_dim=time_dim,
