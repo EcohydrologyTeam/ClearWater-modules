@@ -99,7 +99,6 @@ def wind_function(
 
 @numba.njit
 def q_latent(
-    ri_function: xr.DataArray,
     pressure_mb: xr.DataArray,
     density_water: xr.DataArray,
     lv: xr.DataArray,
@@ -118,9 +117,10 @@ def q_latent(
         eair_mb: Vapour pressure of air (mb)
     """
     return (
-        ri_function *
         (0.622 / pressure_mb) *
-        lv * density_water * wind_function *
+        lv *
+        density_water *
+        wind_function *
         (esat_mb - eair_mb)
     )
 
