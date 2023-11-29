@@ -81,6 +81,7 @@ def emissivity_air(
 
 @numba.njit
 def wind_function(
+    ri_function: xr.DataArray,
     wind_a: xr.DataArray,
     wind_b: xr.DataArray,
     wind_c: xr.DataArray,
@@ -89,12 +90,19 @@ def wind_function(
     """Calculate wind function (unitless) for latent and sensible heat.
 
     Args:
+        ri_function: Richardson function (unitless)
         wind_a: Wind function coefficient (unitless)
         wind_b: Wind function coefficient (unitless)
         wind_c: Wind function coefficient (unitless)
         wind_speed: Wind speed (m/s)
     """
-    return wind_a / 1000000.0 + wind_b / 1000000.0 * wind_speed**wind_c
+    return (
+        ri_function * (
+            (wind_a / 1000000.0) +
+            (wind_b / 1000000.0) *
+            (wind_speed**wind_c)
+        )
+    )
 
 
 @numba.njit

@@ -47,7 +47,7 @@ DEFAULT_METEOROLOGICAL = Meteorological(
     wind_speed=3.0,
     wind_a=0.3,
     wind_b=1.5,
-    wind_c=1.0,
+    wind_c=3.0,
     wind_kh_kw=1.0,
 )
 
