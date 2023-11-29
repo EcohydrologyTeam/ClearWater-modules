@@ -15,6 +15,7 @@ def main():
     tsm = clearwater_modules.tsm.EnergyBudget(
         initial_state_values=state_i,
     )
+    print(tsm.static_variable_values)
 
     input_dataset = tsm.dataset.isel(time_step=0).copy()
 
