@@ -440,28 +440,27 @@ def mf_density_air_sat(water_temp_k: xr.DataArray, esat_mb: float, pressure_mb: 
     return 0.348 * (pressure_mb / water_temp_k) * (1.0 + mixing_ratio_sat) / (1.0 + 1.61 * mixing_ratio_sat)
 
 
-@numba.njit
 def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     """
     Compute the specific heat of water (J/kg/K) as a function of water temperature (Celsius).
     This is used in computing the source/sink term.
     """
-    return (
-        (4.65e-6 * water_temp_c - 0.001) *
-        (water_temp_c + 0.085858) *
-        (water_temp_c - 3.1331) *
-        water_temp_c +
-        4219.793
-    )
+    # return (
+    #    (4.65e-6 * water_temp_c - 0.001) *
+    #    (water_temp_c + 0.085858) *
+    #    (water_temp_c - 3.1331) *
+    #    water_temp_c +
+    #    4219.793
+    # )
 
-    # previous code
-    # return xr.where(water_temp_c <= 0.0, 4218.0,
-    #    xr.where(water_temp_c <= 5.0, 4202.0,
-    #       xr.where(water_temp_c <= 10.0, 4192.0,
-    #  xr.where(water_temp_c <= 15.0, 4186.0,
-    # xr.where(water_temp_c <= 20.0, 4182.0,
-    # xr.where(water_temp_c <= 25.0, 4180.0, 4178.0
-    #      ))))))
+    return xr.where(
+        water_temp_c <= 0.0, 4218.0,
+            xr.where(water_temp_c <= 5.0, 4202.0,
+                xr.where(water_temp_c <= 10.0, 4192.0,
+                    xr.where(water_temp_c <= 15.0, 4186.0,
+                        xr.where(water_temp_c <= 20.0, 4182.0,
+                                xr.where(water_temp_c <= 25.0, 4180.0, 4178.0
+        ))))))
 
 
 @numba.njit
