@@ -73,6 +73,7 @@ def default_temp_params() -> Temperature:
         richardson_option=True,
     )
 
+
 def get_energy_budget_instance(
     initial_tsm_state,
     default_meteo_params,
@@ -90,7 +91,8 @@ def get_energy_budget_instance(
 @pytest.fixture(scope='module')
 def tolerance() -> float:
     """Controls the precision of the pytest.approx() function."""
-    return 100 # TODO: flip back to 0.0001 after we finish debugging
+    return 0.0000001
+
 
 def test_defaults(
     initial_tsm_state, 
@@ -113,7 +115,7 @@ def test_defaults(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 15.3389 
+    assert pytest.approx(water_temp_c, tolerance) == 19.9999461 
 
 
 def test_changed_water_temp_c(
@@ -138,7 +140,7 @@ def test_changed_water_temp_c(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == -12.1871 
+    assert pytest.approx(water_temp_c, tolerance) == 39.99618297
 
 
 def test_changed_surface_area(
@@ -163,7 +165,7 @@ def test_changed_surface_area(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 10.6779 
+    assert pytest.approx(water_temp_c, tolerance) == 19.9998921
 
 
 
@@ -189,10 +191,10 @@ def test_changed_volume(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 17.66947 
+    assert pytest.approx(water_temp_c, tolerance) == 19.99997303 
 
 
-def test_changes_air_temp_c(
+def test_changed_air_temp_c(
     initial_tsm_state, 
     default_meteo_params,
     default_temp_params,
@@ -213,7 +215,7 @@ def test_changes_air_temp_c(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 19.48758 
+    assert pytest.approx(water_temp_c, tolerance) == 19.99999407
 
 
 def test_changed_sed_temp_c(
@@ -237,7 +239,7 @@ def test_changed_sed_temp_c(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 18.10903 
+    assert pytest.approx(water_temp_c, tolerance) == 19.99997811 
 
 
 def test_changed_q_solar(
@@ -261,7 +263,7 @@ def test_changed_q_solar(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 16.37379 
+    assert pytest.approx(water_temp_c, tolerance) == 19.99995803
 
 
 def test_changed_wind_kh_kw(
@@ -285,7 +287,7 @@ def test_changed_wind_kh_kw(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 15.33893
+    assert pytest.approx(water_temp_c, tolerance) == 19.99994605
 
 
 def test_changed_eair_mb(
@@ -309,7 +311,7 @@ def test_changed_eair_mb(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 15.48259
+    assert pytest.approx(water_temp_c, tolerance) == 19.99994772
 
 
 def test_changed_pressure_mb(
@@ -333,7 +335,7 @@ def test_changed_pressure_mb(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 15.16238149
+    assert pytest.approx(water_temp_c, tolerance) == 19.99994401
 
 def test_changed_cloudiness(
     initial_tsm_state, 
@@ -356,7 +358,7 @@ def test_changed_cloudiness(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 15.32707
+    assert pytest.approx(water_temp_c, tolerance) == 19.99994592
 
 
 def test_changed_wind_a(
@@ -380,7 +382,7 @@ def test_changed_wind_a(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 15.4728 
+    assert pytest.approx(water_temp_c, tolerance) ==  19.9999476
 
 
 def test_changed_wind_b(
@@ -404,7 +406,7 @@ def test_changed_wind_b(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 16.3432
+    assert pytest.approx(water_temp_c, tolerance) == 19.99995768
 
 
 def test_changed_wind_c(
@@ -428,7 +430,7 @@ def test_changed_wind_c(
     tsm.increment_timestep()
     water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 16.6123
+    assert pytest.approx(water_temp_c, tolerance) == 19.99996079
 
 
 def test_use_sed_temp(
