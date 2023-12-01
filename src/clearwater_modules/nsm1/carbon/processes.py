@@ -464,6 +464,6 @@ def DIC_new(
     Args:
         DIC: Concentration of DIC from previous timestep (mg/L)
         dDICdt: Change in concentration of DIC for current timestep (mg/L/d)
-        timestep: current iteration timestep (d)
+        timestep: Current iteration timestep (d)
     """
     return DIC + dDICdt * timestep

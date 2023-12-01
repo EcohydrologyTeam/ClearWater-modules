@@ -1,14 +1,17 @@
 """JIT compiled processes for the heat model."""
+import warnings
+import numba
+import numpy as np
+import xarray as xr
 from clearwater_modules.shared.processes import (
     celsius_to_kelvin,
 )
-import numba
 
 
 @numba.njit
 def air_temp_k(
-    air_temp_c: float,
-) -> float:
+    air_temp_c: xr.DataArray,
+) -> xr.DataArray:
     """Calculate air temperature (K).
 
     Args:
@@ -19,8 +22,8 @@ def air_temp_k(
 
 @numba.njit
 def water_temp_k(
-    water_temp_c: float,
-) -> float:
+    water_temp_c: xr.DataArray,
+) -> xr.DataArray:
     """Calculate water temperature (K).
 
     Args:
@@ -31,9 +34,9 @@ def water_temp_k(
 
 @numba.njit
 def mixing_ratio_air(
-    eair_mb: float,
-    pressure_mb: float,
-) -> float:
+    eair_mb: xr.DataArray,
+    pressure_mb: xr.DataArray,
+) -> xr.DataArray:
     """Calculate air mixing ratio (unitless).
 
     Args:
@@ -45,10 +48,10 @@ def mixing_ratio_air(
 
 @numba.njit
 def density_air(
-    pressure_mb: float,
-    air_temp_k: float,
-    mixing_ratio_air: float,
-) -> float:
+    pressure_mb: xr.DataArray,
+    air_temp_k: xr.DataArray,
+    mixing_ratio_air: xr.DataArray,
+) -> xr.DataArray:
     """Calculate air density (kg/m^3).
 
     Args:
@@ -66,8 +69,8 @@ def density_air(
 
 @numba.njit
 def emissivity_air(
-    air_temp_k: float,
-) -> float:
+    air_temp_k: xr.DataArray,
+) -> xr.DataArray:
     """Calculate air emissivity (unitless).
 
     Args:
@@ -78,11 +81,11 @@ def emissivity_air(
 
 @numba.njit
 def wind_function(
-    wind_a: float,
-    wind_b: float,
-    wind_c: float,
-    wind_speed: float,
-) -> float:
+    wind_a: xr.DataArray,
+    wind_b: xr.DataArray,
+    wind_c: xr.DataArray,
+    wind_speed: xr.DataArray,
+) -> xr.DataArray:
     """Calculate wind function (unitless) for latent and sensible heat.
 
     Args:
@@ -96,14 +99,14 @@ def wind_function(
 
 @numba.njit
 def q_latent(
-    ri_function: float,
-    pressure_mb: float,
-    density_water: float,
-    lv: float,
-    wind_function: float,
-    esat_mb: float,
-    eair_mb: float,
-) -> float:
+    ri_function: xr.DataArray,
+    pressure_mb: xr.DataArray,
+    density_water: xr.DataArray,
+    lv: xr.DataArray,
+    wind_function: xr.DataArray,
+    esat_mb: xr.DataArray,
+    eair_mb: xr.DataArray,
+) -> xr.DataArray:
     """Latent heat flux (W/m^2).
 
     Args:
@@ -124,14 +127,14 @@ def q_latent(
 
 @numba.njit
 def q_sensible(
-    wind_kh_kw: float,
-    ri_function: float,
-    cp_air: float,
-    density_water: float,
-    wind_function: float,
-    air_temp_k: float,
-    water_temp_k: float,
-) -> float:
+    wind_kh_kw: xr.DataArray,
+    ri_function: xr.DataArray,
+    cp_air: xr.DataArray,
+    density_water: xr.DataArray,
+    wind_function: xr.DataArray,
+    air_temp_k: xr.DataArray,
+    water_temp_k: xr.DataArray,
+) -> xr.DataArray:
     # TODO: check if the return units are correct
     """Sensible heat flux (W/m2).
 
@@ -154,13 +157,13 @@ def q_sensible(
 
 @numba.njit
 def q_sediment(
-    pb: float,
-    cps: float,
-    alphas: float,
-    h2: float,
-    sed_temp_c: float,
-    water_temp_c: float,
-) -> float:
+    pb: xr.DataArray,
+    cps: xr.DataArray,
+    alphas: xr.DataArray,
+    h2: xr.DataArray,
+    sed_temp_c: xr.DataArray,
+    water_temp_c: xr.DataArray,
+) -> xr.DataArray:
     """Sediment heat flux (W/m^2).
 
     Args:
@@ -181,11 +184,11 @@ def q_sediment(
 
 @numba.njit
 def dTdt_sediment_c(
-    alphas: float,
-    h2: float,
-    water_temp_c: float,
-    sed_temp_c: float,
-) -> float:
+    alphas: xr.DataArray,
+    h2: xr.DataArray,
+    water_temp_c: xr.DataArray,
+    sed_temp_c: xr.DataArray,
+) -> xr.DataArray:
     """Sediments temperature change (C).
 
     Args:
@@ -199,16 +202,17 @@ def dTdt_sediment_c(
         (water_temp_c - sed_temp_c)
     )
 
+
 @numba.njit
 def mf_d_esat_dT(
-    water_temp_k: float,
-    a1: float,
-    a2: float,
-    a3: float,
-    a4: float,
-    a5: float,
-    a6: float,
-) -> float:
+    water_temp_k: xr.DataArray,
+    a1: xr.DataArray,
+    a2: xr.DataArray,
+    a3: xr.DataArray,
+    a4: xr.DataArray,
+    a5: xr.DataArray,
+    a6: xr.DataArray,
+) -> xr.DataArray:
     """
     Compute the derivative of function computing saturation vapor pressure 
     as a function of water temperature (Kelvin)
@@ -232,11 +236,11 @@ def mf_d_esat_dT(
 
 @numba.njit
 def mf_q_longwave_down(
-    air_temp_k: float,
-    emissivity_air: float,
-    cloudiness: float,
-    stefan_boltzmann: float,
-) -> float:
+    air_temp_k: xr.DataArray,
+    emissivity_air: xr.DataArray,
+    cloudiness: xr.DataArray,
+    stefan_boltzmann: xr.DataArray,
+) -> xr.DataArray:
     """
     Compute downwelling longwave radiation (W/m2)
 
@@ -254,10 +258,10 @@ def mf_q_longwave_down(
 
 @numba.njit
 def mf_q_longwave_up(
-    water_temp_k: float,
-    emissivity_water: float,
-    stefan_boltzmann: float,
-) -> float:
+    water_temp_k: xr.DataArray,
+    emissivity_water: xr.DataArray,
+    stefan_boltzmann: xr.DataArray,
+) -> xr.DataArray:
     """
     Compute upwelling longwave radiation (W/m2) as a function of water temperature (Kelvin)
     """
@@ -269,15 +273,15 @@ def mf_q_longwave_up(
 
 @numba.njit
 def mf_esat_mb(
-    water_temp_k: float,
-    a0: float,
-    a1: float,
-    a2: float,
-    a3: float,
-    a4: float,
-    a5: float,
-    a6: float,
-) -> float:
+    water_temp_k: xr.DataArray,
+    a0: xr.DataArray,
+    a1: xr.DataArray,
+    a2: xr.DataArray,
+    a3: xr.DataArray,
+    a4: xr.DataArray,
+    a5: xr.DataArray,
+    a6: xr.DataArray,
+) -> xr.DataArray:
     """
     Compute the saturation vapor pressure as a function of water temperature (Kelvin)
 
@@ -307,11 +311,11 @@ def mf_esat_mb(
 
 @numba.njit
 def ri_number(
-    gravity: float,
-    density_air: float,
-    density_air_sat: float,
-    wind_speed: float,
-) -> float:
+    gravity: xr.DataArray,
+    density_air: xr.DataArray,
+    density_air_sat: xr.DataArray,
+    wind_speed: xr.DataArray,
+) -> xr.DataArray:
     """Calculates the Richardson Number.
 
     Args:
@@ -327,40 +331,56 @@ def ri_number(
     )
 
 
-@numba.njit
-def ri_function(ri_number: float) -> float:
+def ri_function(ri_number: xr.DataArray) -> np.ndarray:
     """Calculates the Richardson Function from the Richardson Number.
     Richardson Number:
         Unstable: 0.01 >= ri_function
         Stable: 0.01 <= ri_function < 2
         Neutral: -0.01 <  ri_function < 0.01
     """
-    # TODO: figure out how to make this work
-    return ri_number ** 2
-    # Set bounds
-    if ri_number > 2.0:
-        ri_number = 2.0
-    elif ri_number < -1.0:
-        ri_number = -1.0
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-    if ri_number < 0.0:
-        if ri_number >= - 0.01:
-            # neutral
-            return 1.0
-        else:
-            # unstable
-            return (1.0 - 22.0 * ri_number)**0.80
-    else:
-        if ri_number <= 0.01:
-            # neutral
-            return 1.0
-        else:
-            # stable
-            return (1.0 + 34.0 * ri_number)**(-0.80)
+    # NOTE: conditions are evaluated in the order of the original code
+    # TODO: refactor into a single set of conditions, once testing is in place
+    ri_number_bounded: np.ndarray = np.select(
+        condlist=[
+            ri_number > 2.0,
+            ri_number < -1.0,
+        ],
+        choicelist=[
+            2.0,
+            -1.0,
+        ],
+        default=ri_number,
+    )
+    out: np.ndarray = np.select(
+        condlist=[
+            (ri_number_bounded < 0.0) & (ri_number_bounded >= -0.01), # neutral
+            (ri_number_bounded < 0.0) & (ri_number_bounded < -0.01),  # unstable
+            (ri_number_bounded >= 0.0) & (ri_number_bounded <= 0.01), # neutral
+            (ri_number_bounded >= 0.0) & (ri_number_bounded > 0.01),  # stable
+        ],
+        choicelist=[
+            1.0,                                         # neutral
+            (1.0 - 22.0 * ri_number_bounded) ** 0.80,    # unstable
+            1.0,                                         # neutral
+            (1.0 + 34.0 * ri_number_bounded) ** (-0.80), # stable
+        ],
+    )
+    warnings.filterwarnings("default", category=RuntimeWarning)
+    return out
+
+    # old method with where, same logic
+    #da: xr.DataArray = xr.where(ri_number > 2.0, (1.0 + 34.0*2.0)**(-0.80),
+    #                   xr.where(ri_number < -1.0,  (1.0 - 22.0*-1.0)**(-0.80),
+    #                   xr.where((ri_number < 0.0) & (ri_number >= -0.01), 1.0,
+    #                   xr.where(ri_number < -0.01, (1.0 - 22.0 * ri_number)**0.80,
+    #                   xr.where((ri_number >= 0.0) & (ri_number <= 0.01), 1.0, (1.0 + 34.0 * ri_number)**(-0.80)
+    #)))))
 
 
 @numba.njit
-def mf_latent_heat_vaporization(water_temp_k: float) -> float:
+def mf_latent_heat_vaporization(water_temp_k: xr.DataArray) -> xr.DataArray:
     """
     Compute the latent heat of vaporization (W/m2) as a function of water temperature (Kelvin)
     """
@@ -369,7 +389,7 @@ def mf_latent_heat_vaporization(water_temp_k: float) -> float:
 
 
 @numba.njit
-def mf_density_water(water_temp_c: float) -> float:
+def mf_density_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     """
     Compute density of water (kg/m3) as a function of water temperature (Celsius)
     """
@@ -393,7 +413,7 @@ def mf_density_water(water_temp_c: float) -> float:
 
 
 @numba.njit
-def mf_density_air_sat(water_temp_k: float, esat_mb: float, pressure_mb: float) -> float:
+def mf_density_air_sat(water_temp_k: xr.DataArray, esat_mb: float, pressure_mb: float) -> xr.DataArray:
     """
     Compute the density of saturated air at water surface temperature.
 
@@ -413,38 +433,38 @@ def mf_density_air_sat(water_temp_k: float, esat_mb: float, pressure_mb: float) 
 
 
 @numba.njit
-def mf_cp_water(water_temp_c: float) -> float:
+def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     """
     Compute the specific heat of water (J/kg/K) as a function of water temperature (Celsius).
     This is used in computing the source/sink term.
     """
-    # TODO: make this work as a ufunc
-    return water_temp_c * 2
-    if water_temp_c <= 0.0:
-        return 4218.0
-    elif water_temp_c <= 5.0:
-        return 4202.0
-    elif water_temp_c <= 10.0:
-        return 4192.0
-    elif water_temp_c <= 15.0:
-        return 4186.0
-    elif water_temp_c <= 20.0:
-        return 4182.0
-    elif water_temp_c <= 25.0:
-        return 4180.0
-    else:
-        return 4178.0
+    return (
+        (4.65e-6 * water_temp_c - 0.001) *
+        (water_temp_c + 0.085858) *
+        (water_temp_c - 3.1331) *
+        water_temp_c +
+        4219.793
+    )
+
+    # previous code
+    #return xr.where(water_temp_c <= 0.0, 4218.0,
+    #    xr.where(water_temp_c <= 5.0, 4202.0,
+    #       xr.where(water_temp_c <= 10.0, 4192.0,
+    #  xr.where(water_temp_c <= 15.0, 4186.0,
+    # xr.where(water_temp_c <= 20.0, 4182.0,
+    # xr.where(water_temp_c <= 25.0, 4180.0, 4178.0
+    #      ))))))
 
 
 @numba.njit
 def q_net(
-    q_sensible: float,
-    q_latent: float,
-    q_longwave_up: float,
-    q_longwave_down: float,
-    q_solar: float,
-    q_sediment: float,
-) -> float:
+    q_sensible: xr.DataArray,
+    q_latent: xr.DataArray,
+    q_longwave_up: xr.DataArray,
+    q_longwave_down: xr.DataArray,
+    q_solar: xr.DataArray,
+    q_sediment: xr.DataArray,
+) -> xr.DataArray:
     """Net heat flux (W/m^2).
 
     Args:
@@ -467,12 +487,12 @@ def q_net(
 
 @numba.njit
 def dTdt_water_c(
-    q_net: float,
-    surface_area: float,
-    volume: float,
-    density_water: float,
-    cp_water: float,
-) -> float:
+    q_net: xr.DataArray,
+    surface_area: xr.DataArray,
+    volume: xr.DataArray,
+    density_water: xr.DataArray,
+    cp_water: xr.DataArray,
+) -> xr.DataArray:
     """Water temperature change (C).
 
     Args:
@@ -491,9 +511,9 @@ def dTdt_water_c(
 
 @numba.njit
 def t_water_c(
-    water_temp_c: float,
-    dTdt_water_c: float,
-) -> float:
+    water_temp_c: xr.DataArray,
+    dTdt_water_c: xr.DataArray,
+) -> xr.DataArray:
     """Water temperature (C).
 
     Args:

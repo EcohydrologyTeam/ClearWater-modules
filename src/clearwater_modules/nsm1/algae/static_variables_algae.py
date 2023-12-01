@@ -107,7 +107,7 @@ Variable(
 Variable(
     name='vsap',
     long_name='Algal Setting Velocity',
-    units='1/d',
+    units='m/d',
     description='Algal Setting Velocity',
     use='static',
 )

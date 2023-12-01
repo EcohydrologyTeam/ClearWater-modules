@@ -31,6 +31,7 @@ def energy_budget_instance(initial_tsm_state) -> EnergyBudget:
     """Return an instance of the TSM class."""
     return EnergyBudget(
         initial_state_values=initial_tsm_state,
+        updateable_static_variables=['a0'],
         time_dim='tsm_time_step',
     )
 
@@ -40,6 +41,7 @@ def test_tsm_specific_attributes(energy_budget_instance) -> None:
     assert energy_budget_instance.time_dim == 'tsm_time_step'
     assert isinstance(energy_budget_instance.met_parameters, dict)
     assert isinstance(energy_budget_instance.temp_parameters, dict)
+    assert energy_budget_instance.updateable_static_variables == ['a0']
     assert energy_budget_instance.met_parameters == DEFAULT_METEOROLOGICAL
     assert energy_budget_instance.temp_parameters == DEFAULT_TEMPERATURE
 

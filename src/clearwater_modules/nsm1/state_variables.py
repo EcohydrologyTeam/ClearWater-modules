@@ -5,8 +5,7 @@ import clearwater_modules_python.nsm1.nitrogen.nitrogen_processes as nitrogen_pr
 import clearwater_modules_python.nsm1.carbon.carbon_processes as carbon_processes
 import clearwater_modules_python.nsm1.CBOD.CBOD_processes as CBOD_processes
 import clearwater_modules_python.nsm1.DOX.DOX_processes as DOX_processes
-import clearwater_modules_python.nsm1.n2.n2_processes as n2_processes
-import clearwater_modules_python.nsm1.n2.pathogen_processes as pathogen_processes
+import clearwater_modules.nsm1.alkalinity.processes as alkalinity_processes
 import clearwater_modules_python.shared.processes as shared_processes
 import clearwater_modules_python.tsm as tsm
 
@@ -171,7 +170,7 @@ Variable(
     units='mg-CaCO3/L',
     description='Alkalinity concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with alkalinity module
+    process=alkalinity_processes.Alk_new #TODO this variable only changes with alkalinity module
 )
 
 #TODO not sure the order of calling with tsm

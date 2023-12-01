@@ -50,6 +50,10 @@ def model(
     initial_static_values: InitialVariablesDict,
     initial_state_values: InitialVariablesDict,
 ) -> Model:
+    """Pytest fixture for our main base.Model class.
+
+    In this config we set the first static variable to be updateable.
+    """
     for var in static_variables + dynamic_variables:
         MockModel.register_variable(var)
     MockModel.register_variable(state_variable)
@@ -60,9 +64,12 @@ def model(
     model_instance = MockModel(
         initial_state_values=initial_state_values,
         static_variable_values=initial_static_values,
+        updateable_static_variables=['a'],
     )
     assert isinstance(model_instance, Model)
+    assert model_instance.updateable_static_variables == ['a']
     return model_instance
+
 
 
 def test_model_static_variables(
@@ -119,11 +126,15 @@ def test_static_array(model: Model) -> None:
     """Test the static array."""
     for var in model.static_variables:
         assert var.name in model.dataset.data_vars
-        assert len(model.dataset[var.name].dims) == 2
-        assert model.dataset[var.name].shape == (10, 10)
         assert 'long_name' in model.dataset[var.name].attrs
         assert 'units' in model.dataset[var.name].attrs
         assert 'description' in model.dataset[var.name].attrs
+        if var.name in model.updateable_static_variables:
+            assert len(model.dataset[var.name].dims) == 3
+            assert model.dataset[var.name].shape == (1, 10, 10)
+        else:
+            assert len(model.dataset[var.name].dims) == 2
+            assert model.dataset[var.name].shape == (10, 10)
 
 
 def test_state_array(model: Model) -> None:
@@ -168,11 +179,17 @@ def test_computation_no_dynamics(model: Model) -> None:
 
 
 def test_static_variable_dims(model: Model) -> None:
-    """Test that static variables remain 2-dimensional."""
+    """
+    Test that static variables remain 2-dimensional after increment_timestep() 
+    unless specified as updateable.
+    """
     ds = model.increment_timestep()
     for var_name in model.static_variables_names:
         assert var_name in ds.data_vars
-        assert len(ds[var_name].dims) == 2
+        if var_name in model.updateable_static_variables:
+            assert len(ds[var_name].dims) == 3
+        else:
+            assert len(ds[var_name].dims) == 2
 
 
 def test_variable_attributes(model: Model) -> None:
@@ -200,11 +217,23 @@ def test_model_hotstart(model: Model) -> None:
 def test_model_update_state(model: Model) -> None:
     """Tests that we can update the state variable between timesteps"""
     ds = model.increment_timestep()
-    mean_i: float = ds.state_variable.isel(time_step=-1).mean().item()
+    mean_state_i: float = ds.state_variable.isel(time_step=-1).mean().item()
+    mean_static_i: float = ds.a.isel(time_step=-1).mean().item()
+
     updated_state = ds['state_variable'].isel(time_step=-1) * 100
+    updated_static = ds['a'].isel(time_step=-1) * 100
+
     ds = model.increment_timestep(
-        update_state_values={'state_variable': updated_state},
+        update_state_values={
+            'state_variable': updated_state,
+            'a': updated_static,
+        },
     )
     assert isinstance(ds, xr.Dataset)
-    mean_f: float = ds.state_variable.isel(time_step=-1).mean().item()
-    assert mean_f > mean_i * 100
+
+    mean_state_f: float = ds.state_variable.isel(time_step=-1).mean().item()
+    assert mean_state_f > mean_state_i * 100
+
+    mean_static_f: float = ds.a.isel(time_step=-1).mean().item()
+    assert mean_static_f >= mean_static_i * 100
+
