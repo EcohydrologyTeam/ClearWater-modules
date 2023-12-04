@@ -404,7 +404,7 @@ def test_changed_wind_b(
 ) -> None:
     """test the model with default parameters."""
     # alter parameters as necessary
-    default_meteo_params['wind_b'] = 1.0e-6
+    default_meteo_params['wind_b'] = 1.0
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
