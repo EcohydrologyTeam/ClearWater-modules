@@ -6,7 +6,7 @@ import numpy as np
 def main():
     # define starting state values
     state_i = {
-        'water_temp_c': 20.0,
+        'water_temp_c': 40.0,
         'surface_area': 1.0,
         'volume': 1.0,
     }
@@ -14,6 +14,7 @@ def main():
     # instantiate the TSM module
     tsm = clearwater_modules.tsm.EnergyBudget(
         initial_state_values=state_i,
+        meteo_parameters={'wind_c': 1.0},
     )
     print(tsm.static_variable_values)
 
