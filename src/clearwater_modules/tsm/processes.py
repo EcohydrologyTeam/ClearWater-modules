@@ -136,7 +136,6 @@ def q_latent(
 @numba.njit
 def q_sensible(
     wind_kh_kw: xr.DataArray,
-    ri_function: xr.DataArray,
     cp_air: xr.DataArray,
     density_water: xr.DataArray,
     wind_function: xr.DataArray,
@@ -157,8 +156,9 @@ def q_sensible(
     """
     return (
         wind_kh_kw *
-        ri_function *
-        cp_air * density_water * wind_function *
+        cp_air * 
+        density_water * 
+        wind_function *
         (air_temp_k - water_temp_k)
     )
 
