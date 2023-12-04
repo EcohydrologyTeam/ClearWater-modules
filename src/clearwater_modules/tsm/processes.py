@@ -156,8 +156,8 @@ def q_sensible(
     """
     return (
         wind_kh_kw *
-        cp_air * 
-        density_water * 
+        cp_air *
+        density_water *
         wind_function *
         (air_temp_k - water_temp_k)
     )
