@@ -81,6 +81,7 @@ def emissivity_air(
 
 @numba.njit
 def wind_function(
+    ri_function: xr.DataArray,
     wind_a: xr.DataArray,
     wind_b: xr.DataArray,
     wind_c: xr.DataArray,
@@ -89,17 +90,23 @@ def wind_function(
     """Calculate wind function (unitless) for latent and sensible heat.
 
     Args:
+        ri_function: Richardson function (unitless)
         wind_a: Wind function coefficient (unitless)
         wind_b: Wind function coefficient (unitless)
         wind_c: Wind function coefficient (unitless)
         wind_speed: Wind speed (m/s)
     """
-    return wind_a / 1000000.0 + wind_b / 1000000.0 * wind_speed**wind_c
+    return (
+        ri_function * (
+            (wind_a / 1000000.0) +
+            (wind_b / 1000000.0) *
+            (wind_speed**wind_c)
+        )
+    )
 
 
 @numba.njit
 def q_latent(
-    ri_function: xr.DataArray,
     pressure_mb: xr.DataArray,
     density_water: xr.DataArray,
     lv: xr.DataArray,
@@ -118,9 +125,10 @@ def q_latent(
         eair_mb: Vapour pressure of air (mb)
     """
     return (
-        ri_function *
         (0.622 / pressure_mb) *
-        lv * density_water * wind_function *
+        lv *
+        density_water *
+        wind_function *
         (esat_mb - eair_mb)
     )
 
@@ -128,7 +136,6 @@ def q_latent(
 @numba.njit
 def q_sensible(
     wind_kh_kw: xr.DataArray,
-    ri_function: xr.DataArray,
     cp_air: xr.DataArray,
     density_water: xr.DataArray,
     wind_function: xr.DataArray,
@@ -149,8 +156,9 @@ def q_sensible(
     """
     return (
         wind_kh_kw *
-        ri_function *
-        cp_air * density_water * wind_function *
+        cp_air *
+        density_water *
+        wind_function *
         (air_temp_k - water_temp_k)
     )
 
@@ -355,28 +363,28 @@ def ri_function(ri_number: xr.DataArray) -> np.ndarray:
     )
     out: np.ndarray = np.select(
         condlist=[
-            (ri_number_bounded < 0.0) & (ri_number_bounded >= -0.01), # neutral
+            (ri_number_bounded < 0.0) & (ri_number_bounded >= -0.01),  # neutral
             (ri_number_bounded < 0.0) & (ri_number_bounded < -0.01),  # unstable
-            (ri_number_bounded >= 0.0) & (ri_number_bounded <= 0.01), # neutral
+            (ri_number_bounded >= 0.0) & (ri_number_bounded <= 0.01),  # neutral
             (ri_number_bounded >= 0.0) & (ri_number_bounded > 0.01),  # stable
         ],
         choicelist=[
             1.0,                                         # neutral
             (1.0 - 22.0 * ri_number_bounded) ** 0.80,    # unstable
             1.0,                                         # neutral
-            (1.0 + 34.0 * ri_number_bounded) ** (-0.80), # stable
+            (1.0 + 34.0 * ri_number_bounded) ** (-0.80),  # stable
         ],
     )
     warnings.filterwarnings("default", category=RuntimeWarning)
     return out
 
     # old method with where, same logic
-    #da: xr.DataArray = xr.where(ri_number > 2.0, (1.0 + 34.0*2.0)**(-0.80),
+    # da: xr.DataArray = xr.where(ri_number > 2.0, (1.0 + 34.0*2.0)**(-0.80),
     #                   xr.where(ri_number < -1.0,  (1.0 - 22.0*-1.0)**(-0.80),
     #                   xr.where((ri_number < 0.0) & (ri_number >= -0.01), 1.0,
     #                   xr.where(ri_number < -0.01, (1.0 - 22.0 * ri_number)**0.80,
     #                   xr.where((ri_number >= 0.0) & (ri_number <= 0.01), 1.0, (1.0 + 34.0 * ri_number)**(-0.80)
-    #)))))
+    # )))))
 
 
 @numba.njit
@@ -432,28 +440,39 @@ def mf_density_air_sat(water_temp_k: xr.DataArray, esat_mb: float, pressure_mb: 
     return 0.348 * (pressure_mb / water_temp_k) * (1.0 + mixing_ratio_sat) / (1.0 + 1.61 * mixing_ratio_sat)
 
 
-@numba.njit
 def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     """
     Compute the specific heat of water (J/kg/K) as a function of water temperature (Celsius).
     This is used in computing the source/sink term.
     """
-    return (
-        (4.65e-6 * water_temp_c - 0.001) *
-        (water_temp_c + 0.085858) *
-        (water_temp_c - 3.1331) *
-        water_temp_c +
-        4219.793
+    # polynomial logic, this produced nearly identical outputs for the range of temperatures tested
+    # See discussion about the two methods: https://github.com/EcohydrologyTeam/ClearWater-modules/pull/44
+    # return (
+    #    (4.65e-6 * water_temp_c - 0.001) *
+    #    (water_temp_c + 0.085858) *
+    #    (water_temp_c - 3.1331) *
+    #    water_temp_c +
+    #    4219.793
+    # )
+    return np.select(
+        condlist=[
+            water_temp_c <= 0.0,
+            water_temp_c <= 5.0,
+            water_temp_c <= 10.0,
+            water_temp_c <= 15.0,
+            water_temp_c <= 20.0,
+            water_temp_c <= 25.0,
+        ],
+        choicelist=[
+            4218.0,
+            4202.0,
+            4192.0,
+            4186.0,
+            4182.0,
+            4180.0,
+        ],
+        default=4178.0,
     )
-
-    # previous code
-    #return xr.where(water_temp_c <= 0.0, 4218.0,
-    #    xr.where(water_temp_c <= 5.0, 4202.0,
-    #       xr.where(water_temp_c <= 10.0, 4192.0,
-    #  xr.where(water_temp_c <= 15.0, 4186.0,
-    # xr.where(water_temp_c <= 20.0, 4182.0,
-    # xr.where(water_temp_c <= 25.0, 4180.0, 4178.0
-    #      ))))))
 
 
 @numba.njit
@@ -476,12 +495,12 @@ def q_net(
         q_sediment: Sediment heat flux (W/m^2)
     """
     return (
-        q_sensible -
-        q_latent -
-        q_longwave_up -
-        q_longwave_down +
+        q_sensible +
         q_solar +
-        q_sediment
+        q_sediment +
+        q_longwave_down -
+        q_longwave_up -
+        q_latent
     )
 
 
