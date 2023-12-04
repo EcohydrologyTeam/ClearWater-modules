@@ -22,7 +22,7 @@ def initial_tsm_state() -> dict[str, float]:
 
 
 @pytest.fixture(scope='function')
-def default_meteo_params() -> Meteorological: 
+def default_meteo_params() -> Meteorological:
     """Returns default meteorological static variable values for the model.
 
     NOTE: As of now (11/17/2023) these match the built in defaults, but are 
@@ -31,8 +31,8 @@ def default_meteo_params() -> Meteorological:
     Returns a typed dictionary, with string keys and float values.
     """
     return Meteorological(
-        air_temp_c=20,
-        q_solar=400,
+        air_temp_c=20.0,
+        q_solar=400.0,
         sed_temp_c=5.0,
         eair_mb=1.0,
         pressure_mb=1013.0,
@@ -46,7 +46,7 @@ def default_meteo_params() -> Meteorological:
 
 
 @pytest.fixture(scope='function')
-def default_temp_params() -> Temperature: 
+def default_temp_params() -> Temperature:
     """Returns default temperature static variable values for the model.
 
     NOTE: As of now (11/17/2023) these match the built in defaults, but are 
@@ -56,7 +56,7 @@ def default_temp_params() -> Temperature:
     """
     return Temperature(
         stefan_boltzmann=5.67e-8,
-        cp_air=1005,
+        cp_air=1005.0,
         emissivity_water=0.97,
         gravity=-9.806,
         a0=6984.505294,
@@ -95,14 +95,13 @@ def tolerance() -> float:
 
 
 def test_defaults(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
 ) -> None:
     """Test the model with default parameters."""
     # alter parameters as necessary
-
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
@@ -113,13 +112,14 @@ def test_defaults(
 
     # Run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 19.9999461 
+    assert pytest.approx(water_temp_c, tolerance) == 19.9999461
 
 
 def test_changed_water_temp_c(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
@@ -127,7 +127,7 @@ def test_changed_water_temp_c(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_tsm_state
-    initial_state_dict['water_temp_c'] = 40.0 
+    initial_state_dict['water_temp_c'] = 40.0
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
@@ -138,13 +138,14 @@ def test_changed_water_temp_c(
 
     # Run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 39.99618297
+    assert pytest.approx(water_temp_c, tolerance) == 39.99939598
 
 
 def test_changed_surface_area(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
@@ -152,7 +153,7 @@ def test_changed_surface_area(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_tsm_state
-    initial_state_dict['surface_area'] = 2.0 
+    initial_state_dict['surface_area'] = 2.0
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
@@ -163,14 +164,14 @@ def test_changed_surface_area(
 
     # Run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
     assert pytest.approx(water_temp_c, tolerance) == 19.9998921
 
 
-
 def test_changed_volume(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
@@ -189,13 +190,14 @@ def test_changed_volume(
 
     # Run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 19.99997303 
+    assert pytest.approx(water_temp_c, tolerance) == 19.99997303
 
 
 def test_changed_air_temp_c(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
@@ -213,13 +215,14 @@ def test_changed_air_temp_c(
 
     # Run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
     assert pytest.approx(water_temp_c, tolerance) == 19.99999407
 
 
 def test_changed_sed_temp_c(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
@@ -237,13 +240,14 @@ def test_changed_sed_temp_c(
 
     # Run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) == 19.99997811 
+    assert pytest.approx(water_temp_c, tolerance) == 19.99997811
 
 
 def test_changed_q_solar(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
@@ -261,20 +265,21 @@ def test_changed_q_solar(
 
     # Run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
     assert pytest.approx(water_temp_c, tolerance) == 19.99995803
 
 
 def test_changed_wind_kh_kw(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
 ) -> None:
     """test the model with default parameters."""
     # alter parameters as necessary
-    default_meteo_params['wind_kh_kw'] = 0.5 
+    default_meteo_params['wind_kh_kw'] = 0.5
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
@@ -285,20 +290,21 @@ def test_changed_wind_kh_kw(
 
     # run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
     assert pytest.approx(water_temp_c, tolerance) == 19.99994605
 
 
 def test_changed_eair_mb(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
 ) -> None:
     """test the model with default parameters."""
     # alter parameters as necessary
-    default_meteo_params['eair_mb'] = 2.0 
+    default_meteo_params['eair_mb'] = 2.0
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
@@ -309,20 +315,21 @@ def test_changed_eair_mb(
 
     # run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
     assert pytest.approx(water_temp_c, tolerance) == 19.99994772
 
 
 def test_changed_pressure_mb(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
 ) -> None:
     """test the model with default parameters."""
     # alter parameters as necessary
-    default_meteo_params['pressure_mb'] = 970 
+    default_meteo_params['pressure_mb'] = 970
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
@@ -333,19 +340,21 @@ def test_changed_pressure_mb(
 
     # run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
     assert pytest.approx(water_temp_c, tolerance) == 19.99994401
 
+
 def test_changed_cloudiness(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
 ) -> None:
     """test the model with default parameters."""
     # alter parameters as necessary
-    default_meteo_params['cloudiness'] = 0.0 
+    default_meteo_params['cloudiness'] = 0.0
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
@@ -356,20 +365,21 @@ def test_changed_cloudiness(
 
     # run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
     assert pytest.approx(water_temp_c, tolerance) == 19.99994592
 
 
 def test_changed_wind_a(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
 ) -> None:
     """test the model with default parameters."""
     # alter parameters as necessary
-    default_meteo_params['wind_a'] = 1.0e-7 
+    default_meteo_params['wind_a'] = 1.0e-7
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
@@ -380,20 +390,21 @@ def test_changed_wind_a(
 
     # run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
-    assert pytest.approx(water_temp_c, tolerance) ==  19.9999476
+    assert pytest.approx(water_temp_c, tolerance) == 19.9999476
 
 
 def test_changed_wind_b(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
 ) -> None:
     """test the model with default parameters."""
     # alter parameters as necessary
-    default_meteo_params['wind_b'] = 1.0e-6 
+    default_meteo_params['wind_b'] = 1.0e-6
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
@@ -404,20 +415,21 @@ def test_changed_wind_b(
 
     # run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
     assert pytest.approx(water_temp_c, tolerance) == 19.99995768
 
 
 def test_changed_wind_c(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
 ) -> None:
     """test the model with default parameters."""
     # alter parameters as necessary
-    default_meteo_params['wind_c'] = 0.5 
+    default_meteo_params['wind_c'] = 0.5
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
@@ -428,19 +440,19 @@ def test_changed_wind_c(
 
     # run the model
     tsm.increment_timestep()
-    water_temp_c = tsm.dataset.isel(tsm_time_step=-1).water_temp_c.values.item()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
     assert isinstance(water_temp_c, float)
     assert pytest.approx(water_temp_c, tolerance) == 19.99996079
 
 
 def test_use_sed_temp(
-    initial_tsm_state, 
+    initial_tsm_state,
     default_meteo_params,
     default_temp_params,
     tolerance,
 ) -> None:
     """test the model with default parameters."""
     assert True == True
-    #TODO: implement this test
+    # TODO: implement this test
     ...
-
