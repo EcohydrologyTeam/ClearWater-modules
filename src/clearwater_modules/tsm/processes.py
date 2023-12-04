@@ -445,6 +445,8 @@ def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     Compute the specific heat of water (J/kg/K) as a function of water temperature (Celsius).
     This is used in computing the source/sink term.
     """
+    # polynomial logic, this produced nearly identical outputs for the range of temperatures tested
+    # See discussion about the two methods: https://github.com/EcohydrologyTeam/ClearWater-modules/pull/44
     # return (
     #    (4.65e-6 * water_temp_c - 0.001) *
     #    (water_temp_c + 0.085858) *
@@ -452,15 +454,25 @@ def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     #    water_temp_c +
     #    4219.793
     # )
-
-    return xr.where(
-        water_temp_c <= 0.0, 4218.0,
-            xr.where(water_temp_c <= 5.0, 4202.0,
-                xr.where(water_temp_c <= 10.0, 4192.0,
-                    xr.where(water_temp_c <= 15.0, 4186.0,
-                        xr.where(water_temp_c <= 20.0, 4182.0,
-                                xr.where(water_temp_c <= 25.0, 4180.0, 4178.0
-        ))))))
+    return np.select(
+        condlist=[
+            water_temp_c <= 0.0,
+            water_temp_c <= 5.0,
+            water_temp_c <= 10.0,
+            water_temp_c <= 15.0,
+            water_temp_c <= 20.0,
+            water_temp_c <= 25.0,
+        ],
+        choicelist=[
+            4218.0,
+            4202.0,
+            4192.0,
+            4186.0,
+            4182.0,
+            4180.0,
+        ],
+        default=4178.0,
+    )
 
 
 @numba.njit
