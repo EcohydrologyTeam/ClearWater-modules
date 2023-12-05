@@ -22,7 +22,6 @@ def DOX_max(
     """
     return xr.where(DOX>0.01, DOX, 0.01)
 
-
 """
     POC2=[0]*3        #concentration of sediment particulate organic carbon
     PON2=[0]*3        #concentration of sediment particulate organic nitrogen
@@ -90,7 +89,7 @@ def vno31_tc(
     vno31: xr.DataArray,
     TsedC: xr.DataArray,
 ) -> xr.DataArray:
-    """Calculate vnh31_tc: denitrification reaction velocity in sediment layer 1 temperature corrected (m/d).
+    """Calculate vno31_tc: denitrification reaction velocity in sediment layer 1 temperature corrected (m/d).
 
     Args:
         vnh41: denitrification reaction velocity in sediment layer 1 (m/d)
@@ -1556,11 +1555,11 @@ kdh2s2: xr.DataArray,
     return 1.0 / (1.0 + Css2 * kdh2s2)
 
 @numba.njit  
-def fdp1(
+def fps1(
 fds1: xr.DataArray,
 
 ) -> xr.DataArray:
-    """Calculate fdp1: particulate fraction for H2S1 and H2S2 in layer 1 (unitless)
+    """Calculate fps1: particulate fraction for H2S1 and H2S2 in layer 1 (unitless)
 
     Args:
       fds1: dissolved fraction for H2S1 and H2S2 in layer 1 (unitless)
@@ -1570,11 +1569,11 @@ fds1: xr.DataArray,
     return 1.0 - fds1
 
 @numba.njit  
-def fdp2(
+def fps2(
 fds2: xr.DataArray,
 
 ) -> xr.DataArray:
-    """Calculate fdp2: particulate fraction for H2S1 and H2S2 in layer 2 (unitless)
+    """Calculate fps2: particulate fraction for H2S1 and H2S2 in layer 2 (unitless)
 
     Args:
       fds2: dissolved fraction for H2S1 and H2S2 in layer 2 (unitless)
@@ -1708,7 +1707,7 @@ FOxna: xr.DataArray,
 fd1: xr.DataArray,
 
 ) -> xr.DataArray:
-    """Calculate con_nit: something nitrogen (m2/d2)
+    """Calculate con_nit: something nitrogen (m2/d2) #TODO define this
 
     Args:
       vnh41_tc: nitrification reaction velocity in sediment layer 1 (m/d)
@@ -1884,6 +1883,7 @@ SO4_fresh: xr.DataArray,
     #TODO find the formula for if true
     return xr.where(Salinity > 0.01, (20.0 + 27.0 / 190.0 * 607.445 * Salinity) * roso4, SO4_fresh)
 
+#TODO do I need prev?
 @numba.njit  
 def TH2S2_prev(
 TH2S2: xr.DataArray,
@@ -1939,97 +1939,498 @@ JCc: xr.DataArray,
     """
     #TODO possibly better way to code
 
-    to_return = xr.where(POCdiagenesis_part_option == 2 and t< 1.0E-10, math.sqrt(Dd_tc * SO4 * h2 / (max(roc * JC, 1.0E-10))), math.sqrt(2.0 * Dd_tc * SO4 * h2 / JCc))
+    to_return = xr.where(POCdiagenesis_part_option == 2 and t< 1.0E-10, math.sqrt(Dd_tc * SO4 * h2 / (max(roc * JC, 1.0E-10))), 
+                         xr.where(POCdiagenesis_part_option==1, math.sqrt(2.0 * Dd_tc * SO4 * h2 / JCc), "NaN"))
     to_return = xr.where(to_return > h2, h2, to_return)
     return to_return
 
-    # Half-saturation method
-    if self.sedFlux_constants['POCdiagenesis_part_option'] == 1 :  
+@numba.njit  
+def con_sox (
+vh2sd_tc: xr.DataArray,
+fds1: xr.DataArray,
+vh2sp_tc: xr.DataArray,
+fps1: xr.DataArray,
+DOX: xr.DataArray,
+KSh2s: xr.DataArray,
 
-            con_sox = (vh2sd_tc * vh2sd_tc * fds1 + vh2sp_tc *
-                       vh2sp_tc * fps1) * DOX / 2.0 / KSh2s
-            if math. isnan(con_sox):
-                con_sox = (vh2sd_tc * vh2sd_tc * fds1 +
-                           vh2sp_tc * vh2sp_tc * fps1)
+) -> xr.DataArray:
+    """Calculate con_sox: #TODO define that this is ()
+    
+    Args:
+      fds1: dissolved fraction for H2S1 and H2S2 in layer 1 (unitless)
+      vh2sd_Tc: dissolve sulfide oxidation reaction velocity in sediment layer 1 (m/d)
+      vh2sp_tc: particulate sulfide oxidation reaction veolcoity in sediment layer 1 (m/d)
+      fps1: particulate fraction for H2S1 and H2S2 in layer 1 (unitless)
+      DOX: dissolved oxgyen concentration (mg-O2/L)
+      KSh2s: sulfide oxidation normalization constant (mg-O2/L)
 
-        # Sulfate reduction depth method
-        elif POCdiagenesis_part_option == 2:
-            # Set initial value for HSO4
-            if (t < 1.0E-10):
-                # sulfate penetration into layer 2 from layer 1
-                HSO4 = math.sqrt(Dd_tc * SO4 * h2 / (max(roc * JC, 1.0E-10)))
-                if (HSO4 > h2):
-                    HSO4 = h2
 
-            # SO41 and SO42
-            TH2S1_prev = TH2S1
-            HSO4_prev = HSO4
-            SO42_prev = SO42
-            a12_SO4 = - KL12
-            a21_SO4 = KL12
+    """
+    #TODO possibly better way to code
 
-            if SedFlux_solution_option == 1:
-                a22_SO4 = - KL12
-            elif SedFlux_solution_option == 2:
-                a22_SO4 = - KL12 - h2 / dt
+    return xr.where(math.isnan((vh2sd_tc * vh2sd_tc * fds1 + vh2sp_tc * vh2sp_tc * fps1) * DOX / 2.0 / KSh2s), 
+              (vh2sd_tc * vh2sd_tc * fds1 + vh2sp_tc * vh2sp_tc * fps1),
+              (vh2sd_tc * vh2sd_tc * fds1 + vh2sp_tc * vh2sp_tc * fps1) * DOX / 2.0 / KSh2s)
 
-            # TH2S1 and TH2S2
-            fds1 = 1.0 / (1.0 + Css1 * kdh2s2)
-            fds2 = 1.0 / (1.0 + Css2 * kdh2s2)
-            fps1 = 1.0 - fds1
-            fps2 = 1.0 - fds2
-            TH2S2_prev = TH2S2
-            con_sox = (vh2sd_tc * vh2sd_tc * fds1 + vh2sp_tc *
-                       vh2sp_tc * fps1) * DOX / 2.0 / KSh2s
-            if math.isnan(con_sox):
-                con_sox = (vh2sd_tc * vh2sd_tc * fds1 +
-                           vh2sp_tc * vh2sp_tc * fps1)
+@numba.njit  
+def a12_SO4 (
+KL12: xr.DataArray,
 
-            a12_TH2S = -w12 * fps2 - KL12 * fds2
-            a21_TH2S = -w12 * fps1 - KL12 * fds1 - vb
-            if SedFlux_solution_option == 1:
-                a22_TH2S = -a12_TH2S + vb
-            elif SedFlux_solution_option == 2:
-                a22_TH2S = -a12_TH2S + vb + h2 / dt
 
-    # CH41 and CH42
-    CH4sat = 100.0 * (1.0 + depth / 10.0) * 1.024**(20.0 - TsedC)
-    if Methane_solution_option ==2 :
-      CH42_prev = CH42
-      FOxch = DOX / (KsOxch * 2.0 + DOX)
-      if math.isnan(FOxch) :
-        FOxch = 0.0
-      con_cox = vch41_tc * vch41_tc * FOxch
-      a12_CH4 = -KL12
-      a21_CH4 = -KL12
-      if SedFlux_solution_option == 1 :
-        a22_CH4 = KL12
-      elif SedFlux_solution_option == 2 :
-        a22_CH4 = KL12 + h2 / dt
+) -> xr.DataArray:
+    """Calculate a12_SO4: coefficents for implicit finite difference form for SO4 (a11, a12, a21, a22, b1, b2) (m/d)
+    
+    Args:
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+
+
+    """
+    return -KL12
+
+@numba.njit  
+def a21_SO4 (
+KL12: xr.DataArray,
+
+
+) -> xr.DataArray:
+    """Calculate a12_SO4: coefficents for implicit finite difference form for SO4 (a11, a12, a21, a22, b1, b2) (m/d)
+    
+    Args:
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+
+
+    """
+    return KL12
+
+@numba.njit  
+def a22_SO4 (
+POCdiagenesis_part_option: xr.DataArray,
+KL12: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+h2: xr.DataArray,
+dt: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate a22_SO4: coefficents for implicit finite difference form for SO4 (a11, a12, a21, a22, b1, b2) (m/d)
+    
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless)
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+      h2: active sediment layer (m)
+      dt: timestep (d)
+
+    """
+    return xr.where(POCdiagenesis_part_option==2, 
+                    xr.where(SedFlux_solution_option == 1, -KL12, -KL12 - h2/dt), "NaN")
+
+@numba.njit  
+def a12_TH2S (
+POCdiagenesis_part_option: xr.DataArray,
+w12: xr.DataArray,
+fps2: xr.DataArray,
+KL12: xr.DataArray,
+fds2: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate a12_TH2S: coefficents for implicit finite difference form for TH2S (a11, a12, a21, a22, b1, b2) (m/d)
+    
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless)
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+      w12: Partical mixing transfer velocity: transfer for NH4, H2S, and PIP between layer 1 and 2 (m/d)
+      fps2: particulate fraction for H2S1 and H2S2 in layer 2 (unitless)
+      fds2: dissolved fraction for H2S1 and H2S2 in layer 2 (unitless)
+    """
+
+    return xr.where(POCdiagenesis_part_option==2, -w12 * fps2 - KL12 * fds2, "NaN")
+
+@numba.njit  
+def a21_TH2S (
+POCdiagenesis_part_option: xr.DataArray,
+w12: xr.DataArray,
+fps1: xr.DataArray,
+KL12: xr.DataArray,
+fds1: xr.DataArray,
+vb: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate a21_TH2S: coefficents for implicit finite difference form for TH2S (a11, a12, a21, a22, b1, b2) (m/d)
+    
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless)
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+      w12: Partical mixing transfer velocity: transfer for NH4, H2S, and PIP between layer 1 and 2 (m/d)
+      fps1: particulate fraction for H2S1 and H2S2 in layer 1 (unitless)
+      fds1: dissolved fraction for H2S1 and H2S2 in layer 1 (unitless)
+      vb: burial velocity of POM2 in bed sediment (m/d) #TODO double check units
+    """
+    
+    return xr.where(POCdiagenesis_part_option==2, -w12 * fps1 - KL12 * fds1 - vb, "NaN")
+
+@numba.njit  
+def a22_TH2S (
+SedFlux_solution_option: xr.DataArray,
+POCdiagenesis_part_option: xr.DataArray,
+vb: xr.DataArray,
+a12_TH2S: xr.DataArray,
+h2: xr.DataArray,
+dt: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate a21_TH2S: coefficents for implicit finite difference form for TH2S (a11, a12, a21, a22, b1, b2) (m/d)
+    
+    Args:
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless)
+      vb: burial velocity of POM2 in bed sediment (m/d) #TODO double check units
+      a12_TH2S: coefficents for implicit finite difference form for TH2S (a11, a12, a21, a22, b1, b2) (m/d)
+      h2: active sediment layer (m)
+      dt: timestep (d)
+    """
+    
+    return xr.where(POCdiagenesis_part_option==2, 
+                    xr.where(SedFlux_solution_option==1, -a12_TH2S + vb, -a12_TH2S + vb + h2 / dt), "NaN")
+
+
+"""
+#TODO do I need preserve? 
+TH2S1_prev = TH2S1
+HSO4_prev = HSO4
+SO42_prev = SO42
+CH42_prev = CH42
+"""
+@numba.njit  
+def CH4sat(
+depth: xr.DataArray,
+TsedC: xr.DataArray
+
+) -> xr.DataArray:
+    """Calculate CH4sat: saturated concentration of methane in oxygen equivalents (mg-O2/L)
+    
+    Args:
+      depth: water depth (m)
+      TsedC: temperature sediment (C)
+    """
+    
+    return 100.0 * (1.0 + depth / 10.0) * 1.024**(20.0 - TsedC)
+
+@numba.njit  
+def FOxch(
+Methane_solution_option: xr.DataArray,
+DOX: xr.DataArray,
+KsOxch: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate FOxch: methane oxidation attenuation due to low oxygen in layer 1 (unitless)
+    
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical) (unitless)
+      DOX: dissolved oxgyen concentration (mg-O2/L)
+      KsOxch: half-saturation coefficient for oxygen in oxidation of methane (mg-O2/L)
+
+    """
+    
+    return xr.where(Methane_solution_option ==2,
+           xr.where(math.nan(DOX / (KsOxch * 2.0 + DOX)), 0.0, DOX / (KsOxch * 2.0 + DOX)))
+
+@numba.njit  
+def con_cox(
+Methane_solution_option: xr.DataArray,
+vch41_tc: xr.DataArray,
+FOxch: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate FOxch: methane oxidation attenuation due to low oxygen in layer 1 (unitless)
+    
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical) (unitless)
+      DOX: dissolved oxgyen concentration (mg-O2/L)
+      FOxch: methane oxidation attenuation due to low oxygen in layer 1 (unitless)
+      vch41_tc: methane oxidation reaction velocity in sediment layer 1 temperature corrected (m/d)
+    """
+    
+    return xr.where(Methane_solution_option ==2,vch41_tc * vch41_tc * FOxch, "NaN")
+
+@numba.njit  
+def a12_CH4(
+Methane_solution_option: xr.DataArray,
+KL12: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate a12_CH4: coefficents for implicit finite difference form for CH4 (a11, a12, a21, a22, b1, b2) (m/d)
+
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical) (unitless)
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+    """
+    
+    return xr.where(Methane_solution_option ==2,-KL12, "NaN")
+
+@numba.njit  
+def a21_CH4(
+Methane_solution_option: xr.DataArray,
+KL12: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate a21_CH4: coefficents for implicit finite difference form for CH4 (a11, a12, a21, a22, b1, b2) (m/d)
+
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical) (unitless)
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+    """
+    
+    return xr.where(Methane_solution_option ==2,-KL12, "NaN")
+
+@numba.njit  
+def a22_CH4(
+Methane_solution_option: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+KL12: xr.DataArray,
+h2: xr.DataArray,
+dt: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate a22_CH4: coefficents for implicit finite difference form for CH4 (a11, a12, a21, a22, b1, b2) (m/d)
+
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical) (unitless)
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+    """
+    
+    return xr.where(Methane_solution_option ==2,
+                    xr.where(SedFlux_solution_option == 1, KL12, KL12 + h2/dt), "NaN") #TODO make sure the NaN is appropriate since there is not alternative 
+
+
+"""
 
     #compute SOD
     for i in (1, int(maxit)) :
       #TNH41 and TNH42
-      if (KsNh4 > 0.0) :
-        FNH4 = KsNh4 / (KsNh4 + fd1 * TNH41)
-      else :
-        FNH4  = 1.0
+"""
 
-      a11 = -a21_TNH4 + con_nit * FNH4 / KL01 + KL01 * fd1
-      b1  = KL01 * NH4
-      TNH41, TNH42 = MatrixSolution(TNH41, TNH42, a11, a12_TNH4, b1, a21_TNH4, a22_TNH4, b2_TNH4)
-      TNH41 = max(TNH41, 0.0)
-      TNH42 = max(TNH42, 0.0)
-      
+@numba.njit  
+def FNH4(
+KsNh4: xr.DataArray,
+fd1: xr.DataArray,
+TNH41: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate FNH4: modification of nitrification reaction in layer 1 (unitless)
+
+    Args:
+      KsNh4: half-saturation ammonia constant for sediment nitrification (mg-N/L)
+      THN41: total concentration NH4 dissolved layer 1 (mg-N/L)
+      fd1: fraction of inorganic matter (ammonia, phosphate) in dissolved form in sediment layer 1 (unitless)
+
+    """
+    return xr.where(KsNh4>0, KsNh4 / (KsNh4 + fd1 * TNH41), 1)
+
+#TODO is there a better way to do this, same calculation
+@numba.njit  
+def TNH41_new(
+TNH41: xr.DataArray,
+TNH42: xr.DataArray,
+a12_TNH4: xr.DataArray,
+a21_TNH4: xr.DataArray,
+a22_TNH4: xr.DataArray,
+b2_TNH4: xr.DataArray,
+con_nit: xr.DataArray,
+FNH4: xr.DataArray,
+KL01: xr.DataArray,
+fd1: xr.DataArray,
+NH4: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate THN41_new: newtotal concentration NH4 dissolved layer 1 (mg-N/L)
+
+    Args:
+      THN41: total concentration NH4 dissolved layer 1 (mg-N/L)
+      THN42: total concentration NH4 dissolved layer 2 (mg-N/L)
+      a12_TNH4: coefficents for implicit finite difference form for TNH4 (m/d)
+      a12_TNH4: coefficents for implicit finite difference form for TNH4 (a11, a12, a21, a22, b1, b2) (m/d)
+      a22_TNH4: coefficents for implicit finite difference form for TNH4 (a11, a12, a21, a22, b1, b2) (m/d)
+      b2_TNH4: coefficents for implicit finite difference form for TNH4 (a11, a12, a21, a22, b1, b2) (g-N/m2/d)
+      con_nit: something nitrogen (m2/d2) #TODO define this
+      FNH4: modification of nitrification reaction in layer 1 (unitless)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      fd1: fraction of inorganic matter (ammonia, phosphate) in dissolved form in sediment layer 1 (unitless)
+      NH4: Ammonium water concentration (mg-N/L)
+
+    """
+    a11= a21_TNH4 + con_nit * FNH4 / KL01 + KL01 * fd1
+    b1  = KL01 * NH4
+    TNH41_new, TNH42_new = MatrixSolution(TNH41, TNH42, a11, a12_TNH4, b1, a21_TNH4, a22_TNH4, b2_TNH4)
+
+    return max(TNH41_new,0.00)
+
+@numba.njit  
+def TNH42_new(
+TNH41: xr.DataArray,
+TNH42: xr.DataArray,
+a12_TNH4: xr.DataArray,
+a21_TNH4: xr.DataArray,
+a22_TNH4: xr.DataArray,
+b2_TNH4: xr.DataArray,
+con_nit: xr.DataArray,
+FNH4: xr.DataArray,
+KL01: xr.DataArray,
+fd1: xr.DataArray,
+NH4: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate THN42_new: total concentration NH4 dissolved layer 2 (mg-N/L)
+
+    Args:
+      THN41: total concentration NH4 dissolved layer 1 (mg-N/L)
+      THN42: total concentration NH4 dissolved layer 2 (mg-N/L)
+      a12_TNH4: coefficents for implicit finite difference form for TNH4 (m/d)
+      a12_TNH4: coefficents for implicit finite difference form for TNH4 (a11, a12, a21, a22, b1, b2) (m/d)
+      a22_TNH4: coefficents for implicit finite difference form for TNH4 (a11, a12, a21, a22, b1, b2) (m/d)
+      b2_TNH4: coefficents for implicit finite difference form for TNH4 (a11, a12, a21, a22, b1, b2) (g-N/m2/d)
+      con_nit: something nitrogen (m2/d2) #TODO define this
+      FNH4: modification of nitrification reaction in layer 1 (unitless)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      fd1: fraction of inorganic matter (ammonia, phosphate) in dissolved form in sediment layer 1 (unitless)
+      NH4: Ammonium water concentration (mg-N/L)
+
+    """
+    a11= a21_TNH4 + con_nit * FNH4 / KL01 + KL01 * fd1
+    b1  = KL01 * NH4
+    TNH41_new, TNH42_new = MatrixSolution(TNH41, TNH42, a11, a12_TNH4, b1, a21_TNH4, a22_TNH4, b2_TNH4)
+
+    return max(TNH42_new,0.00)
+
+@numba.njit  
+def NO31_new(
+NO31: xr.DataArray,
+NO32: xr.DataArray,
+TNH41: xr.DataArray,
+a12_NO3: xr.DataArray,
+a21_NO3: xr.DataArray,
+a22_NO3: xr.DataArray,
+b2_NO3: xr.DataArray,
+con_nit: xr.DataArray,
+FNH4: xr.DataArray,
+KL01: xr.DataArray,
+NO3: xr.DataArray,
+vno31_tc: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate NO31_new: new NO3 sediment layer 1 (mg-N/L)
+    Args:
+      THN41: total concentration NH4 dissolved layer 1 (mg-N/L)
+      a12_NO3: coefficents for implicit finite difference form for NO3 (m/d)
+      a12_NO3: coefficents for implicit finite difference form for NO3 (a11, a12, a21, a22, b1, b2) (m/d)
+      a22_NO3: coefficents for implicit finite difference form for NO3 (a11, a12, a21, a22, b1, b2) (m/d)
+      b2_NO3: coefficents for implicit finite difference form for NO3 (a11, a12, a21, a22, b1, b2) (g-N/m2/d)
+      con_nit: something nitrogen (m2/d2) #TODO define this
+      FNH4: modification of nitrification reaction in layer 1 (unitless)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      fd1: fraction of inorganic matter (ammonia, phosphate) in dissolved form in sediment layer 1 (unitless)
+      NO3: Nitrate water concentration (mg-N/L)
+      vno31_tc: denitrification reaction velocity in sediment layer 1 temperature corrected (m/d)
+      NO31: NO3 sediment layer 1 (mg-N/L)
+      NO32: NO3 sediment layer 2 (mg-N/L)
+
+    """
+    a11 = -a21_NO3 + vno31_tc * vno31_tc / KL01 + KL01
+    b1  = con_nit * FNH4 / KL01 * TNH41 + KL01 * NO3
+    NO31_new, NO32_new = MatrixSolution(NO31, NO32, a11, a12_NO3, b1, a21_NO3, a22_NO3, b2_NO3)
+    
+    return max(NO31_new, 0.0)
+
+@numba.njit  
+def NO32_new(
+NO31: xr.DataArray,
+NO32: xr.DataArray,
+TNH41: xr.DataArray,
+a12_NO3: xr.DataArray,
+a21_NO3: xr.DataArray,
+a22_NO3: xr.DataArray,
+b2_NO3: xr.DataArray,
+con_nit: xr.DataArray,
+FNH4: xr.DataArray,
+KL01: xr.DataArray,
+NO3: xr.DataArray,
+vno31_tc: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate NO32_new: new NO3 sediment layer 2 (mg-N/L)
+
+    Args:
+      THN41: total concentration NH4 dissolved layer 1 (mg-N/L)
+      a12_NO3: coefficents for implicit finite difference form for NO3 (m/d)
+      a12_NO3: coefficents for implicit finite difference form for NO3 (a11, a12, a21, a22, b1, b2) (m/d)
+      a22_NO3: coefficents for implicit finite difference form for NO3 (a11, a12, a21, a22, b1, b2) (m/d)
+      b2_NO3: coefficents for implicit finite difference form for NO3 (a11, a12, a21, a22, b1, b2) (g-N/m2/d)
+      con_nit: something nitrogen (m2/d2) #TODO define this
+      FNH4: modification of nitrification reaction in layer 1 (unitless)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      fd1: fraction of inorganic matter (ammonia, phosphate) in dissolved form in sediment layer 1 (unitless)
+      NO3: Nitrate water concentration (mg-N/L)
+      vno31_tc: denitrification reaction velocity in sediment layer 1 temperature corrected (m/d)
+      NO31: NO3 sediment layer 1 (mg-N/L)
+      NO32: NO3 sediment layer 2 (mg-N/L)
+
+    """
+    a11 = -a21_NO3 + vno31_tc * vno31_tc / KL01 + KL01
+    b1  = con_nit * FNH4 / KL01 * TNH41 + KL01 * NO3
+    NO31_new, NO32_new = MatrixSolution(NO31, NO32, a11, a12_NO3, b1, a21_NO3, a22_NO3, b2_NO3)
+    
+    return max(NO32_new, 0.0)
+
+@numba.njit  
+def JC_dn(
+NO31: xr.DataArray,
+rondn: xr.DataArray,
+vno31_tc: xr.DataArray,
+KL01: xr.DataArray,
+vno32_tc: xr.DataArray,
+NO32: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate JC_dn: carbon (oxygen equivalents) consumbed by denitrification (g-O2/m2/d)
+
+    Args:
+      NO31: NO3 sediment layer 1 (mg-N/L)
+      NO32: NO3 sediment layer 2 (mg-N/L)
+      vno31_tc: denitrification reaction velocity in sediment layer 1 temperature corrected (m/d)
+      vno32_tc: denitrification reaction velocity in sediment layer 1 temperature corrected (m/d)
+      rondn: oxygen stoichiometric coeff for denitrification (g-O2/g-N)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+    """
+    
+    return rondn * (vno31_tc * vno31_tc / KL01 * NO31 + vno32_tc * NO32)
+
+@numba.njit  
+def JCc(
+roc: xr.DataArray,
+JC: xr.DataArray,
+JC_dn: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
+
+    Args:
+      roc: oxygen stoichiometric coeff for organic carbon decay (g-O2/g-C)
+      JC: total sediment diagenesis flux of POC (g-C/m2/d)
+      JC_dn: carbon (oxygen equivalents) consumbed by denitrification (g-O2/m2/d)
+    """
+    
+    return max(roc * JC - JC_dn, 1.0E-10)
+
+def MatrixSolution(
+a11: xr.DataArray
+) -> xr.DataArray:
+    pass
+
+
+"""      
       # NO31 and NO32
-      a11 = -a21_NO3 + vno31_tc * vno31_tc / KL01 + KL01
-      b1  = con_nit * FNH4 / KL01 * TNH41 + KL01 * NO3
-      NO31, NO32 = MatrixSolution(NO31, NO32, a11, a12_NO3, b1, a21_NO3, a22_NO3, b2_NO3)
-      NO31 = max(NO31, 0.0)
-      NO32 = max(NO32, 0.0)
-      
-      JC_dn = rondn * (vno31_tc * vno31_tc / KL01 * NO31 + vno32_tc * NO32)
-      JCc = max(roc * JC - JC_dn, 1.0E-10)
       
       # SO41, SO42 and TH2S1, TH2S2
       #coefficients for SO41, SO42, H2S1 and H2S2 equations
@@ -2040,96 +2441,871 @@ JCc: xr.DataArray,
       #coefficients for SO41 and SO42 equations    
       g=[0]*2
       h=[(0,0),(0,0)] #2x2          
-  
+"""
+@numba.njit  
+def HSO4_new(
+POCdiagenesis_part_option: xr.DataArray, 
+Dd_tc: xr.DataArray,
+SO4: xr.DataArray,
+h2: xr.DataArray,
+JCc: xr.DataArray,
+ra1: xr.DataArray,
+ra2: xr.DataArray,
+ra0: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate HSO4_new: hydrogen sulfate water concentration (TODO units)
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      Dd_tc: pore-water diffusion coefficient between layer 1 and 2 temperature corrected (m2/d)
+      SO4: sulfate water concentration (mg-O2/L)
+      h2: h2: active Sediment layer thickness (m)
+      JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
+      ra1: first order quadratic equation coefficent for when POCdiagenesis_part_option==2 
+      ra2: second order quadratic equation coefficent for when POCdiagenesis_part_option==2
+      ra0: quadratic equation coefficent for when POCdiagenesis_part_option==2
+    """
+    HSO4_new=xr.where(POCdiagenesis_part_option == 1, math.sqrt(2.0 * Dd_tc * SO4 * h2 / JCc), 
+             xr.where(SO4 <= 0.1, 0.0, (- ra1 + math.sqrt(ra1 * ra1 - 4.0 * ra2 * ra0)) / 2.0 / ra2))
+    HSO4_new=xr.where(HSO4_new > h2, h2, HSO4_new)
+
+    return HSO4_new
+
+def KL12SO4(
+POCdiagenesis_part_option: xr.DataArray, 
+Dd_tc: xr.DataArray,
+SO4: xr.DataArray,
+h2: xr.DataArray,
+HSO4_new: xr.DataArray,
+KL12: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate KL12SO4: dissolved mass transfer velocity of sulfate between two layers (m/d)
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      Dd_tc: pore-water diffusion coefficient between layer 1 and 2 temperature corrected (m2/d)
+      SO4: sulfate water concentration (mg-O2/L)
+      h2: active Sediment layer thickness (m)
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+      HSO4_new: TODO define this
+
+    """
+
+    return xr.where (POCdiagenesis_part_option==1, 
+                     xr.where(HSO4_new ==0.0, 1, Dd_tc / (0.5 * HSO4_new)),
+                     xr.where(SO4 <= 0.1,1,
+                     xr.where(HSO4_new==h2, KL12, Dd_tc / (0.5 * HSO4_new))))
+"""
+four equations, only solved when POCdiagenesis_part_option==1
+0 = bx_1 + ad_1_1 * SO41 + ad_1_2 * SO42 + ad_1_3 * TH2S1
+0 = bx_2 + ad_2_1 * SO41 + ad_2_2 * SO42 - JCc * SO42 / (SO42 + KsSO4)
+0 = bx_3 + ad_3_3 * TH2S1 + ad_3_4 * TH2S2
+0 = bx_4 + ad_4_3 * TH2S1 + ad_4_4 * TH2S2 + JCc * SO42 / (SO42 + KsSO4)
+
+"""
+
+@numba.njit  
+def bx_1(
+KL01: xr.DataArray, 
+SO4: xr.DataArray, 
+POCdiagenesis_part_option: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate bx_1: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      SO4: sulfate water concentration (mg-O2/L)
+    """
+
+    return xr.where(POCdiagenesis_part_option==1,KL01 * SO4,"NaN")
+
+@numba.njit  
+def bx_3(
+KL01: xr.DataArray, 
+H2S: xr.DataArray, 
+POCdiagenesis_part_option: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate bx_3: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      H2S: sulfide water concentration (mg-O2/L)
+    """
+
+    return xr.where(POCdiagenesis_part_option==1,KL01 * H2S,"NaN")
+
+@numba.njit  
+def ad_1_1(
+KL01: xr.DataArray, 
+KL12SO4: xr.DataArray, 
+POCdiagenesis_part_option: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate ad_1_1: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      KL12SO4: dissolved mass transfer velocity of sulfate between two layers (m/d)
+    """
+
+    return xr.where(POCdiagenesis_part_option==1,KL01 - KL12SO4,"NaN")
+
+@numba.njit  
+def ad_1_2(
+KL12SO4: xr.DataArray, 
+POCdiagenesis_part_option: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate ad_1_2: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      KL12SO4: dissolved mass transfer velocity of sulfate between two layers (m/d)
+    """
+
+    return xr.where(POCdiagenesis_part_option==1,KL12SO4,"NaN")
+
+@numba.njit  
+def ad_1_3(
+con_sox: xr.DataArray, 
+POCdiagenesis_part_option: xr.DataArray, 
+KL01: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate ad_1_3: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      con_sox: #TODO define that this is ()
+    """
+
+    return xr.where(POCdiagenesis_part_option==1,con_sox / KL01,"NaN")
+
+@numba.njit  
+def ad_3_3(
+con_sox: xr.DataArray, 
+POCdiagenesis_part_option: xr.DataArray, 
+KL01: xr.DataArray, 
+vb: xr.DataArray,
+fps1: xr.DataArray,
+w12: xr.DataArray,
+fds1: xr.DataArray,
+KL12SO4: xr.DataArray,
+ 
+) -> xr.DataArray:
+    """Calculate ad_3_3: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      con_sox: #TODO define that this is ()
+      KL12SO4: dissolved mass transfer velocity of sulfate between two layers (m/d)
+      vb: burial velocity of POM2 in bed sediment (m/d) #TODO double check units
+      fps1: particulate fraction for H2S1 and H2S2 in layer 1 (unitless)
+      fds1: dissolved fraction for H2S1 and H2S2 in layer 1 (unitless)
+      w12: Partical mixing transfer velocity: transfer for NH4, H2S, and PIP between layer 1 and 2 (m/d)
+    """
+
+    return xr.where(POCdiagenesis_part_option==1,- vb - fps1 * w12 - fds1 * KL01 - fds1 * KL12SO4 - con_sox / KL01,"NaN")
+
+@numba.njit  
+def ad_3_4( 
+POCdiagenesis_part_option: xr.DataArray, 
+fps2: xr.DataArray,
+w12: xr.DataArray,
+fds2: xr.DataArray,
+KL12SO4: xr.DataArray,
+ 
+) -> xr.DataArray:
+    """Calculate ad_3_4: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      KL12SO4: dissolved mass transfer velocity of sulfate between two layers (m/d)
+      fps2: particulate fraction for H2S1 and H2S2 in layer 2 (unitless)
+      fds2: dissolved fraction for H2S1 and H2S2 in layer 2 (unitless)
+      w12: Partical mixing transfer velocity: transfer for NH4, H2S, and PIP between layer 1 and 2 (m/d)
+    """
+
+    return xr.where(POCdiagenesis_part_option==1,w12 * fps2 + KL12SO4 * fds2,"NaN")
+
+@numba.njit  
+def ad_2_1( 
+POCdiagenesis_part_option: xr.DataArray, 
+KL12SO4: xr.DataArray,
+ 
+) -> xr.DataArray:
+    """Calculate ad_2_1: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      KL12SO4: dissolved mass transfer velocity of sulfate between two layers (m/d)
+
+    """
+
+    return xr.where(POCdiagenesis_part_option==1, KL12SO4,"NaN")
+
+@numba.njit  
+def ad_4_3( 
+POCdiagenesis_part_option: xr.DataArray, 
+vb: xr.DataArray,
+fps1: xr.DataArray,
+w12: xr.DataArray,
+fds1: xr.DataArray,
+KL12SO4: xr.DataArray,
+ 
+) -> xr.DataArray:
+    """Calculate ad_4_3: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      KL12SO4: dissolved mass transfer velocity of sulfate between two layers (m/d)
+      vb: burial velocity of POM2 in bed sediment (m/d) #TODO double check units
+      fps1: particulate fraction for H2S1 and H2S2 in layer 1 (unitless)
+      fds1: dissolved fraction for H2S1 and H2S2 in layer 1 (unitless)
+      w12: Partical mixing transfer velocity: transfer for NH4, H2S, and PIP between layer 1 and 2 (m/d)
+
+    """
+
+    return xr.where(POCdiagenesis_part_option==1, vb + fps1 * w12 + fds1 * KL12SO4,"NaN")
+
+@numba.njit  
+def ad_2_2( 
+POCdiagenesis_part_option: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+h2: xr.DataArray,
+dt: xr.DataArray,
+KL12SO4: xr.DataArray,
+ 
+) -> xr.DataArray:
+    """Calculate ad_2_2: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      KL12SO4: dissolved mass transfer velocity of sulfate between two layers (m/d)
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+
+    """
+
+    return xr.where(POCdiagenesis_part_option==1, 
+                    xr.where(SedFlux_solution_option==1, - KL12SO4, - KL12SO4 - h2 / dt),"NaN")
+
+@numba.njit  
+def bx_2( 
+POCdiagenesis_part_option: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+h2: xr.DataArray,
+dt: xr.DataArray,
+SO42: xr.DataArray,
+ 
+) -> xr.DataArray:
+    """Calculate bx_2: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady) 
+      SO42: SO4 in sediment in layers 2 (mg-O/L)
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+
+    """
+
+    return xr.where(POCdiagenesis_part_option==1, 
+                    xr.where(SedFlux_solution_option==1, 0.0, h2 * SO42 / dt),"NaN")
+
+@numba.njit  
+def ad_4_4( 
+POCdiagenesis_part_option: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+h2: xr.DataArray,
+dt: xr.DataArray,
+fps2: xr.DataArray,
+w12: xr.DataArray,
+fds2: xr.DataArray,
+KL12SO4: xr.DataArray,
+vb: xr.DataArray,
+ 
+) -> xr.DataArray:
+    """Calculate ad_4_4: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady) 
+      KL12SO4: dissolved mass transfer velocity of sulfate between two layers (m/d)
+      fps2: particulate fraction for H2S1 and H2S2 in layer 2 (unitless)
+      fds2: dissolved fraction for H2S1 and H2S2 in layer 2 (unitless)
+      w12: Partical mixing transfer velocity: transfer for NH4, H2S, and PIP between layer 1 and 2 (m/d)
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+      vb: burial velocity of POM2 in bed sediment (m/d) #TODO double check units
+
+    """
+
+    return xr.where(POCdiagenesis_part_option==1, 
+                    xr.where(SedFlux_solution_option==1, - vb - KL12SO4 * fds2 - w12 * fps2, - vb - KL12SO4 * fds2 - w12 * fps2 - h2 / dt),"NaN")
+
+@numba.njit  
+def bx_4( 
+POCdiagenesis_part_option: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+h2: xr.DataArray,
+dt: xr.DataArray,
+TH2S2: xr.DataArray,
+ 
+) -> xr.DataArray:
+    """Calculate bx_2: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady) 
+      TH2S2: TH2S sediment layer 2 (mg-O/L)
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+
+    """
+
+    return xr.where(POCdiagenesis_part_option==1, 
+                    xr.where(SedFlux_solution_option==1, 0.0, h2 * TH2S2 / dt),"NaN")
+
+"""
+eliminate H2ST1 and H2ST2 from above equation sets, get two equations
+0 = g_1 + h_1_1 * SO41 + h_1_2_ * SO42
+0 = g_2 + h_2_1 * SO41 + h_2_2 * SO42 + JCc * SO42 / (SO42 + KsSO4)
+"""
+
+@numba.njit  
+def g_2( 
+POCdiagenesis_part_option: xr.DataArray,
+bx_1: xr.DataArray,
+ad_3_3: xr.DataArray,
+ad_1_3: xr.DataArray,
+bx_3: xr.DataArray,
+ad_4_4: xr.DataArray,
+ad_3_4: xr.DataArray,
+ad_4_3: xr.DataArray,
+bx_4: xr.DataArray,
+ 
+) -> xr.DataArray:
+    """Calculate g_2: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      bx_1, ad_3_3, ad_1_3, bx_3,ad_4_4, ad_3_4, ad_4_3, bx_4: coefficents for system of equation
+
+    """
+
+    return xr.where(POCdiagenesis_part_option==1, ((bx_1 * ad_3_3 - ad_1_3 * bx_3) * ad_4_4 - bx_1 * ad_3_4 * ad_4_3) / (ad_1_3 * ad_3_4) + bx_4 ,"NaN")
+
+@numba.njit  
+def g_1( 
+POCdiagenesis_part_option: xr.DataArray,
+g_2: xr.DataArray,
+bx_2: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate g_1: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      bx_2, g_2: coefficents for system of equation
+
+    """
+
+    return xr.where(POCdiagenesis_part_option==1, g_2+bx_2 ,"NaN")
+
+@numba.njit  
+def h_2_1( 
+POCdiagenesis_part_option: xr.DataArray,
+ad_1_1: xr.DataArray,
+ad_3_3: xr.DataArray,
+ad_4_4: xr.DataArray,
+ad_3_4: xr.DataArray,
+ad_4_3: xr.DataArray,
+ad_1_3: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate h_2_1: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      ad_1_1, ad_3_3, ad_4_4, ad_3_4, ad_4_3, ad_1_3: coefficents for system of equation
+
+    """
+    return xr.where(POCdiagenesis_part_option==1, ad_1_1 * (ad_3_3 * ad_4_4 - ad_3_4 * ad_4_3) / (ad_1_3 * ad_3_4) ,"NaN")
+
+@numba.njit  
+def h_2_2( 
+POCdiagenesis_part_option: xr.DataArray,
+ad_3_3: xr.DataArray,
+ad_4_4: xr.DataArray,
+ad_3_4: xr.DataArray,
+ad_4_3: xr.DataArray,
+ad_1_3: xr.DataArray,
+ad_1_2: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate h_2_2: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      ad_1_2, ad_3_3, ad_4_4, ad_3_4, ad_4_3, ad_1_3: coefficents for system of equation
+
+    """
+    return xr.where(POCdiagenesis_part_option==1, ad_1_2 * (ad_3_3 * ad_4_4 - ad_3_4 * ad_4_3) / (ad_1_3 * ad_3_4) ,"NaN")
+
+@numba.njit  
+def h_1_1( 
+POCdiagenesis_part_option: xr.DataArray,
+h_2_1: xr.DataArray,
+ad_2_1: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate h_1_1: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      h_2_1, ad_2_1: coefficents for system of equation
+
+    """
+    return xr.where(POCdiagenesis_part_option==1, h_2_1 + ad_2_1 ,"NaN")
+
+@numba.njit  
+def h_1_2( 
+POCdiagenesis_part_option: xr.DataArray,
+h_2_2: xr.DataArray,
+ad_2_2: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate h_1_1: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      h_2_2, ad_2_2: coefficents for system of equation
+
+    """
+    return xr.where(POCdiagenesis_part_option==1, h_2_2 + ad_2_2 ,"NaN")
+
+"""
+eliminate SO41 and get a quadratic equation of SO42
+ra2 * SO42 * SO42 + ra1 * SO42 + ra0 = 0.0 
+"""
+
+def ra0_POC_1( 
+POCdiagenesis_part_option: xr.DataArray,
+h_1_1: xr.DataArray,
+g_2: xr.DataArray,
+h_2_1: xr.DataArray, 
+g_1: xr.DataArray, 
+KsSO4: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate ra0_POC_1: quadratic equation coefficent (constant)
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      h_1_1, g_2, h_2_1, g_1: coefficents for system of equation
+      KsSO4: half-saturation constant for sulfate in sulfate reduction (mg-O2/L)
+
+    """
+    return xr.where(POCdiagenesis_part_option==1, (h_1_1 * g_2 - h_2_1 * g_1) * KsSO4 ,"NaN")
+
+def ra1_POC_1( 
+POCdiagenesis_part_option: xr.DataArray,
+h_1_1: xr.DataArray,
+g_2: xr.DataArray,
+h_2_1: xr.DataArray, 
+g_1: xr.DataArray, 
+KsSO4: xr.DataArray,
+JCc: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate ra1_POC_1: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      h_1_1, g_2, h_2_1, g_1: coefficents for system of equation
+      KsSO4: half-saturation constant for sulfate in sulfate reduction (mg-O2/L)
+      JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
+    """
+    return xr.where(POCdiagenesis_part_option==1, h_1_1 * g_2 - h_2_1 * g_1 + (h_1_1 * h_2_2 - h_1_2 * h_2_1) * KsSO4 + h_1_1 * JCc,"NaN")
+
+def ra2_POC_1( 
+POCdiagenesis_part_option: xr.DataArray,
+h_1_1: xr.DataArray,
+h_2_1: xr.DataArray, 
+h_2_2: xr.DataArray, 
+h_1_2: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate ra2_POC_1: equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      h_1_1, h_2_1, h_1_2, h_2_2: coefficents for system of equation
+    """
+    return xr.where(POCdiagenesis_part_option==1, h_1_1 * h_2_2 - h_1_2 * h_2_1,"NaN")
+
+def sn1( 
+POCdiagenesis_part_option: xr.DataArray,
+ra1_POC_1: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate sn1: roots to quadratic equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      ra1_POC_1: equation coefficent
+    """
+    return xr.where(POCdiagenesis_part_option==1, 
+                    xr.where(ra1_POC_1 <= 0.00, -1,1))
+
+def disc( 
+POCdiagenesis_part_option: xr.DataArray,
+ra0_POC_1: xr.DataArray,
+ra1_POC_1: xr.DataArray,
+ra2_POC_1: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate disc: roots to quadratic equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      ra0_POC_1, ra1_POC_1, ra2_POC_1 : equation coefficent
+    """
+    return xr.where(POCdiagenesis_part_option==1, (- ra1_POC_1 - sn1 * math.sqrt(ra1_POC_1 * ra1_POC_1 - 4.0 * ra2_POC_1 * ra0_POC_1)) / 2.0, "NaN")
+
+def r1( 
+POCdiagenesis_part_option: xr.DataArray,
+ra0_POC_1: xr.DataArray,
+ra1_POC_1: xr.DataArray,
+ra2_POC_1: xr.DataArray,
+disc: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate r1: roots to quadratic equation 
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      ra0_POC_1, ra1_POC_1, ra2_POC_1 : equation coefficent
+      disc: roots to quadratic equation
+    """
+    return xr.where(POCdiagenesis_part_option==1, 
+                    xr.where(disc != 0.0, disc/ra2_POC_1, 
+                    xr.where(ra2_POC_1==0.0, -ra0_POC_1/ra1_POC_1, -ra1_POC_1/ra2_POC_1)), "NaN")
+
+def r2( 
+POCdiagenesis_part_option: xr.DataArray,
+ra0_POC_1: xr.DataArray,
+r1: xr.DataArray,
+ra2_POC_1: xr.DataArray,
+disc: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate r2: roots to quadratic equation 
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      ra0_POC_1, ra1_POC_1, ra2_POC_1 : equation coefficent
+      disc,r1: roots to quadratic equation
+    """
+    return xr.where(POCdiagenesis_part_option==1, 
+                    xr.where(disc != 0.0, ra0_POC_1/disc, 
+                    xr.where(ra2_POC_1==0.0, -r1, 0.0)), "NaN")
+
+def SO42_new( 
+POCdiagenesis_part_option: xr.DataArray,
+r1: xr.DataArray,
+r2: xr.DataArray,
+h2: xr.DataArray,
+KL01: xr.DataArray,
+KL12: xr.DataArray,
+SO4: xr.DataArray,
+CSOD_H2S: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+JCc: xr.DataArray,
+SO41: xr.DataArray,
+SO42: xr.DataArray,
+HSO4: xr.DataArray,
+dt: xr.DataArray,
+a12_SO4: xr.DataArray,
+a21_SO4: xr.DataArray,
+a22_SO4: xr.DataArray,
+HSO4_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate SO42_new: new SO4 concentration in sediment in layers 2 (mg-O/L)
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      disc,r1,r2: roots to quadratic equation
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady) 
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      SO4: sulfate water concentration (mg-O2/L)
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+      HSO4_new: hydrogen sulfate water concentration (TODO units)
+      CSOD_H2S: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+      JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
+      SO41: SO4 concentration in sediment in layers 1 (mg-O/L)
+      SO42: SO4 concentration in sediment in layers (mg-O/L)
+      HSO4: hydrogen sulfate water concentration (TODO units)
+      a12_SO4: coefficents for implicit finite difference form for SO4 (a11, a12, a21, a22, b1, b2) (m/d)
+      a21_SO4: coefficents for implicit finite difference form for SO4 (a11, a12, a21, a22, b1, b2) (m/d)
+      a22_SO4: coefficents for implicit finite difference form for SO4 (a11, a12, a21, a22, b1, b2) (m/d)
+    """
+    a11=KL01 + KL12
+    b1 = KL01 * SO4 + CSOD_H2S
+    b2 = xr.where(SedFlux_solution_option == 1,JCc, JCc - SO42* HSO4 / dt)
+    hold, SO42_new = MatrixSolution(SO41, SO42, a11, a12_SO4, b1, a21_SO4, a22_SO4, b2)
+    SO42_new=xr.where(HSO4_new==h2, max(SO42_new,0.0), SO41 / 2.0) 
+    
+    return xr.where(POCdiagenesis_part_option==1, 
+                    xr.where(r1<0.0, r2,r1), 
+                    xr.where(SO4<=0.1, SO4, SO42_new))
+
+def SO41_new( 
+POCdiagenesis_part_option: xr.DataArray,
+g_1: xr.DataArray,
+h_1_2: xr.DataArray,
+SO42_new: xr.DataArray,
+h_1_1: xr.DataArray,
+h2: xr.DataArray,
+KL01: xr.DataArray,
+KL12: xr.DataArray,
+SO4: xr.DataArray,
+CSOD_H2S: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+JCc: xr.DataArray,
+SO41: xr.DataArray,
+SO42: xr.DataArray,
+HSO4: xr.DataArray,
+dt: xr.DataArray,
+a12_SO4: xr.DataArray,
+a21_SO4: xr.DataArray,
+a22_SO4: xr.DataArray,
+KL12SO4: xr.DataArray,
+HSO4_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate SO41_new: new SO4 concentration in sediment in layers 1 (mg-O/L)
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      h_1_1, h_1_2, g_1: coefficents for system of equation
+      SO42_new: new SO4 concentration in sediment in layers 2 (mg-O/L)
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady) 
+      TH2S2: TH2S sediment layer 2 (mg-O/L)
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      KL12SO4: dissolved mass transfer velocity of sulfate between two layers (m/d)
+      SO4: sulfate water concentration (mg-O2/L)
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+      HSO4_new: hydrogen sulfate water concentration (TODO units)
+      CSOD_H2S: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+      JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
+      SO41: SO4 concentration in sediment in layers 1 (mg-O/L)
+      SO42: SO4 concentration in sediment in layers (mg-O/L)
+      HSO4: hydrogen sulfate water concentration (TODO units)
+      a12_SO4: coefficents for implicit finite difference form for SO4 (a11, a12, a21, a22, b1, b2) (m/d)
+      a21_SO4: coefficents for implicit finite difference form for SO4 (a11, a12, a21, a22, b1, b2) (m/d)
+      a22_SO4: coefficents for implicit finite difference form for SO4 (a11, a12, a21, a22, b1, b2) (m/d)
+
+    """
+    a11=KL01 + KL12
+    b1 = KL01 * SO4 + CSOD_H2S
+    b2 = xr.where(SedFlux_solution_option == 1,JCc, JCc - SO42* HSO4 / dt)
+    SO41_new, hold = MatrixSolution(SO41, SO42, a11, a12_SO4, b1, a21_SO4, a22_SO4, b2)
+    SO41_new=xr.where(HSO4_new==h2, max(SO41_new,0.0),(KL01 * SO4 + CSOD_H2S) / (KL01 + KL12SO4 * 0.5))
+   
+
+    return xr.where(POCdiagenesis_part_option==1, - (g_1 + h_1_2 * SO42_new) / h_1_1, 
+                    xr.where(SO4<=0.1, SO4, SO41_new))
+
+def TH2S1_new( 
+POCdiagenesis_part_option: xr.DataArray,
+bx_1: xr.DataArray,
+ad_1_1: xr.DataArray,
+SO41_new: xr.DataArray,
+ad_1_2: xr.DataArray,
+SO42_new: xr.DataArray,
+ad_1_3: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate TH2S1_new: new TH2S concentration in sediment in layers 1 (mg-O/L)
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      bx_1, ad_1_1, ad_1_2, ad_1_3,: coefficents for system of equation
+      SO41_new: new SO4 concentration in sediment in layers 1 (mg-O/L)
+      SO42_new: new SO4 concentration in sediment in layers 2 (mg-O/L)
+    """
+    
+    return xr.where(POCdiagenesis_part_option==1, - (bx_1 + ad_1_1 * SO41_new + ad_1_2 * SO42_new) / ad_1_3, "NaN")
+
+def TH2S2_new( 
+POCdiagenesis_part_option: xr.DataArray,
+bx_3: xr.DataArray,
+ad_3_3: xr.DataArray,
+TH2S1_new: xr.DataArray,
+ad_3_4: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate TH2S2_new: new TH2S concentration in sediment in layers 2 (mg-O/L)
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      bx_3, ad_3_3, ad_3_4: coefficents for system of equation
+      TH2S1_new: new TH2S concentration in sediment in layers 1 (mg-O/L)
+    """
+    
+    return xr.where(POCdiagenesis_part_option==1, - (bx_3 + ad_3_3 * TH2S1_new) / ad_3_4, "NaN")
+
+def CSOD_H2S_new( 
+POCdiagenesis_part_option: xr.DataArray,
+con_sox: xr.DataArray,
+KL01: xr.DataArray,
+TH2S1_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate CSOD_H2S: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      con_sox: #TODO define that this is ()
+      TH2S1_new: new TH2S concentration in sediment in layers 1 (mg-O/L)
+    """
+    
+    return xr.where(POCdiagenesis_part_option==1, con_sox / KL01 * TH2S1_new, "NaN")
+
+def JCc_CH4( 
+POCdiagenesis_part_option: xr.DataArray,
+JCc: xr.DataArray,
+KsSO4: xr.DataArray,
+SO42_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate JCc_CH4: carbon diagenesis flux consumed for methane formation (g-O2/m2/d)
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      KsSO4: half-saturation constant for sulfate in sulfate reduction (mg-O2/L)
+      JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
+      SO42_new: new SO4 concentration in sediment in layers 2 (mg-O/L)
+    """
+    
+    return xr.where(POCdiagenesis_part_option==1, JCc * KsSO4 / (SO42_new + KsSO4), "NaN")  #TODO find this formula. See page 170 is SO42 supposed to be on top as well?
+
+def ra2( 
+POCdiagenesis_part_option: xr.DataArray,
+JCc: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+KL01: xr.DataArray,
+h2: xr.DataArray,
+SO4: xr.DataArray,
+con_sox: xr.DataArray,
+TH2S1: xr.DataArray,
+dt: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate ra2:  equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady) 
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      SO4: sulfate water concentration (mg-O2/L)
+      con_sox: #TODO define that this is ()
+      TH2S1: TH2S sediment layer 1 (mg-O/L)
+    """
+    
+    return xr.where(POCdiagenesis_part_option==2, 
+                    xr.where(SO4>0.1, 
+                    xr.where(SedFlux_solution_option == 1, 2.0 * KL01 * JCc / h2, 2.0 * KL01 * JCc / h2 + (KL01 * SO4 + con_sox / KL01 * TH2S1) / dt), "NaN") "NaN")  
+
+
+def ra1( 
+POCdiagenesis_part_option: xr.DataArray,
+JCc: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+KL01: xr.DataArray,
+h2: xr.DataArray,
+SO4: xr.DataArray,
+dt: xr.DataArray,
+HSO4: xr.DataArray,
+SO42: xr.DataArray,
+Dd_tc: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate ra1:  equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady) 
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      SO4: sulfate water concentration (mg-O2/L)
+      HSO4: hydrogen sulfate water concentration (TODO units)
+      SO42: SO4 concentration in sediment in layers (mg-O/L)
+      Dd_tc: pore-water diffusion coefficient between layer 1 and 2 temperature corrected (m2/d)
+    """
+    
+    return xr.where(POCdiagenesis_part_option==2, 
+                    xr.where(SO4>0.1, 
+                    xr.where(SedFlux_solution_option == 1, 2.0 * Dd_tc * JCc / h2, 2.0 * Dd_tc * JCc / h2 - 2.0 * KL01 * HSO4 * SO42 / dt), "NaN") "NaN")  
+
+def ra0( 
+POCdiagenesis_part_option: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+KL01: xr.DataArray,
+SO4: xr.DataArray,
+con_sox: xr.DataArray,
+TH2S1: xr.DataArray,
+Dd_tc: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate ra0:  equation coefficent
+
+    Args:
+      POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady) 
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      SO4: sulfate water concentration (mg-O2/L)
+      Dd_tc: pore-water diffusion coefficient between layer 1 and 2 temperature corrected (m2/d)
+      con_sox: #TODO define that this is ()
+      TH2S1: TH2S sediment layer 1 (mg-O/L)
+    """
+    
+    return xr.where(POCdiagenesis_part_option==2, 
+                    xr.where(SO4>0.1, 
+                    xr.where(SedFlux_solution_option == 1, - 2.0 * Dd_tc * (KL01 * SO4 + con_sox / KL01 * TH2S1), - 2.0 * Dd_tc * (KL01 * SO4 + con_sox / KL01 * TH2S1)), "NaN") "NaN")  
+
+"""  
       # Half-saturation method
       if POCdiagenesis_part_option == 1 :
-        #compute HSO4
-        HSO4 = math.sqrt(2.0 * Dd_tc * SO4 * h2 / JCc) 
-        if (HSO4 > h2):
-          HSO4 = h2
-        if HSO4 == 0.0:
-          KL12SO4 = 1.0       # set a large value (1) for KL12SO4. 
-        else:
-          KL12SO4 = Dd_tc / (0.5 * HSO4)
-
-        # four equations
-        # 0 = bx(0) + ad(0,0) * SO41 + ad(0,1) * SO42 + ad(0,2) * TH2S1
-        # 0 = bx(1) + ad(1,0) * SO41 + ad(1,1) * SO42 - JCc * SO42 / (SO42 + KsSO4)
-        # 0 = bx(2) + ad(2,2) * TH2S1 + ad(2,3) * TH2S2
-        # 0 = bx(3) + ad(3,2) * TH2S1 + ad(3,3) * TH2S2 + JCc * SO42 / (SO42 + KsSO4)
-
-        bx[0] = KL01 * SO4                     
-        bx[2] = KL01 * H2S                     
-        ad[0][0] = - KL01 - KL12SO4
-        ad[0][1] = KL12SO4
-        ad[0][2] = con_sox / KL01
-        ad[2][2] = - vb - fps1 * w12 - fds1 * KL01 - fds1 * KL12SO4 - con_sox / KL01
-        ad[2][3] = w12 * fps2 + KL12SO4 * fds2
-        
-        ad[1][0] = KL12SO4
-        ad[3][2] = vb + fps1 * w12 + fds1 * KL12SO4
-        if SedFlux_solution_option == 1 :
-          ad[1][1] = - KL12SO4
-          bx[1]   = 0.0
-          ad[3][3] = - vb - KL12SO4 * fds2 - w12 * fps2
-          bx[3]   = 0.0
-        else:
-          ad[1][1] = - KL12SO4 - h2 / dt
-          bx[1]   = h2 * SO42_prev / dt
-          ad[3][3] = - vb - KL12SO4 * fds2 - w12 * fps2 - h2 / dt 
-          bx[3]   = h2 * TH2S2_prev / dt
-
-        #eliminate H2ST1 and H2ST2 from above equation sets, get two equations
-        # 0 = g(0) + h(0,0) * SO41 + h(0,1) * SO42
-        # 0 = g(1) + h(1,0) * SO41 + h(1,1) * SO42 + JCc * SO42 / (SO42 + KsSO4)
-        
-        g[1] = ((bx[0] * ad[2][2] - ad[0][2] * bx[2]) * ad[3][3] - bx[0] * ad[2][3] * ad[3][2]) / (ad[0][2] * ad[2][3]) + bx[3]   
-        g[0] = g[1] + bx[1]  
-        h[1][0] = ad[0][0] * (ad[2][2] * ad[3][3] - ad[2][3] * ad[3][2]) / (ad[0][2] * ad[2][3])
-        h[1][1] = ad[0][1] * (ad[2][2] * ad[3][3] - ad[2][3] * ad[3][2]) / (ad[0][2] * ad[2][3])
-        h[0][0] = h[1][0] + ad[1][0] 
-        h[0][1] = h[1][1] + ad[1][1]
-        
-        #eliminate SO41 and get a quadratic equation of SO42
-        # ra2 * SO42 * SO42 + ra1 * SO42 + ra0 = 0.0 
-        ra0 = (h[0][0] * g[1] - h[1][0] * g[0]) * KsSO4
-        ra1 = h[0][0] * g[1] - h[1][0] * g[0] + (h[0][0] * h[1][1] - h[0][1] * h[1][0]) * KsSO4 + h[0][0] * JCc
-        ra2 = h[0][0] * h[1][1] - h[0][1] * h[1][0]
-      
-        #solve SO42
-        sn1 = 1.0
-        if (ra1 <= 0.0):
-          sn1 = - 1.0
-        disc = (- ra1 - sn1 * math.sqrt(ra1 * ra1 - 4.0 * ra2 * ra0)) / 2.0
-        if (disc != 0.0) :
-          r1 = disc / ra2
-          r2 = ra0 / disc
-        else:
-          if (ra2 == 0.0) :
-            r1 = - ra0 / ra1
-            r2 = r1
-          else:   #TODO what does this calculate? This is when ra0 = 0 
-            r1 = -ra1 / ra2
-  
-        SO42 = r1
-        if (SO42 < 0.0) :
-          SO42 = r2
-        
-        #solve SO41, H2ST1, H2ST2
-        SO41  = - (g[0] + h[0][1] * SO42) / h[0][0]
-        TH2S1 = - (bx[0] + ad[0][0] * SO41 + ad[0][1] * SO42) / ad[0][2]
-        TH2S2 = - (bx[2] + ad[2][2] * TH2S1) / ad[2][3]
-        CSOD_H2S = con_sox / KL01 * TH2S1
-        JCc_CH4  = JCc * KsSO4 / (SO42 + KsSO4)       #TODO find this formula. See page 170 is SO42 supposed to be on top as well?
         
       #sulfate reduction depth method
       elif POCdiagenesis_part_option == 2 :
         
         if (SO4 <= 0.1) :
-          HSO4    = 0.0
-          KL12SO4 = 1.0
-          SO41    = SO4
-          SO42    = SO4
+          pass
         else:
           
           # first compute HSO4 TODO I do not know where the equation comes from: see page 159 seems to be close
@@ -2142,9 +3318,6 @@ JCc: xr.DataArray,
             ra1 = 2.0 * Dd_tc * JCc / h2 - 2.0 * KL01 * HSO4_prev * SO42_prev / dt
             ra0 = - 2.0 * Dd_tc * (KL01 * SO4 + con_sox / KL01 * TH2S1_prev + HSO4_prev * SO42_prev / dt)
 
-          HSO4 = (- ra1 + math.sqrt(ra1 * ra1 - 4.0 * ra2 * ra0)) / 2.0 / ra2
-          if (HSO4 > h2) :
-            HSO4 = h2
           
           # TH2S1, TH2S2
           a11 = -a21_TH2S + con_sox / KL01 + KL01 * fds1
@@ -2161,24 +3334,6 @@ JCc: xr.DataArray,
           CSOD_H2S = con_sox / KL01 * TH2S1
           JCc_CH4  = JCc * (h2 - HSO4) / h2     #TODO should it be JCc_CH4 = JCc * (1-(HSO4/H2)) page 170 in PDF
           
-          # SO41, SO42
-          if (HSO4 == h2) :
-            KL12SO4 = KL12
-            a11  = KL01 + KL12
-            b1   = KL01 * SO4 + CSOD_H2S
-            if SedFlux_solution_option == 1 : #TODO check thes b2
-              b2 = JCc
-            elif SedFlux_solution_option == 2 :
-              b2 = JCc - SO42_prev * HSO4_prev / dt
-
-            #TODO TODO  call MatrixSolution(SO41, SO42, a11, a12_SO4, b1, a21_SO4, a22_SO4, b2) 
-              SO41 = max(SO41, 0.0)
-              SO42 = max(SO42, 0.0)  
-
-          else :
-            KL12SO4 = Dd_tc / (0.5 * HSO4)
-            SO41 = (KL01 * SO4 + CSOD_H2S) / (KL01 + KL12SO4 * 0.5)
-            SO42 = SO41 / 2.0
 
         # TH2S1, TH2S2
         a11 = -a21_TH2S + con_sox / KL01 + KL01 * fds1
@@ -2193,6 +3348,7 @@ JCc: xr.DataArray,
         TH2S2 = max(TH2S2, 0.0)
         CSOD_H2S = con_sox / KL01 * TH2S1
         JCc_CH4  = JCc * (h2 - HSO4) / h2
+___________________________________________________________________________________________________
 
       # CH41 and CH42
 
@@ -2485,3 +3641,4 @@ def MatrixSolution(x1, x2, a11, a12, b1, a21, a22, b2):
     x1 = (a22 * b1 - a12 * b2) / (a11 * a22 - a12 * a21)
     x2 = (a11 * b2 - a21 * b1) / (a11 * a22 - a12 * a21)
     return x1, x2
+"""
