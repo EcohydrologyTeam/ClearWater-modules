@@ -78,12 +78,14 @@ def get_energy_budget_instance(
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
+    use_sed_temp: bool = True,
 ) -> EnergyBudget:
     """Return an instance of the TSM class."""
     return EnergyBudget(
         initial_state_values=initial_tsm_state,
         meteo_parameters=default_meteo_params,
         temp_parameters=default_temp_params,
+        use_sed_temp=use_sed_temp,
         time_dim='tsm_time_step',
     )
 
@@ -453,6 +455,18 @@ def test_use_sed_temp(
     tolerance,
 ) -> None:
     """test the model with default parameters."""
-    assert True == True
-    # TODO: implement this test
-    ...
+    # instantiate the model
+    tsm: EnergyBudget = get_energy_budget_instance(
+        initial_tsm_state=initial_tsm_state,
+        default_meteo_params=default_meteo_params,
+        default_temp_params=default_temp_params,
+        use_sed_temp=False,
+    )
+
+    # run the model
+    tsm.increment_timestep()
+    water_temp_c = tsm.dataset.isel(
+        tsm_time_step=-1).water_temp_c.values.item()
+    assert isinstance(water_temp_c, float)
+    assert pytest.approx(water_temp_c, tolerance) == 20.0000422364348
+
