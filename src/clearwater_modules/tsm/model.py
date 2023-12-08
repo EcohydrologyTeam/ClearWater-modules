@@ -22,6 +22,7 @@ class EnergyBudget(base.Model):
         updateable_static_variables: Optional[list[str]] = None,
         meteo_parameters: Optional[dict[str, float]] = None,
         temp_parameters: Optional[dict[str, float]] = None,
+        use_sed_temp: bool = True,
         track_dynamic_variables: bool = True,
         hotstart_dataset: Optional[xr.Dataset] = None,
         time_dim: Optional[str] = None,
@@ -48,7 +49,10 @@ class EnergyBudget(base.Model):
             )
 
         static_variable_values = {
-            **self.__meteo_parameters, **self.__temp_parameters}
+            **self.__meteo_parameters, 
+            **self.__temp_parameters,
+            **{'use_sed_temp': bool(use_sed_temp)},
+        }
 
         # TODO: make sure this feature works -> test it, but post demo
         #static_variable_values['use_sed_temp'] = use_sed_temp

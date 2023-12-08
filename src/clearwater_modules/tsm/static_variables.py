@@ -9,6 +9,14 @@ class Variable(base.Variable):
 
 
 Variable(
+    name='use_sed_temp',
+    long_name='Use Sediment Temperature?',
+    units='boolean',
+    description='Controls whether to use/calculate sediment temperature or not.',
+    use='static',
+)
+
+Variable(
     name='stefan_boltzmann',
     long_name='Stefan-Boltzmann Constant',
     units='W m-2 K-4',
