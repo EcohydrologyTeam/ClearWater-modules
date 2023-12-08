@@ -165,6 +165,7 @@ def q_sensible(
 
 @numba.njit
 def q_sediment(
+    use_sed_temp: xr.DataArray,
     pb: xr.DataArray,
     cps: xr.DataArray,
     alphas: xr.DataArray,
@@ -175,6 +176,7 @@ def q_sediment(
     """Sediment heat flux (W/m^2).
 
     Args:
+        use_sed_temp: Whether to calculate sed temp or not (boolean)
         pb: Sediment bulk density (kg/m^3)
         cps: Sediment specific heat (J/kg/K)
         alphas: Sediment thermal diffusivity (m^2/s)
@@ -183,15 +185,19 @@ def q_sediment(
         water_temp_c: Water temperature (C)
     """
     # 86400 converts the sediment thermal diffusivity from units of m^2/d to m^2/s
-
-    return (
-        pb * cps * alphas / 0.5 / h2 *
-        (sed_temp_c - water_temp_c) / 86400.0
+    return np.where(
+        use_sed_temp,
+        (
+            pb * cps * alphas / 0.5 / h2 *
+            (sed_temp_c - water_temp_c) / 86400.0
+        ),
+        0.0,
     )
 
 
 @numba.njit
 def dTdt_sediment_c(
+    use_sed_temp: xr.DataArray,
     alphas: xr.DataArray,
     h2: xr.DataArray,
     water_temp_c: xr.DataArray,
@@ -200,14 +206,16 @@ def dTdt_sediment_c(
     """Sediments temperature change (C).
 
     Args:
+        use_sed_temp: Whether to calculate sed temp or not (boolean)
         alphas: Sediment thermal diffusivity (m^2/s)
         h2: Sediment active layer thickness (m)
         water_temp_c: Water temperature (C)
         sed_temp_c: Sediment temperature (C)
     """
-    return (
-        alphas / (0.5 * h2 * h2) *
-        (water_temp_c - sed_temp_c)
+    return np.where(
+        use_sed_temp,
+        alphas / (0.5 * h2 * h2) * (water_temp_c - sed_temp_c),
+        0.0,
     )
 
 

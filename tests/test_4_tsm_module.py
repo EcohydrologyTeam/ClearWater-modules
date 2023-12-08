@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 
 from clearwater_modules.tsm.model import (
     EnergyBudget
@@ -57,5 +58,14 @@ def test_tsm_timestep(energy_budget_instance) -> None:
     energy_budget_instance.increment_timestep()
     assert len(energy_budget_instance.dataset.tsm_time_step) == 2
 
-    # make sure static variables are not given a time dimension
-    #   assert len(energy_budget_instance.dataset['a0'].dims) == 2
+
+def test_use_sed_temp(initial_tsm_state) -> None:
+    """Tests that when we set use_sed_temp to False we get a False boolean array."""
+    if 'a0' in initial_tsm_state:
+        del initial_tsm_state['a0']
+    no_sed_temp = EnergyBudget(
+        initial_state_values=initial_tsm_state,
+        use_sed_temp=False,
+    )
+    assert no_sed_temp.dataset.use_sed_temp.dtype == bool
+    assert bool(np.all(no_sed_temp.dataset.use_sed_temp == False))
