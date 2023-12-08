@@ -1,4 +1,5 @@
 # turns off codecov PR checks
 coverage:
   status:
-    project: on 
+    project: on
+    patch: off
