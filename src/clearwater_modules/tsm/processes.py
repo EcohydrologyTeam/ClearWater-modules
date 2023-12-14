@@ -1,6 +1,5 @@
 """JIT compiled processes for the heat model."""
 import warnings
-import numba
 import numpy as np
 import xarray as xr
 from clearwater_modules.shared.processes import (
@@ -8,7 +7,6 @@ from clearwater_modules.shared.processes import (
 )
 
 
-@numba.njit
 def air_temp_k(
     air_temp_c: xr.DataArray,
 ) -> xr.DataArray:
@@ -20,7 +18,6 @@ def air_temp_k(
     return celsius_to_kelvin(air_temp_c)
 
 
-@numba.njit
 def water_temp_k(
     water_temp_c: xr.DataArray,
 ) -> xr.DataArray:
@@ -32,7 +29,6 @@ def water_temp_k(
     return celsius_to_kelvin(water_temp_c)
 
 
-@numba.njit
 def mixing_ratio_air(
     eair_mb: xr.DataArray,
     pressure_mb: xr.DataArray,
@@ -46,7 +42,6 @@ def mixing_ratio_air(
     return 0.622 * eair_mb / (pressure_mb - eair_mb)
 
 
-@numba.njit
 def density_air(
     pressure_mb: xr.DataArray,
     air_temp_k: xr.DataArray,
@@ -67,7 +62,6 @@ def density_air(
     )
 
 
-@numba.njit
 def emissivity_air(
     air_temp_k: xr.DataArray,
 ) -> xr.DataArray:
@@ -79,7 +73,6 @@ def emissivity_air(
     return 0.00000937 * air_temp_k**2.0
 
 
-@numba.njit
 def wind_function(
     ri_function: xr.DataArray,
     wind_a: xr.DataArray,
@@ -105,7 +98,6 @@ def wind_function(
     )
 
 
-@numba.njit
 def q_latent(
     pressure_mb: xr.DataArray,
     density_water: xr.DataArray,
@@ -133,7 +125,6 @@ def q_latent(
     )
 
 
-@numba.njit
 def q_sensible(
     wind_kh_kw: xr.DataArray,
     cp_air: xr.DataArray,
@@ -163,7 +154,6 @@ def q_sensible(
     )
 
 
-@numba.njit
 def q_sediment(
     use_sed_temp: xr.DataArray,
     pb: xr.DataArray,
@@ -172,7 +162,7 @@ def q_sediment(
     h2: xr.DataArray,
     sed_temp_c: xr.DataArray,
     water_temp_c: xr.DataArray,
-) -> xr.DataArray:
+) -> np.ndarray:
     """Sediment heat flux (W/m^2).
 
     Args:
@@ -195,14 +185,13 @@ def q_sediment(
     )
 
 
-@numba.njit
 def dTdt_sediment_c(
     use_sed_temp: xr.DataArray,
     alphas: xr.DataArray,
     h2: xr.DataArray,
     water_temp_c: xr.DataArray,
     sed_temp_c: xr.DataArray,
-) -> xr.DataArray:
+) -> np.ndarray:
     """Sediments temperature change (C).
 
     Args:
@@ -219,7 +208,6 @@ def dTdt_sediment_c(
     )
 
 
-@numba.njit
 def mf_d_esat_dT(
     water_temp_k: xr.DataArray,
     a1: xr.DataArray,
@@ -250,7 +238,7 @@ def mf_d_esat_dT(
 # Define functions to be used in the latent heat formulation
 # -----------------------------------------------------------------------------------
 
-@numba.njit
+
 def mf_q_longwave_down(
     air_temp_k: xr.DataArray,
     emissivity_air: xr.DataArray,
@@ -272,7 +260,7 @@ def mf_q_longwave_down(
     return (1.0 + 0.17 * cloudiness**2) * emissivity_air * stefan_boltzmann * air_temp_k**4.0
 
 
-@numba.njit
+
 def mf_q_longwave_up(
     water_temp_k: xr.DataArray,
     emissivity_water: xr.DataArray,
@@ -287,7 +275,7 @@ def mf_q_longwave_up(
     return emissivity_water * stefan_boltzmann * water_temp_k**4.0
 
 
-@numba.njit
+
 def mf_esat_mb(
     water_temp_k: xr.DataArray,
     a0: xr.DataArray,
@@ -325,7 +313,7 @@ def mf_esat_mb(
 
 # Temperature conversion functions
 
-@numba.njit
+
 def ri_number(
     gravity: xr.DataArray,
     density_air: xr.DataArray,
@@ -395,7 +383,6 @@ def ri_function(ri_number: xr.DataArray) -> np.ndarray:
     # )))))
 
 
-@numba.njit
 def mf_latent_heat_vaporization(water_temp_k: xr.DataArray) -> xr.DataArray:
     """
     Compute the latent heat of vaporization (W/m2) as a function of water temperature (Kelvin)
@@ -404,7 +391,7 @@ def mf_latent_heat_vaporization(water_temp_k: xr.DataArray) -> xr.DataArray:
     return 2499999 - 2385.74 * water_temp_k
 
 
-@numba.njit
+
 def mf_density_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     """
     Compute density of water (kg/m3) as a function of water temperature (Celsius)
@@ -428,7 +415,6 @@ def mf_density_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     )
 
 
-@numba.njit
 def mf_density_air_sat(water_temp_k: xr.DataArray, esat_mb: float, pressure_mb: float) -> xr.DataArray:
     """
     Compute the density of saturated air at water surface temperature.
@@ -448,7 +434,7 @@ def mf_density_air_sat(water_temp_k: xr.DataArray, esat_mb: float, pressure_mb: 
     return 0.348 * (pressure_mb / water_temp_k) * (1.0 + mixing_ratio_sat) / (1.0 + 1.61 * mixing_ratio_sat)
 
 
-def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
+def mf_cp_water(water_temp_c: xr.DataArray) -> np.ndarray:
     """
     Compute the specific heat of water (J/kg/K) as a function of water temperature (Celsius).
     This is used in computing the source/sink term.
@@ -483,7 +469,7 @@ def mf_cp_water(water_temp_c: xr.DataArray) -> xr.DataArray:
     )
 
 
-@numba.njit
+
 def q_net(
     q_sensible: xr.DataArray,
     q_latent: xr.DataArray,
@@ -512,7 +498,6 @@ def q_net(
     )
 
 
-@numba.njit
 def dTdt_water_c(
     q_net: xr.DataArray,
     surface_area: xr.DataArray,
@@ -536,7 +521,6 @@ def dTdt_water_c(
     )
 
 
-@numba.njit
 def t_water_c(
     water_temp_c: xr.DataArray,
     dTdt_water_c: xr.DataArray,
