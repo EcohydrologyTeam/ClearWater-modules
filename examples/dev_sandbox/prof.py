@@ -21,7 +21,7 @@ def main(iters: int):
     t2 = time.time()
     for _ in range(iters):
         tsm.increment_timestep()
-    print(f'Increment timestep speed (average of {iters}): {(time.time() - t2) / 100}')
+    print(f'Increment timestep speed (average of {iters}): {(time.time() - t2) / iters}')
     print(f'Run time: {time.time() - ti}')
 
 if __name__ == '__main__':
