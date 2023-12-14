@@ -1,8 +1,9 @@
 """A script to allow for debugging of the TSM module."""
 import clearwater_modules
 import time 
+import sys
 
-def main():
+def main(iters: int):
     ti = time.time()
     # define starting state values
     state_i = {
@@ -18,9 +19,20 @@ def main():
     )
     print(tsm.static_variable_values)
     t2 = time.time()
-    for _ in range(1000):
+    for _ in range(iters):
         tsm.increment_timestep()
-    print(f'Increment timestep speed (average of 100): {(time.time() - t2) / 100}')
+    print(f'Increment timestep speed (average of {iters}): {(time.time() - t2) / 100}')
     print(f'Run time: {time.time() - ti}')
+
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1:
+        try:
+            iters = int(sys.argv[1])
+            print(f'Running {iters} iterations.')
+        except ValueError:
+            raise ValueError('Argument must be an integer # of iterations.')
+    else:
+        print('No argument given, defaulting to 100 iteration.')
+        iters = 100
+            
+    main(iters=iters)
