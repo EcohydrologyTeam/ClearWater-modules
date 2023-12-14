@@ -1,10 +1,17 @@
-import xarray as xr 
-import numpy as np
-
-x=1
-y=1
-z=2
-e=xr.where(x==y or y==z, "true","false")
-print(e)
 
 
+def KL01( 
+CSOD_CH4: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate SOD_Bed: SedFlux sediment oxygen demand (g-O2/m2/d)
+
+    Args:
+      NSOD: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+      CSOD_CH4: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+      CSOD_H2S: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+      NSOD: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+
+    """
+    
+    return (CSOD_CH4 + CSOD_H2S + NSOD + SOD_Bed) / 2.0 

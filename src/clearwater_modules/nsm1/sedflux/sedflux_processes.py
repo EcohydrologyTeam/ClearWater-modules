@@ -1376,22 +1376,6 @@ POP2_Diagenesis_2: xr.DataArray,
 
     return POP2_Diagenesis_1 + POP2_Diagenesis_2
 
-@numba.njit
-def SOD_Bed(
-JC: xr.DataArray,
-roc: xr.DataArray,
-JN: xr.DataArray,
-
-) -> xr.DataArray:
-    """Calculate SOD_Bed: SedFlux sediment oxygen demand (g-O2/m2/d)
-
-    Args:
-      JC: total sediment diagenesis flux of POC (g-C/m2/d)
-      roc: oxygen stoichiometric coefficent for organic carbon decay (g-O2/g-C)
-      JN: total sediment diagenesis flux of PON (g-N/m2/d)
-    """
-
-    return JC * roc + 1.714 * JN
 
 """
     # compute SOD
@@ -1505,22 +1489,6 @@ h2: xr.DataArray,
     """
 
     return xr.where(math.isnan(Dd_tc / (0.5 * h2)), 0 , Dd_tc / (0.5 * h2))
-
-@numba.njit  
-def KL01(
-SOD_Bed: xr.DataArray,
-DOX: xr.DataArray,
-
-) -> xr.DataArray:
-    """Calculate KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
-
-    Args:
-      SOD_Bed: SedFlux sediment oxygen demand (g-O2/m2/d)
-      DOX: dissolved oxygen (mg-O/L) 
-
-    """
-
-    return xr.where(math.isnan(SOD_Bed / DOX) or (SOD_Bed / DOX) ==0, 1.0E-8, SOD_Bed / DOX)
 
 @numba.njit  
 def fds1(
@@ -1883,35 +1851,6 @@ SO4_fresh: xr.DataArray,
     #TODO find the formula for if true
     return xr.where(Salinity > 0.01, (20.0 + 27.0 / 190.0 * 607.445 * Salinity) * roso4, SO4_fresh)
 
-#TODO do I need prev?
-@numba.njit  
-def TH2S2_prev(
-TH2S2: xr.DataArray,
-
-) -> xr.DataArray:
-    """Calculate TH2S2_prev: previous timestep TH2S2 concentration in sediment layer 2 (mg-O/L)
-    
-    Args:
-      TH2S2: TH2S sediment layer 2 (mg-O/L)
-
-    """
-    #TODO should this be a constant/will they need to used with the _new variables.
-    return TH2S2
-
-@numba.njit  
-def SO42_prev(
-SO42: xr.DataArray,
-
-) -> xr.DataArray:
-    """Calculate SO42_prev: previous timestep SO42 concentration in sediment layer 2 (mg-O/L)
-    
-    Args:
-      SO42: SO42 sediment layer 2 (mg-O/L)
-
-    """
-    #TODO should this be a constant/will they need to used with the _new variables.
-    return SO42
-
 @numba.njit  
 def HSO4_new (
 POCdiagenesis_part_option: xr.DataArray,
@@ -2141,7 +2080,7 @@ vch41_tc: xr.DataArray,
 FOxch: xr.DataArray,
 
 ) -> xr.DataArray:
-    """Calculate FOxch: methane oxidation attenuation due to low oxygen in layer 1 (unitless)
+    """Calculate con_cox: #TODO define that this is ()
     
     Args:
       Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical) (unitless)
@@ -2423,11 +2362,24 @@ JC_dn: xr.DataArray,
     
     return max(roc * JC - JC_dn, 1.0E-10)
 
-def MatrixSolution(
-a11: xr.DataArray
-) -> xr.DataArray:
-    pass
 
+def MatrixSolution(x1, x2, a11, a12, b1, a21, a22, b2):
+    x1 = x1
+    x2 = x2
+    a11 = a11
+    a12 = a12
+    b1 = b1
+    a21 = a21
+    a22 = a22
+    b2 = b2
+
+    if (a11 * a22 - a12 * a21 == 0.0):
+        print('Twod is singular: A11,A12,A21,A22')
+        print('a11, a12, a21, a22')
+
+    x1 = (a22 * b1 - a12 * b2) / (a11 * a22 - a12 * a21)
+    x2 = (a11 * b2 - a21 * b1) / (a11 * a22 - a12 * a21)
+    return x1, x2
 
 """      
       # NO31 and NO32
@@ -2899,7 +2851,7 @@ ad_2_2: xr.DataArray,
 eliminate SO41 and get a quadratic equation of SO42
 ra2 * SO42 * SO42 + ra1 * SO42 + ra0 = 0.0 
 """
-
+@numba.njit
 def ra0_POC_1( 
 POCdiagenesis_part_option: xr.DataArray,
 h_1_1: xr.DataArray,
@@ -2919,6 +2871,7 @@ KsSO4: xr.DataArray,
     """
     return xr.where(POCdiagenesis_part_option==1, (h_1_1 * g_2 - h_2_1 * g_1) * KsSO4 ,"NaN")
 
+@numba.njit
 def ra1_POC_1( 
 POCdiagenesis_part_option: xr.DataArray,
 h_1_1: xr.DataArray,
@@ -2939,6 +2892,7 @@ JCc: xr.DataArray,
     """
     return xr.where(POCdiagenesis_part_option==1, h_1_1 * g_2 - h_2_1 * g_1 + (h_1_1 * h_2_2 - h_1_2 * h_2_1) * KsSO4 + h_1_1 * JCc,"NaN")
 
+@numba.njit
 def ra2_POC_1( 
 POCdiagenesis_part_option: xr.DataArray,
 h_1_1: xr.DataArray,
@@ -2955,6 +2909,7 @@ h_1_2: xr.DataArray,
     """
     return xr.where(POCdiagenesis_part_option==1, h_1_1 * h_2_2 - h_1_2 * h_2_1,"NaN")
 
+@numba.njit
 def sn1( 
 POCdiagenesis_part_option: xr.DataArray,
 ra1_POC_1: xr.DataArray,
@@ -2969,6 +2924,7 @@ ra1_POC_1: xr.DataArray,
     return xr.where(POCdiagenesis_part_option==1, 
                     xr.where(ra1_POC_1 <= 0.00, -1,1))
 
+@numba.njit
 def disc( 
 POCdiagenesis_part_option: xr.DataArray,
 ra0_POC_1: xr.DataArray,
@@ -2984,6 +2940,7 @@ ra2_POC_1: xr.DataArray,
     """
     return xr.where(POCdiagenesis_part_option==1, (- ra1_POC_1 - sn1 * math.sqrt(ra1_POC_1 * ra1_POC_1 - 4.0 * ra2_POC_1 * ra0_POC_1)) / 2.0, "NaN")
 
+@numba.njit
 def r1( 
 POCdiagenesis_part_option: xr.DataArray,
 ra0_POC_1: xr.DataArray,
@@ -3003,6 +2960,7 @@ disc: xr.DataArray,
                     xr.where(disc != 0.0, disc/ra2_POC_1, 
                     xr.where(ra2_POC_1==0.0, -ra0_POC_1/ra1_POC_1, -ra1_POC_1/ra2_POC_1)), "NaN")
 
+@numba.njit
 def r2( 
 POCdiagenesis_part_option: xr.DataArray,
 ra0_POC_1: xr.DataArray,
@@ -3022,6 +2980,7 @@ disc: xr.DataArray,
                     xr.where(disc != 0.0, ra0_POC_1/disc, 
                     xr.where(ra2_POC_1==0.0, -r1, 0.0)), "NaN")
 
+@numba.njit
 def SO42_new( 
 POCdiagenesis_part_option: xr.DataArray,
 r1: xr.DataArray,
@@ -3074,6 +3033,7 @@ HSO4_new: xr.DataArray,
                     xr.where(r1<0.0, r2,r1), 
                     xr.where(SO4<=0.1, SO4, SO42_new))
 
+@numba.njit
 def SO41_new( 
 POCdiagenesis_part_option: xr.DataArray,
 g_1: xr.DataArray,
@@ -3133,6 +3093,7 @@ HSO4_new: xr.DataArray,
     return xr.where(POCdiagenesis_part_option==1, - (g_1 + h_1_2 * SO42_new) / h_1_1, 
                     xr.where(SO4<=0.1, SO4, SO41_new))
 
+@numba.njit
 def TH2S1_new( 
 POCdiagenesis_part_option: xr.DataArray,
 bx_1: xr.DataArray,
@@ -3141,6 +3102,20 @@ SO41_new: xr.DataArray,
 ad_1_2: xr.DataArray,
 SO42_new: xr.DataArray,
 ad_1_3: xr.DataArray,
+a21_TH2S: xr.DataArray,
+con_sox: xr.DataArray,
+KL01: xr.DataArray,
+fds1: xr.DataArray,
+H2S: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+JCc: xr.DataArray,
+HSO4_new: xr.DataArray,
+h2: xr.DataArray,
+TH2S2: xr.DataArray,
+dt: xr.DataArray,
+TH2S1: xr.DataArray,
+a12_TH2S: xr.DataArray,
+a22_TH2S: xr.DataArray,
 
 ) -> xr.DataArray:
     """Calculate TH2S1_new: new TH2S concentration in sediment in layers 1 (mg-O/L)
@@ -3150,16 +3125,49 @@ ad_1_3: xr.DataArray,
       bx_1, ad_1_1, ad_1_2, ad_1_3,: coefficents for system of equation
       SO41_new: new SO4 concentration in sediment in layers 1 (mg-O/L)
       SO42_new: new SO4 concentration in sediment in layers 2 (mg-O/L)
+      a21_TH2S: a21_TH2S: coefficents for implicit finite difference form for TH2S (a11, a12, a21, a22, b1, b2) (m/d)
+      con_sox: #TODO define that this is ()
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      fds1: dissolved fraction for H2S1 and H2S2 in layer 1 (unitless)
+      H2S: sulfide water concentration (mg-O2/L)
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
+      HSO4_new: hydrogen sulfate water concentration (TODO units)
+      h2: active sediment layer (m)
+      TH2S2: TH2S sediment layer 2 (mg-O/L)
+      dt: timestep (d)
+      TH2S1: TH2S sediment layer 1 (mg-O/L)
+      a12_TH2S: coefficents for implicit finite difference form for TH2S (a11, a12, a21, a22, b1, b2) (m/d)
+      a22_TH2S: coefficents for implicit finite difference form for TH2S (a11, a12, a21, a22, b1, b2) (m/d)
     """
-    
-    return xr.where(POCdiagenesis_part_option==1, - (bx_1 + ad_1_1 * SO41_new + ad_1_2 * SO42_new) / ad_1_3, "NaN")
+    a11=-a21_TH2S + con_sox / KL01 + KL01 * fds1
+    b1  = KL01 * H2S
+    b2=xr.where(SedFlux_solution_option == 1, JCc * HSO4_new / h2, JCc * HSO4_new / h2 + TH2S2 * h2 / dt)
+    TH2S1_new, hold = MatrixSolution(TH2S1, TH2S2, a11, a12_TH2S, b1, a21_TH2S, a22_TH2S, b2)
+    TH2S1_new=max(TH2S1_new,0.0)
+    return xr.where(POCdiagenesis_part_option==1, - (bx_1 + ad_1_1 * SO41_new + ad_1_2 * SO42_new) / ad_1_3, TH2S1_new)
 
+@numba.njit
 def TH2S2_new( 
 POCdiagenesis_part_option: xr.DataArray,
 bx_3: xr.DataArray,
 ad_3_3: xr.DataArray,
 TH2S1_new: xr.DataArray,
 ad_3_4: xr.DataArray,
+a21_TH2S: xr.DataArray,
+con_sox: xr.DataArray,
+KL01: xr.DataArray,
+fds1: xr.DataArray,
+H2S: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+JCc: xr.DataArray,
+HSO4_new: xr.DataArray,
+h2: xr.DataArray,
+TH2S2: xr.DataArray,
+dt: xr.DataArray,
+TH2S1: xr.DataArray,
+a12_TH2S: xr.DataArray,
+a22_TH2S: xr.DataArray,
 
 ) -> xr.DataArray:
     """Calculate TH2S2_new: new TH2S concentration in sediment in layers 2 (mg-O/L)
@@ -3168,11 +3176,31 @@ ad_3_4: xr.DataArray,
       POCdiagenesis_part_option: method for partitioin carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
       bx_3, ad_3_3, ad_3_4: coefficents for system of equation
       TH2S1_new: new TH2S concentration in sediment in layers 1 (mg-O/L)
+      a21_TH2S: a21_TH2S: coefficents for implicit finite difference form for TH2S (a11, a12, a21, a22, b1, b2) (m/d)
+      con_sox: #TODO define that this is ()
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      fds1: dissolved fraction for H2S1 and H2S2 in layer 1 (unitless)
+      H2S: sulfide water concentration (mg-O2/L)
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
+      HSO4_new: hydrogen sulfate water concentration (TODO units)
+      h2: active sediment layer (m)
+      TH2S2: TH2S sediment layer 2 (mg-O/L)
+      dt: timestep (d)
+      TH2S1: TH2S sediment layer 1 (mg-O/L)
+      a12_TH2S: coefficents for implicit finite difference form for TH2S (a11, a12, a21, a22, b1, b2) (m/d)
+      a22_TH2S: coefficents for implicit finite difference form for TH2S (a11, a12, a21, a22, b1, b2) (m/d)
     """
-    
-    return xr.where(POCdiagenesis_part_option==1, - (bx_3 + ad_3_3 * TH2S1_new) / ad_3_4, "NaN")
+    a11=-a21_TH2S + con_sox / KL01 + KL01 * fds1
+    b1 = KL01 * H2S
+    b2=xr.where(SedFlux_solution_option == 1, JCc * HSO4_new / h2, JCc * HSO4_new / h2 + TH2S2 * h2 / dt)
+    hold,TH2S2_new = MatrixSolution(TH2S1, TH2S2, a11, a12_TH2S, b1, a21_TH2S, a22_TH2S, b2)
+    TH2S2_new=max(TH2S2_new,0.0)
 
-def CSOD_H2S_new( 
+    return xr.where(POCdiagenesis_part_option==1, - (bx_3 + ad_3_3 * TH2S1_new) / ad_3_4, TH2S2_new)
+
+@numba.njit
+def CSOD_H2S( 
 POCdiagenesis_part_option: xr.DataArray,
 con_sox: xr.DataArray,
 KL01: xr.DataArray,
@@ -3188,13 +3216,16 @@ TH2S1_new: xr.DataArray,
       TH2S1_new: new TH2S concentration in sediment in layers 1 (mg-O/L)
     """
     
-    return xr.where(POCdiagenesis_part_option==1, con_sox / KL01 * TH2S1_new, "NaN")
+    return xr.where(POCdiagenesis_part_option==1, con_sox / KL01 * TH2S1_new, con_sox / KL01 * TH2S1_new)
 
+@numba.njit
 def JCc_CH4( 
 POCdiagenesis_part_option: xr.DataArray,
 JCc: xr.DataArray,
 KsSO4: xr.DataArray,
 SO42_new: xr.DataArray,
+h2: xr.DataArray,
+HSO4_new: xr.DataArray,
 
 ) -> xr.DataArray:
     """Calculate JCc_CH4: carbon diagenesis flux consumed for methane formation (g-O2/m2/d)
@@ -3204,10 +3235,13 @@ SO42_new: xr.DataArray,
       KsSO4: half-saturation constant for sulfate in sulfate reduction (mg-O2/L)
       JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
       SO42_new: new SO4 concentration in sediment in layers 2 (mg-O/L)
+      HSO4_new: hydrogen sulfate water concentration (TODO units)
+      h2: active sediment layer (m)
     """
     
-    return xr.where(POCdiagenesis_part_option==1, JCc * KsSO4 / (SO42_new + KsSO4), "NaN")  #TODO find this formula. See page 170 is SO42 supposed to be on top as well?
+    return xr.where(POCdiagenesis_part_option==1, JCc * KsSO4 / (SO42_new + KsSO4), JCc * (h2 - HSO4_new) / h2)  #TODO find this formula. See page 170 is SO42 supposed to be on top as well?
 
+@numba.njit
 def ra2( 
 POCdiagenesis_part_option: xr.DataArray,
 JCc: xr.DataArray,
@@ -3239,6 +3273,7 @@ dt: xr.DataArray,
                     xr.where(SedFlux_solution_option == 1, 2.0 * KL01 * JCc / h2, 2.0 * KL01 * JCc / h2 + (KL01 * SO4 + con_sox / KL01 * TH2S1) / dt), "NaN") "NaN")  
 
 
+@numba.njit
 def ra1( 
 POCdiagenesis_part_option: xr.DataArray,
 JCc: xr.DataArray,
@@ -3271,6 +3306,8 @@ Dd_tc: xr.DataArray,
                     xr.where(SO4>0.1, 
                     xr.where(SedFlux_solution_option == 1, 2.0 * Dd_tc * JCc / h2, 2.0 * Dd_tc * JCc / h2 - 2.0 * KL01 * HSO4 * SO42 / dt), "NaN") "NaN")  
 
+
+@numba.njit
 def ra0( 
 POCdiagenesis_part_option: xr.DataArray,
 SedFlux_solution_option: xr.DataArray,
@@ -3297,223 +3334,1090 @@ Dd_tc: xr.DataArray,
                     xr.where(SO4>0.1, 
                     xr.where(SedFlux_solution_option == 1, - 2.0 * Dd_tc * (KL01 * SO4 + con_sox / KL01 * TH2S1), - 2.0 * Dd_tc * (KL01 * SO4 + con_sox / KL01 * TH2S1)), "NaN") "NaN")  
 
-"""  
-      # Half-saturation method
-      if POCdiagenesis_part_option == 1 :
-        
-      #sulfate reduction depth method
-      elif POCdiagenesis_part_option == 2 :
-        
-        if (SO4 <= 0.1) :
-          pass
-        else:
-          
-          # first compute HSO4 TODO I do not know where the equation comes from: see page 159 seems to be close
-          if SedFlux_solution_option == 1:
-            ra2 = 2.0 * KL01 * JCc / h2
-            ra1 = 2.0 * Dd_tc * JCc / h2
-            ra0 = - 2.0 * Dd_tc * (KL01 * SO4 + con_sox / KL01 * TH2S1_prev)      
-          elif SedFlux_solution_option == 2 :
-            ra2 = 2.0 * KL01 * JCc / h2 + (KL01 * SO4 + con_sox / KL01 * TH2S1_prev) / dt
-            ra1 = 2.0 * Dd_tc * JCc / h2 - 2.0 * KL01 * HSO4_prev * SO42_prev / dt
-            ra0 = - 2.0 * Dd_tc * (KL01 * SO4 + con_sox / KL01 * TH2S1_prev + HSO4_prev * SO42_prev / dt)
 
-          
-          # TH2S1, TH2S2
-          a11 = -a21_TH2S + con_sox / KL01 + KL01 * fds1
-          b1  = KL01 * H2S
-          if SedFlux_solution_option == 1 :  
-            b2  = JCc * HSO4 / h2
-          elif SedFlux_solution_option == 2:
-            b2  = JCc * HSO4 / h2 + TH2S2_prev * h2 / dt
+@numba.njit
+def CSODmax( 
+Methane_solution_option: xr.DataArray,
+KL12: xr.DataArray,
+CH4sat: xr.DataArray,
+JCc_CH4: xr.DataArray,
 
-          TH2S1, TH2S2 = MatrixSolution (TH2S1, TH2S2, a11, a12_TH2S, b1, a21_TH2S, a22_TH2S, b2)
-          TH2S1 = max(TH2S1, 0.0)
-          TH2S2 = max(TH2S2, 0.0)
+) -> xr.DataArray:
+    """Calculate CSODmax: used for analytical soluton of methane (g-O2/m2/d)
 
-          CSOD_H2S = con_sox / KL01 * TH2S1
-          JCc_CH4  = JCc * (h2 - HSO4) / h2     #TODO should it be JCc_CH4 = JCc * (1-(HSO4/H2)) page 170 in PDF
-          
-
-        # TH2S1, TH2S2
-        a11 = -a21_TH2S + con_sox / KL01 + KL01 * fds1
-        b1  = KL01 * H2S
-        if SedFlux_solution_option == 1 :
-          b2  = JCc * HSO4 / h2
-        elif SedFlux_solution_option == 2 :
-          b2  = JCc * HSO4 / h2 + TH2S2_prev * h2 / dt
-
-        TH2S1, TH2S2 = MatrixSolution(TH2S1, TH2S2, a11, a12_TH2S, b1, a21_TH2S, a22_TH2S, b2)
-        TH2S1 = max(TH2S1, 0.0)
-        TH2S2 = max(TH2S2, 0.0)
-        CSOD_H2S = con_sox / KL01 * TH2S1
-        JCc_CH4  = JCc * (h2 - HSO4) / h2
-___________________________________________________________________________________________________
-
-      # CH41 and CH42
-
-      # analytical solutions
-      if Methane_solution_option == 1 :
-        CSODmax  = min(math.sqrt(2.0 * KL12 * CH4sat * JCc_CH4), JCc_CH4)
-        
-        if vch41_tc / KL01 < 100.0 :
-          CSOD_CH4 = CSODmax * (1.0 - 2.0 / (math.exp(vch41_tc / KL01) + math.exp(-vch41_tc / KL01))) 
-        else:
-          CSOD_CH4 = CSODmax
-
-      #numerical solutions
-      elif Methane_solution_option == 2 : 
-        a11 = KL12 + con_cox / KL01 + KL01
-        b1  = KL01 * CH4
-        if SedFlux_solution_option == 1 : 
-          b2 = JCc_CH4
-        elif SedFlux_solution_option == 2 :
-          b2 = JCc_CH4 + CH42_prev * h2 / dt
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical)
+      KL12: mass transfer velocity between the two sediment layers (m/d)
+      CH4sat: saturated concentration of methane in oxygen equivalents (mg-O2/L)
+      JCc_CH4: carbon diagenesis flux consumed for methane formation (g-O2/m2/d)
+    """
     
-        CH41, CH42 = MatrixSolution(CH41, CH42, a11, a12_CH4, b1, a21_CH4, a22_CH4, b2)
-        
-        if CH42 > CH4sat :
-          CH42 = CH4sat
-          CH41 = (b1 - a12_CH4 * CH42) / a11
+    return xr.where(Methane_solution_option == 1, min(math.sqrt(2.0 * KL12 * CH4sat * JCc_CH4), JCc_CH4), "NaN")
 
-        CH41     = max(CH41, 0.0)
-        CH42     = max(CH42, 0.0)
-        CSOD_CH4 = con_cox / KL01 * CH41
+@numba.njit
+def CSOD_CH4( 
+Methane_solution_option: xr.DataArray,
+vch41_tc: xr.DataArray,
+KL01: xr.DataArray,
+CSODmax: xr.DataArray,
+CH41_new: xr.DataArray,
+con_cox: xr.DataArray,
 
-      #update SOD
-      NSOD    = ron * con_nit * FNH4 / KL01 * TNH41     #TODO potentially missing a dn1 equation 5.37 page 162
-      SOD_old = SOD_Bed
-      SOD_Bed  = (CSOD_CH4 + CSOD_H2S + NSOD + SOD_Bed) / 2.0
-      if (abs(SOD_Bed - SOD_old) / SOD_Bed * 100.0 < res) :
-        break    
-      KL01 = SOD_Bed / DOX
-      if math.isnan(KL01) or KL01 == 0.0:
-        KL01 = 1.0E-8
+) -> xr.DataArray:
+    """Calculate CSOD_CH4: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
 
-    #TODO not sure if i is defined outside of the loop
-    #determine whether SOD is converged
-    if i > int(maxit) :
-      print('SOD iterations exceeded.')
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical)
+      vch41_tc: methane oxidation reaction velocity in sediment layer 1 temperature corrected (m/d)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      CSODmax: used for analytical soluton of methane (g-O2/m2/d)
+      CH41_new: CH4 sediment layer 1 (mg-O/L)
+      con_cox: #TODO define that this is ()
 
-    # inorganic species reactions and mass transfers
-    kdpo41=0
-    hsat=0    #depth where methane reaches saturation
+    """
     
-    KL01 = SOD_Bed / DOX
+    return xr.where(Methane_solution_option == 1, 
+                    xr.where(vch41_tc/KL01 <100.0, CSODmax * (1.0 - 2.0 / (math.exp(vch41_tc / KL01) + math.exp(-vch41_tc / KL01))), CSODmax), con_cox / KL01 * CH41_new)
+
+@numba.njit
+def CH41_new( 
+Methane_solution_option: xr.DataArray,
+vch41_tc: xr.DataArray,
+KL01: xr.DataArray,
+con_cox: xr.DataArray,
+KL12: xr.DataArray,
+CH4: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+JCc_CH4: xr.DataArray,
+CH41: xr.DataArray,
+CH42: xr.DataArray,
+h2: xr.DataArray,
+dt: xr.DataArray,
+a12_CH4: xr.DataArray,
+a21_CH4: xr.DataArray,
+a22_CH4: xr.DataArray,
+CH42_new: xr.DataArray,
+CH4sat: xr.DataArray,
+CSOD_CH4: xr.DataArray
+
+) -> xr.DataArray:
+    """Calculate CH41_new: new CH4 sediment layer 1 (mg-O/L)
+
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical)
+      vch41_tc: methane oxidation reaction velocity in sediment layer 1 temperature corrected (m/d)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+
+      con_cox: #TODO define that this is ()
+      KL12: mass transfer velocity between the two sediment layers (m/d)
+      CH4: methane concentration (mg-o)/L
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      JCc_CH4: carbon diagenesis flux consumed for methane formation (g-O2/m2/d)
+      CH41: CH4 sediment layer 1 (mg-O/L)
+      CH42: CH4 sediment layer 2 (mg-O/L)
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+      a12_CH4: coefficents for implicit finite difference form for CH4 (a11, a12, a21, a22, b1, b2) (m/d)
+      a21_CH4: coefficents for implicit finite difference form for CH4 (a11, a12, a21, a22, b1, b2) (m/d)
+      a22_CH4: coefficents for implicit finite difference form for CH4 (a11, a12, a21, a22, b1, b2) (m/d)
+      CH42_new: new CH4 sediment layer 2 (mg-O/L)
+      CH4sat: saturated concentration of methane in oxygen equivalents (mg-O2/L)
+
+    """
+    a11 = KL12 + con_cox / KL01 + KL01
+    b1  = KL01 * CH4
+    b2 = xr.where(SedFlux_solution_option == 1, KL01 * CH4, JCc_CH4 + CH42 * h2 / dt)
+    CH41_new, hold = MatrixSolution(CH41, CH42, a11, a12_CH4, b1, a21_CH4, a22_CH4, b2)
+    CH41_new=xr.where(CH42_new > CH4sat, max((b1 - a12_CH4 * CH42) / a11,0.0), max(CH41_new,0.0))
+    
+    return xr.where(Methane_solution_option == 2, CH41_new, 
+                    xr.where( vch41_tc <= 0, 0.0, CSOD_CH4 / (vch41_tc * vch41_tc / KL01)))
+
+@numba.njit
+def CH42_new( 
+Methane_solution_option: xr.DataArray,
+KL01: xr.DataArray,
+con_cox: xr.DataArray,
+KL12: xr.DataArray,
+CH4: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+JCc_CH4: xr.DataArray,
+CH41: xr.DataArray,
+CH42: xr.DataArray,
+h2: xr.DataArray,
+dt: xr.DataArray,
+a12_CH4: xr.DataArray,
+a21_CH4: xr.DataArray,
+a22_CH4: xr.DataArray,
+CH42_new: xr.DataArray,
+CH4sat: xr.DataArray
+
+) -> xr.DataArray:
+    """Calculate CH42_new: new CH4 sediment layer 2 (mg-O/L)
+
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+
+      con_cox: #TODO define that this is ()
+      KL12: mass transfer velocity between the two sediment layers (m/d)
+      CH4: methane concentration (mg-o)/L
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      JCc_CH4: carbon diagenesis flux consumed for methane formation (g-O2/m2/d)
+      CH41: CH4 sediment layer 1 (mg-O/L)
+      CH42: CH4 sediment layer 2 (mg-O/L)
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+      a12_CH4: coefficents for implicit finite difference form for CH4 (a11, a12, a21, a22, b1, b2) (m/d)
+      a21_CH4: coefficents for implicit finite difference form for CH4 (a11, a12, a21, a22, b1, b2) (m/d)
+      a22_CH4: coefficents for implicit finite difference form for CH4 (a11, a12, a21, a22, b1, b2) (m/d)
+      CH42_new: new CH4 sediment layer 2 (mg-O/L)
+      CH4sat: saturated concentration of methane in oxygen equivalents (mg-O2/L)
+
+    """
+    a11 = KL12 + con_cox / KL01 + KL01
+    b1  = KL01 * CH4
+    b2 = xr.where(SedFlux_solution_option == 1, KL01 * CH4, JCc_CH4 + CH42 * h2 / dt)
+    hold, CH42_new = MatrixSolution(CH41, CH42, a11, a12_CH4, b1, a21_CH4, a22_CH4, b2)
+    CH42_new=xr.where(CH42_new > CH4sat, max(CH4sat,0.0), max(CH42_new,0.0))
+    
+    return xr.where(Methane_solution_option == 2, CH42_new, 0.0)
+
+@numba.njit
+def NSOD( 
+KL01: xr.DataArray,
+ron: xr.DataArray,
+con_nit: xr.DataArray,
+FNH4: xr.DataArray,
+TNH41_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate NSOD: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      ron: oxygen stoichiometric coeff for nitrification        (g-O2/g-N)
+      con_nit: #TODO define that this is ()
+      FNH4: modification of nitrification reaction in layer 1 (unitless)
+      THN41_new: newtotal concentration NH4 dissolved layer 1 (mg-N/L)
+
+
+    """
+    
+    return ron * con_nit * FNH4 / KL01 * TNH41_new
+
+@numba.njit  
+def KL01(
+SOD_Bed: xr.DataArray,
+DOX: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+
+    Args:
+      SOD_Bed: SedFlux sediment oxygen demand (g-O2/m2/d)
+      DOX: dissolved oxygen (mg-O/L) 
+
+    """
+
+    return xr.where(math.isnan(SOD_Bed / DOX) or (SOD_Bed / DOX) ==0, 1.0E-8, SOD_Bed / DOX)
+
+@numba.njit
+def SOD_Bed( 
+CSOD_CH4: xr.DataArray,
+res: xr.DataArray,
+DOX: xr.DataArray,
+CSOD_H2S: xr.DataArray,
+NSOD: xr.DataArray,
+maxit: xr.DataArray,
+JC: xr.DataArray,
+roc: xr.DataArray,
+JN: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate SOD_Bed: SedFlux sediment oxygen demand (g-O2/m2/d)
+
+    Args:
+      NSOD: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+      CSOD_CH4: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+      CSOD_H2S: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+      NSOD: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+      JC: total sediment diagenesis flux of POC (g-C/m2/d)
+      roc: oxygen stoichiometric coefficent for organic carbon decay (g-O2/g-C)
+      JN: total sediment diagenesis flux of PON (g-N/m2/d)
+    """
+
+
+    for i in range(1, maxit) :
+        if i == 1:
+            SOD_Bed= JC * roc + 1.714 * JN
+  
+        KL01 = KL01(SOD_Bed,DOX) #TODO need this to update for each loop
+
+        if(math.nan(KL01) or KL01==0.0):
+            KL01 = 0.00000001
+            
+        SOD_Bed_old = SOD_Bed
+        SOD_Bed = (CSOD_CH4 + CSOD_H2S + NSOD + SOD_Bed_old) / 2.0
+        if (abs(SOD_Bed - SOD_Bed_old) / SOD_Bed * 100.0 < res): 
+          exit
+    
+        return SOD_Bed
+    return SOD_Bed
+
+"""
+Output pathways
+"""
+
+@numba.njit  
+def NH41_new(
+fd1: xr.DataArray,
+TNH41_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate NH41: NH4 sediment layer 1 (mg-N/L)
+
+    Args:
+      fd1: fraction of inorganic matter (ammonia, phosphate) in dissolved form in sediment layer 1 (unitless)
+      THN41_new: newtotal concentration NH4 dissolved layer 1 (mg-N/L)
+
+    """
+
+    return fd1 * TNH41_new
+
+@numba.njit  
+def NH42_new(
+fd2: xr.DataArray,
+TNH42_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate NH42: NH4 sediment layer 2 (mg-N/L)
+
+    Args:
+      fd2: fraction of inorganic matter (ammonia, phosphate) in dissolved form in sediment layer 2 (unitless)
+      THN42_new: newtotal concentration NH4 dissolved layer 2 (mg-N/L)
+
+    """
+
+    return fd2 * TNH42_new
+
+@numba.njit  
+def JNH4(
+KL01: xr.DataArray, 
+NH41_new: xr.DataArray,
+NH4: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate NH42: NH4 sediment layer 2 (mg-N/L)
+
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d) 
+      NH41: NH4 sediment layer 1 (mg-N/L)
+      NH4: Ammonia water concentration (mg-N/L)
+
+    """
+
+    return KL01 * (NH41_new - NH4)
+
+@numba.njit  
+def TNH41_Burial( 
+vb: xr.DataArray,
+TNH41_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate TNH41_Burial: burial of TNH41 in sediment layer 1 (g-N/m2/d)
+
+    Args:
+      vb: burial velocity of POM2 in bed sediment (m/d) #TODO double check units
+      THN41_new: newtotal concentration NH4 dissolved layer 1 (mg-N/L)
+
+    """
+
+    return vb * TNH41_new
+
+@numba.njit  
+def NH41_Nitrification( 
+con_nit: xr.DataArray, 
+FNH4: xr.DataArray,
+KL01: xr.DataArray, 
+TNH41_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate NH41_Nitrification: nitrification of TNH41 in sediment layer 1 (g-N/m2/d) 
+
+    Args:
+      con_nit: #TODO define that this is ()
+      FNH4: modification of nitrification reaction in layer 1 (unitless)
+      THN41_new: newtotal concentration NH4 dissolved layer 1 (mg-N/L)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+
+    """
+
+    return con_nit * FNH4 / KL01 * TNH41_new
+
+@numba.njit  
+def NH41_NH42( 
+con_nit: xr.DataArray, 
+FNH4: xr.DataArray,
+KL01: xr.DataArray, 
+TNH41_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate NH41_NH42: mass transfer between TNH41 and TNH42 in dissolved form  (g-N/m2/d)
+
+    Args:
+      con_nit: #TODO define that this is ()
+      FNH4: modification of nitrification reaction in layer 1 (unitless)
+      THN41_new: newtotal concentration NH4 dissolved layer 1 (mg-N/L)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+
+    """
+
+    return con_nit * FNH4 / KL01 * TNH41_new
+
+@numba.njit  
+def TNH42_Burial( 
+vb: xr.DataArray,
+TNH42_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate TNH42_Burial: burial of TNH41 in sediment layer 2 (g-N/m2/d)
+
+    Args:
+      vb: burial velocity of POM2 in bed sediment (m/d) #TODO double check units
+      THN42_new: newtotal concentration NH4 dissolved layer 2 (mg-N/L)
+
+    """
+
+    return vb * TNH42_new
+
+@numba.njit  
+def JNO3( 
+KL01: xr.DataArray,
+NO31_new: xr.DataArray,
+NO3: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate JNO3: sediment-water flux of nitrate (g-N/m2/d)
+
+    Args:
+      NO31_new: new NO3 sediment layer 1 (mg-N/L)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      NO3: nitrate concentation water (mg-N/L)
+    """
+
+    return KL01 * (NO31_new - NO3)
+
+@numba.njit  
+def NO31_Denit( 
+KL01: xr.DataArray,
+vno31_tc: xr.DataArray,
+NO31_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate NO31_Denit: denitrification of NO31 in sediment layer 1 (g-N/m2/d)
+
+    Args:
+      NO31_new: new NO3 sediment layer 1 (mg-N/L)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      vno31_tc: denitrification reaction velocity in sediment layer 1 temperature corrected (m/d)
+
+    """
+
+    return vno31_tc * vno31_tc / KL01 * NO31_new
+
+@numba.njit  
+def NO31_NO32( 
+KL12: xr.DataArray, 
+NO32_new: xr.DataArray,
+NO31_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate NO31_NO32: mass transfer between NO31 and NO32 (g-N/m2/d)
+
+    Args:
+      NO31_new: new NO3 sediment layer 1 (mg-N/L)
+      NO32_new: new NO3 sediment layer 2 (mg-N/L)
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
       
-    # pathways of TNH41/2, NO31/2, CH41/2, SO41/2, TH2S1/2, DIC1/2, TIP1/2
-    #TNH41 and TNH42
-    NH41= fd1 * TNH41
-    NH42= fd2 * TNH42
-    
-    JNH4= KL01 * (NH41 - NH4)
-    TNH41_Burial= vb * TNH41
-    NH41_Nitrification = con_nit * FNH4 / KL01 * TNH41
-    #PNH41_PNH42 = vb * (fp2 * TNH42 - fp1 * TNH41)
-    NH41_NH42 = KL12 * (NH42 - NH41)
-    TNH42_Burial = vb * TNH42
-    
-    # NO31 and NO32
-    JNO3 = KL01 * (NO31 - NO3)
-    NO31_Denit = vno31_tc * vno31_tc / KL01 * NO31
-    NO31_NO32 = KL12 * (NO32 - NO31)
-    NO32_Denit = vno32_tc * NO32
-    
-    # SO41 and SO42
-    if POCdiagenesis_part_option == 1 :
-      JCc_SO4 = JCc * SO42 / (SO42 + KsSO4)
-    elif POCdiagenesis_part_option == 2 :
-      JCc_SO4 = JCc * HSO4 / h2
+    """
 
-    JSO4 = KL01 * (SO41 - SO4)
-    SO41_SO42 = KL12SO4 * (SO42 - SO41)
-    
-    # TH2S1 and TH2S2
-    H2S1 = fds1 * TH2S1
-    H2S2 = fds2 * TH2S2
-    
-    JH2S = KL01 * (H2S1 - H2S)
-    H2S1_Oxidation = con_sox / KL01 * TH2S1
-    TH2S1_Burial = vb * TH2S1
-    H2S1_H2S2 = KL12 * (H2S2 - H2S1)
-    
-    #PH2S1_PH2S2 = vb  * (TH2S2 * fps2 - TH2S1 * fps1)
-    TH2S2_Burial = vb * TH2S2
-    
-    # CH41 and CH42
-    if Methane_solution_option == 1 :
-      CH41_Oxidation = CSOD_CH4
-      JCH4 = CSODmax - CSOD_CH4
-      JCH4g = JCc_CH4 - CSODmax
-      if vch41_tc <= 0 :
-        CH41 = 0.0
-      else :
-        CH41 = CSOD_CH4 / (vch41_tc * vch41_tc / KL01)
+    return KL12 * (NO32_new - NO31_new)
 
-      #CH42 is not computed???
-      CH42 = 0.0                                        
+@numba.njit  
+def NO32_Denit( 
+vno32_tc: xr.DataArray,
+NO32_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate NO32_Denit: denitrification of NO31 in sediment layer 2 (g-N/m2/d)
+
+    Args:
+      NO32_new: new NO3 sediment layer 2 (mg-N/L)
+      vno32_tc: denitrification reaction velocity in sediment layer 2 temperature corrected (m/d)
+
+    """
+
+    return vno32_tc * NO32_new
+
+@numba.njit  
+def JCc_SO4( 
+POCdiagenesis_part_option: xr.DataArray,
+JCc: xr.DataArray,
+SO42_new: xr.DataArray,
+KsSO4: xr.DataArray,
+HSO4_new: xr.DataArray,
+h2: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate JCc_SO4: carbon diagenesis flux consumed for sulfate reduction (g-O2/m2/d)
+
+    Args:
+      POCdiagenesis_part_option: method for partitioing carbon diagenesis flux into methane and sulfide (1 half-saturation and 2 sulfate reduction depth) (unitless) 
+      JCc: carbon diagenesis flux corrected for denitrification (g-O2/m2/d)
+      SO42_new: new SO4 concentration in sediment in layers 2 (mg-O/L)
+      KsSO4: half-saturation constant for sulfate in sulfate reduction (mg-O2/L)
+      HSO4_new: hydrogen sulfate water concentration (TODO units)
+      h2: active sediment layer (m)
+
+    """
+
+    return xr.where(POCdiagenesis_part_option==1, JCc * SO42_new / (SO42_new + KsSO4), JCc * HSO4_new / h2)
+
+@numba.njit 
+def JSO4( 
+KL01: xr.DataArray, 
+SO41_new: xr.DataArray, 
+SO4: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate JSO4: sediment-water flux of sulfate (g-O2/m2/d)
+
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      SO41_new: new SO4 concentration in sediment in layers 1 (mg-O/L)
+      SO4:  SO4 concentration in water (mg-O/L)
+    """
+
+    return KL01 * (SO41_new - SO4)
+
+@numba.njit 
+def SO41_SO42( 
+SO41_new: xr.DataArray, 
+KL12SO4: xr.DataArray, 
+SO42_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate SO41_SO42: mass transfer between SO41 and SO42 (g-O2/m2/d) 
+  !
+
+    Args:
+      KL12SO4: dissolved mass transfer velocity of sulfate between two layers (m/d)
+      SO41_new: new SO4 concentration in sediment in layers 1 (mg-O/L)
+      SO42_new: new SO4 concentration in sediment in layers 2 (mg-O/L)
+    """
+
+    return KL12SO4 * (SO42_new - SO41_new)
+
+@numba.njit 
+def H2S1_new( 
+fds1: xr.DataArray,
+TH2S1_new: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate H2S1_new: new H2S1 concentration in sediment layer 1 (mg-O/L) 
+  !
+
+    Args:
+      fds1: dissolved fraction for H2S1 and H2S2 in layer 1 (unitless)
+      TH2S1_new: new TH2S concentration in sediment in layers 1 (mg-O/L)
+
+    """
+
+    return fds1 * TH2S1_new
+
+@numba.njit 
+def H2S2_new( 
+fds2: xr.DataArray,
+TH2S2_new: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate H2S2_new: new H2S2 concentration in sediment layer 2 (mg-O/L) 
+  !
+
+    Args:
+      fds2: dissolved fraction for H2S1 and H2S2 in layer 2 (unitless)
+      TH2S2_new: new TH2S concentration in sediment in layers 2 (mg-O/L)
+
+    """
+
+    return fds2 * TH2S2_new
+
+@numba.njit 
+def JH2S( 
+KL01: xr.DataArray, 
+H2S1_new: xr.DataArray, 
+H2S: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate JH2S: sediment-water flux of sulfide (g-O2/m2/d)
+  !
+
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      H2S1_new: new H2S1 concentration in sediment layer 1 (mg-O/L) 
+      H2S: H2S water concentration (mg-O/L)
+
+    """
+
+    return KL01 * (H2S1_new - H2S)
+
+@numba.njit 
+def H2S1_Oxidation( 
+KL01: xr.DataArray, 
+TH2S1_new: xr.DataArray, 
+con_sox: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate H2S1_Oxidation: sulfide oxidation in sediment layer 1 (g-O2/m2/d)
+  !
+
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      TH2S1_new: new TH2S concentration in sediment in layers 1 (mg-O/L)
+      con_sox: #TODO define that this is ()
+
+    """
+
+    return con_sox / KL01 * TH2S1_new
+
+@numba.njit 
+def TH2S1_Burial ( 
+vb: xr.DataArray, 
+TH2S1_new: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate TH2S1_Burial: burial of H2S1 in sediment layer 1 (g-O2/m2/d)
+
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      vb: burial velocity of POM2 in bed sediment (m/d) #TODO double check units
+      TH2S1_new: new TH2S concentration in sediment in layers 1 (mg-O/L)
+    """
+
+    return vb * TH2S1_new
+
+@numba.njit 
+def H2S1_H2S2( 
+KL12: xr.DataArray, 
+H2S2_new: xr.DataArray, 
+H2S1_new: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate H2S1_H2S2: mass transfer between H2S1 and H2S2 in dissolved form (g-O2/m2/d)
+
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      H2S2_new: new H2S2 concentration in sediment layer 2 (mg-O/L) 
+      H2S1_new: new H2S1 concentration in sediment layer 1 (mg-O/L) 
+    """
+
+    return KL12 * (H2S2_new - H2S1_new)
+
+@numba.njit 
+def TH2S2_Burial( 
+vb: xr.DataArray,  
+TH2S2_new: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate H2S1_H2S2: mass transfer between H2S1 and H2S2 in dissolved form (g-O2/m2/d)
+
+    Args:
+      vb: burial velocity of POM2 in bed sediment (m/d) #TODO double check units
+      TH2S2_new: new TH2S concentration in sediment in layers 2 (mg-O/L)
+
+    """
+
+    return vb * TH2S2_new
+
+@numba.njit 
+def CH41_Oxidation( 
+Methane_solution_option: xr.DataArray,  
+CSOD_CH4: xr.DataArray,
+con_cox: xr.DataArray,  
+KL01: xr.DataArray,   
+CH41_new: xr.DataArray,  
+
+) -> xr.DataArray:
+    """Calculate CH41_Oxidation: methane oxidation in sediment layer 1 (g-O2/m2/d)
+
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical)  
+      CSOD_CH4: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+      con_cox: #TODO define that this is () 
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d) 
+      CH41_new: new CH4 sediment layer 1 (mg-O/L)
+
+    """
+
+    return xr.where(Methane_solution_option==1, CSOD_CH4, con_cox / KL01 * CH41_new)
+
+@numba.njit 
+def JCH4( 
+Methane_solution_option: xr.DataArray,  
+CSOD_CH4: xr.DataArray,  
+KL01: xr.DataArray,   
+CH41_new: xr.DataArray, 
+CSODmax: xr.DataArray,
+CH4: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate JCH4: sediment-water flux of methane (g-O2/m2/d)
+
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical)  
+      CSOD_CH4: carbonaceous oxygen demand, nitrogenous oxygen demand (mg-O2/L)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d) 
+      CH41_new: new CH4 sediment layer 1 (mg-O/L)
+      CSODmax: used for analytical soluton of methane (g-O2/m2/d)
+      CH4: CH4 concentration water (mg-O/L)
+
+    """
+
+    return xr.where(Methane_solution_option==1, CSODmax - CSOD_CH4, KL01 * (CH41_new - CH4))
+
+@numba.njit 
+def JCH4g( 
+Methane_solution_option: xr.DataArray,  
+CSODmax: xr.DataArray,
+CH42_new: xr.DataArray,
+CH4sat: xr.DataArray,
+JCc_CH4: xr.DataArray,
+JCH4: xr.DataArray,
+CH41_Oxidation: xr.DataArray,
+CH42: xr.DataArray,
+dt: xr.DataArray,
+h2: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate JCH4g: methane loss as bubbles from sediment (g-O2/m2/d)
+
+    Args:
+      Methane_solution_option: method for solving methane concentration (1 analytical and 2 numerical)  
+      CSODmax: used for analytical soluton of methane (g-O2/m2/d)
+      CH42_new: new CH4 sediment layer 2 (mg-O/L)
+      CH4sat: saturated concentration of methane in oxygen equivalents (mg-O2/L)
+      JCc_CH4: carbon diagenesis flux consumed for methane formation (g-O2/m2/d)
+      JCH4: sediment-water flux of methane (g-O2/m2/d)
+      CH41_Oxidation: methane oxidation in sediment layer 1 (g-O2/m2/d)
+      CH42_new: old CH4 sediment layer 2 (mg-O/L),
+      h2: active Sediment layer thickness (m)
+      dt: time (d)
+
+    """
+
+    return xr.where(Methane_solution_option==1, JCc_CH4 - CSODmax, 
+                    xr.where(CH42_new == CH4sat, JCc_CH4 - JCH4 - CH41_Oxidation - (CH42_new - CH42) / dt * h2, 0.0))
+
+@numba.njit 
+def DIC1_new( 
+KL01: xr.DataArray,  
+DIC: xr.DataArray,  
+CH41_Oxidation: xr.DataArray,  
+roc: xr.DataArray,   
+rcdn: xr.DataArray,   
+NO31_Denit: xr.DataArray,  
+KL12: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+JCc_CH4: xr.DataArray,
+JCc_SO4: xr.DataArray,
+NO32_Denit: xr.DataArray,
+DIC1: xr.DataArray,
+DIC2: xr.DataArray,
+h2: xr.DataArray,
+dt: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate DIC1_new: new DIC sediment layer 1 (mg-C/L)
+
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)  
+      DIC: DIC water concentration (mg-C/L) 
+      CH41_Oxidation: methane oxidation in sediment layer 1 (g-O2/m2/d) 
+      roc: oxygen stoichiometric coefficent for organic carbon decay (g-O2/g-C)  
+      rcdn: carbon stoichiometric coeff for denitrification (g-C/g-N)   
+      NO31_Denit: NO31_Denit: denitrification of NO31 in sediment layer 1 (g-N/m2/d)  
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      JCc_CH4: carbon diagenesis flux consumed for methane formation (g-O2/m2/d)
+      JCc_SO4: carbon diagenesis flux consumed for sulfate reduction (g-O2/m2/d)
+      NO32_Denit:denitrification of NO31 in sediment layer 2 (g-N/m2/d)
+      DIC1: DIC sediment layer 1 (mg-C/L)
+      DIC2: DIC sediment layer 1 (mg-C/L)
+      h2: active sediment layer (m)
+      dt: time (d)
+
+    """
+    a11= KL01 + KL12
+    a12= -KL12
+    b1= KL01 * DIC * 12000.0 + CH41_Oxidation / 2.0 / roc + rcdn * NO31_Denit
+    a21= -KL12
+
+    b2=xr.where(SedFlux_solution_option == 1, (JCc_CH4 / 2.0 + JCc_SO4) / roc  + rcdn * NO32_Denit, (JCc_CH4 / 2.0 + JCc_SO4) / roc + rcdn * NO32_Denit + DIC2 * h2 / dt)
+    a22=xr.where(SedFlux_solution_option == 1, KL12, KL12 + h2 / dt)
+    DIC1_new, hold = MatrixSolution(DIC1, DIC2, a11, a12, b1, a21, a22, b2)
+
+    return max(DIC1_new,0.0)
+
+@numba.njit 
+def DIC2_new( 
+KL01: xr.DataArray,  
+DIC: xr.DataArray,  
+CH41_Oxidation: xr.DataArray,  
+roc: xr.DataArray,   
+rcdn: xr.DataArray,   
+NO31_Denit: xr.DataArray,  
+KL12: xr.DataArray,
+SedFlux_solution_option: xr.DataArray,
+JCc_CH4: xr.DataArray,
+JCc_SO4: xr.DataArray,
+NO32_Denit: xr.DataArray,
+DIC1: xr.DataArray,
+DIC2: xr.DataArray,
+h2: xr.DataArray,
+dt: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate DIC2_new: new DIC sediment layer 2 (mg-C/L)
+
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)  
+      DIC: DIC water concentration (mg-C/L) 
+      CH41_Oxidation: methane oxidation in sediment layer 1 (g-O2/m2/d) 
+      roc: oxygen stoichiometric coefficent for organic carbon decay (g-O2/g-C)  
+      rcdn: carbon stoichiometric coeff for denitrification (g-C/g-N)   
+      NO31_Denit: NO31_Denit: denitrification of NO31 in sediment layer 1 (g-N/m2/d)  
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      JCc_CH4: carbon diagenesis flux consumed for methane formation (g-O2/m2/d)
+      JCc_SO4: carbon diagenesis flux consumed for sulfate reduction (g-O2/m2/d)
+      NO32_Denit:denitrification of NO31 in sediment layer 2 (g-N/m2/d)
+      DIC1: DIC sediment layer 1 (mg-C/L)
+      DIC2: DIC sediment layer 1 (mg-C/L)
+      h2: active sediment layer (m)
+      dt: time (d)
       
-    elif Methane_solution_option == 2 :
-      CH41_Oxidation = con_cox / KL01 * CH41
-      JCH4 = KL01 * (CH41 - CH4)
-      if CH42 == CH4sat :
-        JCH4g = JCc_CH4 - JCH4 - CH41_Oxidation - (CH42 - CH42_prev) / dt * h2
-      else:
-        JCH4g = 0.0
+    """
+    a11= KL01 + KL12
+    a12= -KL12
+    b1= KL01 * DIC * 12000.0 + CH41_Oxidation / 2.0 / roc + rcdn * NO31_Denit
+    a21= -KL12
 
-    # DIC1 and DIC2
-    a11 = KL01 + KL12
-    a12 = -KL12
-    b1 = KL01 * DIC * 12000.0 + CH41_Oxidation / 2.0 / roc + rcdn * NO31_Denit
-    a21   = -KL12
-    if SedFlux_solution_option == 1 :
-      a22 = KL12
-      b2  = (JCc_CH4 / 2.0 + JCc_SO4) / roc  + rcdn * NO32_Denit
-    elif SedFlux_solution_option == 2 :
-      a22 = KL12 + h2 / dt
-      b2  = (JCc_CH4 / 2.0 + JCc_SO4) / roc + rcdn * NO32_Denit + DIC2 * h2 / dt
+    b2=xr.where(SedFlux_solution_option == 1, (JCc_CH4 / 2.0 + JCc_SO4) / roc  + rcdn * NO32_Denit, (JCc_CH4 / 2.0 + JCc_SO4) / roc + rcdn * NO32_Denit + DIC2 * h2 / dt)
+    a22=xr.where(SedFlux_solution_option == 1, KL12, KL12 + h2 / dt)
+    hold, DIC2_new = MatrixSolution(DIC1, DIC2, a11, a12, b1, a21, a22, b2)
 
-    DIC1, DIC2 = MatrixSolution(DIC1, DIC2, a11, a12, b1, a21, a22, b2)
-    DIC1  = max(DIC1, 0.0)
-    DIC2  = max(DIC2, 0.0)
-    
-    JDIC = KL01 * (DIC1 - DIC * 12000.0)
-    DIC1_CH41_Oxidation = CH41_Oxidation / 2.0 / roc
-    DIC1_NO31_Denit = rcdn * NO31_Denit
-    DIC1_DIC2 = KL12 * (DIC2 - DIC1)
-    DIC2_POC2_SO42 = JCc_SO4 / roc
-    DIC2_CH42 = JCc_CH4 / 2.0 / roc
-    DIC2_NO32_Denit = rcdn * NO32_Denit
-    
-    # TIP1 and TIP2
-    if DOX >= DOcr : 
-      kdpo41 = kdpo42 * d_kpo41
-    else :
-      kdpo41 = kdpo42 * d_kpo41**(DOX / DOcr)
+    return max(DIC2_new,0.0)
 
+@numba.njit 
+def JDIC( 
+KL01: xr.DataArray,  
+DIC: xr.DataArray,  
+DIC1_new: xr.DataArray,
+
+
+) -> xr.DataArray:
+    """Calculate JDIC: sediment-water flux of dissolved inorganic carbon (g-C/m2/d)
+
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)  
+      DIC: DIC water concentration (mg-C/L) 
+      DIC1_new: new DIC sediment layer 1 (mg-C/L)
+    """
+
+    return KL01 * (DIC1_new - DIC * 12000.0)
+
+@numba.njit 
+def DIC1_CH41_Oxidation( 
+CH41_Oxidation: xr.DataArray,  
+roc: xr.DataArray,  
+
+) -> xr.DataArray:
+    """Calculate DIC1_CH41_Oxidation: DIC1 produced by CH41 oxidation in sediment layer 1 (g-C/m2/d)
+
+    Args:
+      roc: oxygen stoichiometric coefficent for organic carbon decay (g-O2/g-C)  
+      CH41_Oxidation: methane oxidation in sediment layer 1 (g-O2/m2/d)
+    """
+
+    return CH41_Oxidation / 2.0 / roc
+
+@numba.njit 
+def DIC1_NO31_Denit( 
+rcdn: xr.DataArray,  
+NO31_Denit: xr.DataArray,  
+
+) -> xr.DataArray:
+    """Calculate DIC1_NO31_Denit: DIC1 produced by NO31 denitrification in sediment layer 1 (g-C/m2/d) 
+
+    Args:
+      rcdn: carbon stoichiometric coeff for denitrification (g-C/g-N)   
+      NO31_Denit: denitrification of NO31 in sediment layer 1 (g-N/m2/d)
+
+    """
+
+    return rcdn * NO31_Denit
+
+@numba.njit 
+def DIC1_DIC2(  
+KL12: xr.DataArray,
+DIC2_new: xr.DataArray,   
+DIC1_new: xr.DataArray,  
+
+) -> xr.DataArray:
+    """Calculate DIC1_DIC2: mass transfer between DIC1 and DIC2 in dissolved form (g-C/m2/d)
+
+    Args:
+      KL12: dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+      DIC1_new: new DIC sediment layer 1 (mg-C/L)
+      DIC2_new: new DIC sediment layer 2 (mg-C/L)
+
+    """
+
+    return KL12 * (DIC2_new - DIC1_new)
+
+@numba.njit 
+def DIC2_POC2_SO42(  
+JCc_SO4: xr.DataArray, 
+roc: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate DIC2_POC2_SO42: DIC2 produced by sulfate reduction in sediment layer 2 (g-C/m2/d)
+
+    Args:
+      roc: oxygen stoichiometric coefficent for organic carbon decay (g-O2/g-C)  
+      JCc_SO4: carbon diagenesis flux consumed for sulfate reduction (g-O2/m2/d)
+
+    """
+
+    return JCc_SO4 / roc
+
+@numba.njit 
+def DIC2_CH42(  
+JCc_CH4: xr.DataArray, 
+roc: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate DIC2_CH42: DIC2 produced by mathene formation in sediment layer 2 (g-C/m2/d)
+
+    Args:
+      roc: oxygen stoichiometric coefficent for organic carbon decay (g-O2/g-C)  
+      JCc_CH4: carbon diagenesis flux consumed for methane formation (g-O2/m2/d)
+
+    """
+
+    return JCc_CH4 / 2.0 / roc
+
+@numba.njit 
+def DIC2_NO32_Denit(  
+rcdn: xr.DataArray, 
+NO32_Denit: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate DIC2_NO32_Denit: DIC2 produced by mathene formation in sediment layer 2 (g-C/m2/d)
+
+    Args:
+      rcdn: carbon stoichiometric coeff for denitrification (g-C/g-N) 
+      NO32_Denit : denitrification of NO31 in sediment layer 2 (g-N/m2/d)
+
+    """
+
+    return rcdn * NO32_Denit
+
+@numba.njit 
+def kdpo41(  
+DOX: xr.DataArray,
+DOcr: xr.DataArray, 
+kdpo42: xr.DataArray, 
+d_kpo41: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate kdpo41: partition coefficient for inorganic P in sediment layer 1 (L/kg)
+
+    Args:
+      DOX: dissolved oxygen concentration (mg-O/L)
+      DOcr: critical oxygen concentration for incremental phosphate sorption  (mg-O2/L) [avoid to repeat with DOC] 
+      kdpo42: partition coefficient for inorganic P in sediment layer 2 (L/kg)
+      d_kpo41: factor that increases the aerobic layer phosphate partition coefficient (unitless) 
+
+    """
+
+    return xr.where(DOX >= DOcr, kdpo42 * d_kpo41, kdpo42 * d_kpo41**(DOX / DOcr))
+
+@numba.njit 
+def TIP1_new(  
+SedFlux_solution_option: xr.DataArray,
+JP: xr.DataArray, 
+TIP: xr.DataArray,
+fdp: xr.DataArray,
+vs: xr.DataArray,
+vb: xr.DataArray,
+h2: xr.DataArray,
+TIP1: xr.DataArray,
+TIP2: xr.DataArray,
+dt: xr.DataArray,
+KL01: xr.DataArray,
+Css2: xr.DataArray,
+kdpo42: xr.DataArray,
+Css1: xr.DataArray,
+kdpo41: xr.DataArray,
+w12: xr.DataArray,
+KL12: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate TIP1_new: new TIP sediment layer 1 (mg-P/L)
+
+    Args:
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      JP:  total sediment diagenesis flux of POP  (g-P/m2/d) 
+      TIP: TIP water concentration (mg-P/L)
+      fdp: fraction of dissolved phosphrous (unitless)
+      vs: sediment settling velocity (m/d)
+      vb: burial velocity of POM2 in bed sediment (m/d)
+      h2: active sediment layer (m)
+      TIP1: TIP sediment layer 1 (mg-P/L)
+      TIP2: TIP sediment layer 2 (mg-P/L)
+      dt: time step (d)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      Css2: solids concentration in sediment layer 2 (kg/L)
+      kdpo42: partition coefficient for inorganic P in sediment layer 2 (L/kg)
+      Css1: solids concentration in sediment layer 1 (kg/L)
+      kdpo41: kdpo41: partition coefficient for inorganic P in sediment layer 1 (L/kg)
+      w12: Partical mixing transfer velocity: transfer for NH4, H2S, and PIP between layer 1 and 2 (m/d)
+      KL12: Dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+
+    """
     fd1 = 1.0 / (1.0 + Css1 * kdpo41)
     fd2 = 1.0 / (1.0 + Css2 * kdpo42)
-    fp1 = 1.0 - fd1
     fp2 = 1.0 - fd2
-    
+    fp1 = 1.0 - fd1
+
     a21 = -w12 * fp1 - KL12 * fd1 - vb
     a11 = -a21 + KL01 * fd1
     a12 = -w12 * fp2 - KL12 * fd2
     b1  = KL01 * fdp * TIP
 
-    if SedFlux_solution_option == 1 :
-      a22 = -a12 + vb
-      b2  = JP + TIP * (1.0 - fdp) * vs
-    elif SedFlux_solution_option == 2 :
-      a22 = -a12 + vb + h2 / dt
-      b2  =  JP + TIP * (1.0 - fdp) * vs + h2 * TIP2 / dt
+    a22 = xr.where (SedFlux_solution_option == 1,-a12 + vb,-a12 + vb + h2 / dt)
+    b2= xr.where (SedFlux_solution_option == 1,JP + TIP * (1.0 - fdp) * vs,JP + TIP * (1.0 - fdp) * vs + h2 * TIP2 / dt)
+    TIP1_new, hold = MatrixSolution(TIP1, TIP2, a11, a12, b1, a21, a22, b2)
 
-    TIP1, TIP2 = MatrixSolution(TIP1, TIP2, a11, a12, b1, a21, a22, b2)
-    TIP1 = max(TIP1, 0.0)
-    TIP2 = max(TIP2, 0.0)
+    return max(TIP1_new,0.0)
+
+@numba.njit 
+def TIP2_new(  
+SedFlux_solution_option: xr.DataArray,
+JP: xr.DataArray, 
+TIP: xr.DataArray,
+fdp: xr.DataArray,
+vs: xr.DataArray,
+vb: xr.DataArray,
+h2: xr.DataArray,
+TIP1: xr.DataArray,
+TIP2: xr.DataArray,
+dt: xr.DataArray,
+KL01: xr.DataArray,
+Css2: xr.DataArray,
+kdpo42: xr.DataArray,
+Css1: xr.DataArray,
+kdpo41: xr.DataArray,
+w12: xr.DataArray,
+KL12: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate TIP2_new: new TIP sediment layer 2 (mg-P/L)
+
+    Args:
+      SedFlux_solution_option: numerical method (1 steady, 2 unsteady)
+      JP:  total sediment diagenesis flux of POP  (g-P/m2/d) 
+      TIP: TIP water concentration (mg-P/L)
+      fdp: fraction of dissolved phosphrous (unitless)
+      vs: sediment settling velocity (m/d)
+      vb: burial velocity of POM2 in bed sediment (m/d)
+      h2: active sediment layer (m)
+      TIP1: TIP sediment layer 1 (mg-P/L)
+      TIP2: TIP sediment layer 2 (mg-P/L)
+      dt: time step (d)
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      Css2: solids concentration in sediment layer 2 (kg/L)
+      kdpo42: partition coefficient for inorganic P in sediment layer 2 (L/kg)
+      Css1: solids concentration in sediment layer 1 (kg/L)
+      kdpo41: partition coefficient for inorganic P in sediment layer 1 (L/kg)
+      w12: Partical mixing transfer velocity: transfer for NH4, H2S, and PIP between layer 1 and 2 (m/d)
+      KL12: Dissolved and particulate phase mixing coefficient between layer 1 and layer 2 (m/d)
+
+    """
+    fd1 = 1.0 / (1.0 + Css1 * kdpo41)
+    fd2 = 1.0 / (1.0 + Css2 * kdpo42)
+    fp2 = 1.0 - fd2
+    fp1 = 1.0 - fd1
+
+    a21 = -w12 * fp1 - KL12 * fd1 - vb
+    a11 = -a21 + KL01 * fd1
+    a12 = -w12 * fp2 - KL12 * fd2
+    b1  = KL01 * fdp * TIP
+
+    a22 = xr.where (SedFlux_solution_option == 1,-a12 + vb,-a12 + vb + h2 / dt)
+    b2= xr.where (SedFlux_solution_option == 1,JP + TIP * (1.0 - fdp) * vs,JP + TIP * (1.0 - fdp) * vs + h2 * TIP2 / dt)
+    hold, TIP2_new = MatrixSolution(TIP1, TIP2, a11, a12, b1, a21, a22, b2)
+
+    return max(TIP2_new,0.0)
+
+@numba.njit 
+def DIP1_new(  
+TIP1_new: xr.DataArray,
+Css1: xr.DataArray,
+kdpo41: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate DIP1_new: new DIP sediment layer 1 (mg-P/L)
+
+    Args:
+      TIP1_new: new TIP sediment layer 1 (mg-P/L)
+      Css1: solids concentration in sediment layer 1 (kg/L)
+      kdpo41: partition coefficient for inorganic P in sediment layer 1 (L/kg)
+
+    """
+
+    return TIP1_new * (1.0 / (1.0 + Css1 * kdpo41))
+
+@numba.njit 
+def DIP2_new(  
+TIP2_new: xr.DataArray,
+Css2: xr.DataArray,
+kdpo42: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate DIP2_new: new DIP sediment layer 2 (mg-P/L)
+
+    Args:
+      TIP2_new: new TIP sediment layer 2 (mg-P/L)
+      Css2: solids concentration in sediment layer 2 (kg/L)
+      kdpo42: partition coefficient for inorganic P in sediment layer 2 (L/kg)
+
+    """
+
+    return TIP2_new * (1.0 / (1.0 + Css2 * kdpo42))
+
+"""  
+
+
     
-    DIP1 = TIP1 * fd1
-    DIP2 = TIP2 * fd2
+    # TIP1 and TIP2
+
+    fd1 = 1.0 / (1.0 + Css1 * kdpo41)
+    fd2 = 1.0 / (1.0 + Css2 * kdpo42)
+    fp1 = 1.0 - fd1
+    fp2 = 1.0 - fd2
     
     JDIP = KL01 * (DIP1 - fdp * TIP)
     TIP_TIP2 = TIP * (1.0 - fdp) * vs
@@ -3525,77 +4429,6 @@ ________________________________________________________________________________
   # solve mass balance equations by a matrix solution
 
   '''
-# output sediment diagenesis pathways
-  subroutine SedFluxPathwayOutput(na, a)
-    integer  :: na
-    real(R8) :: a(na)
-    !
-    do i = 1, 3
-      if (JPOC_index(i) > 0)            a(JPOC_index(i))            = JPOC(i)
-      if (JPON_index(i) > 0)            a(JPON_index(i))            = JPON(i)
-      if (JPOP_index(i) > 0)            a(JPOP_index(i))            = JPOP(i)
-      if (POC2_Diagenesis_index(i) > 0) a(POC2_Diagenesis_index(i)) = POC2_Diagenesis(i)
-      if (PON2_Diagenesis_index(i) > 0) a(PON2_Diagenesis_index(i)) = PON2_Diagenesis(i)
-      if (POP2_Diagenesis_index(i) > 0) a(POP2_Diagenesis_index(i)) = POP2_Diagenesis(i)
-      if (POC2_Burial_index(i) > 0)     a(POC2_Burial_index(i))     = POC2_Burial(i)
-      if (PON2_Burial_index(i) > 0)     a(PON2_Burial_index(i))     = PON2_Burial(i)
-      if (POP2_Burial_index(i) > 0)     a(POP2_Burial_index(i))     = POP2_Burial(i)
-    end do
-    !
-    if (JC_index > 0)    a(JC_index)    = JC
-    if (JC_dn_index > 0) a(JC_dn_index) = JC_dn
-    if (JN_index > 0)    a(JN_index)    = JN
-    if (JP_index > 0)    a(JP_index)    = JP
-    !
-    if (w12_index > 0)      a(w12_index)      = w12
-    if (KL12_index > 0)     a(KL12_index)     = KL12
-    if (KL01_index > 0)     a(KL01_index)     = KL01
-    if (SOD_Bed_index > 0)  a(SOD_Bed_index)  = SOD_Bed
-    !
-    if (JNH4_index > 0)                 a(JNH4_index)               = JNH4
-    if (TNH41_Burial_index > 0)         a(TNH41_Burial_index)       = TNH41_Burial             
-    if (NH41_Nitrification_index > 0)   a(NH41_Nitrification_index) = NH41_Nitrification
-    !if (PNH41_PNH42_index > 0)          a(PNH41_PNH42_index)        = PNH41_PNH42
-    if (NH41_NH42_index > 0)            a(NH41_NH42_index)          = NH41_NH42
-    if (TNH42_Burial_index > 0)         a(TNH42_Burial_index)       = TNH42_Burial
-    !
-    if (JNO3_index > 0)                 a(JNO3_index)               = JNO3
-    if (NO31_Denit_index > 0)           a(NO31_Denit_index)         = NO31_Denit
-    if (NO31_NO32_index > 0)            a(NO31_NO32_index)          = NO31_NO32
-    if (NO32_Denit_index > 0)           a(NO32_Denit_index)         = NO32_Denit
-    !
-    if (CH4sat_index > 0)               a(CH4sat_index)             = CH4sat
-    if (JCH4_index > 0)                 a(JCH4_index)               = JCH4
-    if (CH41_Oxidation_index > 0)       a(CH41_Oxidation_index)     = CH41_Oxidation
-    if (JCc_CH4_index > 0)              a(JCc_CH4_index)            = JCc_CH4
-    if (JCH4g_index > 0)                a(JCH4g_index)              = JCH4g
-    !
-    if (JSO4_index > 0)                 a(JSO4_index)               = JSO4
-    if (JCc_SO4_index > 0)              a(JCc_SO4_index)            = JCc_SO4
-    if (SO41_SO42_index > 0)            a(SO41_SO42_index)          = SO41_SO42
-    !
-    if (JH2S_index > 0)                 a(JH2S_index)               = JH2S
-    if (H2S1_Oxidation_index > 0)       a(H2S1_Oxidation_index)     = H2S1_Oxidation
-    if (TH2S1_Burial_index > 0)         a(TH2S1_Burial_index)       = TH2S1_Burial
-    if (H2S1_H2S2_index > 0)            a(H2S1_H2S2_index)          = H2S1_H2S2
-    !if (PH2S1_PH2S2_index > 0)          a(PH2S1_PH2S2_index)        = PH2S1_PH2S2
-    if (TH2S2_Burial_index > 0)         a(TH2S2_Burial_index)       = TH2S2_Burial
-    !
-    if (JDIC_index > 0)                 a(JDIC_index)               = JDIC
-    if (DIC1_CH41_Oxidation_index > 0)  a(DIC1_CH41_Oxidation_index)= DIC1_CH41_Oxidation
-    if (DIC1_NO31_Denit_index > 0)      a(DIC1_NO31_Denit_index)    = DIC1_NO31_Denit
-    if (DIC1_DIC2_index > 0)            a(DIC1_DIC2_index)          = DIC1_DIC2
-    if (DIC2_POC2_SO42_index > 0)       a(DIC2_POC2_SO42_index)     = DIC2_POC2_SO42
-    if (DIC2_CH42_index > 0)            a(DIC2_CH42_index)          = DIC2_CH42
-    if (DIC2_NO32_Denit_index > 0)      a(DIC2_NO32_Denit_index)    = DIC2_NO32_Denit
-    !
-    if (JDIP_index > 0)                 a(JDIP_index)               = JDIP
-    if (TIP_TIP2_index > 0)             a(TIP_TIP2_index)           = TIP_TIP2
-    if (TIP1_Burial_index > 0)          a(TIP1_Burial_index)        = TIP1_Burial
-    !if (PIP1_PIP2_index > 0)            a(PIP1_PIP2_index)          = PIP1_PIP2
-    if (DIP1_DIP2_index > 0)            a(DIP1_DIP2_index)          = DIP1_DIP2
-    if (TIP2_Burial_index > 0)          a(TIP2_Burial_index)        = TIP2_Burial
-  ''' 
 
 # compute sediment diagenesis derived variables
 
