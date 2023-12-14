@@ -18,7 +18,7 @@ def main():
     )
     print(tsm.static_variable_values)
     t2 = time.time()
-    for _ in range(100):
+    for _ in range(1000):
         tsm.increment_timestep()
     print(f'Increment timestep speed (average of 100): {(time.time() - t2) / 100}')
     print(f'Run time: {time.time() - ti}')
