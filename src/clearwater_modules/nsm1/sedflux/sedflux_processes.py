@@ -4408,9 +4408,156 @@ kdpo42: xr.DataArray,
 
     return TIP2_new * (1.0 / (1.0 + Css2 * kdpo42))
 
+@numba.njit 
+def JDIP(  
+KL01: xr.DataArray,
+DIP1_new: xr.DataArray,
+fdp: xr.DataArray, 
+TIP: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate JDIP: sediment-water flux of phosphate (g-P/m2/d)
+
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      DIP1_new: new DIP sediment layer 1 (mg-P/L)
+      fdp: fraction of dissolved phosphrous (unitless)
+      TIP: TIP water concentration (mg-P/L)
+
+    """
+
+    return KL01 * (DIP1_new - fdp * TIP)
+
+@numba.njit 
+def TIP_TIP2(  
+vs: xr.DataArray, 
+fdp: xr.DataArray, 
+TIP: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate TIP_TIP2: settling of PIP of water column into PIP2 in layer 2 (g-P/m2/d)
+
+    Args:
+      vs: sediment settling velocity (m/d)
+      fdp: fraction of dissolved phosphrous (unitless)
+      TIP: TIP water concentration (mg-P/L)
+
+    """
+
+    return TIP * (1.0 - fdp) * vs
+
+@numba.njit 
+def TIP1_Burial(  
+vb: xr.DataArray, 
+TIP1_new: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate TIP1_Burial: burial of TIP1 in sediment layer 1 (g-P/m2/d)
+    Args:
+      vb: burial velocity of POM2 in bed sediment (m/d)
+      TIP1_new: new TIP sediment layer 1 (mg-P/L)
+    """
+
+    return vb * TIP1_new
+
+@numba.njit 
+def DIP1_DIP2(  
+KL12: xr.DataArray, 
+DIP2_new: xr.DataArray, 
+DIP1_new: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate DIP1_DIP2: mass transfer between TIP1 and TPO42 in dissolved form   (g-P/m2/d)
+    Args:
+      KL01: mass transfer velocity between overlying water and the aerobic layer  (m/d)
+      DIP1_new: new DIP sediment layer 1 (mg-P/L)
+      DIP2_new: new DIP sediment layer 2 (mg-P/L)
+
+    """
+
+    return KL12 * (DIP2_new - DIP1_new)
+
+@numba.njit 
+def TIP2_Burial(  
+vb: xr.DataArray, 
+TIP2_new: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate TIP2_Burial: burial of TIP2 in sediment layer 2 (g-P/m2/d)
+    Args:
+      vb: burial velocity of POM2 in bed sediment (m/d)
+      TIP2_new: new TIP sediment layer 2 (mg-P/L)
+    """
+
+    return vb * TIP2_new
+
+@numba.njit 
+def TPOC2(  
+POC2_1_new: xr.DataArray, 
+POC2_2_new: xr.DataArray, 
+POC2_3_new: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate TPOC2: total sediment POC (mg-C/L)
+
+    Args:
+      POC2_1_new: POC G1 in the second layer. Able for diagenesis and depends on depositional flux above (mg-C/L)
+      POC2_2_new: POC G2 in the second layer. Able for diagenesis and depends on depositional flux above (mg-C/L)
+      POC2_3_new: POC G3 in the second layer. Able for diagenesis and depends on depositional flux above (mg-C/L)
+    """
+
+    return POC2_1_new + POC2_2_new + POC2_3_new
+
+@numba.njit 
+def TPON2(  
+PON2_1_new: xr.DataArray, 
+PON2_2_new: xr.DataArray, 
+PON2_3_new: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate TPON2: total sediment PON (mg-N/L)
+
+    Args:
+      PON2_1_new: PON G1 in the second layer. Able for diagenesis and depends on depositional flux above (mg-N/L)
+      PON2_2_new: PON G2 in the second layer. Able for diagenesis and depends on depositional flux above (mg-N/L)
+      PON2_3_new: PON G3 in the second layer. Able for diagenesis and depends on depositional flux above (mg-N/L)
+    """
+
+    return PON2_1_new + PON2_2_new + PON2_3_new
+
+@numba.njit 
+def TPOP2(  
+POP2_1_new: xr.DataArray, 
+POP2_2_new: xr.DataArray, 
+POP2_3_new: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate TPOP2: total sediment POP (mg-P/L)
+
+    Args:
+      POP2_1_new: POP G1 in the second layer. Able for diagenesis and depends on depositional flux above (mg-P/L)
+      POP2_2_new: POP G2 in the second layer. Able for diagenesis and depends on depositional flux above (mg-P/L)
+      POP2_3_new: POP G3 in the second layer. Able for diagenesis and depends on depositional flux above (mg-P/L)
+    """
+
+    return POP2_1_new + POP2_2_new + POP2_3_new
+
+@numba.njit 
+def POM2(  
+TPOC2_new: xr.DataArray, 
+focm2: xr.DataArray, 
+
+) -> xr.DataArray:
+    """Calculate POM2: particulate organic matter (mg/L)
+
+    Args:
+      POP2_1_new: POP G1 in the second layer. Able for diagenesis and depends on depositional flux above (mg-P/L)
+      POP2_2_new: POP G2 in the second layer. Able for diagenesis and depends on depositional flux above (mg-P/L)
+      POP2_3_new: POP G3 in the second layer. Able for diagenesis and depends on depositional flux above (mg-P/L)
+    """
+
+    return TPOC2_new / focm2
 """  
-
-
     
     # TIP1 and TIP2
 
@@ -4418,30 +4565,7 @@ kdpo42: xr.DataArray,
     fd2 = 1.0 / (1.0 + Css2 * kdpo42)
     fp1 = 1.0 - fd1
     fp2 = 1.0 - fd2
-    
-    JDIP = KL01 * (DIP1 - fdp * TIP)
-    TIP_TIP2 = TIP * (1.0 - fdp) * vs
-    TIP1_Burial = vb * TIP1
-    DIP1_DIP2 = KL12 * (DIP2 - DIP1)
-    #PIP1_PIP2 = w12  * (TIP2 * fp2 - TIP1 * fp1)
-    TIP2_Burial = vb * TIP2
 
-  # solve mass balance equations by a matrix solution
-
-  '''
-
-# compute sediment diagenesis derived variables
-
-  #real(R8) :: kdpo41 TODO why is this here?
-  TPOC2 = 0.0
-  TPON2 = 0
-  TPOP2 = 0.0
-  for i in (1, 3) :
-    TPOC2 = TPOC2 + POC2(i)
-    TPON2 = TPON2 + PON2(i)
-    TPOP2 = TPOP2 + POP2(i)
-
-  POM2 = TPOC2 / focm2
   
   # TH2S1 and TH2S2
   H2S1 = TH2S1 / (1.0 + Css1 * kdh2s2)
