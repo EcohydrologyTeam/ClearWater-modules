@@ -66,6 +66,15 @@ Variable(
 )
 
 Variable(
+    name='N2',
+    long_name='Nitrogen concentration air',
+    units='mg-N/L',
+    description='Nitrogen concentration air',
+    use='state',
+    process=n2_processes.N2_new
+)
+
+Variable(
     name='TIP',
     long_name='Total Inorganic Phosphorus',
     units='mg-P/L',
@@ -152,7 +161,7 @@ Variable(
     units='cfu/100mL',
     description='Pathogen concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with pathogen module
+    process=pathogen_processes.PX_new
 )
 
 Variable(
@@ -172,4 +181,13 @@ Variable(
     description='Water Temperature Degree Celsius',
     use='state',
     process=tsm.processes.t_water_c 
+)
+
+Variable(
+    name='depth',
+    long_name='Water Depth',
+    units='m',
+    description='Water depth from surface',
+    use='state',
+    process=shared_processes.depth_calc
 )

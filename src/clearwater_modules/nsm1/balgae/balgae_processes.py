@@ -5,13 +5,14 @@ File contains process to calculate new benthic algae biomass concentration and a
 import math
 from clearwater_modules.shared.processes import arrhenius_correction
 import numba
+import xarray as xr
 
 
 @numba.njit
 def mub_max_tc(
-    mub_max_20: float,
-    TwaterC: float
-) -> float:
+    mub_max_20: xr.DataArray,
+    TwaterC: xr.DataArray
+) -> xr.DataArray:
     """Calculate mub_max_tc: Maximum benthic algal growth rate with temperature correction (1/d).
 
     Args:
@@ -23,9 +24,9 @@ def mub_max_tc(
 
 @numba.njit
 def krb_tc(
-    krb_20: float,
-    TwaterC: float
-) -> float:
+    krb_20: xr.DataArray,
+    TwaterC: xr.DataArray
+) -> xr.DataArray:
     """Calculate krb_tc: Benthic algae respiration rate with temperature correction (1/d).
 
     Args:
@@ -37,9 +38,9 @@ def krb_tc(
 
 @numba.njit
 def kdb_tc(
-    kdb_20: float,
-    TwaterC: float
-) -> float:
+    kdb_20: xr.DataArray,
+    TwaterC: xr.DataArray
+) -> xr.DataArray:
     """Calculate kdb_tc: Benthic algae mortality rate with temperature correction (1/d).
 
     Args:
@@ -51,9 +52,9 @@ def kdb_tc(
 
 @numba.njit
 def rnb(
-    BWn: float,
-    BWd: float
-) -> float:
+    BWn: xr.DataArray,
+    BWd: xr.DataArray
+) -> xr.DataArray:
     """Calculate rnb (mg-N/mg-D).
 
     Args:
@@ -65,9 +66,9 @@ def rnb(
 
 @numba.njit
 def rpb(
-    BWp: float,
-    BWd: float
-) -> float:
+    BWp: xr.DataArray,
+    BWd: xr.DataArray
+) -> xr.DataArray:
     """Calculate rpd: Benthic algae phosphorus to dry weight ratio (mg-P/mg-D).
 
     Args:
@@ -79,9 +80,9 @@ def rpb(
 
 @numba.njit
 def rcb(
-    BWc: float,
-    BWd: float
-) -> float:
+    BWc: xr.DataArray,
+    BWd: xr.DataArray
+) -> xr.DataArray:
     """Calculate rcb: Benthic algae carbon to dry weight ratio (mg-C/mg-D).
 
     Args:
@@ -93,9 +94,9 @@ def rcb(
 
 @numba.njit
 def rab(
-    BWa: float,
-    BWd: float
-) -> float:
+    BWa: xr.DataArray,
+    BWd: xr.DataArray
+) -> xr.DataArray:
     """Calculate rab: Benthic algae chlorophyll-a to dry weight ratio (ug-Chla-a/mg-D).
 
     Args:
@@ -107,14 +108,14 @@ def rab(
 
 @numba.njit
 def FLb(
-    L: float,
-    depth: float,
-    Ab: float,
-    PAR: float,
-    b_light_limitation_option: float,
-    KLb: float,
+    L: xr.DataArray,
+    depth: xr.DataArray,
+    Ab: xr.DataArray,
+    PAR: xr.DataArray,
+    b_light_limitation_option: xr.DataArray,
+    KLb: xr.DataArray,
 
-) -> float:
+) -> xr.DataArray:
     """Calculate Benthic algal light limitation: FLb (unitless).
 
     Args:
@@ -159,11 +160,11 @@ def FLb(
 def FNb(
     use_NH4: bool,
     use_NO3: bool,
-    NH4: float,
-    NO3: float,
-    KsNb: float,
+    NH4: xr.DataArray,
+    NO3: xr.DataArray,
+    KsNb: xr.DataArray,
 
-) -> float:
+) -> xr.DataArray:
     """Calculate Benthic algae nitrogen limitation: FNb (unitless).
 
     Args:
@@ -188,11 +189,11 @@ def FNb(
 
 @numba.njit
 def FPb(
-    fdp: float,
-    TIP: float,
+    fdp: xr.DataArray,
+    TIP: xr.DataArray,
     use_TIP: bool,
-    KsPb: float
-) -> float:
+    KsPb: xr.DataArray
+) -> xr.DataArray:
     """Calculate benthic algae phosphorous limitation: FPb (unitless).
 
     Args:
@@ -216,10 +217,10 @@ def FPb(
 
 @numba.njit
 def FSb(
-    Ab: float,
-    Ksb: float,
+    Ab: xr.DataArray,
+    Ksb: xr.DataArray,
 
-) -> float:
+) -> xr.DataArray:
     """Calculate benthic density attenuation (unitless)
 
     Args:
@@ -239,15 +240,15 @@ def FSb(
 
 @numba.njit
 def mub(
-    Ab: float,
-    mub_max_tc: float,
+    Ab: xr.DataArray,
+    mub_max_tc: xr.DataArray,
     b_growth_rate_option: int,
-    FLb: float,
-    FPb: float,
-    FNb: float,
-    FSb: float,
+    FLb: xr.DataArray,
+    FPb: xr.DataArray,
+    FNb: xr.DataArray,
+    FSb: xr.DataArray,
 
-) -> float:
+) -> xr.DataArray:
     """Calculate benthic algae specific growth rate (1/d)
 
     Args:
@@ -273,9 +274,9 @@ def mub(
 
 @numba.njit
 def AbGrowth(
-    mub: float,
-    Ab: float
-) -> float:
+    mub: xr.DataArray,
+    Ab: xr.DataArray
+) -> xr.DataArray:
     """Calculate Benthic algal growth (g/m^2/d)
 
     Args:
@@ -288,9 +289,9 @@ def AbGrowth(
 
 @numba.njit
 def AbRespiration(
-    krb_tc: float,
-    Ab: float
-) -> float:
+    krb_tc: xr.DataArray,
+    Ab: xr.DataArray
+) -> xr.DataArray:
     """Calculate benthic algal Respiration (g/m^2/d)
 
     Args:
@@ -302,9 +303,9 @@ def AbRespiration(
 
 @numba.njit
 def AbDeath(
-    kdb_tc: float,
-    Ab: float
-) -> float:
+    kdb_tc: xr.DataArray,
+    Ab: xr.DataArray
+) -> xr.DataArray:
     """Calculate benthic algae death (g/m^2/d)
 
     Args:
@@ -317,11 +318,11 @@ def AbDeath(
 
 @numba.njit
 def dAbdt(
-    AbGrowth: float,
-    AbRespiration: float,
-    AbDeath: float
+    AbGrowth: xr.DataArray,
+    AbRespiration: xr.DataArray,
+    AbDeath: xr.DataArray
 
-) -> float:
+) -> xr.DataArray:
     """Calculate change in benthic algae concentration (g/m^2/d)
 
     Args:
@@ -334,10 +335,10 @@ def dAbdt(
 
 @numba.njit
 def Chlb(
-    rab: float,
-    Ab: float,
+    rab: xr.DataArray,
+    Ab: xr.DataArray,
 
-) -> float:
+) -> xr.DataArray:
     """Calculate chlorophyll-a concentration (mg-Chla/m^2)
 
     Args:

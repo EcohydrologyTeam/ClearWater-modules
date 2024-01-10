@@ -1,64 +1,22 @@
-"""
-=======================================================================================
-Nutrient Simulation Module 1 (NSM1): N2 Kinetics
-=======================================================================================
-
-Developed by:
-* Dr. Todd E. Steissberg (ERDC-EL)
-* Dr. Billy E. Johnson (ERDC-EL, LimnoTech)
-* Dr. Zhonglong Zhang (Portland State University)
-* Mr. Mark Jensen (HEC)
-
-This module computes the water quality of a single computational cell. The algorithms 
-and structure of this program were adapted from the Fortran 95 version of this module, 
-developed by:
-* Dr. Billy E. Johnson (ERDC-EL)
-* Dr. Zhonglong Zhang (Portland State University)
-* Mr. Mark Jensen (HEC)
-
-Version 1.0
-
-Initial Version: June 12, 2021
-Last Revision Date: June 13, 2021
-"""
-
-'''
-variables in:
-
-depth
-TwaterC
-pressure_atm
-N2
-dN2dt
-DOX
-TDG
-use_N2
-use_DOX
-
-ka_tc
-O2sat
-
-TwaterK 
-'''
-
-
-
-
 import math
 from clearwater_modules.shared.processes import arrhenius_correction, celsius_to_kelvin
 import numba
+import xarray as xr
+
 @numba.njit
 def TwaterK(
-    TwaterC: float,
-) -> float:
-
+    TwaterC : xr.DataArray,
+) -> xr.DataArray :
+    """Calculate temperature in kelvin (K)
+    Args:
+        TwaterC: water temperature celcius (C)
+    """
     return celsius_to_kelvin(TwaterK)
-
 
 @numba.njit
 def KHN2_tc(
-    TwaterK : float,
-) -> float :
+    TwaterK : xr.DataArray,
+) -> xr.DataArray :
     
     """Calculate Henry's law constant (mol/L/atm)
     
@@ -75,8 +33,8 @@ def KHN2_tc(
         
 @numba.njit
 def P_wv(
-    TwaterK : float,
-) -> float :
+    TwaterK : xr.DataArray,
+) -> xr.DataArray :
         
     """Calculate partial pressure water vapor (atm)
 
@@ -88,38 +46,36 @@ def P_wv(
     """
     return math.exp(11.8571  - (3840.70 / TwaterK) - (216961.0 / (TwaterK**2)))
 
-    return 0.00065 * math.exp(1300.0 * (1.0 / TwaterK - 1 / 298.15))
-
-
-@numba.njit
-# Correct N2 saturation for atmopsheric pressure
-def P_wv(
-    TwaterK: float,
-) -> float:
-
-    return math.exp(11.8571 - (3840.70 / TwaterK) - (216961.0 / (TwaterK**2)))
-
-
-@numba.njit
-# N2 saturation
+@numba.njit     
+#N2 saturation
 def N2sat(
-    KHN2_tc: float,
-    pressure_atm: float,
-    P_wv: float
-) -> float:
-    N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_atm - P_wv)
-    if (N2sat < 0.0):  # Trap saturation concentration to ensure never negative
-        N2sat = 0.0
+    KHN2_tc : xr.DataArray,
+    pressure_atm: xr.DataArray,
+    P_wv: xr.DataArray
+) -> xr.DataArray:
+    
+    """Calculate N2 at saturation f(Twater and atm pressure) (mg-N/L)
+
+    Args:
+        KHN2_tc: Henry's law constant (mol/L/atm)
+        pressure_atm: atmosphric pressure in atm (atm)
+        P_wv: Partial pressure of water vapor (atm)
+    """
+        
+    N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_atm - P_wv)  
+    if (N2sat < 0.0) :  #Trap saturation concentration to ensure never negative
+        N2sat = 0.0 
 
     return N2sat
 
-
-@numba.njit
+@numba.njit    
 def dN2dt(
-    ka_tc: float,
-    N2sat: float,
-    N2: float,
-) -> float:
+    ka_tc : xr.DataArray, #TODO this should be calculated in Carbon based on kah_tc and kaw_tc 
+    N2sat : xr.DataArray,
+    N2: xr.DataArray,
+) -> xr.DataArray: 
+    
+    """Calculate change in N2 air concentration (mg-N/L/d)
 
     Args:
         ka_tc: Oxygen re-aeration rate (1/d)
@@ -131,9 +87,9 @@ def dN2dt(
 
 @numba.njit    
 def N2_new(
-    N2: float,
-    dN2dt : float,
-) -> float: 
+    N2: xr.DataArray,
+    dN2dt : xr.DataArray,
+) -> xr.DataArray: 
     
     """Calculate change in N2 air concentration (mg-N/L/d)
 
@@ -146,12 +102,12 @@ def N2_new(
 
 @numba.njit    
 def TDG(
-    N2: float,
-    N2sat : float,
-    DOX: float,
-    O2sat: float,
+    N2: xr.DataArray,
+    N2sat : xr.DataArray,
+    DOX: xr.DataArray,
+    O2sat: xr.DataArray,
     use_DOX: bool,
-) -> float: 
+) -> xr.DataArray: 
     
     """Calculate total dissolved gas (%)
 

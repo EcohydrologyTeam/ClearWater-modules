@@ -3,17 +3,17 @@ File contains process to calculate new algae biomass concentration and associate
 """
 
 # TODO calculate lambda?
-
 import math
 from clearwater_modules.shared.processes import arrhenius_correction
 import numba
+import xarray as xr
 
 
 @numba.njit
 def rna(
-    AWn: float,
-    AWa: float
-) -> float:
+    AWn: xr.DataArray,
+    AWa: xr.DataArray
+) -> xr.DataArray:
     """Calculate rna (mg-N/ug-Chla).
 
     Args:
@@ -25,9 +25,9 @@ def rna(
 
 @numba.njit
 def rpa(
-    AWp: float,
-    AWa: float
-) -> float:
+    AWp: xr.DataArray,
+    AWa: xr.DataArray
+) -> xr.DataArray:
     """Calculate rpa (mg-P/ug-Chla).
 
     Args:
@@ -40,9 +40,9 @@ def rpa(
 
 @numba.njit
 def rca(
-    AWc: float,
-    AWa: float
-) -> float:
+    AWc: xr.DataArray,
+    AWa: xr.DataArray
+) -> xr.DataArray:
     """Calculate rca (mg-C/ug-Chla).
 
     Args:
@@ -54,9 +54,9 @@ def rca(
 
 @numba.njit
 def rda(
-    AWd: float,
-    AWa: float
-) -> float:
+    AWd: xr.DataArray,
+    AWa: xr.DataArray
+) -> xr.DataArray:
     """Calculate rda (mg-D/ug-Chla).
 
     Args:
@@ -68,9 +68,9 @@ def rda(
 
 @numba.njit
 def mu_max_tc(
-    TwaterC: float,
-    mu_max_20: float
-) -> float:
+    TwaterC: xr.DataArray,
+    mu_max_20: xr.DataArray
+) -> xr.DataArray:
     """Calculate mu_max_tc (1/d).
 
     Args:
@@ -83,9 +83,9 @@ def mu_max_tc(
 
 @numba.njit
 def krp_tc(
-    TwaterC: float,
-    krp_20: float
-) -> float:
+    TwaterC: xr.DataArray,
+    krp_20: xr.DataArray
+) -> xr.DataArray:
     """Calculate krp_tc (1/d).
 
     Args:
@@ -98,9 +98,9 @@ def krp_tc(
 
 @numba.njit
 def kdp_tc(
-    TwaterC: float,
-    kdp_20: float
-) -> float:
+    TwaterC: xr.DataArray,
+    kdp_20: xr.DataArray
+) -> xr.DataArray:
     """Calculate kdp_tc (1/d).
 
     Args:
@@ -113,13 +113,13 @@ def kdp_tc(
 
 @numba.njit
 def FL(
-    L: float,
-    depth: float,
-    Ap: float,
-    PAR: float,
+    L: xr.DataArray,
+    depth: xr.DataArray,
+    Ap: xr.DataArray,
+    PAR: xr.DataArray,
     light_limitation_option: int,
-    KL: float,
-) -> float:
+    KL: xr.DataArray,
+) -> xr.DataArray:
     """Calculate Algal light limitation: FL (unitless).
 
     Args:
@@ -135,13 +135,10 @@ def FL(
     sqrt1 = 0.0
     sqrt2 = 0.0
 
-    if (Ap <= 0.0 or KEXT <= 0.0 or PAR <= 0.0):
-        # After sunset or if there is no algae present
-        FL = 0.0
-    elif light_limitation_option == 1:
-        # Half-saturation formulation
-        FL = (1.0 / KEXT) * math.log((KL + PAR) /
-                                     (KL + PAR * math.exp(-KEXT)))
+    FL0 = xr.where(Ap <= 0.0 | KEXT <= 0.0 | PAR <= 0.0, 0, -1) # After sunset or if there is no algae present
+    FL1= xr.where(FL0<0 | light_limitation_option>0 | light_limitation_option <2, (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT))),-1) # Half-saturation formulation
+    FL2= xr.where(FL0<0 | light_limitation_option>1 | light_limitation_option <3, (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT)))) # Half-saturation formulation
+
     elif light_limitation_option == 2:
         # Smith's model
         if abs(KL) < 1.0E-10:
@@ -173,11 +170,11 @@ def FL(
 def FN(
     use_NH4: bool,
     use_NO3: bool,
-    NH4: float,
-    NO3: float,
-    KsN: float,
+    NH4: xr.DataArray,
+    NO3: xr.DataArray,
+    KsN: xr.DataArray,
 
-) -> float:
+) -> xr.DataArray:
     """Calculate Algal nitrogen limitation: FN (unitless).
 
     Args:
@@ -202,11 +199,11 @@ def FN(
 
 @numba.njit
 def FP(
-    fdp: float,
-    TIP: float,
+    fdp: xr.DataArray,
+    TIP: xr.DataArray,
     use_TIP: bool,
-    KsP: float
-) -> float:
+    KsP: xr.DataArray
+) -> xr.DataArray:
     """Calculate Algal phosphorous limitation: FP (unitless).
 
     Args:
@@ -231,13 +228,13 @@ def FP(
 
 @numba.njit
 def mu(
-    mu_max_tc: float,
+    mu_max_tc: xr.DataArray,
     growth_rate_option: int,
-    FL: float,
-    FP: float,
-    FN: float
+    FL: xr.DataArray,
+    FP: xr.DataArray,
+    FN: xr.DataArray
 
-) -> float:
+) -> xr.DataArray:
     """Calculate Algal growth rate with three options 1) Multiplicative, 2) Limiting nutrient, 3) Harmonic Mean (1/d)
 
     Args:
@@ -266,9 +263,9 @@ def mu(
 
 @numba.njit
 def ApGrowth(
-    mu: float,
-    Ap: float
-) -> float:
+    mu: xr.DataArray,
+    Ap: xr.DataArray
+) -> xr.DataArray:
     """Calculate Algal growth (ug-Chla/L/d)
 
     Args:
@@ -281,9 +278,9 @@ def ApGrowth(
 
 @numba.njit
 def ApRespiration(
-    krp_tc: float,
-    Ap: float
-) -> float:
+    krp_tc: xr.DataArray,
+    Ap: xr.DataArray
+) -> xr.DataArray:
     """Calculate Algal Respiration (ug-Chla/L/d)
 
     Args:
@@ -296,9 +293,9 @@ def ApRespiration(
 
 @numba.njit
 def ApDeath(
-    kdp_tc: float,
-    Ap: float
-) -> float:
+    kdp_tc: xr.DataArray,
+    Ap: xr.DataArray
+) -> xr.DataArray:
     """Calculate Algal death (ug-Chla/L/d)
 
     Args:
@@ -310,10 +307,10 @@ def ApDeath(
 
 @numba.njit
 def ApSettling(
-    vsap: float,
-    Ap: float,
-    depth: float
-) -> float:
+    vsap: xr.DataArray,
+    Ap: xr.DataArray,
+    depth: xr.DataArray
+) -> xr.DataArray:
     """Calculate Algal setting rate (ug-Chla/L/d)
 
     Args:
@@ -326,11 +323,11 @@ def ApSettling(
 
 @numba.njit
 def dApdt(
-    ApGrowth: float,
-    ApRespiration: float,
-    ApDeath: float,
-    ApSettling: float
-) -> float:
+    ApGrowth: xr.DataArray,
+    ApRespiration: xr.DataArray,
+    ApDeath: xr.DataArray,
+    ApSettling: xr.DataArray
+) -> xr.DataArray:
     """Calculate change in algae biomass concentration (ug-Chla/L/d)
 
     Args:
@@ -345,9 +342,9 @@ def dApdt(
 
 @numba.njit
 def Ap_new(
-    Ap: float,
-    dApdt: float,
-) -> float:
+    Ap: xr.DataArray,
+    dApdt: xr.DataArray,
+) -> xr.DataArray:
     """Calculate new algae concentration (ug-Chla/L)
 
     Args:

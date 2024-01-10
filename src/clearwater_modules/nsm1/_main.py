@@ -4,7 +4,6 @@ from collections import OrderedDict
 
 st=time.time()
 
-from _algae import Algae
 from _nitrogen import Nitrogen
 from _benthic_algae import BenthicAlgae
 from _phosphorus import Phosphorus
@@ -17,12 +16,13 @@ from _cbod import CBOD
 # from _sed_flux import SedFlux
 from _alkalinity import Alkalinity
 
+print("done")
 #Variables to return
 output_variables = OrderedDict()
 output_variables = {
 
 } 
-
+'''
 #True/False module use, user defined
 global_module_choices =OrderedDict
 global_module_choices = {
@@ -261,11 +261,12 @@ else:
 if global_module_choices['use_Alk'] :
     output_variables['dAlkdt'], output_variables['pH'] = Alkalinity(global_module_choices, global_vars, algae_pathways, balgae_pathways, nitrogen_pathways, alkalinity_constant_changes).Calculations_Alk()
 else:
-
+    pass
 
 #TODO create for carbon, DOX, N2, Pathogen, and POM
 
-et = time.time()
-elapsed_time = et - st 
+#et = time.time()
+#elapsed_time = et - st 
 
-print('Execution time:', elapsed_time, 'seconds')
+#print('Execution time:', elapsed_time, 'seconds')
+'''
