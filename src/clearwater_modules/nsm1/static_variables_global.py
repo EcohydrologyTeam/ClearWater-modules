@@ -68,6 +68,31 @@ Variable(
     use='static'
 )
 
+Variable(
+    name='fcom',
+    long_name='Fraction of carbon in organic matter',
+    units='mg-C/mg-D',
+    description='Fraction of carbon in organic matter',
+    use='static'
+)
+
+Variable(
+    name='vb',
+    long_name='Burial velocity',
+    units='m/d',
+    description='Rate at which constituents are buried on the bottom',
+    use='static'
+)
+
+
+Variable(
+    name='kac_20',
+    long_name='CO2 reaeration rate',
+    units='1/d',
+    description='CO2 reaeration rate',
+    use='static'
+)
+
 # Global module options
 
 Variable(

@@ -17,7 +17,7 @@ def kdb_T(
     kdb_20: float,
     theta: float
 ) -> float:
-    """Calculate the temperature adjusted POC hydrolysis rate (/d)
+    """Calculate the temperature adjusted benthic algae mortality rate (1/d)
 
     Args:
         water_temp_c: Water temperature in Celsius
@@ -33,7 +33,7 @@ def kpom_T(
     kpom_20: float,
     theta: float
 ) -> float:
-    """Calculate the temperature adjusted POC hydrolysis rate (/d)
+    """Calculate the temperature adjusted POM dissolution rate (1/d)
 
     Args:
         water_temp_c: Water temperature in Celsius
