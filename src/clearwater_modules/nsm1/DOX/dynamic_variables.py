@@ -39,51 +39,6 @@ Variable(
 )
 
 Variable(
-    name='kah_20',
-    long_name='Hydraulic oxygen reaeration rate adjusted for hydraulics',
-    units='1/d',
-    description='Hydraulic oxygen reaeration rate adjusted for hydraulic parameters according to XX lit',
-    use='dynamic',
-    process=processes.kah_20
-)
-
-Variable(
-    name='kah_T',
-    long_name='Hydraulic oxygen reaeration rate adjusted for temperature',
-    units='1/d',
-    description='Hydraulic oxygen reaeration rate adjusted for temperature',
-    use='dynamic',
-    process=processes.kah_T
-)
-
-Variable(
-    name='kaw_20',
-    long_name='Wind oxygen reaeration velocity adjusted for hydraulics',
-    units='m/d',
-    description='Wind oxygen reaeration velocity adjusted for hydraulic parameters according to XX lit',
-    use='dynamic',
-    process=processes.kaw_20
-)
-
-Variable(
-    name='kaw_T',
-    long_name='Wind oxygen reaeration velocity adjusted for temperature',
-    units='m/d',
-    description='Wind oxygen reaeration velocity adjusted for temperature',
-    use='dynamic',
-    process=processes.kaw_T
-)
-
-Variable(
-    name='ka_T',
-    long_name='Oxygen reaeration rate',
-    units='1/d',
-    description='Oxygen reaeration rate',
-    use='dynamic',
-    process=processes.ka_T
-)
-
-Variable(
     name='Atm_O2_reaeration',
     long_name='Atmospheric oxygen reaeration',
     units='mg/L/d',
@@ -157,14 +112,6 @@ Variable(
     process=processes.DOX_AbRespiration
 )
 
-Variable(
-    name='SOD_tc',
-    long_name='Sediment oxygen demand corrected by temperature and dissolved oxygen concentration',
-    units='g/m^3/d',
-    description='Sediment oxygen demand corrected by temperature and dissolved oxygen concentration',
-    use='dynamic',
-    process=processes.SOD_tc
-)
 
 Variable(
     name='DOX_SOD',

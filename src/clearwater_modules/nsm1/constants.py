@@ -161,7 +161,10 @@ DEFAULT_CARBON = CarbonStaticVariables(
 
 
 class DOXStaticVariables(TypedDict):
-    pass
+    kaw_20_user: float
+    kah_20_user: float
+    hydraulic_reaeration_option: int
+    wind_reaeration_option: int
 
 DEFAULT_DOX = DOXStaticVariables(
     

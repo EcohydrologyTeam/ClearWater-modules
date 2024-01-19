@@ -272,24 +272,8 @@ def Henrys_k(
 
 
 @numba.njit
-def kac_T(
-    water_temp_c: xr.DataArray,
-    kac_20: xr.DataArray,
-    theta: xr.DataArray
-) -> xr.DataArray:
-    """Calculate the temperature adjusted CO2 reaeration rate (1/d)
-
-    Args:
-        water_temp_c: Water temperature in Celsius
-        kac_20: CO2 reaeration rate at 20 degrees Celsius (1/d)
-        theta: Arrhenius coefficient
-    """
-    return arrhenius_correction(water_temp_c, kac_20, theta)
-
-
-@numba.njit
 def Atmospheric_CO2_reaeration(
-    kac_T: xr.DataArray,
+    ka_T: xr.DataArray,
     K_H: xr.DataArray,
     pCO2: xr.DataArray,
     FCO2: xr.DataArray,
@@ -298,13 +282,13 @@ def Atmospheric_CO2_reaeration(
     """Calculates the atmospheric input of CO2 into the waterbody
 
     Args:
-        kac_T: CO2 reaeration rate adjusted for temperature (1/d)
+        ka_T: CO2 reaeration rate adjusted for temperature, same as O2 reaeration rate (1/d)
         K_H: Henry's Law constant (mol/L/atm)
         pCO2: Partial pressure of CO2 in the atmosphere (ppm)
         FCO2: Fraction of CO2 in total inorganic carbon
         DIC: Dissolved inorganic carbon concentration (mg/L)
     """
-    return 12 * kac_T * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
+    return 12 * ka_T * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
 
 
 def DIC_algal_respiration(
