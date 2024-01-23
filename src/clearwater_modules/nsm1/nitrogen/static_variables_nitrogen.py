@@ -52,7 +52,7 @@ Variable(
     long_name='Sediment release rate of NH4 at 20C',
     units='g-N/m^2/d',
     description='Sediment release rate of NH4 at 20C',
-    use='static',
+    use='static'
 )
 
 Variable(

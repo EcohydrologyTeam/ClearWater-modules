@@ -138,6 +138,6 @@ Variable(
     name='b_light_limitation_option',
     long_name='Benthic Algal light limitation rate options',
     units='unitless',
-    description='Benthic Algal light limitation rate with three options: 1) Half-saturation formulation, 2) Smiths Model, 3) Steeles Model'
+    description='Benthic Algal light limitation rate with three options: 1) Half-saturation formulation, 2) Smiths Model, 3) Steeles Model',
     use='static',
 )

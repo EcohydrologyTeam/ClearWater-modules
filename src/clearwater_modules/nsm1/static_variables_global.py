@@ -84,6 +84,13 @@ Variable(
     use='static'
 )
 
+Variable(
+    name='fdp',
+    long_name='Fraction of phosphorus dissolved',
+    units='unitless',
+    description='Fraction of phosphorus dissolved',
+    use='static'
+)
 
 Variable(
     name='kac_20',

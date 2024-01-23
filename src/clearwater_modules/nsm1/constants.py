@@ -13,9 +13,9 @@ class AlgaeStaticVariables(TypedDict):
     KL: float                           
     KsN: float                          
     KsP: float                          
-    mu_max: float                       
-    kdp: float                          
-    krp: float                          
+    mu_max_20: float                       
+    kdp_20: float                          
+    krp_20: float                          
     vsap: float                         
     growth_rate_option: int             
     light_limitation_option: int        
@@ -29,9 +29,9 @@ DEFAULT_ALGAE = AlgaeStaticVariables(
     KL= 10,
     KsN= 0.04,
     KsP= 0.0012,
-    mu_max= 1,
-    kdp= 0.15,
-    krp= 0.2,
+    mu_max_20= 1,
+    kdp_20= 0.15,
+    krp_20= 0.2,
     vsap= 0.15,
     growth_rate_option = 1,
     light_limitation_option = 1
@@ -49,9 +49,9 @@ class BalgaeStaticVariables(TypedDict):
     KsNb: float
     KsPb: float
     Ksb: float
-    mub_max: float
-    krb: float
-    kdb: float                         
+    mub_max_20: float
+    krb_20: float
+    kdb_20: float                         
     b_growth_rate_option: float
     b_light_limitation_option: float
     Fw: float
@@ -68,9 +68,9 @@ DEFAULT_BALGAE = BalgaeStaticVariables(
     KsNb= 0.25,
     KsPb=0.125,
     Ksb=10,
-    mub_max=0.4,
-    krb=0.2,
-    kdb=0.3,
+    mub_max_20=0.4,
+    krb_20=0.2,
+    kdb_20=0.3,
     b_growth_rate_option=1,
     b_light_limitation_option=1,
     Fw=0.9,
@@ -115,7 +115,7 @@ class PhosphorusStaticVariables(TypedDict):
 
 DEFAULT_PHOSPHORUS = PhosphorusStaticVariables(
     kop_20 = 0.1,
-    rpo4_20 =0
+    rpo4_20 = 0
 )
 
 
