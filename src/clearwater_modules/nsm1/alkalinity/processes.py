@@ -10,40 +10,12 @@ from clearwater_modules.nsm1 import static_variables_global
 from clearwater_modules.nsm1 import dynamic_variables_global
 from clearwater_modules.nsm1 import state_variables
 
-@numba.njit
-def kdnit_T( ##Theta variable??
-    TwaterC: float,
-    kdnit_20: float
-) -> float:
-    """Calculate kdnit_T: Denitrification rate temperature correction (1/d). #TODO only if use_NO3 = true
-
-    Args:
-        TwaterC: Water temperature (C)
-        kdnit_20: Denitrification rate (1/d)
-    """
-
-    return arrhenius_correction(TwaterC, kdnit_20, 1.045)
-
-
-@numba.njit
-def knit_T( ##Theta variable??
-    TwaterC: float,
-    knit_20: float
-) -> float:
-    """Calculate knit_T: Denitrification rate temperature correction (1/d). #TODO only if use_NO3 = true
-
-    Args:
-        TwaterC: Water temperature (C)
-        knit_20: Nitrification rate (1/d)
-    """
-
-    return arrhenius_correction(TwaterC, knit_20, 1.045)
 
 
 def Alk_denitrification(
     DOX: xr.DataArray,
     NO3: xr.DataArray,
-    kdnit_T: xr.DataArray,
+    kdnit_tc: xr.DataArray,
     KsOxdn: xr.DataArray,
     r_alkden: xr.DataArray,
     use_NO3: xr.DataArray,
@@ -60,7 +32,7 @@ def Alk_denitrification(
         use_NO3: Option to use nitrate
         use_DOX: Option to use dissolved oxygen 
     """
-    da: xr.DataArray = xr.where(use_NO3 == True, xr.where(use_DOX == True, r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_T * NO3, r_alkden * kdnit_T * NO3), 0)
+    da: xr.DataArray = xr.where(use_NO3 == True, xr.where(use_DOX == True, r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3, r_alkden * kdnit_tc * NO3), 0)
 
     return da
 
@@ -68,7 +40,7 @@ def Alk_denitrification(
 def Alk_nitrification(
     DOX: xr.DataArray,
     NH4: xr.DataArray,
-    knit_T: xr.DataArray,
+    knit_tc: xr.DataArray,
     KNR: xr.DataArray,
     r_alkn: xr.DataArray,
     use_NH4: xr.DataArray,
@@ -85,7 +57,7 @@ def Alk_nitrification(
         use_NH4: Option to use ammonium
         use_DOX: Option to use dissolved oxygen
     """
-    da: xr.DataArray = xr.where(use_NH4 == True, xr.where(use_DOX == True, r_alkn * (1 - math.exp(-KNR * DOX)) * knit_T * NH4, knit_T * NH4), 0)
+    da: xr.DataArray = xr.where(use_NH4 == True, xr.where(use_DOX == True, r_alkn * (1 - math.exp(-KNR * DOX)) * knit_tc * NH4, knit_tc * NH4), 0)
 
     return da
 
@@ -94,7 +66,7 @@ def Alk_algal_growth(
     ApGrowth: xr.DataArray,
     r_alkaa: xr.DataArray,
     r_alkan: xr.DataArray,
-    F1: xr.DataArray,
+    ApUptakeFr_NH4: xr.DataArray,
     use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the alkalinity concentration change due to algal growth
@@ -103,10 +75,10 @@ def Alk_algal_growth(
         ApGrowth: Algal photosynthesis calculated in algae module (ug-Chla/L/d)
         r_alkaa: Ratio translating algal growth into Alk if NH4 is the N source (eq/ug-Chla)
         r_alkan: Ratio translating algal growth into Alk if NO3 is the N source (eq/ug-Chla)
-        F1: Preference fraction of algal N uptake from NH4
+        ApUptakeFr_NH4: Preference fraction of algal N uptake from NH4
         use_Algae: Option to use algae
     """
-    da: xr.DataArray = xr.where(use_Algae == True, (r_alkaa * F1 - r_alkan * (1 - F1)) * ApGrowth, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, (r_alkaa * ApUptakeFr_NH4 - r_alkan * (1 - ApUptakeFr_NH4)) * ApGrowth, 0)
 
     return da
 
@@ -133,7 +105,7 @@ def Alk_benthic_algae_growth(
     depth: xr.DataArray,
     r_alkba: xr.DataArray,
     r_alkbn: xr.DataArray,
-    F2: xr.DataArray,
+    AbUptakeFr_NH4: xr.DataArray,
     Fb: xr.DataArray,
     use_Balgae: xr.DataArray
 ) -> xr.DataArray:
@@ -144,11 +116,11 @@ def Alk_benthic_algae_growth(
         depth: Depth of water (m)
         r_alkaa: Ratio translating algal growth into Alk if NH4 is the N source (eq/ug-Chla)
         r_alkan: Ratio translating algal growth into Alk if NO3 is the N source (eq/ug-Chla)
-        F2: Preference fraction of benthic algae N uptake from NH4
+        AbUptakeFr_NH4: Preference fraction of benthic algae N uptake from NH4
         Fb: Fraction of bottom area available for benthic algae growth
         use_Balgae: Option to use benthic algae
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) *(r_alkba * F2 - r_alkbn * (1 - F2)) * AbGrowth * Fb, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * (r_alkba * AbUptakeFr_NH4 - r_alkbn * (1 - AbUptakeFr_NH4)) * AbGrowth * Fb, 0)
 
     return da
 

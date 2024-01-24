@@ -7,18 +7,4 @@ from clearwater_modules.tsm.model import EnergyBudget
 class Variable(base.Variable):
     ...
 
-Variable(
-    name='patm',
-    long_name='Atmospheric pressure',
-    units='atm',
-    description='Atmospheric pressure',
-    use='static'
-)
 
-Variable(
-    name='KsSOD',
-    long_name='half saturation oxygen attenuation constant for SOD',
-    units='mg/L',
-    description='half saturation oxygen attenuation constant for SOD',
-    use='static'
-)

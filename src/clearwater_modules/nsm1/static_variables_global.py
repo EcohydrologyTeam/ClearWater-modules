@@ -53,6 +53,22 @@ Variable(
 )
 
 Variable(
+    name='vsop',
+    long_name='Organic phosphorus settling velocity',
+    units='m/d',
+    description='Organic phosphorus settling velocity',
+    use='static'
+)
+
+Variable(
+    name='vs',
+    long_name='Sediment settling velocity',
+    units='m/d',
+    description='Sediment settling velocity',
+    use='static'
+)
+
+Variable(
     name='SOD_20',
     long_name='Sediment oxygen demand at 20 degrees C',
     units='g-O2/m/d',
@@ -84,21 +100,6 @@ Variable(
     use='static'
 )
 
-Variable(
-    name='fdp',
-    long_name='Fraction of phosphorus dissolved',
-    units='unitless',
-    description='Fraction of phosphorus dissolved',
-    use='static'
-)
-
-Variable(
-    name='kac_20',
-    long_name='CO2 reaeration rate',
-    units='1/d',
-    description='CO2 reaeration rate',
-    use='static'
-)
 
 Variable(
     name='kaw_20_user',

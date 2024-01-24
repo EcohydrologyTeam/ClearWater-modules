@@ -3,6 +3,7 @@ from typing import (
     TypedDict,
 )
 
+
 class AlgaeStaticVariables(TypedDict):
     AWd: float                          
     AWc: float                               
@@ -119,7 +120,6 @@ DEFAULT_PHOSPHORUS = PhosphorusStaticVariables(
 )
 
 
-#Not in RAS GUI
 class POMStaticVariables(TypedDict):
     kpom_20: float
 
@@ -161,10 +161,7 @@ DEFAULT_CARBON = CarbonStaticVariables(
 
 
 class DOXStaticVariables(TypedDict):
-    kaw_20_user: float
-    kah_20_user: float
-    hydraulic_reaeration_option: int
-    wind_reaeration_option: int
+    ...
 
 DEFAULT_DOX = DOXStaticVariables(
     
@@ -182,7 +179,6 @@ DEFAULT_PATHOGEN = PathogenStaticVariables(
     vx=1
 )
 
-#Not in RAS GUI
 class AlkalinityStaticVariables(TypedDict):
     r_alkaa: float
     r_alkan: float
@@ -190,8 +186,6 @@ class AlkalinityStaticVariables(TypedDict):
     r_alkden: float
     r_alkba: float
     r_alkbn: float
-    F1: float
-    F2: float
     
 DEFAULT_ALKALINITY = AlkalinityStaticVariables(
     r_alkaa = 1,
@@ -199,9 +193,7 @@ DEFAULT_ALKALINITY = AlkalinityStaticVariables(
     r_alkn = 1,
     r_alkden = 1,
     r_alkba = 1,
-    r_alkbn = 1,
-    F1 = 1,
-    F2 = 1  
+    r_alkbn = 1 
 )
 
 class GlobalParameters(TypedDict):
@@ -233,9 +225,16 @@ class GlobalVars(TypedDict):
     PAR: float
     vson: float
     vsoc: float
+    vsop: float
+    vs: float
+    SOD_20: float
+    SOD_theta: float
     vb: float
-    focm: float
-    kac_20: float                
+    fcom: float
+    kaw_20_user: float
+    kah_20_user: float
+    hydraulic_reaeration_option: int
+    wind_reaeration_option: int               
 
 DEFAULT_GLOBALVARS = GlobalVars(
     L = 1, #lambda
@@ -243,8 +242,15 @@ DEFAULT_GLOBALVARS = GlobalVars(
     PAR= 1, 
     vson = 0.01,
     vsoc = 0.01,
+    vsop = 999,
+    vs = 999,
+    SOD_20 = 999,
+    SOD_theta = 999,
     vb = 0.01,
-    focm = 0.4,
-    kac_20 = 1
+    fcom = 0.4,
+    kaw_20_user = 999,
+    kah_20_user = 999,
+    hydraulic_reaeration_option = 999,
+    wind_reaeration_option = 999
 )
 

@@ -56,7 +56,7 @@ def PathogenDecay(
       PX: Pathogen concentration (cfu/100mL)
 
     """
-    return apx * q_solar / (L*depth) * (1-math.exp(-L*depth)) * PX
+    return apx * q_solar / (L * depth) * (1 - math.exp(-L * depth)) * PX
 
 @numba.njit
 def PathogenSettling(

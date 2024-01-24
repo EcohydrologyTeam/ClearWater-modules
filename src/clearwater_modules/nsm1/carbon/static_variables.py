@@ -21,34 +21,10 @@ Variable(
 )
 
 Variable(
-    name='rca',
-    long_name='algal C : Chla ratio',
-    units='mg-C/ug-Chla',
-    description='Ratio of algal carbon to chlorophyll-a',
-    use='static'
-)
-
-Variable(
-    name='rcb',
-    long_name='benthic algae C : D ratio',
-    units='mg-C/mg-D',
-    description='Ratio of benthic algal carbon to algal biomass',
-    use='static'
-)
-
-Variable(
     name='kdoc_20',
     long_name='Dissolved organic carbon oxidation rate',
     units='1/d',
     description='Dissolved organic carbon oxidation rate',
-    use='static'
-)
-
-Variable(
-    name='vsoc',
-    long_name='POC settling velocity',
-    units='m/d',
-    description='POC settling velocity',
     use='static'
 )
 
@@ -73,15 +49,6 @@ Variable(
     long_name='half saturation oxygen attenuation constant for DOC oxidation rate',
     units='mg-O2/L',
     description='half saturation oxygen attenuation constant for DOC oxidation rate',
-    use='static'
-)
-
-
-Variable(
-    name='kac_20',
-    long_name='CO2 reaeration rate',
-    units='1/d',
-    description='CO2 reaeration rate',
     use='static'
 )
 

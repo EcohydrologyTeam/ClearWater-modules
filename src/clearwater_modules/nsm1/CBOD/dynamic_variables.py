@@ -2,11 +2,11 @@
 
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
-from clearwater_modules.tsm.model import EnergyBudget
-from clearwater_modules.nsm1.CBOD import processes
+from clearwater_modules.nsm1.model import NutrientBudget
+import clearwater_modules.nsm1.CBOD.processes as processes
 
 
-@base.register_variable(models=EnergyBudget)
+@base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
 

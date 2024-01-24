@@ -75,7 +75,7 @@ def DOX_ApGrowth(
     ApGrowth: xr.DataArray,
     rca: xr.DataArray,
     roc: xr.DataArray,
-    F1: xr.DataArray,
+    ApUptakeFr_NH4: xr.DataArray,
     use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Compute DOX flux due to algal photosynthesis
@@ -84,9 +84,9 @@ def DOX_ApGrowth(
         ApGrowth: Algae photosynthesis, calculated in the algae module (ug-Chla/L/d)
         rca: Ratio of algal carbon to chlorophyll-a (mg-C/ug-Chla)
         roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
-        F1: Algae preference for ammonia 
+        ApUptakeFr_NH4: Fraction of actual algal uptake that is from the ammonia pool, calculated in nitrogen module 
     """
-    da: xr.DataArray = xr.where(use_Algae == True, ApGrowth * rca * roc * (138 / 106 - 32 * F1 / 106), 0)
+    da: xr.DataArray = xr.where(use_Algae == True, ApGrowth * rca * roc * (138 / 106 - 32 * ApUptakeFr_NH4 / 106), 0)
 
     return da
 
@@ -173,7 +173,7 @@ def DOX_AbGrowth(
     """Compute dissolved oxygen flux due to benthic algae growth
 
     Args:
-        AbUptakeFr_NH4: Fraction of actual benthic algal uptake that is form the ammonia pool, calculated in nitrogen module
+        AbUptakeFr_NH4: Fraction of actual benthic algal uptake that is from the ammonia pool, calculated in nitrogen module
         roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
         rcb: Benthic algae carbon to dry weight ratio (mg-C/mg-D)
         AbGrowth: Benthic algae photosynthesis, calculated in benthic algae module (mg/L/d)
