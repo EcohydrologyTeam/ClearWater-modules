@@ -1,4 +1,4 @@
-"""Water Nutrient Simulation Model (NSM1) module."""
+"""Temperature Simulation Model (TSM) module."""
 import xarray as xr
 import numpy as np
 from enum import Enum
@@ -34,6 +34,7 @@ class EnergyBudget(base.Model):
             meteo_parameters = {}
         if temp_parameters is None:
             temp_parameters = {}
+
 
         # set default values
         for key, value in self.__meteo_parameters.items():

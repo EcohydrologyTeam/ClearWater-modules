@@ -250,6 +250,19 @@ def dOrgNdt(
 
     return dOrgNdt
 
+@numba.njit
+def OrgN_new(
+    dOrgNdt: xr.DataArray,
+    OrgN: xr.DataArray
+    
+) -> xr.DataArray:
+    """Calculates new organic nitrogen concentration
+
+    Args:
+        dOrgNdt: Change in organic nitrogen concentration over the timestep (mg-N/L/d)
+        OrgN: Organic nitrogen concentration (mg-N/L)
+    """
+    return OrgN + dOrgNdt
 
 @numba.njit
 def dNH4dt(
@@ -348,6 +361,20 @@ def dNH4dt(
 
     return dNH4dt
 
+@numba.njit
+def NH4_new(
+    dNH4dt: xr.DataArray,
+    NH4: xr.DataArray
+    
+) -> xr.DataArray:
+    """Calculates new ammonia concentration
+
+    Args:
+        dNH4dt: Change in ammonia concentration over the timestep (mg-N/L/d)
+        NH4: Ammonia concentration (mg-N/L)
+    """
+    return NH4 + dNH4dt
+
 
 @numba.njit
 def dNO3dt(
@@ -436,6 +463,19 @@ def dNO3dt(
 
     return dNO3dt
 
+@numba.njit
+def NO3_new(
+    dNO3dt: xr.DataArray,
+    NO3: xr.DataArray
+    
+) -> xr.DataArray:
+    """Calculates new organic nitrogen concentration
+
+    Args:
+        dNO3dt: Change in nitrate concentration over the timestep (mg-N/L/d)
+        NO3: Nitrate concentration (mg-N/L)
+    """
+    return NO3 + dNO3dt
 
 @numba.njit
 def DIN(

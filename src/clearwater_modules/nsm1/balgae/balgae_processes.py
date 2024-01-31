@@ -332,6 +332,19 @@ def dAbdt(
     """
     return AbGrowth - AbRespiration - AbDeath
 
+@numba.njit
+def Ab_new(
+    Ab: xr.DataArray,
+    dAbdt: xr.DataArray
+    
+) -> xr.DataArray:
+    """Calculate new benthic algae concentration (g/m^2/d)
+
+    Args:
+        Ab: Benthic algae concentration (g/m^2)
+        dAbdt: Change in benthic algae concentration (g/m^2/d)
+    """
+    return Ab + dAbdt
 
 @numba.njit
 def Chlb(

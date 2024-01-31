@@ -27,6 +27,7 @@ DEFAULT_ALGAE = AlgaeStaticVariables(
     AWn= 7.2,
     AWp= 1,
     AWa= 1000,
+    
     KL= 10,
     KsN= 0.04,
     KsP= 0.0012,
@@ -205,7 +206,15 @@ class GlobalParameters(TypedDict):
     use_DOX: bool
     use_Algae: bool
     use_Balgae: bool
-    use_TIP: bool 
+    use_OrgP: bool
+    use_POC: bool
+    use_DOC: bool
+    use_DIC: bool
+    use_N2: bool
+    use_Pathogen: bool
+    use_Alk: bool
+    use_POM: bool
+
  
 DEFAULT_GLOBALPARAMETERS = GlobalParameters(
     use_NH4= True,
@@ -216,8 +225,16 @@ DEFAULT_GLOBALPARAMETERS = GlobalParameters(
     use_DOX= True,
     use_Algae= True,
     use_Balgae= True,
-    use_TIP= True
+    use_OrgP = True,
+    use_POC = True,
+    use_DOC = True,
+    use_DIC = True,
+    use_N2 = True,
+    use_Pathogen = True,
+    use_Alk = True,
+    use_POM = True         
 )
+
 
 class GlobalVars(TypedDict):
     L : float #lambda
@@ -250,7 +267,6 @@ DEFAULT_GLOBALVARS = GlobalVars(
     fcom = 0.4,
     kaw_20_user = 999,
     kah_20_user = 999,
-    hydraulic_reaeration_option = 999,
-    wind_reaeration_option = 999
+    hydraulic_reaeration_option = 2,
+    wind_reaeration_option = 2,
 )
-

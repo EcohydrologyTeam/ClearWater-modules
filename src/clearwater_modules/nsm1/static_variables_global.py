@@ -256,7 +256,7 @@ Variable(
 )
 
 Variable(
-    name='use_POM2',
+    name='use_POM',
     long_name='Use particulate organic matter module',
     units='unitless',
     description='True/False use particulate organic matter module',

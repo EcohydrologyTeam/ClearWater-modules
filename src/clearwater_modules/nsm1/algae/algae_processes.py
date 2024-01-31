@@ -139,6 +139,8 @@ def FL(
     FL1= xr.where(FL0<0 | light_limitation_option>0 | light_limitation_option <2, (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT))),-1) # Half-saturation formulation
     FL2= xr.where(FL0<0 | light_limitation_option>1 | light_limitation_option <3, (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT)))) # Half-saturation formulation
 
+    if light_limitation_option == 1:
+        FL = (1 / KEXT) * math.log(KL + PAR) / (KL + PAR * math.exp(-KEXT))
     elif light_limitation_option == 2:
         # Smith's model
         if abs(KL) < 1.0E-10:

@@ -1,13 +1,18 @@
-from clearwater_modules_python import base
-from clearwater_modules_python.nsm1.model import NutrientBudget
-import clearwater_modules_python.nsm1.algae.algae_processes as algae_processes
-import clearwater_modules_python.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
-import clearwater_modules_python.nsm1.carbon.carbon_processes as carbon_processes
-import clearwater_modules_python.nsm1.CBOD.CBOD_processes as CBOD_processes
-import clearwater_modules_python.nsm1.DOX.DOX_processes as DOX_processes
+from clearwater_modules import base
+from clearwater_modules.nsm1.model import NutrientBudget
+import clearwater_modules.nsm1.algae.algae_processes as algae_processes
+import clearwater_modules.nsm1.balgae.balgae_processes as balgae_processes
+import clearwater_modules.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
+import clearwater_modules.nsm1.carbon.processes as carbon_processes
+import clearwater_modules.nsm1.CBOD.processes as CBOD_processes
+import clearwater_modules.nsm1.DOX.processes as DOX_processes
 import clearwater_modules.nsm1.alkalinity.processes as alkalinity_processes
-import clearwater_modules_python.shared.processes as shared_processes
-import clearwater_modules_python.tsm as tsm
+import clearwater_modules.nsm1.n2.n2_processes as n2_processes
+import clearwater_modules.nsm1.phosphorus.phosphorus_processes as phosphorus_processes
+import clearwater_modules.nsm1.POM.processes as POM_processes
+import clearwater_modules.nsm1.pathogens.pathogen_processes as pathogen_processes
+import clearwater_modules.shared.processes as shared_processes
+import clearwater_modules.tsm as tsm
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
@@ -26,7 +31,7 @@ Variable(
     units='ug-Chla/L',
     description='Algal Concentration',
     use='state',
-    process=algae_processes.Ap 
+    process=algae_processes.Ap_new 
 )
 
 Variable(
@@ -35,7 +40,7 @@ Variable(
     units='g-D/m^2',
     description='Benthic Algae Concentration',
     use='state',
-    process=mock_equation #TODO depends on benthic algae module 
+    process=balgae_processes.Ab_new
 )
 
 Variable(
@@ -80,7 +85,7 @@ Variable(
     units='mg-P/L',
     description='Total Inorganic Phosphorus Concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with phosphorous module
+    process=phosphorus_processes.TIP_new
 )
 
 Variable(
@@ -89,7 +94,7 @@ Variable(
     units='mg-P/L',
     description='Total Organic Phosphorus Concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with phosphorous module
+    process=phosphorus_processes.OrgP_new
 )
 
 Variable(
@@ -125,17 +130,9 @@ Variable(
     units='mg-D/L',
     description='Particulate Organic Matter Concentration',
     use='state',
-    process=mock_equation #TODO this variable only changes with pom module
+    process=POM_processes.POM_new
 )
 
-Variable(
-    name='POM2',
-    long_name='Sediment Particulate Organic Matter',
-    units='mg-D/L',
-    description='Sediment Particulate Organic Matter Concentration',
-    use='state',
-    process=mock_equation #TODO this variable only changes with pom module
-)
 
 Variable(
     name='CBOD',
@@ -170,7 +167,7 @@ Variable(
     units='mg-CaCO3/L',
     description='Alkalinity concentration',
     use='state',
-    process=alkalinity_processes.Alk_new #TODO this variable only changes with alkalinity module
+    process=alkalinity_processes.Alk_new
 )
 
 #TODO not sure the order of calling with tsm

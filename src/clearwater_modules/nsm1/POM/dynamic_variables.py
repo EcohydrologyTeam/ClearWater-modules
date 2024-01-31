@@ -1,7 +1,7 @@
-import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
 import clearwater_modules.nsm1.POM.processes as processes
+import clearwater_modules.shared.processes as shared_processes
 
 
 @base.register_variable(models=NutrientBudget)

@@ -1,9 +1,8 @@
-# TODO: figure out what 'model' to import
 import clearwater_modules.base as base
-from clearwater_modules.nsm1.carbon.model import EnergyBudget
+from clearwater_modules.nsm1.model import NutrientBudget
 
 
-@base.register_variable(models=EnergyBudget)
+@base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
 # TODO: verify all these values

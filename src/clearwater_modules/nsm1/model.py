@@ -19,6 +19,7 @@ class NutrientBudget(base.Model):
     def __init__(
         self,
         initial_state_values: Optional[base.InitialVariablesDict] = None,
+        updateable_static_variables: Optional[list[str]] = None,
         algae_parameters: Optional[dict[str, float]] = None,
         alkalinity_parameters: Optional[dict[str, float]] = None,
         balgae_parameters: Optional[dict[str, float]] = None,
@@ -29,7 +30,9 @@ class NutrientBudget(base.Model):
         POM_parameters: Optional[dict[str, float]] = None,
         N2_parameters: Optional[dict[str, float]] = None,
         phosphorus_parameters: Optional[dict[str, float]] = None,
-        pathogen_parameters: Optional[dict[str, float]] = None,             
+        pathogen_parameters: Optional[dict[str, float]] = None, 
+        global_parameters: Optional[dict[str, float]] = None, 
+        global_vars: Optional[dict[str, float]] = None,             
         track_dynamic_variables: bool = True,
         hotstart_dataset: Optional[xr.Dataset] = None,
         time_dim: Optional[str] = None,
@@ -45,6 +48,8 @@ class NutrientBudget(base.Model):
         self.__N2_parameters: constants.N2StaticVariables = constants.DEFAULT_N2
         self.__phosphorus_parameters: constants.PhosphorusStaticVariables = constants.DEFAULT_PHOSPHORUS
         self.__pathogen_parameters: constants.PathogenStaticVariables = constants.DEFAULT_PATHOGEN
+        self.__global_parameters: constants.PathogenStaticVariables = constants.DEFAULT_GLOBALPARAMETERS
+        self.__global_vars: constants.PathogenStaticVariables = constants.DEFAULT_GLOBALVARS
         
 
         if algae_parameters is None:
@@ -69,7 +74,11 @@ class NutrientBudget(base.Model):
             phosphorus_parameters = {}
         if pathogen_parameters is None:
             pathogen_parameters = {}
-
+        if global_parameters is None:
+            global_parameters = {}
+        if global_vars is None:
+            global_vars = {}
+            
         # set default values
         for key, value in self.__algae_parameters.items():
             self.__algae_parameters[key] = algae_parameters.get(
@@ -126,6 +135,18 @@ class NutrientBudget(base.Model):
                 key,
                 value,
             )
+            
+        for key, value in self.__global_parameters.items():
+            self.__global_parameters[key] = global_parameters.get(
+                key,
+                value,
+            )
+            
+        for key, value in self.__global_vars.items():
+            self.__global_vars[key] = global_vars.get(
+                key,
+                value,
+            )
 
         static_variable_values = {
             **self.__algae_parameters,
@@ -138,7 +159,9 @@ class NutrientBudget(base.Model):
             **self.__POM_parameters,
             **self.__N2_parameters,
             **self.__phosphorus_parameters,
-            **self.__pathogen_parameters}
+            **self.__pathogen_parameters,
+            **self.__global_parameters,
+            **self.__global_vars}
         
         # TODO: make sure this feature works -> test it, but post demo
         #static_variable_values['use_sed_temp'] = use_sed_temp
@@ -146,11 +169,60 @@ class NutrientBudget(base.Model):
         super().__init__(
             initial_state_values=initial_state_values,
             static_variable_values=static_variable_values,
+            updateable_static_variables=updateable_static_variables,            
             track_dynamic_variables=track_dynamic_variables,
             hotstart_dataset=hotstart_dataset,
             time_dim=time_dim,
         )
 
     @property
-    def algae_parameters(self) -> constants.algae:
+    def algae_parameters(self) -> constants.AlgaeStaticVariables:
         return self.__algae_parameters
+
+    @property
+    def alkalinity_parameters(self) -> constants.AlkalinityStaticVariables:
+        return self.__alkalinity_parameters
+    
+    @property
+    def balgae_parameters(self) -> constants.BalgaeStaticVariables:
+        return self.__balgae_parameters
+    
+    @property
+    def carbon_parameters(self) -> constants.CarbonStaticVariables:
+        return self.__carbon_parameters
+    
+    @property
+    def CBOD_parameters(self) -> constants.CBODStaticVariables:
+        return self.__CBOD_parameters
+    
+    @property
+    def DOX_parameters(self) -> constants.DOXStaticVariables:
+        return self.__DOX_parameters
+    
+    @property
+    def nitrogen_parameters(self) -> constants.NitrogenStaticVariables:
+        return self.__nitrogen_parameters
+    
+    @property
+    def POM_parameters(self) -> constants.POMStaticVariables:
+        return self.__POM_parameters
+    
+    @property
+    def N2_parameters(self) -> constants.N2StaticVariables:
+        return self.__N2_parameters
+    
+    @property
+    def phosphorus_parameters(self) -> constants.PhosphorusStaticVariables:
+        return self.__phosphorus_parameters
+    
+    @property
+    def pathogen_parameters(self) -> constants.PathogenStaticVariables:
+        return self.__pathogen_parameters
+    
+    @property
+    def global_parameters(self) -> constants.GlobalParameters:
+        return self.__global_parameters
+    
+    @property
+    def global_vars(self) -> constants.GlobalVars:
+        return self.__global_vars
