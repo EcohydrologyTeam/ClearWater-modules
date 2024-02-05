@@ -1,3 +1,5 @@
+import xarray as xr
+
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
 import clearwater_modules.nsm1.algae.algae_processes as algae_processes
@@ -170,6 +172,14 @@ Variable(
     process=alkalinity_processes.Alk_new
 )
 
+# TODO: remove mock_equation
+
+def mock_twaterc(t_water_c: xr.DataArray) -> xr.DataArray:
+    return t_water_c
+
+def mock_depth(depth: xr.DataArray) -> xr.DataArray:
+    return depth
+
 #TODO not sure the order of calling with tsm
 Variable(
     name='TwaterC',
@@ -177,7 +187,7 @@ Variable(
     units='C',
     description='Water Temperature Degree Celsius',
     use='state',
-    process=tsm.processes.t_water_c 
+    process=mock_twaterc 
 )
 
 Variable(
@@ -186,5 +196,5 @@ Variable(
     units='m',
     description='Water depth from surface',
     use='state',
-    process=shared_processes.depth_calc
+    process=mock_depth
 )
