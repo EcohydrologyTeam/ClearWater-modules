@@ -12,13 +12,6 @@ class Variable(base.Variable):
 # Global parameters
 
 
-Variable(
-    name='L',
-    long_name='Light attenuation coefficient',
-    units='unitless',
-    description='Light attenuation coefficient',
-    use='static',
-)
 
 Variable(
     name='fdp',

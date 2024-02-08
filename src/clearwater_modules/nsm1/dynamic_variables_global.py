@@ -25,3 +25,11 @@ Variable(
     use='dynamic',
     process=shared_processes.arrhenius_correction
 )
+
+Variable(
+    name='L',
+    long_name='Light attenuation coefficient',
+    units='unitless',
+    description='Light attenuation coefficient',
+    use='static',
+)

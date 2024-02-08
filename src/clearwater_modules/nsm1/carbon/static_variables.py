@@ -9,32 +9,17 @@ class Variable(base.Variable):
 # TODO: verify all these values
 
 ###
-# To get from algae/benthic: rca?, rcb?, kdp_20 (static), kdp_T (dyn), Ap (state), depth (state), Ab (state), Fw, Fb
+# To get from algae/benthic: rca?, rcb?, kdp_20 (static), kdp_tc (dyn), Ap (state), depth (state), Ab (state), Fw, Fb
 
 
 Variable(
-    name='F_pocp',
+    name='f_pocp',
     long_name='Fraction of algal mortality into POC',
     units='unitless',
     description='Fraction of dead algae that converts to particulate organic carbon',
     use='static'
 )
 
-Variable(
-    name='rca',
-    long_name='algal C : Chla ratio',
-    units='mg-C/ug-Chla',
-    description='Ratio of algal carbon to chlorophyll-a',
-    use='static'
-)
-
-Variable(
-    name='rcb',
-    long_name='benthic algae C : D ratio',
-    units='mg-C/mg-D',
-    description='Ratio of benthic algal carbon to algal biomass',
-    use='static'
-)
 
 Variable(
     name='kdoc_20',
@@ -53,7 +38,7 @@ Variable(
 )
 
 Variable(
-    name='F_pocb',
+    name='f_pocb',
     long_name='fraction of benthic algal mortality into POC',
     units='unitless',
     description='fraction of benthic algal mortality into POC',
@@ -69,7 +54,7 @@ Variable(
 )
 
 Variable(
-    name='K_sOxmc',
+    name='KsOxmc',
     long_name='half saturation oxygen attenuation constant for DOC oxidation rate',
     units='mg-O2/L',
     description='half saturation oxygen attenuation constant for DOC oxidation rate',

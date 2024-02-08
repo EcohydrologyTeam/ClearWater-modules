@@ -12,21 +12,21 @@ class Variable(base.Variable):
 
 
 Variable(
-    name='kbod_T',
+    name='kbod_tc',
     long_name='Temperature adjusted oxidation rate',
     units='1/d',
     description='Temperature adjusted oxidation rate',
     use='dynamic',
-    process=processes.kbod_T
+    process=processes.kbod_tc
 )
 
 Variable(
-    name='ksbod_T',
+    name='ksbod_tc',
     long_name='Temperature adjusted sedimentation rate',
     units='m/d',
     description='Temperature adjusted sedimentation rate',
     use='dynamic',
-    process=processes.ksbod_T
+    process=processes.ksbod_tc
 )
 
 Variable(

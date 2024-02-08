@@ -3,15 +3,6 @@ from clearwater_modules.shared.processes import arrhenius_correction, celsius_to
 import numba
 import xarray as xr
 
-@numba.njit
-def TwaterK(
-    TwaterC : xr.DataArray,
-) -> xr.DataArray :
-    """Calculate temperature in kelvin (K)
-    Args:
-        TwaterC: water temperature celcius (C)
-    """
-    return celsius_to_kelvin(TwaterK)
 
 @numba.njit
 def KHN2_tc(
@@ -105,7 +96,7 @@ def TDG(
     N2: xr.DataArray,
     N2sat : xr.DataArray,
     DOX: xr.DataArray,
-    O2sat: xr.DataArray,
+    DOX_sat: xr.DataArray,
     use_DOX: bool,
 ) -> xr.DataArray: 
     
@@ -115,11 +106,11 @@ def TDG(
         N2: Nitrogen concentration air (mg-N/L)
         N2sat: N2 at saturation f(Twater and atm pressure) (mg-N/L)
         DOX: Dissolved oxygen concentration (mg-O2/L)
-        O2sat: O2 at saturation f(Twater and atm pressure) (mg-O2/L)
+        DOX_sat: O2 at saturation f(Twater and atm pressure) (mg-O2/L)
         use_DOX: true/false use dissolved oxygen module (true/false)
     """
     if use_DOX :
-        TDG = (79.0 * N2 / N2sat) + (21.0 * DOX / O2sat)
+        TDG = (79.0 * N2 / N2sat) + (21.0 * DOX / DOX_sat)
     else:
         TDG = N2/N2sat
 

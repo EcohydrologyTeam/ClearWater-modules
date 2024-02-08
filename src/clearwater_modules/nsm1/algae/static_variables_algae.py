@@ -16,7 +16,7 @@ class Variable(base.Variable):
 
 
 Variable(
-    name='Awd',
+    name='AWd',
     long_name='Algal Dry Weight',
     units='mg',
     description='Algal Dry Weight',
@@ -109,14 +109,6 @@ Variable(
     long_name='Algal Setting Velocity',
     units='m/d',
     description='Algal Setting Velocity',
-    use='static',
-)
-
-Variable(
-    name='growth_rate_option',
-    long_name='Growth Rate Option',
-    units='1/d',
-    description='Algal growth rate option 1) multiplicative, 2) Limiting Nutrient, 3) Harmonic Mean Option',
     use='static',
 )
 

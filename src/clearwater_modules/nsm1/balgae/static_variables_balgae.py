@@ -141,3 +141,19 @@ Variable(
     description='Benthic Algal light limitation rate with three options: 1) Half-saturation formulation, 2) Smiths Model, 3) Steeles Model'
     use='static',
 )
+
+Variable(
+    name='Fb',
+    long_name='Fraction of bottom area available for benthic algae growth',
+    units='unitless',
+    description='Fraction of bottom area available for benthic algae growth',
+    use='static'
+)
+
+Variable(
+    name='Fw',
+    long_name='Fraction of benthic algae mortality into water column',
+    units='unitless',
+    description='Fraction of benthic algae mortality into water column',
+    use='static'
+)

@@ -11,11 +11,11 @@ from clearwater_modules.nsm1 import dynamic_variables_global
 from clearwater_modules.nsm1 import state_variables
 
 @numba.njit
-def kdnit_T( ##Theta variable??
+def kdnit_tc( ##Theta variable??
     TwaterC: float,
     kdnit_20: float
 ) -> float:
-    """Calculate kdnit_T: Denitrification rate temperature correction (1/d). #TODO only if use_NO3 = true
+    """Calculate kdnit_tc: Denitrification rate temperature correction (1/d). #TODO only if use_NO3 = true
 
     Args:
         TwaterC: Water temperature (C)
@@ -26,11 +26,11 @@ def kdnit_T( ##Theta variable??
 
 
 @numba.njit
-def knit_T( ##Theta variable??
+def knit_tc( ##Theta variable??
     TwaterC: float,
     knit_20: float
 ) -> float:
-    """Calculate knit_T: Denitrification rate temperature correction (1/d). #TODO only if use_NO3 = true
+    """Calculate knit_tc: Denitrification rate temperature correction (1/d). #TODO only if use_NO3 = true
 
     Args:
         TwaterC: Water temperature (C)
@@ -43,7 +43,7 @@ def knit_T( ##Theta variable??
 def Alk_denitrification(
     DOX: xr.DataArray,
     NO3: xr.DataArray,
-    kdnit_T: xr.DataArray,
+    kdnit_tc: xr.DataArray,
     KsOxdn: xr.DataArray,
     r_alkden: xr.DataArray,
     use_NO3: xr.DataArray,
@@ -54,13 +54,13 @@ def Alk_denitrification(
     Args:
         DOX: Concentration of dissolved oxygen (mg/L)
         NO3: Concentration of nitrate (mg/L)
-        kdnit_T: Denitrification rate corrected for temperature (1/d)
+        kdnit_tc: Denitrification rate corrected for temperature (1/d)
         KsOxdn: Half-saturation oxygen inhibition constant for denitrification (mg-O2/L)
         ralkden: Ratio translating NO3 denitrification into Alk (eq/mg-N)
         use_NO3: Option to use nitrate
         use_DOX: Option to use dissolved oxygen 
     """
-    da: xr.DataArray = xr.where(use_NO3 == True, xr.where(use_DOX == True, r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_T * NO3, r_alkden * kdnit_T * NO3), 0)
+    da: xr.DataArray = xr.where(use_NO3 == True, xr.where(use_DOX == True, r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3, r_alkden * kdnit_tc * NO3), 0)
 
     return da
 
@@ -68,7 +68,7 @@ def Alk_denitrification(
 def Alk_nitrification(
     DOX: xr.DataArray,
     NH4: xr.DataArray,
-    knit_T: xr.DataArray,
+    knit_tc: xr.DataArray,
     KNR: xr.DataArray,
     r_alkn: xr.DataArray,
     use_NH4: xr.DataArray,
@@ -79,13 +79,13 @@ def Alk_nitrification(
     Args:
         DOX: Concentration of dissolved oxygen (mg/L)
         NH4: Concentration of ammonia/ammonium (mg/L)
-        knit_T: Nitrification rate corrected for temperature (1/d)
+        knit_tc: Nitrification rate corrected for temperature (1/d)
         KNR: Oxygen inhibition factor for nitrification (mg-O2/L)
         r_alkn: Ratio translating NH4 nitrification into Alk (eq/mg-N)
         use_NH4: Option to use ammonium
         use_DOX: Option to use dissolved oxygen
     """
-    da: xr.DataArray = xr.where(use_NH4 == True, xr.where(use_DOX == True, r_alkn * (1 - math.exp(-KNR * DOX)) * knit_T * NH4, knit_T * NH4), 0)
+    da: xr.DataArray = xr.where(use_NH4 == True, xr.where(use_DOX == True, r_alkn * (1 - math.exp(-KNR * DOX)) * knit_tc * NH4, knit_tc * NH4), 0)
 
     return da
 

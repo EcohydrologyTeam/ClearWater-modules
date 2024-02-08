@@ -10,32 +10,22 @@ from clearwater_modules.nsm1.alkalinity import processes
 class Variable(base.Variable):
     ...
 
-
 Variable(
-    name='depth',
-    long_name='Average water depth in cell',
-    units='m',
-    description='Average water depth in cell computed by dividing volume by surface area',
-    use='dynamic',
-    process=shared_processes.compute_depth
-)
-
-Variable(
-    name='knit_T',
+    name='knit_tc',
     long_name='Nitrification rate corrected for temperature',
     units='1/d',
     description='Nitrification rate corrected for temperature',
     use='dynamic',
-    process=processes.knit_T
+    process=processes.knit_tc
 )
 
 Variable(
-    name='kdnit_T',
+    name='kdnit_tc',
     long_name='Denitrification rate corrected for temperature',
     units='1/d',
     description='Denitrification rate corrected for temperature',
     use='dynamic',
-    process=processes.kdnit_T
+    process=processes.kdnit_tc
 )
 
 Variable(
@@ -100,4 +90,6 @@ Variable(
     use='dynamic',
     process=processes.dAlkdt
 )
+
+
 

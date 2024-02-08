@@ -9,31 +9,31 @@ from clearwater_modules.shared.processes import (
 #TODO: make sure np.exp will work here...
 @numba.njit
 def pwv(
-    t_water_k: xr.DataArray
+    TwaterK: xr.DataArray
 ) -> xr.DataArray:
     """Calculate partial pressure of water vapor
 
     Args:
-        t_water_k: Water temperature kelvin
+        TwaterK: Water temperature kelvin
     """
-    return np.exp(11.8571 - 3840.70 / t_water_k - 216961 / t_water_k ** 2)
+    return np.exp(11.8571 - 3840.70 / TwaterK - 216961 / TwaterK ** 2)
 
 
 @numba.njit
 def DOs_atm_alpha(
-    t_water_k: xr.DataArray
+    TwaterK: xr.DataArray
 ) -> xr.DataArray:
     """Calculate DO saturation atmospheric correction coefficient
 
     Args:
-        t_water_k: Water temperature kelvin
+        TwaterK: Water temperature kelvin
     """
-    return .000975 - 1.426 * 10 ** -5 * t_water_k + 6.436 * 10 ** -8 * t_water_k ** 2
+    return .000975 - 1.426 * 10 ** -5 * TwaterK + 6.436 * 10 ** -8 * TwaterK ** 2
 
 
 @numba.njit
 def DOX_sat(
-    t_water_k: xr.DataArray,
+    TwaterK: xr.DataArray,
     patm: xr.DataArray,
     pwv: xr.DataArray,
     DOs_atm_alpha: xr.DataArray
@@ -41,20 +41,20 @@ def DOX_sat(
     """Calculate DO saturation value
 
     Args:
-        t_water_k: Water temperature kelvin
+        TwaterK: Water temperature kelvin
         patm: Atmospheric pressure (atm)
         pwv: Patrial pressure of water vapor (atm)
         DOs_atm_alpha: DO saturation atmospheric correction coefficient
     """
-    DOX_sat_uncorrected = np.exp(-139.34410 + 1.575701 * 10 ** 5 / t_water_k - 6.642308 * 10 ** 7 / t_water_k ** 2
-                                 + 1.243800 * 10 ** 10 / t_water_k - 8.621949 * 10 ** 11 / t_water_k)
+    DOX_sat_uncorrected = np.exp(-139.34410 + 1.575701 * 10 ** 5 / TwaterK - 6.642308 * 10 ** 7 / TwaterK ** 2
+                                 + 1.243800 * 10 ** 10 / TwaterK - 8.621949 * 10 ** 11 / TwaterK)
 
     DOX_sat_corrected = DOX_sat_uncorrected * patm * \
         (1 - pwv / patm) * (1 - DOs_atm_alpha * patm) / \
         ((1 - pwv) * (1 - DOs_atm_alpha))
     return DOX_sat_corrected
 
-
+#TODO potentially move kah_20 to a global file; found in global parameters
 def kah_20(
     kah_20_user: xr.DataArray,
     hydraulic_reaeration_option: xr.DataArray,
@@ -92,19 +92,17 @@ def kah_20(
 
 
 @numba.njit
-def kah_T(
-    water_temp_c: xr.DataArray,
+def kah_tc(
+    TwaterC: xr.DataArray,
     kah_20: xr.DataArray,
-    theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted hydraulic oxygen reaeration rate (/d)
 
     Args:
-        water_temp_c: Water temperature in Celsius
+        TwaterC: Water temperature in Celsius
         kah_20: Hydraulic oxygen reaeration rate at 20 degrees Celsius
-        theta: Arrhenius coefficient
     """
-    return arrhenius_correction(water_temp_c, kah_20, theta)
+    return arrhenius_correction(TwaterC, kah_20, 1.024)
 
 
 def kaw_20(
@@ -140,58 +138,57 @@ def kaw_20(
 
 
 @numba.njit
-def kaw_T(
-    water_temp_c: xr.DataArray,
+def kaw_tc(
+    TwaterC: xr.DataArray,
     kaw_20: xr.DataArray,
-    theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted wind oxygen reaeration velocity (m/d)
 
     Args:
-        water_temp_c: Water temperature in Celsius
+        TwaterC: Water temperature in Celsius
         kaw_20: Wind oxygen reaeration velocity at 20 degrees Celsius
         theta: Arrhenius coefficient
     """
-    return arrhenius_correction(water_temp_c, kaw_20, theta)
+    return arrhenius_correction(TwaterC, kaw_20, 1.024)
 
 
 @numba.njit
-def ka_T(
-    kah_T: xr.DataArray,
-    kaw_T: xr.DataArray,
+def ka_tc(
+    kah_tc: xr.DataArray,
+    kaw_tc: xr.DataArray,
     depth: xr.DataArray
 ) -> xr.DataArray:
     """Compute the oxygen reaeration rate, adjusted for temperature (1/d)
 
     Args:
-        kah_T: Oxygen reaeration rate adjusted for temperature (1/d)
-        kaw_T: Wind oxygen reaeration velocity adjusted for temperature (m/d)
+        kah_tc: Oxygen reaeration rate adjusted for temperature (1/d)
+        kaw_tc: Wind oxygen reaeration velocity adjusted for temperature (m/d)
         depth: Average water depth in cell (m)
     """
-    return kaw_T / depth + kah_T
+    return kaw_tc / depth + kah_tc
 
 
 @numba.njit
 def Atm_O2_reaeration(
-    ka_T: xr.DataArray,
+    ka_tc: xr.DataArray,
     DOX_sat: xr.DataArray,
     DOX: xr.DataArray
 ) -> xr.DataArray:
     """Compute the atmospheric O2 reaeration flux
 
     Args: 
-        ka_T: Oxygen reaeration rate adjusted for temperature (1/d)
+        ka_tc: Oxygen reaeration rate adjusted for temperature (1/d)
         DOX_sat: Dissolved oxygen saturation concentration (mg/L)
         DOX: Dissolved oxygen concentration (mg/L)
     """
-    return ka_T * (DOX_sat - DOX)
+    return ka_tc * (DOX_sat - DOX)
 
 
 def DOX_ApGrowth(
     ApGrowth: xr.DataArray,
     rca: xr.DataArray,
     roc: xr.DataArray,
-    F1: xr.DataArray,
+    ApUptakeFr_NH4: xr.DataArray,
     use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Compute DOX flux due to algal photosynthesis
@@ -200,9 +197,9 @@ def DOX_ApGrowth(
         ApGrowth: Algae photosynthesis, calculated in the algae module (ug-Chla/L/d)
         rca: Ratio of algal carbon to chlorophyll-a (mg-C/ug-Chla)
         roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
-        F1: Algae preference for ammonia 
+        ApUptakeFr_NH4: Algae preference for ammonia 
     """
-    da: xr.DataArray = xr.where(use_Algae == True, ApGrowth * rca * roc * (138 / 106 - 32 * F1 / 106), 0)
+    da: xr.DataArray = xr.where(use_Algae == True, ApGrowth * rca * roc * (138 / 106 - 32 * ApUptakeFr_NH4 / 106), 0)
 
     return da
 
@@ -325,11 +322,10 @@ def DOX_AbRespiration(
 
     return da
 
-
-def SOD_tc(
+#TODO potentially move to global parameter 
+def SOD_tcc(
     SOD_20: xr.DataArray,
-    t_water_C: xr.DataArray,
-    theta: xr.DataArray,
+    TwaterC: xr.DataArray,
     DOX: xr.DataArray,
     KsSOD: xr.DataArray,
     use_DOX: xr.DataArray
@@ -338,13 +334,13 @@ def SOD_tc(
 
     Args:
         SOD_20: Sediment oxygen demand at 20 degrees celsius (mg-O2/m2)
-        t_water_C: Water temperature in degrees C
-        theta: Arrhenius coefficient
+        TwaterC: Water temperature in degrees C
+        KsSod: Half saturation oxygen attenuation constant for SOD (mg-O/L)
         use_DOX: Option to consider DOX concentration in water in calculation of sediment oxygen demand
     """
-    SOD_tc = arrhenius_correction(t_water_C, SOD_20, theta)
+    SOD_tcc = arrhenius_correction(TwaterC, SOD_20, 1.060)
 
-    da: xr.DataArray = xr.where(use_DOX == True, SOD_tc * DOX / (DOX + KsSOD), SOD_tc)
+    da: xr.DataArray = xr.where(use_DOX == True, SOD_tcc * DOX / (DOX + KsSOD), SOD_tcc)
 
     return da
 
@@ -352,7 +348,7 @@ def SOD_tc(
 def DOX_SOD(
     SOD_Bed: xr.DataArray,
     depth: xr.DataArray,
-    SOD_tc: xr.DataArray,
+    SOD_tcc: xr.DataArray,
     use_SedFlux: xr.DataArray
 ) -> xr.DataArray:
     """Compute dissolved oxygen flux due to sediment oxygen demand
@@ -360,11 +356,11 @@ def DOX_SOD(
     Args:
         SOD_Bed: Sediment oxygen demand if calculated using the SedFlux module (mg-O2/m2)
         depth: Water depth (m)
-        SOD_tc: Sediment oxygen demand not considering the SedFlux budget (mg-O2/m2)
+        SOD_tcc: Sediment oxygen demand not considering the SedFlux budget (mg-O2/m2)
         use_SedFlux: Option to consider sediment flux in DOX budget (boolean)
     """
 
-    da: xr.DataArray = xr.where(use_SedFlux == 1, SOD_Bed / depth, SOD_tc / depth)
+    da: xr.DataArray = xr.where(use_SedFlux == 1, SOD_Bed / depth, SOD_tcc / depth)
 
     return da
 

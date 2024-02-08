@@ -103,11 +103,3 @@ Variable(
     use='static'
 )
 
-Variable(
-    name='Fb',
-    long_name='Fraction of bottom area available for benthic algae growth',
-    units='unitless',
-    description='Fraction of bottom area available for benthic algae growth',
-    use='static'
-)
-

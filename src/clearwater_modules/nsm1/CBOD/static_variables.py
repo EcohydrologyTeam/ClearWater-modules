@@ -26,7 +26,7 @@ Variable(
 )
 
 Variable(
-    name='ksOxbod',
+    name='KsOxbod',
     long_name='Half saturation oxygen attenuation constant for CBOD oxidation',
     units='mg-O2/L',
     description='Half saturation oxygen attenuation constant for CBOD oxidation',
