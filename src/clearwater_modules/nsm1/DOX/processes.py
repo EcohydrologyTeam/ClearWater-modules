@@ -393,7 +393,7 @@ def dDOXdt(
 
 
 @numba.njit
-def DOX_new(
+def DOX(
     DOX: xr.DataArray,
     dDOXdt: xr.DataArray,
     timestep: xr.DataArray

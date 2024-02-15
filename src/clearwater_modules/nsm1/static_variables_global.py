@@ -1,7 +1,7 @@
 import clearwater_modules.base as base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.algae.algae_processes as algae_processes
-import clearwater_modules.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
+import clearwater_modules.nsm1.algae.processes as processes
+import clearwater_modules.nsm1.nitrogen.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)

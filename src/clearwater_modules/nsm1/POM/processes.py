@@ -10,37 +10,18 @@ from clearwater_modules.nsm1 import static_variables_global
 from clearwater_modules.nsm1 import dynamic_variables_global
 from clearwater_modules.nsm1 import state_variables
 
-
 @numba.njit
-def kdb_T(
-    water_temp_c: float,
-    kdb_20: float,
-    theta: float
-) -> float:
-    """Calculate the temperature adjusted POC hydrolysis rate (/d)
-
-    Args:
-        water_temp_c: Water temperature in Celsius
-        kdb_20: Benthic algae mortality rate at 20 degrees Celsius (1/d)
-        theta: Arrhenius coefficient for kdb
-    """
-    return arrhenius_correction(water_temp_c, kdb_20, theta)
-
-
-@numba.njit
-def kpom_T(
-    water_temp_c: float,
+def kpom_tc(
+    TwaterC: float,
     kpom_20: float,
-    theta: float
 ) -> float:
     """Calculate the temperature adjusted POC hydrolysis rate (/d)
 
     Args:
-        water_temp_c: Water temperature in Celsius
+        TwaterC: Water temperature in Celsius
         kpom_20: POM dissolution rate at 20 degrees Celsius (1/d)
-        theta: Arrhenius coefficient for kpom
     """
-    return arrhenius_correction(water_temp_c, kpom_20, theta)
+    return arrhenius_correction(TwaterC, kpom_20, 1.047)
 
 
 def POM_algal_settling(
@@ -67,16 +48,16 @@ def POM_algal_settling(
 @numba.njit
 def POM_dissolution(
     POM: xr.DataArray,
-    kpom_T: xr.DataArray
+    kpom_tc: xr.DataArray
 ) -> xr.DataArray:
     """Calculates the particulate organic matter concentration change due to POM dissolution
 
     Args:
         POM: Concentration of particulate organic matter (mg/L)
-        kpom_T: POM dissolution rate corrected for temperature (1/d)
+        kpom_tc: POM dissolution rate corrected for temperature (1/d)
     """
 
-    return POM * kpom_T
+    return POM * kpom_tc
 
 
 def POM_POC_settling(
@@ -102,7 +83,7 @@ def POM_POC_settling(
 
 def POM_benthic_algae_mortality(
     Ab: xr.DataArray,
-    kdb_T: xr.DataArray,
+    kdb_tc: xr.DataArray,
     Fb: xr.DataArray,
     Fw: xr.DataArray,
     depth: xr.DataArray,
@@ -112,13 +93,13 @@ def POM_benthic_algae_mortality(
     
     Args:
         Ab: Benthic algae concentration (mg/L)
-        kdb_T: Benthic algae death rate (1/d)
+        kdb_tc: Benthic algae death rate (1/d)
         Fb: Fraction of bottom area available for benthic algae growth
         Fw: Fraction of benthic algae mortality into water column
         depth: Depth of water in computation cell (m)
         use_Balgae: Option for considering benthic algae in DOC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, Ab * kdb_T * Fb * (1 - Fw) / depth, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, Ab * kdb_tc * Fb * (1 - Fw) / depth, 0)
 
     return da
 
@@ -160,7 +141,7 @@ def dPOMdt(
 
 
 @numba.njit
-def POM_new(
+def POM(
     dPOMdt: xr.DataArray,
     POM: xr.DataArray,
     timestep: xr.DataArray

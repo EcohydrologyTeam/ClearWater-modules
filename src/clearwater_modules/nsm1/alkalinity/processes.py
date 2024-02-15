@@ -196,7 +196,7 @@ def dAlkdt(
 
 
 @numba.njit
-def Alk_new(
+def Alk(
     Alk: xr.DataArray,
     dAlkdt: xr.DataArray,
     timestep: xr.DataArray,

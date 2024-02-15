@@ -4,7 +4,7 @@ File includes static variables only used in sedflux module
 
 import clearwater_modules.base as base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.sedflux.sedflux_processes as sedflux_processes
+import clearwater_modules.nsm1.sedflux.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)

@@ -8,14 +8,6 @@ class Variable(base.Variable):
 
 
 Variable(
-    name='kdb_20',
-    long_name='Benthic algal mortality rate at 20C',
-    units='1/d',
-    description='Benthic algal mortality rate at 20C',
-    use='static',
-)
-
-Variable(
     name='kpom_20',
     long_name='POM dissolution rate at 20C',
     units='1/d',

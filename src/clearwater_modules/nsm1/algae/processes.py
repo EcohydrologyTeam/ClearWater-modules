@@ -301,14 +301,16 @@ def dApdt(
 
 
 @numba.njit
-def Ap_new(
+def Ap(
     Ap: xr.DataArray,
     dApdt: xr.DataArray,
+    timestep: xr.DataArray
 ) -> xr.DataArray:
     """Calculate new algae concentration (ug-Chla/L)
 
     Args:
         Ap: Initial algae biomass concentration (ug-Chla/L)
         dApdt: Change in algae biomass concentration (ug-Chla/L/d)
+        timestep: current iteration timestep (d)
     """
-    return Ap + dApdt
+    return Ap + dApdt*timestep

@@ -300,6 +300,24 @@ def dAbdt(
 
 
 @numba.njit
+def Ab(
+    Ab: xr.DataArray,
+    dAbdt: xr.DataArray,
+    timestep: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate Ab: New concentration benthic algae (mg-N/L)
+
+    Args:
+        Ab: Concentration of benthic algae (mg-N/L)
+        dAbdt: Change in Ab (mg-N/L/d)
+        timestep: current iteration timestep (d)
+
+    """
+
+    return Ab + dAbdt*timestep
+
+@numba.njit
 def Chlb(
     rab: xr.DataArray,
     Ab: xr.DataArray,

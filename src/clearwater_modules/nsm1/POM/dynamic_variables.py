@@ -8,23 +8,13 @@ from clearwater_modules.nsm1.POM import processes
 class Variable(base.Variable):
     ...
 
-
 Variable(
-    name='kdb_T',
-    long_name='Benthic algal mortality rate adjusted for temperature',
-    units='1/d',
-    description='Benthic algal mortality rate adjusted for temperature',
-    use='dynamic',
-    process=processes.kdb_T
-)
-
-Variable(
-    name='kpom_T',
+    name='kpom_tc',
     long_name='POM dissolution rate adjusted for temperature',
     units='1/d',
     description='POM dissolution rate adjusted for temperature',
     use='dynamic',
-    process=processes.kpom_T
+    process=processes.kpom_tc
 )
 
 Variable(

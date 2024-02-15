@@ -5,7 +5,7 @@ File includes dynamic variables computed in Balgae module. Dynamic variables may
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.balgae.balgae_processes as balgae_processes
+import clearwater_modules.nsm1.balgae.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)
@@ -19,7 +19,7 @@ Variable(
     units='1/d',
     description='Maximum benthic algal growth rate with temperature correction',
     use='dynamic',
-    process=balgae_processes.mub_max_tc
+    process=processes.mub_max_tc
 )
 
 Variable(
@@ -28,7 +28,7 @@ Variable(
     units='1/d',
     description='Benthic algae respiration rate with temperature correction',
     use='dynamic',
-    process=balgae_processes.krb_tc
+    process=processes.krb_tc
 )
 
 Variable(
@@ -37,7 +37,7 @@ Variable(
     units='1/d',
     description='Benthic algae mortality rate with temperature correction',
     use='dynamic',
-    process=balgae_processes.kdb_tc
+    process=processes.kdb_tc
 )
 
 Variable(
@@ -46,7 +46,7 @@ Variable(
     units='mg-N/mg-D',
     description='Ratio benthic algae nitrogen to dry weight',
     use='dynamic',
-    process=balgae_processes.rnb
+    process=processes.rnb
 )
 
 Variable(
@@ -55,7 +55,7 @@ Variable(
     units='mg-P/mg-D',
     description='Ratio benthic algae phosphorus to dry weight',
     use='dynamic',
-    process=balgae_processes.rpb
+    process=processes.rpb
 )
 
 Variable(
@@ -64,7 +64,7 @@ Variable(
     units='mg-C/mg-D',
     description='Ratio benthic algae carbon to dry weight',
     use='dynamic',
-    process=balgae_processes.rcb
+    process=processes.rcb
 )
 
 Variable(
@@ -73,7 +73,7 @@ Variable(
     units='ug-Chala-a/mg-D',
     description='Ratio benthic algae chlorophyll-a to dry weight',
     use='dynamic',
-    process=balgae_processes.rab
+    process=processes.rab
 )
 
 Variable(
@@ -82,7 +82,7 @@ Variable(
     units='unitless',
     description='Benthic algal light limitation factor',
     use='dynamic',
-    process=balgae_processes.FLb
+    process=processes.FLb
 )
 
 Variable(
@@ -91,7 +91,7 @@ Variable(
     units='unitless',
     description='Benthic algal nitrogen limitation factor',
     use='dynamic',
-    process=balgae_processes.FNb
+    process=processes.FNb
 )
 
 Variable(
@@ -100,7 +100,7 @@ Variable(
     units='unitless',
     description='Benthic algal phosphorous limitation factor',
     use='dynamic',
-    process=balgae_processes.FPb
+    process=processes.FPb
 )
 
 Variable(
@@ -109,7 +109,7 @@ Variable(
     units='unitless',
     description='Benthic algal density attenuation',
     use='dynamic',
-    process=balgae_processes.FSb
+    process=processes.FSb
 )
 
 Variable(
@@ -118,7 +118,7 @@ Variable(
     units='1/d',
     description='Benthic algae specific growth rate',
     use='dynamic',
-    process=balgae_processes.mub
+    process=processes.mub
 )
 
 Variable(
@@ -127,7 +127,7 @@ Variable(
     units='g/m^2/d',
     description='Benthic algae growth rate',
     use='dynamic',
-    process=balgae_processes.AbGrowth
+    process=processes.AbGrowth
 )
 
 Variable(
@@ -136,7 +136,7 @@ Variable(
     units='g/m^2/d',
     description='Benthic algae respiration rate',
     use='dynamic',
-    process=balgae_processes.AbRespiration
+    process=processes.AbRespiration
 )
 
 Variable(
@@ -145,7 +145,7 @@ Variable(
     units='g/m^2/d',
     description='Benthic algae death rate',
     use='dynamic',
-    process=balgae_processes.AbDeath
+    process=processes.AbDeath
 )
 
 Variable(
@@ -154,7 +154,7 @@ Variable(
     units='g/m^2/d',
     description='Change in benthic algae concentration',
     use='dynamic',
-    process=balgae_processes.dAbdt
+    process=processes.dAbdt
 )
 
 Variable(
@@ -163,5 +163,5 @@ Variable(
     units='mg-Chla/m^2',
     description='Chlorophyll-a concentration',
     use='dynamic',
-    process=balgae_processes.Chlb
+    process=processes.Chlb
 )

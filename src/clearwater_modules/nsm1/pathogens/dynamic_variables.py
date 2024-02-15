@@ -5,7 +5,7 @@ File includes dynamic variables computed in pathogen module. Dynamic variables m
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.pathogens.pathogen_processes as pathogen_processes
+import clearwater_modules.nsm1.pathogens.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)
@@ -18,7 +18,7 @@ Variable(
     units='1/d',
     description='Pathogen death rate with temperature correction',
     use='dynamic',
-    process=pathogen_processes.kdx_tc
+    process=processes.kdx_tc
 )
 
 Variable(
@@ -27,7 +27,7 @@ Variable(
     units='cfu/100mL/d',
     description='Pathogen natural death',
     use='dynamic',
-    process=pathogen_processes.PathogenDeath
+    process=processes.PathogenDeath
 )
 
 Variable(
@@ -36,7 +36,7 @@ Variable(
     units='cfu/100mL/d',
     description='Pathogen death due to light',
     use='dynamic',
-    process=pathogen_processes.PathogenDecay
+    process=processes.PathogenDecay
 )
 
 Variable(
@@ -45,7 +45,7 @@ Variable(
     units='cfu/100mL/d',
     description='Pathogen settling',
     use='dynamic',
-    process=pathogen_processes.PathogenSettling
+    process=processes.PathogenSettling
 )
 
 Variable(
@@ -54,7 +54,7 @@ Variable(
     units='cfu/100mL/d',
     description='Change in pathogen concentration',
     use='dynamic',
-    process=pathogen_processes.dPXdt
+    process=processes.dPXdt
 )
 
 Variable(
@@ -63,5 +63,5 @@ Variable(
     units='cfu/100mL',
     description='New pathogen concentration',
     use='dynamic',
-    process=pathogen_processes.PX_new
+    process=processes.PX_new
 )

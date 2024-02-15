@@ -452,7 +452,7 @@ def dDICdt(
 
 
 @numba.njit
-def DIC_new(
+def DIC(
     DIC: xr.DataArray,
     dDICdt: xr.DataArray,
     timestep: xr.DataArray

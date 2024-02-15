@@ -5,7 +5,7 @@ File includes dynamic variables computed in Algae module. Dynamic variables may 
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
+import clearwater_modules.nsm1.nitrogen.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)
@@ -19,7 +19,7 @@ Variable(
     units='1/d',
     description='Nitrification rate ammonia decay temperature correction',
     use='dynamic',
-    process=nitrogen_processes.knit_tc
+    process=processes.knit_tc
 )
 
 Variable(
@@ -28,7 +28,7 @@ Variable(
     units='1/d',
     description=' Sediment release rate of NH4 temperature correction',
     use='dynamic',
-    process=nitrogen_processes.rnh4_tc
+    process=processes.rnh4_tc
 )
 
 Variable(
@@ -37,7 +37,7 @@ Variable(
     units='m/d',
     description='Sediment denitrification velocity temperature correction',
     use='dynamic',
-    process=nitrogen_processes.vno3_tc
+    process=processes.vno3_tc
 )
 
 Variable(
@@ -46,7 +46,7 @@ Variable(
     units='1/d',
     description='Decay rate of OrgN to NH4 temperature correction',
     use='dynamic',
-    process=nitrogen_processes.kon_tc
+    process=processes.kon_tc
 )
 
 Variable(
@@ -55,7 +55,7 @@ Variable(
     units='1/d',
     description='Denitrification rate temperature correction',
     use='dynamic',
-    process=nitrogen_processes.kdnit_tc
+    process=processes.kdnit_tc
 )
 
 Variable(
@@ -64,7 +64,7 @@ Variable(
     units='unitless',
     description='Fraction of actual floating algal uptake from ammonia pool',
     use='dynamic',
-    process=nitrogen_processes.ApUptakeFr_NH4
+    process=processes.ApUptakeFr_NH4
 )
 
 Variable(
@@ -73,7 +73,7 @@ Variable(
     units='unitless',
     description='Fraction of actual floating algal uptake from nitrate pool',
     use='dynamic',
-    process=nitrogen_processes.ApUptakeFr_NO3
+    process=processes.ApUptakeFr_NO3
 )
 
 Variable(
@@ -82,7 +82,7 @@ Variable(
     units='unitless',
     description='Fraction of actual benthic algal uptake from ammonia pool',
     use='dynamic',
-    process=nitrogen_processes.AbUptakeFr_NH4
+    process=processes.AbUptakeFr_NH4
 )
 
 Variable(
@@ -91,7 +91,39 @@ Variable(
     units='unitless',
     description='Fraction of actual benthic algal uptake from nitrate pool',
     use='dynamic',
-    process=nitrogen_processes.AbUptakeFr_NO3
+    process=processes.AbUptakeFr_NO3
+)
+
+Variable(
+    name='ApDeath_OrgN',
+    long_name='Algae -> OrgN',
+    units='mg-N/L/d',
+    description='Algae conversion to Organic nitrogen',
+    use='dynamic',
+)
+
+Variable(
+    name='AbDeath_OrgN',
+    long_name='Benthic Algae -> OrgN',
+    units='mg-N/L/d',
+    description='Benthic algae conversion to Organic nitrogen',
+    use='dynamic',
+)
+
+Variable(
+    name='OrgN_NH4_Decay',
+    long_name='OrgN -> NH4',
+    units='mg-N/L/d',
+    description='Organic nitrogen to ammonium decay',
+    use='dynamic',
+)
+
+Variable(
+    name='OrgN_Settling',
+    long_name='OrgN -> bed',
+    units='mg-N/L/d',
+    description='Organic nitrogen to bed settling',
+    use='dynamic',
 )
 
 Variable(
@@ -100,7 +132,55 @@ Variable(
     units='mg-N/L',
     description='Change in organic nitrogen',
     use='dynamic',
-    process=nitrogen_processes.dOrgNdt
+    process=processes.dOrgNdt
+)
+
+Variable(
+    name='NH4_Nitrification',
+    long_name='NH4 -> NO3  Nitrification',
+    units='mg-N/L/d',
+    description='NH4 Nitrification',
+    use='dynamic',
+)
+
+Variable(
+    name='NH4fromBed',
+    long_name='bed ->  NH4 (diffusion)',
+    units='mg-N/L/d',
+    description='Sediment bed release of NH4',
+    use='dynamic',
+)
+
+Variable(
+    name='NH4_ApRespiration',
+    long_name='Floating algae -> NH4',
+    units='mg-N/L/d',
+    description='Floating algae to NH4',
+    use='dynamic',
+)
+
+Variable(
+    name='NH4_ApGrowth',
+    long_name='NH4 -> Floating algae',
+    units='mg-N/L/d',
+    description='NH4 uptake to algae',
+    use='dynamic',
+)
+
+Variable(
+    name='NH4_AbRespiration',
+    long_name='Benthic algae -> NH4',
+    units='mg-N/L/d',
+    description='Benthic algae release of NH4',
+    use='dynamic',
+)
+
+Variable(
+    name='NH4_AbGrowth',
+    long_name='NH4 -> Benthic Algae',
+    units='mg-N/L/d',
+    description='Benthic algae uptake of NH4',
+    use='dynamic',
 )
 
 Variable(
@@ -109,7 +189,39 @@ Variable(
     units='mg-N/L',
     description='Change in ammonium concentration',
     use='dynamic',
-    process=nitrogen_processes.dNH4dt
+    process=processes.dNH4dt
+)
+
+Variable(
+    name='NO3_Denit',
+    long_name='NO3 -> Loss',
+    units='mg-N/L/d',
+    description='NO3 loss from denitrification',
+    use='dynamic',
+)
+
+Variable(
+    name='NO3_BedDenit',
+    long_name='Sediment denitrification',
+    units='mg-N/L/d',
+    description='Sediment denitrification',
+    use='dynamic',
+)
+
+Variable(
+    name='NO3_ApGrowth',
+    long_name='NO3 -> Floating algae',
+    units='mg-N/L/d',
+    description='NO3 uptake to floating algae',
+    use='dynamic',
+)
+
+Variable(
+    name='NO3_AbGrowth',
+    long_name='NO3 -> Benthic algae',
+    units='mg-N/L/d',
+    description='NO3 uptake to benthic algae',
+    use='dynamic',
 )
 
 Variable(
@@ -118,7 +230,7 @@ Variable(
     units='mg-N/L',
     description='Change in nitrate concentration',
     use='dynamic',
-    process=nitrogen_processes.dNO3dt
+    process=processes.dNO3dt
 )
 
 Variable(
@@ -127,7 +239,7 @@ Variable(
     units='mg-N/L',
     description='Dissolve inorganic nitrogen',
     use='dynamic',
-    process=nitrogen_processes.DIN
+    process=processes.DIN
 )
 
 Variable(
@@ -136,7 +248,7 @@ Variable(
     units='mg-N/L',
     description='Total organic nitrogen',
     use='dynamic',
-    process=nitrogen_processes.TON
+    process=processes.TON
 )
 
 Variable(
@@ -145,7 +257,7 @@ Variable(
     units='mg-N/L',
     description='Total kjeldhl nitrogen',
     use='dynamic',
-    process=nitrogen_processes.TKN
+    process=processes.TKN
 )
 
 Variable(
@@ -154,5 +266,5 @@ Variable(
     units='mg-N/L',
     description='Total nitrogen',
     use='dynamic',
-    process=nitrogen_processes.TN
+    process=processes.TN
 )

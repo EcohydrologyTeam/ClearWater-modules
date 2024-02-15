@@ -54,8 +54,7 @@ def N2sat(
     """
         
     N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_atm - P_wv)  
-    if (N2sat < 0.0) :  #Trap saturation concentration to ensure never negative
-        N2sat = 0.0 
+    N2sat = xr.where(N2sat < 0.0,0.0,N2sat) #Trap saturation concentration to ensure never negative
 
     return N2sat
 
@@ -109,9 +108,5 @@ def TDG(
         DOX_sat: O2 at saturation f(Twater and atm pressure) (mg-O2/L)
         use_DOX: true/false use dissolved oxygen module (true/false)
     """
-    if use_DOX :
-        TDG = (79.0 * N2 / N2sat) + (21.0 * DOX / DOX_sat)
-    else:
-        TDG = N2/N2sat
 
-    return TDG
+    return xr.where(use_DOX,(79.0 * N2 / N2sat) + (21.0 * DOX / DOX_sat), N2/N2sat) 

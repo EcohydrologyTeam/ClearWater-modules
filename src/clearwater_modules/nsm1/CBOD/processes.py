@@ -91,7 +91,7 @@ def dCBODdt(
 
 
 @numba.njit
-def CBOD_new(
+def CBOD(
     CBOD: xr.DataArray,
     dCBODdt: xr.DataArray,
     timestep: xr.DataArray
