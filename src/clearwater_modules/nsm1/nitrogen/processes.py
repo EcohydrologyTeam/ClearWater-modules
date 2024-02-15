@@ -175,15 +175,17 @@ def AbUptakeFr_NO3(
 def OrgN_NH4_Decay(
     kon_tc: xr.DataArray,
     OrgN: xr.DataArray,
+    use_OrgN: bool
 ) -> xr.DataArray:
     """Calculate OrgN_NH4: OrgN -> NH4 (mg-N/L/d)
 
     Args:
         kon_tc: Decay rate of organic nitrogen to nitrate with temperature correction (1/d),
         OrgN: Concentration of organic nitrogen (mg-N/L)
+        use_OrgN: true/false use organic nitrogen (t/f)
     """
 
-    return kon_tc * OrgN
+    return xr.where(use_OrgN, kon_tc * OrgN,0)
 
 @numba.njit
 def OrgN_Settling(
@@ -301,6 +303,7 @@ def NH4_Nitrification(
     NitrificationInhibition: xr.DataArray,
     NH4: xr.DataArray,
     knit_tc: xr.DataArray,
+    use_NH4: xr.DataArray
 
 ) -> xr.DataArray:
     """Calculate NH4_Nitrification: NH4 -> NO3  Nitrification  (mg-N/L/day)
@@ -311,7 +314,7 @@ def NH4_Nitrification(
         NH4: Ammonium concentration (mg-N/L),
     """
 
-    return NitrificationInhibition * knit_tc * NH4
+    return xr.where(use_NH4,NitrificationInhibition * knit_tc * NH4,0)
 
 @numba.njit
 def NH4fromBed(
@@ -412,7 +415,6 @@ def NH4_AbGrowth(
 
 @numba.njit
 def dNH4dt(
-    use_OrgN: bool,
     use_NH4: bool,
     NH4_Nitrification: xr.DataArray,
     NH4fromBed: xr.DataArray, 
@@ -445,8 +447,7 @@ def dNH4dt(
 
     """
 
-    OrgN_NH4_Decay_dHN4dt = xr.where(not use_OrgN, 0.0, OrgN_NH4_Decay)
-    return xr.where(use_NH4, OrgN_NH4_Decay_dHN4dt - NH4_Nitrification + NH4fromBed + NH4_ApRespiration - NH4_ApGrowth + NH4_AbRespiration - NH4_AbGrowth, 0.0)
+    return xr.where(use_NH4, OrgN_NH4_Decay - NH4_Nitrification + NH4fromBed + NH4_ApRespiration - NH4_ApGrowth + NH4_AbRespiration - NH4_AbGrowth, 0.0)
 
 @numba.njit
 def NH4(
@@ -556,7 +557,6 @@ def NO3_AbGrowth(
 
 @numba.njit
 def dNO3dt(
-    use_NH4: bool,
     use_NO3: bool,
     NH4_Nitrification: xr.DataArray,
     NO3_Denit: xr.DataArray,
@@ -585,8 +585,7 @@ def dNO3dt(
     """
 
 
-    NH4_Nitrification_dNO3dt = xr.where(not use_NH4, 0.0, NH4_Nitrification)
-    return xr.where(use_NO3, NH4_Nitrification_dNO3dt - NO3_Denit - NO3_BedDenit - NO3_ApGrowth - NO3_AbGrowth ,0)
+    return xr.where(use_NO3, NH4_Nitrification - NO3_Denit - NO3_BedDenit - NO3_ApGrowth - NO3_AbGrowth ,0)
 
 @numba.njit
 def NO3(
