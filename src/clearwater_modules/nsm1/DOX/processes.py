@@ -1,9 +1,11 @@
-import numpy as np
+"""
+File contains dynamic variables related to the DOX module
+"""
+
 import numba
 import xarray as xr
-from clearwater_modules.shared.processes import (
-    arrhenius_correction,
-)
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 
 #TODO: make sure np.exp will work here...

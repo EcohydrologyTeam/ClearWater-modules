@@ -1,15 +1,14 @@
-# TODO: figure out what 'model' to import
+"""
+File contains static variables related to the Carbon module
+"""
+
 import clearwater_modules.base as base
-from clearwater_modules.nsm1.carbon.model import EnergyBudget
+from clearwater_modules.nsm1.model import NutrientBudget
 
 
-@base.register_variable(models=EnergyBudget)
+@base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
-# TODO: verify all these values
-
-###
-# To get from algae/benthic: rca?, rcb?, kdp_20 (static), kdp_tc (dyn), Ap (state), depth (state), Ab (state), Fw, Fb
 
 
 Variable(
@@ -61,15 +60,6 @@ Variable(
     use='static'
 )
 
-
-Variable(
-    name='kac_20',
-    long_name='CO2 reaeration rate',
-    units='1/d',
-    description='CO2 reaeration rate',
-    use='static'
-)
-
 Variable(
     name='pCO2',
     long_name='partial atmospheric CO2 pressure',
@@ -83,21 +73,6 @@ Variable(
     long_name='CO2 reaeration rate',
     units='1/d',
     description='CO2 reaeration rate',
-    use='static'
-)
-
-Variable(
-    name='kah_20',
-    long_name='re-aeration rate (diffusion from atomsphere)',
-    units='1/d',
-    description='re-aeration rate (diffusion from atomsphere)',
-    use='static'
-)
-Variable(
-    name='kaw_tc',
-    long_name='wind derived re-aeration transfer velocity',
-    units='m/d',
-    description='wind derived re-aeration transfer velocity',
     use='static'
 )
 

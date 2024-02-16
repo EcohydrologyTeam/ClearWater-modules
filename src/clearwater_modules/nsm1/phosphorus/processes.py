@@ -1,54 +1,10 @@
 """
 File contains process to calculate new phosphorus concentration and associated dependent variables
 """
-"""
-(Global) module_choices T/F
-'use_Algae'
-'use_BAlgae'
-'use_OrgP'
-'use_TIP'
-'use_SedFlux'
-
-(Global) global_vars
-'Ap'       Algae concentration                              [ug/Chla/L]
-'TwaterC'  Water temperature                                [C]
-'depth'    Depth from water surface                         [m]
-'OrgP'     Organic phosphorus                               [mg-P/L]
-'TIP'      Total inorganic phosphorus                       [mg-P/L]
-'vs'       Sediment settling velocity                       [m/d]
-'fdp'      fraction P dissolved                             [unitless]
-
-phosphorus_constant_changes
-'kop'       Decay rate or orgnaic P to DIP                  [1/d]
-'rpo4'      Benthic sediment release rate of DIP            [g-P/m2*d]
-
-from Algae
-'rPa'           AlgalP : Chla ratio                              [mg-P/ugChla]
-'ApGrowth'      Algal growth rate                                [ug-chla/L/d]
-'ApDeath'       Algal death rate                                 [ug-chla/L/d]
-'ApRespiration' AlgalRespiration rate                            [ug-chla/L/d]
-
-from Benthic Algae
-'rpb'           Benthic Algal P: Benthic Algal Dry Weight        [mg-P/mg-D]
-'AbGrowth'      Benthic Algal growth rate                        [g/m^2*d]
-'AbDeath'       Benthic Algal death rate                         [g/m^2*d]
-'AbRespiration' Benthic Algal respiration rate                   [g/m^2*d]
-
-from SedFlux
-'JDIP'     Sediment water flux of phosphate                   [g-P/m^2*d]      
-
-        Organic Phosphorus  (mgP/day)
-    
-        dOrgP/dt =    Algae_OrgP              (Algae -> OrgP)
-                    - OrgP Decay              (OrgP -> DIP)	
-                    - OrgP Settling           (OrgP -> bed) 
-                    + BenthicAlgalDeath       (Benthic Algae -> OrgP)    	
-        
-"""
-import math
-from clearwater_modules.shared.processes import arrhenius_correction
 import numba
 import xarray as xr
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 
 @numba.njit

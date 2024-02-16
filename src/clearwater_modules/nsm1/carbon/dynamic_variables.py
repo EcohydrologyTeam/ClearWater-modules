@@ -1,12 +1,13 @@
-# TODO: figure out imports
+"""
+File contains dynamic variables related to the Carbon module
+"""
 
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
-from clearwater_modules.nsm1.carbon.model import CarbonBudget
+from clearwater_modules.nsm1.model import NutrientBudget
 from clearwater_modules.nsm1.carbon import processes
 
-
-@base.register_variable(models=CarbonBudget)
+@base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
 
@@ -197,21 +198,4 @@ Variable(
     description='DIC concentration change per timestep',
     use='dynamic',
     process=processes.dDICdt
-)
-
-Variable(
-    name='kah_tc',
-    long_name='re-aeration rate temperature corrected (diffusion from atomsphere)',
-    units='1/d',
-    description='re-aeration rate temperature corrected(diffusion from atomsphere)',
-    use='dynamic',
-    process=processes.kah_tc
-)
-Variable(
-    name='kaw_tc',
-    long_name='wind derived re-aeration transfer velocity temperature corrected',
-    units='m/d',
-    description='wind derived re-aeration transfer velocity temperature corrected',
-    use='dynamic',
-    process=processes.kaw_tc
 )

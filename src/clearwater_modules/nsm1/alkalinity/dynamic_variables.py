@@ -1,32 +1,15 @@
-# TODO: figure out imports
+"""
+File contains dynamic variables related to the alkalinity module
+"""
 
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
-from clearwater_modules.nsm1.carbon.model import CarbonBudget
+from clearwater_modules.nsm1.model import NutrientBudget
 from clearwater_modules.nsm1.alkalinity import processes
 
-
-@base.register_variable(models=CarbonBudget)
+@base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
-
-Variable(
-    name='knit_tc',
-    long_name='Nitrification rate corrected for temperature',
-    units='1/d',
-    description='Nitrification rate corrected for temperature',
-    use='dynamic',
-    process=processes.knit_tc
-)
-
-Variable(
-    name='kdnit_tc',
-    long_name='Denitrification rate corrected for temperature',
-    units='1/d',
-    description='Denitrification rate corrected for temperature',
-    use='dynamic',
-    process=processes.kdnit_tc
-)
 
 Variable(
     name='Alk_denitrification',

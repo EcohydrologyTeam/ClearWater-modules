@@ -1,14 +1,10 @@
+"""
+File contains process to calculate new POM concentration and associated dependent variables
+"""
 import numba
-import math
-from clearwater_modules.shared.processes import (
-    arrhenius_correction
-)
 import xarray as xr
-from clearwater_modules.nsm1.POM import dynamic_variables
-from clearwater_modules.nsm1.POM import static_variables
-from clearwater_modules.nsm1 import static_variables_global
-from clearwater_modules.nsm1 import dynamic_variables_global
-from clearwater_modules.nsm1 import state_variables
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 @numba.njit
 def kpom_tc(

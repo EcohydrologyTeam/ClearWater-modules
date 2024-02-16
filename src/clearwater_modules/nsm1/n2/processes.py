@@ -1,8 +1,11 @@
-import math
-from clearwater_modules.shared.processes import arrhenius_correction, celsius_to_kelvin
+"""
+File contains dynamic variables related to the N2 module
+"""
+
 import numba
 import xarray as xr
-
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 @numba.njit
 def KHN2_tc(

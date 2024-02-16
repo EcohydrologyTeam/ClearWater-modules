@@ -1,14 +1,11 @@
-import numpy as np
+"""
+File contains process to calculate new carbon concentration and associated dependent variables
+"""
+
 import numba
 import xarray as xr
-from clearwater_modules.shared.processes import (
-    arrhenius_correction
-)
-from clearwater_modules.nsm1.carbon import dynamic_variables
-from clearwater_modules.nsm1.carbon import static_variables
-from clearwater_modules.nsm1 import static_variables_global
-# from clearwater_modules.nsm1 import dynamic_variables_global
-from clearwater_modules.nsm1 import state_variables
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 
 @numba.njit
@@ -240,7 +237,7 @@ def dDOCdt(
 
 
 @numba.njit
-def DOC_new(
+def DOC(
     DOC: xr.DataArray,
     dDOCdt: xr.DataArray,
     timestep: xr.DataArray

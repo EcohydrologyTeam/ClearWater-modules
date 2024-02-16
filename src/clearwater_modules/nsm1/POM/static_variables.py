@@ -1,10 +1,15 @@
+"""
+File contains static variables related to the POM module
+"""
+
 import clearwater_modules.base as base
-from clearwater_modules.tsm.model import EnergyBudget
+from clearwater_modules.nsm1.model import NutrientBudget
 
 
-@base.register_variable(models=EnergyBudget)
+@base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
+
 
 
 Variable(

@@ -1,10 +1,14 @@
+"""
+File contains dynamic variables related to the POM module
+"""
+
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
-from clearwater_modules.nsm1.carbon.model import CarbonBudget
+from clearwater_modules.nsm1.model import NutrientBudget
 from clearwater_modules.nsm1.POM import processes
 
 
-@base.register_variable(models=CarbonBudget)
+@base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
 

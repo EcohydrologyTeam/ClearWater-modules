@@ -1,10 +1,11 @@
 """
 File contains process to calculate nitrogen species concentration and associated dependent variables
 """
-import math
-from clearwater_modules.shared.processes import arrhenius_correction
+
 import numba
 import xarray as xr
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 @numba.njit
 def knit_tc(

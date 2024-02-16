@@ -1,10 +1,11 @@
-import numpy as np
+"""
+File contains process to calculate new CBOD concentration and associated dependent variables
+"""
+
 import numba
 import xarray as xr
-from clearwater_modules.shared.processes import (
-    arrhenius_correction,
-)
-
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 @numba.njit
 def kbod_tc(

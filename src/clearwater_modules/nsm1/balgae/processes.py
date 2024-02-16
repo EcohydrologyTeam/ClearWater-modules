@@ -2,11 +2,10 @@
 File contains process to calculate new benthic algae biomass concentration and associated dependent variables
 """
 
-import math
-from clearwater_modules.shared.processes import arrhenius_correction
 import numba
 import xarray as xr
-
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 @numba.njit
 def mub_max_tc(

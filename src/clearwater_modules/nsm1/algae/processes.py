@@ -1,12 +1,10 @@
 """
 File contains process to calculate new algae biomass concentration and associated dependent variables
 """
-
-# TODO calculate lambda?
-import math
-from clearwater_modules.shared.processes import arrhenius_correction
 import numba
 import xarray as xr
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 
 @numba.njit

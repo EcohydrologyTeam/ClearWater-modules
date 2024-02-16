@@ -1,14 +1,16 @@
-# TODO: figure out what 'model' to import
+"""
+File contains static variables related to the CBOD module
+"""
+
 import clearwater_modules.base as base
-from clearwater_modules.tsm.model import EnergyBudget
+from clearwater_modules.nsm1.model import NutrientBudget
 
 
-@base.register_variable(models=EnergyBudget)
+@base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
 
 
-# CBOD variables for each CBOD group - array
 Variable(
     name='kbod_20',
     long_name='CBOD oxidation rate at 20C',

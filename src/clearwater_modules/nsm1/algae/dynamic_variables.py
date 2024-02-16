@@ -1,5 +1,5 @@
 """
-File includes dynamic variables computed in Algae module. Dynamic variables may be accessed by other modules.
+File contains dynamic variables related to the Algae module
 """
 
 import clearwater_modules.shared.processes as shared_processes

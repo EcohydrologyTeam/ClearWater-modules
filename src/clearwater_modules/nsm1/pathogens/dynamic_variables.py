@@ -1,5 +1,5 @@
 """
-File includes dynamic variables computed in pathogen module. Dynamic variables may be accessed by other modules.
+File contains dynamic variables related to the Pathogens module
 """
 
 import clearwater_modules.shared.processes as shared_processes

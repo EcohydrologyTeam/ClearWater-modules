@@ -1,44 +1,11 @@
+"""
+File contains process to calculate new alkalinity concentration and associated dependent variables
+"""
+
 import numba
-import math
-from clearwater_modules.shared.processes import (
-    arrhenius_correction
-)
 import xarray as xr
-from clearwater_modules.nsm1.alkalinity import dynamic_variables
-from clearwater_modules.nsm1.alkalinity import static_variables
-from clearwater_modules.nsm1 import static_variables_global
-from clearwater_modules.nsm1 import dynamic_variables_global
-from clearwater_modules.nsm1 import state_variables
-
-@numba.njit
-def kdnit_tc( 
-    TwaterC: float,
-    kdnit_20: float
-) -> float:
-    """Calculate kdnit_tc: Denitrification rate temperature correction (1/d). #TODO only if use_NO3 = true
-
-    Args:
-        TwaterC: Water temperature (C)
-        kdnit_20: Denitrification rate (1/d)
-    """
-
-    return arrhenius_correction(TwaterC, kdnit_20, 1.045)
-
-
-@numba.njit
-def knit_tc( ##Theta variable??
-    TwaterC: float,
-    knit_20: float
-) -> float:
-    """Calculate knit_tc: Denitrification rate temperature correction (1/d). #TODO only if use_NO3 = true
-
-    Args:
-        TwaterC: Water temperature (C)
-        knit_20: Nitrification rate (1/d)
-    """
-
-    return arrhenius_correction(TwaterC, knit_20, 1.045)
-
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 def Alk_denitrification(
     DOX: xr.DataArray,

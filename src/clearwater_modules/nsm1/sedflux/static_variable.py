@@ -1,18 +1,16 @@
 """
-File includes static variables only used in sedflux module
+File contains static variables related to the SedFlux module
 """
 
 import clearwater_modules.base as base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.sedflux.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
-# TODO: verify all these values
 
-# Only Algae Variables
+
 
 
 Variable(
@@ -23,6 +21,7 @@ Variable(
     use='static',
 )
 
+"""
        self.sedFlux_constants = OrderedDict()
         self.sedFlux_constants = {
             'Dd': 0.0025,
@@ -257,3 +256,4 @@ Variable(
         CH4 = 0.0
         ron = 2.0 * 32.0 / 14.0
         rcdn = 5.0 * 12.0 / (4.0 * 14.0)
+"""

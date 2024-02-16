@@ -1,35 +1,16 @@
+"""
+File contains static variables related to the Alkalinity module
+"""
+
 import clearwater_modules.base as base
-from clearwater_modules.tsm.model import EnergyBudget
+from clearwater_modules.nsm1.model import NutrientBudget
 
 
-@base.register_variable(models=EnergyBudget)
+@base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
 
 
-Variable(
-    name='kdnit_20',
-    long_name='Denitrification rate at 20C',
-    units='1/d',
-    description='Denitrification rate at 20C',
-    use='static',
-)
-
-Variable(
-    name='knit_20',
-    long_name='Nitrification Rate Ammonia decay at 20C',
-    units='1/d',
-    description='Nitrification Rate Ammonia NH4 -> NO3 decay at 20C',
-    use='static',
-)
-
-Variable(
-    name='KNR',
-    long_name='Oxygen inhabitation factor for nitrification',
-    units='mg-O2/L',
-    description='Oxygen inhabitation factor for nitrification',
-    use='static',
-)
 
 Variable(
     name='r_alkaa',
