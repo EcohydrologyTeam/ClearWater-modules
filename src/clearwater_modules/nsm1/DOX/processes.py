@@ -34,7 +34,7 @@ def DOs_atm_alpha(
 @numba.njit
 def DOX_sat(
     TwaterK: xr.DataArray,
-    patm: xr.DataArray,
+    pressure_atm: xr.DataArray,
     pwv: xr.DataArray,
     DOs_atm_alpha: xr.DataArray
 ) -> xr.DataArray:
@@ -42,15 +42,15 @@ def DOX_sat(
 
     Args:
         TwaterK: Water temperature kelvin
-        patm: Atmospheric pressure (atm)
+        pressure_atm: Atmospheric pressure (atm)
         pwv: Patrial pressure of water vapor (atm)
         DOs_atm_alpha: DO saturation atmospheric correction coefficient
     """
     DOX_sat_uncorrected = np.exp(-139.34410 + 1.575701 * 10 ** 5 / TwaterK - 6.642308 * 10 ** 7 / TwaterK ** 2
                                  + 1.243800 * 10 ** 10 / TwaterK - 8.621949 * 10 ** 11 / TwaterK)
 
-    DOX_sat_corrected = DOX_sat_uncorrected * patm * \
-        (1 - pwv / patm) * (1 - DOs_atm_alpha * patm) / \
+    DOX_sat_corrected = DOX_sat_uncorrected * pressure_atm * \
+        (1 - pwv / pressure_atm) * (1 - DOs_atm_alpha * pressure_atm) / \
         ((1 - pwv) * (1 - DOs_atm_alpha))
     return DOX_sat_corrected
 
@@ -323,7 +323,7 @@ def DOX_AbRespiration(
     return da
 
 #TODO potentially move to global parameter 
-def SOD_tcc(
+def SOD_tc(
     SOD_20: xr.DataArray,
     TwaterC: xr.DataArray,
     DOX: xr.DataArray,
@@ -338,9 +338,9 @@ def SOD_tcc(
         KsSod: Half saturation oxygen attenuation constant for SOD (mg-O/L)
         use_DOX: Option to consider DOX concentration in water in calculation of sediment oxygen demand
     """
-    SOD_tcc = arrhenius_correction(TwaterC, SOD_20, 1.060)
+    SOD_tc = arrhenius_correction(TwaterC, SOD_20, 1.060)
 
-    da: xr.DataArray = xr.where(use_DOX == True, SOD_tcc * DOX / (DOX + KsSOD), SOD_tcc)
+    da: xr.DataArray = xr.where(use_DOX == True, SOD_tc * DOX / (DOX + KsSOD), SOD_tc)
 
     return da
 
@@ -348,7 +348,7 @@ def SOD_tcc(
 def DOX_SOD(
     SOD_Bed: xr.DataArray,
     depth: xr.DataArray,
-    SOD_tcc: xr.DataArray,
+    SOD_tc: xr.DataArray,
     use_SedFlux: xr.DataArray
 ) -> xr.DataArray:
     """Compute dissolved oxygen flux due to sediment oxygen demand
@@ -356,11 +356,11 @@ def DOX_SOD(
     Args:
         SOD_Bed: Sediment oxygen demand if calculated using the SedFlux module (mg-O2/m2)
         depth: Water depth (m)
-        SOD_tcc: Sediment oxygen demand not considering the SedFlux budget (mg-O2/m2)
+        SOD_tc: Sediment oxygen demand not considering the SedFlux budget (mg-O2/m2)
         use_SedFlux: Option to consider sediment flux in DOX budget (boolean)
     """
 
-    da: xr.DataArray = xr.where(use_SedFlux == 1, SOD_Bed / depth, SOD_tcc / depth)
+    da: xr.DataArray = xr.where(use_SedFlux == 1, SOD_Bed / depth, SOD_tc / depth)
 
     return da
 

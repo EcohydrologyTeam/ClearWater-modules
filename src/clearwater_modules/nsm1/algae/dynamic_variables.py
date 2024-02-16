@@ -12,6 +12,23 @@ import clearwater_modules.nsm1.algae.processes as processes
 class Variable(base.Variable):
     ...
 
+Variable(
+    name='L',
+    long_name='Light attenuation coefficient',
+    units='unitless',
+    description='Light attenuation coefficient',
+    use='dynamic',
+    process=processes.L
+)
+
+Variable(
+    name='PAR',
+    long_name='surface light intensity',
+    units='W/m2',
+    description='surface light intensity',
+    use='dynamic',
+    process=processes.PAR
+)
 
 Variable(
     name='rna',
@@ -158,10 +175,10 @@ Variable(
 )
 
 Variable(
-    name='Ap_new',
+    name='Ap',
     long_name='New algal biomass concentration',
     units='ug-Chala/L/d',
     description='New algal biomass concentration',
     use='dynamic',
-    process=processes.Ap_new,
+    process=processes.Ap,
 )

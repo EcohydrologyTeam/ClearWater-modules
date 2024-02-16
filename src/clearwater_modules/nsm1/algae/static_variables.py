@@ -127,3 +127,52 @@ Variable(
     description='Algal light limitation 1) half-saturation, 2) Smith model, 3) Steele model',
     use='static',
 )
+
+
+Variable(
+    name='lambda0',
+    long_name='lambda0',
+    units='1/m',
+    description='background portion',
+    use='static',
+)
+
+Variable(
+    name='lambda1',
+    long_name='lambda1',
+    units='1/m/(ug Chla/L)',
+    description='linear self shading',
+    use='static',
+)
+
+Variable(
+    name='lambda2',
+    long_name='lambda2',
+    units='unitless',
+    description='nonlinear',
+    use='static',
+)
+
+Variable(
+    name='lambdas',
+    long_name='lambdas',
+    units='L/mg/m',
+    description='ISS portion',
+    use='static',
+)
+
+Variable(
+    name='lambdam',
+    long_name='lambdam',
+    units='L/mg/m',
+    description='POM portion',
+    use='static',
+)
+
+Variable(
+    name='Fr_PAR',
+    long_name='fraction PAR',
+    units='unitless',
+    description='fraction of solar radiation within the PAR of the spectrum',
+    use='static',
+)

@@ -8,14 +8,6 @@ class Variable(base.Variable):
 
 
 Variable(
-    name='KsOxdn',
-    long_name='Half-saturation oxygen inhibition constant for denitrification',
-    units='mg-O2/L',
-    description='Half-saturation oxygen inhibition constant for denitrification',
-    use='static',
-)
-
-Variable(
     name='kdnit_20',
     long_name='Denitrification rate at 20C',
     units='1/d',
@@ -86,20 +78,3 @@ Variable(
     description='Ratio translating benthic algae growth into Alk if NO3 is the N source',
     use='static'
 )
-
-Variable(
-    name='F1',
-    long_name='Preference fraction of algal N uptake from NH4',
-    units='unitless',
-    description='Preference fraction of algal N uptake from NH4',
-    use='static'
-)
-
-Variable(
-    name='F2',
-    long_name='Preference fraction of benthic algae N uptake from NH4',
-    units='unitless',
-    description='Preference fraction of benthic algae N uptake from NH4',
-    use='static'
-)
-

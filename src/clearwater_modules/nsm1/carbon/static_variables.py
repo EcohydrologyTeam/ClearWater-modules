@@ -85,3 +85,27 @@ Variable(
     description='CO2 reaeration rate',
     use='static'
 )
+
+Variable(
+    name='kah_20',
+    long_name='re-aeration rate (diffusion from atomsphere)',
+    units='1/d',
+    description='re-aeration rate (diffusion from atomsphere)',
+    use='static'
+)
+Variable(
+    name='kaw_tc',
+    long_name='wind derived re-aeration transfer velocity',
+    units='m/d',
+    description='wind derived re-aeration transfer velocity',
+    use='static'
+)
+
+#TODO define roc long name and description
+Variable(
+    name='roc',
+    long_name='O2:C ratio for carbon oxidation',
+    units='mg-O2/mg-C',
+    description='32/12',
+    use='static'
+)

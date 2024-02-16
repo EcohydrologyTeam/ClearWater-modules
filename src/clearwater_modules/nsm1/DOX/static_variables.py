@@ -7,6 +7,21 @@ from clearwater_modules.tsm.model import EnergyBudget
 class Variable(base.Variable):
     ...
 
+Variable(
+    name='ron',
+    long_name='O2:N ratio for nitrification',
+    units='mg-O2/mg-N',
+    description='2*32/14',
+    use='static'
+)
+
+Variable(
+    name='SOD_20',
+    long_name='Sediment oxygen demand at 20C',
+    units='mg-O2/m2/d',
+    description='Sediment oxygen demand at 20C',
+    use='static'
+)
 
 Variable(
     name='kaw_20_user',

@@ -52,36 +52,6 @@ def compute_depth(
     return volume / surface_area
 
 @numba.njit
-def L(
-    lambda0: xr.DataArray,
-    lambda1: xr.DataArray,
-    lambda2: xr.DataArray,
-    lambdas: xr.DataArray,
-    lambdam: xr.DataArray,
-    Solid: xr.DataArray,
-    POC: xr.DataArray,
-    focm: xr.DataArray,
-    use_Algae: xr.DataArray,
-    use_POC: xr.DataArray,
-    Ap: xr.DataArray,
-
-) -> xr.DataArray:
-    """Compute L: lambda
-
-    Args:
-        lambda0: xr.DataArray,
-        lambda1: xr.DataArray,
-        lambda2: xr.DataArray,
-        lambdas: xr.DataArray,
-        lambdam: xr.DataArray,
-    """
-    L=lambdas * Solid
-    L=xr.where (use_POC, L=L+lambdam*POC/focm,
-                xr.where (use_Algae, L+ lambda1*Ap + lambda2*Ap**0.66667))
-
-    return L
-
-@numba.njit
 def TwaterK(
     TwaterC : xr.DataArray,
 ) -> xr.DataArray :
@@ -90,3 +60,4 @@ def TwaterK(
         TwaterC: water temperature celcius (C)
     """
     return celsius_to_kelvin(TwaterK)
+

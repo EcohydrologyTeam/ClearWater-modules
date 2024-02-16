@@ -64,7 +64,7 @@ def POM_POC_settling(
     POC: xr.DataArray,
     vsoc: xr.DataArray,
     depth: xr.DataArray,
-    fcom: xr.DataArray,
+    focm: xr.DataArray,
     use_POC: xr.DataArray
 ) -> xr.DataArray:
     """Calculates particulate organic matter concentration change due to POM settling
@@ -76,7 +76,7 @@ def POM_POC_settling(
         fcom: Fraction of carbon in organic matter (mg-C/mg-D) 
         use_POC: Option to consider particulate organic carbon
     """
-    da: xr.DataArray = xr.where(use_POC == True, vsoc * POC / depth / fcom, 0)
+    da: xr.DataArray = xr.where(use_POC == True, vsoc * POC / depth / focm, 0)
     
     return da
 

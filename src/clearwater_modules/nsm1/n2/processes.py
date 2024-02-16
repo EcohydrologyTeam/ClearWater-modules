@@ -38,7 +38,7 @@ def P_wv(
     return math.exp(11.8571  - (3840.70 / TwaterK) - (216961.0 / (TwaterK**2)))
 
 @numba.njit     
-#N2 saturation
+
 def N2sat(
     KHN2_tc : xr.DataArray,
     pressure_atm: xr.DataArray,
@@ -76,7 +76,7 @@ def dN2dt(
     return 1.034 * ka_tc * (N2sat - N2)
 
 @numba.njit    
-def N2_new(
+def N2(
     N2: xr.DataArray,
     dN2dt : xr.DataArray,
 ) -> xr.DataArray: 

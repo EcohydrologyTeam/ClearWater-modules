@@ -100,6 +100,7 @@ Variable(
     units='mg-N/L/d',
     description='Algae conversion to Organic nitrogen',
     use='dynamic',
+    process=processes.ApDeath_OrgN
 )
 
 Variable(
@@ -108,6 +109,7 @@ Variable(
     units='mg-N/L/d',
     description='Benthic algae conversion to Organic nitrogen',
     use='dynamic',
+    process=processes.AbDeath_OrgN
 )
 
 Variable(
@@ -116,6 +118,7 @@ Variable(
     units='mg-N/L/d',
     description='Organic nitrogen to ammonium decay',
     use='dynamic',
+    process=processes.OrgN_NH4_Decay
 )
 
 Variable(
@@ -124,6 +127,7 @@ Variable(
     units='mg-N/L/d',
     description='Organic nitrogen to bed settling',
     use='dynamic',
+    process=processes.OrgN_Settling
 )
 
 Variable(
@@ -141,6 +145,7 @@ Variable(
     units='mg-N/L/d',
     description='NH4 Nitrification',
     use='dynamic',
+    process=processes.NH4_Nitrification
 )
 
 Variable(
@@ -149,6 +154,7 @@ Variable(
     units='mg-N/L/d',
     description='Sediment bed release of NH4',
     use='dynamic',
+    process=processes.NH4fromBed
 )
 
 Variable(
@@ -157,6 +163,7 @@ Variable(
     units='mg-N/L/d',
     description='Floating algae to NH4',
     use='dynamic',
+    process=processes.NH4_ApRespiration
 )
 
 Variable(
@@ -165,6 +172,7 @@ Variable(
     units='mg-N/L/d',
     description='NH4 uptake to algae',
     use='dynamic',
+    process=processes.NH4_ApGrowth
 )
 
 Variable(
@@ -173,6 +181,7 @@ Variable(
     units='mg-N/L/d',
     description='Benthic algae release of NH4',
     use='dynamic',
+    process=processes.NH4_AbRespiration
 )
 
 Variable(
@@ -181,6 +190,7 @@ Variable(
     units='mg-N/L/d',
     description='Benthic algae uptake of NH4',
     use='dynamic',
+    process=processes.NH4_AbGrowth
 )
 
 Variable(
@@ -198,6 +208,7 @@ Variable(
     units='mg-N/L/d',
     description='NO3 loss from denitrification',
     use='dynamic',
+    process=processes.NO3_Denit
 )
 
 Variable(
@@ -206,6 +217,7 @@ Variable(
     units='mg-N/L/d',
     description='Sediment denitrification',
     use='dynamic',
+    process=processes.NO3_BedDenit
 )
 
 Variable(
@@ -214,6 +226,7 @@ Variable(
     units='mg-N/L/d',
     description='NO3 uptake to floating algae',
     use='dynamic',
+    process=processes.NO3_ApGrowth
 )
 
 Variable(
@@ -222,6 +235,7 @@ Variable(
     units='mg-N/L/d',
     description='NO3 uptake to benthic algae',
     use='dynamic',
+    process=processes.NO3_AbGrowth
 )
 
 Variable(
@@ -267,4 +281,15 @@ Variable(
     description='Total nitrogen',
     use='dynamic',
     process=processes.TN
+)
+
+
+
+Variable(
+    name='NitrificationInhibition',
+    long_name='Nitrification Inhibitation (limits nitrification under low DO conditions)',
+    units='unitless',
+    description='Nitrification Inhibitation (limits nitrification under low DO conditions)',
+    use='dynamic',
+    process=processes.NitrificationInhibition
 )

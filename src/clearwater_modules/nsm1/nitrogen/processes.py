@@ -219,7 +219,7 @@ def ApDeath_OrgN(
     return xr.where(use_Algae, rna * ApDeath, 0.0)
 
 @numba.njit
-def ApDeath_OrgN(
+def AbDeath_OrgN(
     use_Balgae: bool,
     rnb: xr.DataArray,
     Fw: xr.DataArray,

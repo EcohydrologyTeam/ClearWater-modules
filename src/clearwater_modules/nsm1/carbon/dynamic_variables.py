@@ -198,3 +198,20 @@ Variable(
     use='dynamic',
     process=processes.dDICdt
 )
+
+Variable(
+    name='kah_tc',
+    long_name='re-aeration rate temperature corrected (diffusion from atomsphere)',
+    units='1/d',
+    description='re-aeration rate temperature corrected(diffusion from atomsphere)',
+    use='dynamic',
+    process=processes.kah_tc
+)
+Variable(
+    name='kaw_tc',
+    long_name='wind derived re-aeration transfer velocity temperature corrected',
+    units='m/d',
+    description='wind derived re-aeration transfer velocity temperature corrected',
+    use='dynamic',
+    process=processes.kaw_tc
+)

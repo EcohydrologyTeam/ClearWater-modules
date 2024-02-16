@@ -18,15 +18,6 @@ Variable(
 )
 
 Variable(
-    name='depth',
-    long_name='Water depth in computation cell',
-    units='m',
-    description='Water depth in computation cell',
-    use='dynamic',
-    process=shared_processes.compute_depth
-)
-
-Variable(
     name='POM_algal_settling',
     long_name='POM concentration change due to algal settling',
     units='mg/L/d',

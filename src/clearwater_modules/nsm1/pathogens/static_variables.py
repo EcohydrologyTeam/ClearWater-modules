@@ -13,10 +13,10 @@ class Variable(base.Variable):
 # TODO: verify all these values
 
 Variable(
-    name='kdx',
-    long_name='Pathogen death rate',
+    name='kdx_20',
+    long_name='Pathogen death rate at 20C',
     units='1/d',
-    description='Pathogen death rate',
+    description='Pathogen death rate at 20C',
     use='static',
 )
 
