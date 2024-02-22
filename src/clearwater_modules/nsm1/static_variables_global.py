@@ -7,6 +7,131 @@ import clearwater_modules.nsm1.nitrogen.processes as processes
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
+# TODO: verify all these values
+
+# Global parameters
+
+
+Variable(
+    name='L',
+    long_name='Light attenuation coefficient',
+    units='unitless',
+    description='Light attenuation coefficient',
+    use='static',
+)
+
+Variable(
+    name='fdp',
+    long_name='Fraction P dissolved',
+    units='unitless',
+    description='Fraction P dissolved',
+    use='static',
+)
+
+Variable(
+    name='PAR',
+    long_name='Surface light intensity',
+    units='W/m^2',
+    description='Surface light intensity',
+    use='static',
+)
+
+Variable(
+    name='vson',
+    long_name='Organic N settling velocity',
+    units='m/d',
+    description='Organic N settling velocity',
+    use='static',
+)
+
+Variable(
+    name='vsoc',
+    long_name='POC settling velocity',
+    units='m/d',
+    description='POC settling velocity',
+    use='static'
+)
+
+Variable(
+    name='vsop',
+    long_name='Organic phosphorus settling velocity',
+    units='m/d',
+    description='Organic phosphorus settling velocity',
+    use='static'
+)
+
+Variable(
+    name='vs',
+    long_name='Sediment settling velocity',
+    units='m/d',
+    description='Sediment settling velocity',
+    use='static'
+)
+
+Variable(
+    name='SOD_20',
+    long_name='Sediment oxygen demand at 20 degrees C',
+    units='g-O2/m/d',
+    description='Sediment oxygen demand at 20 degrees C',
+    use='static'
+)
+
+Variable(
+    name='SOD_theta',
+    long_name='Arrhenius coefficient for sediment oxygen demand',
+    units='unitless',
+    description='Arrhenius coefficient for sediment oxygen demand',
+    use='static'
+)
+
+Variable(
+    name='fcom',
+    long_name='Fraction of carbon in organic matter',
+    units='mg-C/mg-D',
+    description='Fraction of carbon in organic matter',
+    use='static'
+)
+
+Variable(
+    name='vb',
+    long_name='Burial velocity',
+    units='m/d',
+    description='Rate at which constituents are buried on the bottom',
+    use='static'
+)
+
+
+Variable(
+    name='kaw_20_user',
+    long_name='Wind oxygen reaeration velocity at 20C',
+    units='m/d',
+    description='Wind oxygen reaeration velocity at 20C',
+    use='static'
+)
+
+Variable(
+    name='kah_20_user',
+    long_name='Hydraulic oxygen reaeration rate at 20C',
+    units='1/d',
+    description='Hydraulic oxygen reaeration rate at 20C',
+    use='static'
+)
+
+Variable(
+    name='hydraulic_reaeration_option',
+    long_name='Option for chosing the method by which O2 reaeration rate is calculated',
+    units='unitless',
+    description='Selects method for computing O2 reaeration rate',
+    use='static'
+)
+
+Variable(
+    name='wind_reaeration_option',
+    long_name='Option for chosing the method by which wind reaeration is calculated',
+    units='unitless',
+    description='Selects method for computing O2 reaeration due to wind',
+    use='static'
+)
 
 # Global module options
 
@@ -131,7 +256,7 @@ Variable(
 )
 
 Variable(
-    name='use_POM2',
+    name='use_POM',
     long_name='Use particulate organic matter module',
     units='unitless',
     description='True/False use particulate organic matter module',

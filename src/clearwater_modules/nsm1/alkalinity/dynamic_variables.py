@@ -5,7 +5,8 @@ File contains dynamic variables related to the alkalinity module
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
-from clearwater_modules.nsm1.alkalinity import processes
+import clearwater_modules.nsm1.alkalinity.processes as processes
+
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):

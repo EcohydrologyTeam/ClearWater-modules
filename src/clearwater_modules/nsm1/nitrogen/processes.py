@@ -555,6 +555,20 @@ def NO3_AbGrowth(
 
     return xr.where(use_Balgae, (AbUptakeFr_NO3 * rnb * Fb * AbGrowth) / depth, 0.0)
 
+@numba.njit
+def NH4_new(
+    dNH4dt: xr.DataArray,
+    NH4: xr.DataArray
+    
+) -> xr.DataArray:
+    """Calculates new ammonia concentration
+
+    Args:
+        dNH4dt: Change in ammonia concentration over the timestep (mg-N/L/d)
+        NH4: Ammonia concentration (mg-N/L)
+    """
+    return NH4 + dNH4dt
+
 
 @numba.njit
 def dNO3dt(
@@ -606,6 +620,19 @@ def NO3(
 
     return NO3 + dNO3dt*timestep
 
+@numba.njit
+def NO3_new(
+    dNO3dt: xr.DataArray,
+    NO3: xr.DataArray
+    
+) -> xr.DataArray:
+    """Calculates new organic nitrogen concentration
+
+    Args:
+        dNO3dt: Change in nitrate concentration over the timestep (mg-N/L/d)
+        NO3: Nitrate concentration (mg-N/L)
+    """
+    return NO3 + dNO3dt
 
 @numba.njit
 def DIN(

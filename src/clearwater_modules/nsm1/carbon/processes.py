@@ -264,50 +264,8 @@ def Henrys_k(
     return 10**(2385.73 / (TwaterC + 273.15) + .0152642 * (TwaterC + 273.15) - 14.0184)
 
 @numba.njit
-def kah_tc(
-    kah_20: xr.DataArray,
-    TwaterC: xr.DataArray,
-) -> xr.DataArray:
-    """Calculate the temperature corrected Re-aeration rate (diffusion from atmosphere) (1/day)
-
-    Args:
-        kah_20: Re-aeration rate at 20 degrees Celsius (diffusion from atmosphere) (1/day)
-        TwaterC: water temperature (C)
-    """
-    return arrhenius_correction(TwaterC, kah_20, 1.024)
-
-@numba.njit
-def kaw_tc(
-    kaw_20: xr.DataArray,
-    TwaterC: xr.DataArray,
-) -> xr.DataArray:
-    """Calculate the temperature corrected wind derived re-aeration transfer velocity (m/d)
-
-    Args:
-        kaw_20: wind derived re-aeration transfer velocity (m/d)
-        TwaterC: water temperature (C)
-    """
-    return arrhenius_correction(TwaterC, kaw_20, 1.024)
-                                
-@numba.njit
-def ka_tc(
-    kah_tc: xr.DataArray,
-    kaw_tc: xr.DataArray,
-    depth: xr.DataArray
-) -> xr.DataArray:
-    """Calculate the temperature adjusted CO2 reaeration rate (1/d)
-
-    Args:
-        kah_tc: Water temperature in Celsius
-        kaw_tc: CO2 reaeration rate at 20 degrees Celsius (1/d)
-        depth: water depth (m)
-    """
-    return kah_tc + kaw_tc / depth
-
-
-@numba.njit
 def Atmospheric_CO2_reaeration(
-    ka_tc: xr.DataArray,
+    ka_T: xr.DataArray,
     K_H: xr.DataArray,
     pCO2: xr.DataArray,
     FCO2: xr.DataArray,
@@ -316,13 +274,13 @@ def Atmospheric_CO2_reaeration(
     """Calculates the atmospheric input of CO2 into the waterbody
 
     Args:
-        ka_tc: CO2 reaeration rate adjusted for temperature (1/d)
+        ka_T: CO2 reaeration rate adjusted for temperature, same as O2 reaeration rate (1/d)
         K_H: Henry's Law constant (mol/L/atm)
         pCO2: Partial pressure of CO2 in the atmosphere (ppm)
         FCO2: Fraction of CO2 in total inorganic carbon
         DIC: Dissolved inorganic carbon concentration (mg/L)
     """
-    return 12 * ka_tc * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
+    return 12 * ka_T * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
 
 
 def DIC_algal_respiration(

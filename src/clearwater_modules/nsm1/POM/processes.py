@@ -11,7 +11,7 @@ def kpom_tc(
     TwaterC: float,
     kpom_20: float,
 ) -> float:
-    """Calculate the temperature adjusted POC hydrolysis rate (/d)
+    """Calculate the temperature adjusted POM dissolution rate (1/d)
 
     Args:
         TwaterC: Water temperature in Celsius

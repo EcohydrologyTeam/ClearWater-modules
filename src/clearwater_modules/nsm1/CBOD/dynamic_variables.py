@@ -5,7 +5,7 @@ File contains dynamic variables related to the CBOD module
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
-from clearwater_modules.nsm1.CBOD import processes
+import clearwater_modules.nsm1.CBOD.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)
