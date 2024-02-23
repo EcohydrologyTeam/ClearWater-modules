@@ -2,12 +2,10 @@
 File contains process to calculate sediment flux and associated dependent variables
 """
 
-import math
-from clearwater_modules.shared.processes import arrhenius_correction
-import numba 
-import numpy as np
+import numba
 import xarray as xr
-
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 # Note: OrgN, NH4, NO3, OrgP, TIP, POC and DOX must be on for SedFlux.
 
@@ -3270,7 +3268,7 @@ dt: xr.DataArray,
     
     return xr.where(POCdiagenesis_part_option==2, 
                     xr.where(SO4>0.1, 
-                    xr.where(SedFlux_solution_option == 1, 2.0 * KL01 * JCc / h2, 2.0 * KL01 * JCc / h2 + (KL01 * SO4 + con_sox / KL01 * TH2S1) / dt), "NaN") "NaN")  
+                    xr.where(SedFlux_solution_option == 1, 2.0 * KL01 * JCc / h2, 2.0 * KL01 * JCc / h2 + (KL01 * SO4 + con_sox / KL01 * TH2S1) / dt), "NaN"), "NaN")  
 
 
 @numba.njit
@@ -3304,7 +3302,7 @@ Dd_tc: xr.DataArray,
     
     return xr.where(POCdiagenesis_part_option==2, 
                     xr.where(SO4>0.1, 
-                    xr.where(SedFlux_solution_option == 1, 2.0 * Dd_tc * JCc / h2, 2.0 * Dd_tc * JCc / h2 - 2.0 * KL01 * HSO4 * SO42 / dt), "NaN") "NaN")  
+                    xr.where(SedFlux_solution_option == 1, 2.0 * Dd_tc * JCc / h2, 2.0 * Dd_tc * JCc / h2 - 2.0 * KL01 * HSO4 * SO42 / dt), "NaN"), "NaN")  
 
 
 @numba.njit
@@ -3330,9 +3328,7 @@ Dd_tc: xr.DataArray,
       TH2S1: TH2S sediment layer 1 (mg-O/L)
     """
     
-    return xr.where(POCdiagenesis_part_option==2, 
-                    xr.where(SO4>0.1, 
-                    xr.where(SedFlux_solution_option == 1, - 2.0 * Dd_tc * (KL01 * SO4 + con_sox / KL01 * TH2S1), - 2.0 * Dd_tc * (KL01 * SO4 + con_sox / KL01 * TH2S1)), "NaN") "NaN")  
+    return xr.where(POCdiagenesis_part_option==2, xr.where(SO4>0.1, xr.where(SedFlux_solution_option == 1, - 2.0 * Dd_tc * (KL01 * SO4 + con_sox / KL01 * TH2S1), - 2.0 * Dd_tc * (KL01 * SO4 + con_sox / KL01 * TH2S1)), "NaN"), "NaN")  
 
 
 @numba.njit

@@ -5,7 +5,7 @@ File includes dynamic variables computed in N2 module. Dynamic variables may be 
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.n2.n2_processes as n2_processes
+import clearwater_modules.nsm1.n2.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)
@@ -18,7 +18,7 @@ Variable(
     units='mol/L/atm',
     description='Henrys law constant temperature corrected',
     use='dynamic',
-    process=n2_processes.KHN2_tc
+    process=processes.KHN2_tc
 )
 
 Variable(
@@ -27,7 +27,7 @@ Variable(
     units='atm',
     description='Partial pressure water vapor',
     use='dynamic',
-    process=n2_processes.P_wv
+    process=processes.P_wv
 )
 
 Variable(
@@ -36,7 +36,7 @@ Variable(
     units='mg-N/L',
     description='N2 at saturation f(Twater and atm pressure)',
     use='dynamic',
-    process=n2_processes.N2sat
+    process=processes.N2sat
 )
 
 Variable(
@@ -45,7 +45,7 @@ Variable(
     units='mg-N/L/d',
     description='Change in N2 air concentration',
     use='dynamic',
-    process=n2_processes.dN2dt
+    process=processes.dN2dt
 )
 
 Variable(
@@ -54,5 +54,5 @@ Variable(
     units='%',
     description='Total dissolved gas',
     use='dynamic',
-    process=n2_processes.TDG
+    process=processes.TDG
 )

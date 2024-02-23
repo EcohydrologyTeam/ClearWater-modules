@@ -1,16 +1,11 @@
+"""
+File contains process to calculate new alkalinity concentration and associated dependent variables
+"""
+
 import numba
-import math
-from clearwater_modules.shared.processes import (
-    arrhenius_correction
-)
 import xarray as xr
-from clearwater_modules.nsm1.alkalinity import dynamic_variables
-from clearwater_modules.nsm1.alkalinity import static_variables
-from clearwater_modules.nsm1 import static_variables_global
-from clearwater_modules.nsm1 import dynamic_variables_global
-from clearwater_modules.nsm1 import state_variables
-
-
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 def Alk_denitrification(
     DOX: xr.DataArray,
@@ -26,7 +21,7 @@ def Alk_denitrification(
     Args:
         DOX: Concentration of dissolved oxygen (mg/L)
         NO3: Concentration of nitrate (mg/L)
-        kdnit_T: Denitrification rate corrected for temperature (1/d)
+        kdnit_tc: Denitrification rate corrected for temperature (1/d)
         KsOxdn: Half-saturation oxygen inhibition constant for denitrification (mg-O2/L)
         ralkden: Ratio translating NO3 denitrification into Alk (eq/mg-N)
         use_NO3: Option to use nitrate
@@ -51,7 +46,7 @@ def Alk_nitrification(
     Args:
         DOX: Concentration of dissolved oxygen (mg/L)
         NH4: Concentration of ammonia/ammonium (mg/L)
-        knit_T: Nitrification rate corrected for temperature (1/d)
+        knit_tc: Nitrification rate corrected for temperature (1/d)
         KNR: Oxygen inhibition factor for nitrification (mg-O2/L)
         r_alkn: Ratio translating NH4 nitrification into Alk (eq/mg-N)
         use_NH4: Option to use ammonium
@@ -66,7 +61,7 @@ def Alk_algal_growth(
     ApGrowth: xr.DataArray,
     r_alkaa: xr.DataArray,
     r_alkan: xr.DataArray,
-    ApUptakeFr_NH4: xr.DataArray,
+    ApUptakeFr_NH4 : xr.DataArray,
     use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the alkalinity concentration change due to algal growth
@@ -75,10 +70,10 @@ def Alk_algal_growth(
         ApGrowth: Algal photosynthesis calculated in algae module (ug-Chla/L/d)
         r_alkaa: Ratio translating algal growth into Alk if NH4 is the N source (eq/ug-Chla)
         r_alkan: Ratio translating algal growth into Alk if NO3 is the N source (eq/ug-Chla)
-        ApUptakeFr_NH4: Preference fraction of algal N uptake from NH4
+        ApUptakeFr_NH4 : Preference fraction of algal N uptake from NH4
         use_Algae: Option to use algae
     """
-    da: xr.DataArray = xr.where(use_Algae == True, (r_alkaa * ApUptakeFr_NH4 - r_alkan * (1 - ApUptakeFr_NH4)) * ApGrowth, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, (r_alkaa * ApUptakeFr_NH4  - r_alkan * (1 - ApUptakeFr_NH4 )) * ApGrowth, 0)
 
     return da
 
@@ -105,7 +100,7 @@ def Alk_benthic_algae_growth(
     depth: xr.DataArray,
     r_alkba: xr.DataArray,
     r_alkbn: xr.DataArray,
-    AbUptakeFr_NH4: xr.DataArray,
+    AbUptakeFr_NH4 : xr.DataArray,
     Fb: xr.DataArray,
     use_Balgae: xr.DataArray
 ) -> xr.DataArray:
@@ -116,11 +111,11 @@ def Alk_benthic_algae_growth(
         depth: Depth of water (m)
         r_alkaa: Ratio translating algal growth into Alk if NH4 is the N source (eq/ug-Chla)
         r_alkan: Ratio translating algal growth into Alk if NO3 is the N source (eq/ug-Chla)
-        AbUptakeFr_NH4: Preference fraction of benthic algae N uptake from NH4
+        AbUptakeFr_NH4 : Preference fraction of benthic algae N uptake from NH4
         Fb: Fraction of bottom area available for benthic algae growth
         use_Balgae: Option to use benthic algae
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * (r_alkba * AbUptakeFr_NH4 - r_alkbn * (1 - AbUptakeFr_NH4)) * AbGrowth * Fb, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) *(r_alkba * AbUptakeFr_NH4  - r_alkbn * (1 - AbUptakeFr_NH4 )) * AbGrowth * Fb, 0)
 
     return da
 
@@ -168,7 +163,7 @@ def dAlkdt(
 
 
 @numba.njit
-def Alk_new(
+def Alk(
     Alk: xr.DataArray,
     dAlkdt: xr.DataArray,
     timestep: xr.DataArray,

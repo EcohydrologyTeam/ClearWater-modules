@@ -8,32 +8,13 @@ import clearwater_modules.shared.processes as shared_processes
 class Variable(base.Variable):
     ...
 
-
 Variable(
-    name='kdb_T',
-    long_name='Benthic algal mortality rate adjusted for temperature',
-    units='1/d',
-    description='Benthic algal mortality rate adjusted for temperature',
-    use='dynamic',
-    process=processes.kdb_T
-)
-
-Variable(
-    name='kpom_T',
+    name='kpom_tc',
     long_name='POM dissolution rate adjusted for temperature',
     units='1/d',
     description='POM dissolution rate adjusted for temperature',
     use='dynamic',
-    process=processes.kpom_T
-)
-
-Variable(
-    name='depth',
-    long_name='Water depth in computation cell',
-    units='m',
-    description='Water depth in computation cell',
-    use='dynamic',
-    process=shared_processes.compute_depth
+    process=processes.kpom_tc
 )
 
 Variable(

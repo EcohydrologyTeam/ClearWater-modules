@@ -1,17 +1,11 @@
-import math
-from clearwater_modules.shared.processes import arrhenius_correction, celsius_to_kelvin
+"""
+File contains dynamic variables related to the N2 module
+"""
+
 import numba
 import xarray as xr
-
-@numba.njit
-def TwaterK(
-    TwaterC : xr.DataArray,
-) -> xr.DataArray :
-    """Calculate temperature in kelvin (K)
-    Args:
-        TwaterC: water temperature celcius (C)
-    """
-    return celsius_to_kelvin(TwaterK)
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 @numba.njit
 def KHN2_tc(
@@ -47,7 +41,7 @@ def P_wv(
     return math.exp(11.8571  - (3840.70 / TwaterK) - (216961.0 / (TwaterK**2)))
 
 @numba.njit     
-#N2 saturation
+
 def N2sat(
     KHN2_tc : xr.DataArray,
     pressure_atm: xr.DataArray,
@@ -63,8 +57,7 @@ def N2sat(
     """
         
     N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_atm - P_wv)  
-    if (N2sat < 0.0) :  #Trap saturation concentration to ensure never negative
-        N2sat = 0.0 
+    N2sat = xr.where(N2sat < 0.0,0.0,N2sat) #Trap saturation concentration to ensure never negative
 
     return N2sat
 
@@ -86,7 +79,7 @@ def dN2dt(
     return 1.034 * ka_tc * (N2sat - N2)
 
 @numba.njit    
-def N2_new(
+def N2(
     N2: xr.DataArray,
     dN2dt : xr.DataArray,
 ) -> xr.DataArray: 
@@ -105,7 +98,7 @@ def TDG(
     N2: xr.DataArray,
     N2sat : xr.DataArray,
     DOX: xr.DataArray,
-    O2sat: xr.DataArray,
+    DOX_sat: xr.DataArray,
     use_DOX: bool,
 ) -> xr.DataArray: 
     
@@ -115,12 +108,8 @@ def TDG(
         N2: Nitrogen concentration air (mg-N/L)
         N2sat: N2 at saturation f(Twater and atm pressure) (mg-N/L)
         DOX: Dissolved oxygen concentration (mg-O2/L)
-        O2sat: O2 at saturation f(Twater and atm pressure) (mg-O2/L)
+        DOX_sat: O2 at saturation f(Twater and atm pressure) (mg-O2/L)
         use_DOX: true/false use dissolved oxygen module (true/false)
     """
-    if use_DOX :
-        TDG = (79.0 * N2 / N2sat) + (21.0 * DOX / O2sat)
-    else:
-        TDG = N2/N2sat
 
-    return TDG
+    return xr.where(use_DOX,(79.0 * N2 / N2sat) + (21.0 * DOX / DOX_sat), N2/N2sat) 

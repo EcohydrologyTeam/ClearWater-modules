@@ -2,11 +2,10 @@
 File contains process to calculate new benthic algae biomass concentration and associated dependent variables
 """
 
-import math
-from clearwater_modules.shared.processes import arrhenius_correction
 import numba
 import xarray as xr
-
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 @numba.njit
 def mub_max_tc(
@@ -131,27 +130,14 @@ def FLb(
     # The equations are different, this expression is more convenient here.
     KEXT = math.exp(-L*depth)
 
-    if Ab <= 0.0 or KEXT <= 0.0 or PAR <= 0.0:
-        # After sunset, no growth
-        FLb = 0.0
-    elif b_light_limitation_option == 1:
-        # Use half-saturation formulation
-        FLb = PAR * KEXT / (KLb + PAR * KEXT)
-    elif b_light_limitation_option == 2:
-        # Use Smith's equation
-        FLb = PAR * KEXT / ((KLb**2.0 + (PAR * KEXT)**2.0)**0.5)
-    elif b_light_limitation_option == 3:
-        # Use Steele's equation
-        if abs(KLb) < 1.0E-10:
-            FLb = 0.0
-    else:
-        FLb = PAR * KEXT / KLb * math.exp(1.0 - PAR * KEXT / KLb)
-
-    # Limit the benthic light limitation factor to between 0.0 and 1.0
-    if FLb > 1.0:
-        FLb = 1.0
-    if FLb < 0.0:
-        FLb = 0.0
+    FLb = xr.where(Ab <= 0.0 or KEXT <= 0.0 or PAR <= 0.0, 0.0,
+          xr.where(b_light_limitation_option == 1, PAR * KEXT / (KLb + PAR * KEXT),
+          xr.where(b_light_limitation_option == 2, PAR * KEXT / ((KLb**2.0 + (PAR * KEXT)**2.0)**0.5),
+          xr.where(b_light_limitation_option == 3, 
+          xr.where(abs(KLb) < 1.0E-10, 0.0, PAR * KEXT / KLb * math.exp(1.0 - PAR * KEXT / KLb)), "NaN"
+          ))))
+    FLb = xr.where(FLb > 1.0, 1.0,
+          xr.where(FLb < 0.0, 0.0, FLb))
 
     return FLb
 
@@ -174,15 +160,9 @@ def FNb(
         NO3: Nitrate concentration (mg-N/L)
         KsNb: Michaelis-Menton half-saturation constant relating inorganic N to benthic algal growth (mg-N/L)
     """
-
-    if use_NH4 or use_NO3:
-        FNb = (NH4 + NO3) / (KsNb + NH4 + NO3)
-        if math.isnan(FNb):
-            FNb = 0.0
-        if FNb > 1.0:
-            FNb = 1.0
-    else:
-        FNb = 1.0
+    FNb = xr.where(use_NH4 or use_NO3, (NH4 + NO3) / (KsNb + NH4 + NO3),1)
+    FNb = xr.where(math.isnan(FNb),0.0,
+          xr.where(FNb < 1.0, 1, FNb))
 
     return FNb
 
@@ -203,14 +183,9 @@ def FPb(
         fdp: Fraction P dissolved (unitless)
     """
 
-    if use_TIP:
-        FPb = fdp * TIP / (KsPb + fdp * TIP)
-        if math.isnan(FPb):
-            FPb = 0.0
-        if FPb > 1.0:
-            FPb = 1.0
-    else:
-        FPb = 1.0
+    FPb = xr.where(use_TIP, fdp * TIP / (KsPb + fdp * TIP),1.0)
+    FPb = xr.where(math.isnan(FPb),0.0,
+          xr.where(FPb > 1.0, 1.0, FPb))
 
     return FPb
 
@@ -230,17 +205,14 @@ def FSb(
     """
 
     FSb = 1.0 - (Ab / (Ab + Ksb))
-    if math.isnan(FSb):
-        FSb = 1.0
-    if FSb > 1.0:
-        FSb = 1.0
-
+    FSb = xr.where(math.isnan(FSb), 1.0, 
+          xr.where(FSb > 1.0, 1.0, FSb))
+    
     return FSb
 
 
 @numba.njit
 def mub(
-    Ab: xr.DataArray,
     mub_max_tc: xr.DataArray,
     b_growth_rate_option: int,
     FLb: xr.DataArray,
@@ -252,7 +224,6 @@ def mub(
     """Calculate benthic algae specific growth rate (1/d)
 
     Args:
-        Ab: Benthic algae concentration (g/m^2)
         mub_max_tc: Maximum benthic algal growth rate with temperature correction (1/d)
         b_growth_rate_option: Benthic Algal growth rate with three options 1) Multiplicative, 2) Limiting Nutrient
         FLb: Benethic algal light limitation (unitless)
@@ -262,14 +233,8 @@ def mub(
     """
 
     # Benthic Local Specific Growth Rate
-    if b_growth_rate_option == 1:
-        # (a) Multiplicative (day-1)
-        mub = mub_max_tc * FLb * FPb * FNb * FSb
-    elif b_growth_rate_option == 2:
-        # (b) Limiting nutrient (day-1)
-        mub = mub_max_tc * FLb * FSb * min(FPb, FNb)
+    return xr.where(b_growth_rate_option == 1, mub_max_tc * FLb * FPb * FNb * FSb, mub_max_tc * FLb * FSb * min(FPb, FNb))
 
-    return mub
 
 
 @numba.njit
@@ -345,6 +310,24 @@ def Ab_new(
         dAbdt: Change in benthic algae concentration (g/m^2/d)
     """
     return Ab + dAbdt
+
+@numba.njit
+def Ab(
+    Ab: xr.DataArray,
+    dAbdt: xr.DataArray,
+    timestep: xr.DataArray,
+
+) -> xr.DataArray:
+    """Calculate Ab: New concentration benthic algae (mg-N/L)
+
+    Args:
+        Ab: Concentration of benthic algae (mg-N/L)
+        dAbdt: Change in Ab (mg-N/L/d)
+        timestep: current iteration timestep (d)
+
+    """
+
+    return Ab + dAbdt*timestep
 
 @numba.njit
 def Chlb(

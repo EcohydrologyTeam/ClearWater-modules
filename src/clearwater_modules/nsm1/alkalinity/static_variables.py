@@ -1,3 +1,7 @@
+"""
+File contains static variables related to the Alkalinity module
+"""
+
 import clearwater_modules.base as base
 from clearwater_modules.nsm1.model import NutrientBudget
 
@@ -5,6 +9,8 @@ from clearwater_modules.nsm1.model import NutrientBudget
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
+
+
 
 Variable(
     name='r_alkaa',
@@ -53,7 +59,3 @@ Variable(
     description='Ratio translating benthic algae growth into Alk if NO3 is the N source',
     use='static'
 )
-
-
-
-

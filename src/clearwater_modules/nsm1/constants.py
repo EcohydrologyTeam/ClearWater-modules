@@ -39,6 +39,23 @@ DEFAULT_ALGAE = AlgaeStaticVariables(
     light_limitation_option = 1
 )
 
+class AlkalinityStaticVariables(TypedDict):
+    r_alkaa: float
+    r_alkan: float
+    r_alkn: float
+    r_alkden: float
+    r_alkba: float
+    r_alkbn: float
+      
+DEFAULT_Alkalinity = AlkalinityStaticVariables(
+    r_alkaa = 14.0 / 106.0 / 12.0 / 1000.0,
+    r_alkan= 18.0 / 106.0 / 12.0 / 1000.0,
+    r_alkn = 2.0 / 14.0 / 1000.0,
+    r_alkden = 4.0 / 14.0 / 1000.0,
+    r_alkba = 14.0 / 106.0 / 12.0 / 1000.0,
+    r_alkbn =18.0 / 106.0 / 12.0 / 1000.0
+   
+)
 
 class BalgaeStaticVariables(TypedDict):
     BWd: float
@@ -104,12 +121,54 @@ DEFAULT_NITROGEN = NitrogenStaticVariables(
 )
 
 
-class N2StaticVariables(TypedDict):
-    pass                  
+class CarbonStaticVariables(TypedDict):
+    f_pocp: float
+    kdoc_20: float
+    f_pocb: float
+    kpoc_20: float
+    KsOxmc: float
+    kac_20: float
+    pCO2: float
+    FCO2: float
+    roc: float
 
-DEFAULT_N2 = N2StaticVariables(
+DEFAULT_Carbon = CarbonStaticVariables(
+    f_pocp = 0.9,
+    kdoc_20= 0.01,
+    f_pocb=0.9,
+    kpoc_20= 0.005,
+    KsOxmc=1.0,
+    pCO2 = 383.0,
+    FCO2 = 0.2,
+    roc = 32.0/12.0
 )
 
+class CBODStaticVariables(TypedDict):
+    kbod_20: float
+    ksbod_20: float
+    KsOxbod: float
+
+DEFAULT_CBOD = CBODStaticVariables(
+    kbod_20 =  0.12,
+    ksbod_20 = 0.0,
+    KsOxbod = 0.5
+)
+
+class DOXStaticVariables(TypedDict):
+    ron : float
+    KsSOD : float
+
+DEFAULT_DOX = DOXStaticVariables(
+    ron = 2.0 * 32.0 / 14.0,
+    KsSOD =1,
+)
+
+class N2StaticVariables(TypedDict):
+    pass
+
+DEFAULT_N2 = N2StaticVariables(
+
+)
 
 class PhosphorusStaticVariables(TypedDict):
     kop_20: float
@@ -170,12 +229,12 @@ DEFAULT_DOX = DOXStaticVariables(
 
 
 class PathogenStaticVariables(TypedDict):
-    kdx: float
+    kdx_20: float
     apx: float
     vx: float                  
 
 DEFAULT_PATHOGEN = PathogenStaticVariables(
-    kdx=0.8,
+    kdx_20=0.8,
     apx=1,
     vx=1
 )
@@ -197,19 +256,37 @@ DEFAULT_ALKALINITY = AlkalinityStaticVariables(
     r_alkbn = 1 
 )
 
+class PhosphorusStaticVariables(TypedDict):
+    kop_20: float
+    rpo4_20: float
+    kdop4: float
+
+DEFAULT_PHOSPHORUS = PhosphorusStaticVariables(
+    kop_20 = 0.1,
+    rpo4_20 =0,
+    kdop4 = 0.0,
+)
+
+class POMStaticVariables(TypedDict):
+    kpom_20: float
+
+DEFAULT_POM = POMStaticVariables(
+    kpom_20 = 0.01,
+)
+
 class GlobalParameters(TypedDict):
     use_NH4 : bool
     use_NO3 : bool  
-    use_OrgN: bool                 
+    use_OrgN: bool
+    use_OrgP: bool                 
     use_TIP : bool   
     use_SedFlux: bool
-    use_DOX: bool
-    use_Algae: bool
-    use_Balgae: bool
-    use_OrgP: bool
     use_POC: bool
     use_DOC: bool
+    use_DOX: bool
     use_DIC: bool
+    use_Algae: bool
+    use_Balgae: bool
     use_N2: bool
     use_Pathogen: bool
     use_Alk: bool
@@ -220,15 +297,15 @@ DEFAULT_GLOBALPARAMETERS = GlobalParameters(
     use_NH4= True,
     use_NO3= True, 
     use_OrgN= True,
-    use_TIP= True,  
-    use_SedFlux= True,
-    use_DOX= True,
-    use_Algae= True,
-    use_Balgae= True,
     use_OrgP = True,
+    use_TIP= True,  
+    use_SedFlux= False,
     use_POC = True,
     use_DOC = True,
-    use_DIC = True,
+    use_DOX= True,
+    use_DIC= True,
+    use_Algae= True,
+    use_Balgae= True,
     use_N2 = True,
     use_Pathogen = True,
     use_Alk = True,
@@ -237,9 +314,6 @@ DEFAULT_GLOBALPARAMETERS = GlobalParameters(
 
 
 class GlobalVars(TypedDict):
-    L : float #lambda
-    fdp: float
-    PAR: float
     vson: float
     vsoc: float
     vsop: float
@@ -254,9 +328,6 @@ class GlobalVars(TypedDict):
     wind_reaeration_option: int               
 
 DEFAULT_GLOBALVARS = GlobalVars(
-    L = 1, #lambda
-    fdp= 0.5,
-    PAR= 1, 
     vson = 0.01,
     vsoc = 0.01,
     vsop = 999,

@@ -1,7 +1,10 @@
 import clearwater_modules.base as base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.shared.processes as shared_processes
 
+import clearwater_modules.tsm as tsm
+import clearwater_modules.tsm.processes as tsm_processes
+
+import clearwater_modules.shared.processes as shared_processes
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
@@ -18,11 +21,24 @@ Variable(
 )
 
 Variable(
-    name='SOD_tc',
-    long_name='Sediment oxygen demand adjusted for temperature',
-    units='mg-O2/L/d',
-    description='Sediment oxygen demand adjusted for temperature',
+    name='TwaterC',
+    long_name='Water Temperature',
+    units='C',
+    description='Water Temperature Degree Celsius',
     use='dynamic',
+    process=tsm_processes.t_water_c
+)
+
+Variable(
+    name='TwaterK',
+    long_name='Water Temperature K',
+    units='K',
+    description='Water temperature degree kelvin',
+    use='dynamic',
+    process=shared_processes.TwaterK
+)
+
+#TODO define SOD_tc
     process=shared_processes.SOD_tc
 )
 

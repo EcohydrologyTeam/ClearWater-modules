@@ -51,6 +51,16 @@ def compute_depth(
     """
     return volume / surface_area
 
+@numba.njit
+def TwaterK(
+    TwaterC : xr.DataArray,
+) -> xr.DataArray :
+    """Calculate temperature in kelvin (K)
+    Args:
+        TwaterC: water temperature celcius (C)
+    """
+    return celsius_to_kelvin(TwaterK)
+
 
 def kah_20(
     kah_20_user: xr.DataArray,

@@ -1,4 +1,6 @@
-# TODO: figure out imports
+"""
+File contains dynamic variables related to the Carbon module
+"""
 
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
@@ -10,23 +12,13 @@ import clearwater_modules.nsm1.carbon.processes as processes
 class Variable(base.Variable):
     ...
 
-
 Variable(
-    name='depth',
-    long_name='Average water depth in cell',
-    units='m',
-    description='Average water depth in cell computed by dividing volume by surface area',
-    use='dynamic',
-    process=shared_processes.compute_depth
-)
-
-Variable(
-    name='kpoc_T',
+    name='kpoc_tc',
     long_name='Temperature adjusted POC hydrolysis rate',
     units='1/d',
     description='Temperature adjusted POC hydrolysis rate',
     use='dynamic',
-    process=processes.kpoc_T,
+    process=processes.kpoc_tc,
 )
 
 Variable(
@@ -75,12 +67,12 @@ Variable(
 )
 
 Variable(
-    name='kdoc_T',
+    name='kdoc_tc',
     long_name='Dissolved organic carbon oxidation rate adjusted for temperature',
     units='1/d',
     description='Dissolved organic carbon oxidation rate adjusted for temperature',
     use='dynamic',
-    process=processes.kdoc_T
+    process=processes.kdoc_tc
 )
 
 Variable(
@@ -129,12 +121,12 @@ Variable(
 )
 
 Variable(
-    name='kac_T',
+    name='kac_tc',
     long_name='temperature dependent CO2 reaeration rate',
     units='1/d',
     description='temperature dependent CO2 reaeration rate',
     use='dynamic',
-    process=processes.kac_T
+    process=processes.kac_tc
 )
 
 Variable(

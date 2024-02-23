@@ -1,11 +1,11 @@
 """
-File contains process to calculate new algae biomass concentration and associated dependent variables
+File contains process to calculate new pathogen concentration and associated dependent variables
 """
 
-import math
-from clearwater_modules.shared.processes import arrhenius_correction
 import numba
 import xarray as xr
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 @numba.njit
 def kdx_tc(
@@ -93,13 +93,13 @@ def dPXdt(
     return -PathogenDeath - PathogenDecay - PathogenSettling
 
 @numba.njit
-def PX_new(
+def PX(
   PX:xr.DataArray,
   dPXdt: xr.DataArray
 
 ) -> xr.DataArray :
 
-    """Calculate PX_new: New pathogen concentration (cfu/100mL).
+    """Calculate PX: New pathogen concentration (cfu/100mL).
 
     Args:
       dPXdt: change in pathogen concentration (cfu/100mL/d)

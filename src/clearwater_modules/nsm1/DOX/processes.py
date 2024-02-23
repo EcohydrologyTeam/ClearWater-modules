@@ -1,74 +1,76 @@
-import numpy as np
+"""
+File contains dynamic variables related to the DOX module
+"""
+
 import numba
 import xarray as xr
-from clearwater_modules.shared.processes import (
-    arrhenius_correction,
-)
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 
 #TODO: make sure np.exp will work here...
 @numba.njit
 def pwv(
-    t_water_k: xr.DataArray
+    TwaterK: xr.DataArray
 ) -> xr.DataArray:
     """Calculate partial pressure of water vapor
 
     Args:
-        t_water_k: Water temperature kelvin
+        TwaterK: Water temperature kelvin
     """
-    return np.exp(11.8571 - 3840.70 / t_water_k - 216961 / t_water_k ** 2)
+    return np.exp(11.8571 - 3840.70 / TwaterK - 216961 / TwaterK ** 2)
 
 
 @numba.njit
 def DOs_atm_alpha(
-    t_water_k: xr.DataArray
+    TwaterK: xr.DataArray
 ) -> xr.DataArray:
     """Calculate DO saturation atmospheric correction coefficient
 
     Args:
-        t_water_k: Water temperature kelvin
+        TwaterK: Water temperature kelvin
     """
-    return .000975 - 1.426 * 10 ** -5 * t_water_k + 6.436 * 10 ** -8 * t_water_k ** 2
+    return .000975 - 1.426 * 10 ** -5 * TwaterK + 6.436 * 10 ** -8 * TwaterK ** 2
 
 
 @numba.njit
 def DOX_sat(
-    t_water_k: xr.DataArray,
-    patm: xr.DataArray,
+    TwaterK: xr.DataArray,
+    pressure_atm: xr.DataArray,
     pwv: xr.DataArray,
     DOs_atm_alpha: xr.DataArray
 ) -> xr.DataArray:
     """Calculate DO saturation value
 
     Args:
-        t_water_k: Water temperature kelvin
-        patm: Atmospheric pressure (atm)
+        TwaterK: Water temperature kelvin
+        pressure_atm: Atmospheric pressure (atm)
         pwv: Patrial pressure of water vapor (atm)
         DOs_atm_alpha: DO saturation atmospheric correction coefficient
     """
-    DOX_sat_uncorrected = np.exp(-139.34410 + 1.575701 * 10 ** 5 / t_water_k - 6.642308 * 10 ** 7 / t_water_k ** 2
-                                 + 1.243800 * 10 ** 10 / t_water_k - 8.621949 * 10 ** 11 / t_water_k)
+    DOX_sat_uncorrected = np.exp(-139.34410 + 1.575701 * 10 ** 5 / TwaterK - 6.642308 * 10 ** 7 / TwaterK ** 2
+                                 + 1.243800 * 10 ** 10 / TwaterK - 8.621949 * 10 ** 11 / TwaterK)
 
-    DOX_sat_corrected = DOX_sat_uncorrected * patm * \
-        (1 - pwv / patm) * (1 - DOs_atm_alpha * patm) / \
+    DOX_sat_corrected = DOX_sat_uncorrected * pressure_atm * \
+        (1 - pwv / pressure_atm) * (1 - DOs_atm_alpha * pressure_atm) / \
         ((1 - pwv) * (1 - DOs_atm_alpha))
     return DOX_sat_corrected
 
 
 @numba.njit
 def Atm_O2_reaeration(
-    ka_T: xr.DataArray,
+    ka_tc: xr.DataArray,
     DOX_sat: xr.DataArray,
     DOX: xr.DataArray
 ) -> xr.DataArray:
     """Compute the atmospheric O2 reaeration flux
 
     Args: 
-        ka_T: Oxygen reaeration rate adjusted for temperature (1/d)
+        ka_tc: Oxygen reaeration rate adjusted for temperature (1/d)
         DOX_sat: Dissolved oxygen saturation concentration (mg/L)
         DOX: Dissolved oxygen concentration (mg/L)
     """
-    return ka_T * (DOX_sat - DOX)
+    return ka_tc * (DOX_sat - DOX)
 
 
 def DOX_ApGrowth(
@@ -258,7 +260,7 @@ def dDOXdt(
 
 
 @numba.njit
-def DOX_new(
+def DOX(
     DOX: xr.DataArray,
     dDOXdt: xr.DataArray,
     timestep: xr.DataArray
