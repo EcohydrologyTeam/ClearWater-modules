@@ -38,7 +38,12 @@ Variable(
     process=shared_processes.TwaterK
 )
 
-#TODO define SOD_tc
+Variable(
+    name='SOD_tc',
+    long_name='Sediment Oxygen Demand at water temperature tc',
+    units='mg/L',
+    description='Sediment Oxygen Demand at water temperature tc',
+    use='dynamic',    
     process=shared_processes.SOD_tc
 )
 
