@@ -9,7 +9,6 @@ class Variable(base.Variable):
     """TSM state variables."""
     ...
 
-
 Variable(
     name='water_temp_c',
     long_name='Water temperature',
@@ -20,7 +19,6 @@ Variable(
 )
 
 # TODO: remove mock_equation
-
 
 def mock_surface_area(surface_area: xr.DataArray) -> xr.DataArray:
     return surface_area

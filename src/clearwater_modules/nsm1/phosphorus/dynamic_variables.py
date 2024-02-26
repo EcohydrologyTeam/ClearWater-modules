@@ -1,11 +1,11 @@
 """
-File includes dynamic variables computed in phosphorus module. Dynamic variables may be accessed by other modules.
+File contains dynamic variables related to the Phosphorus module
 """
 
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.phosphorus.phosphorus_processes as phosphorus_processes
+import clearwater_modules.nsm1.phosphorus.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)
@@ -18,16 +18,16 @@ Variable(
     units='1/d',
     description='Decay rate of organic P to DIP temperature correction',
     use='dynamic',
-    process=phosphorus_processes.kop_tc
+    process=processes.kop_tc
 )
 
 Variable(
-    name='rop4_tc',
+    name='rpo4_tc',
     long_name='Benthic sediment release rate of DIP',
     units='g-P/m2/d',
     description='Benthic sediment release rate of DIP temperature correction',
     use='dynamic',
-    process=phosphorus_processes.rop4_tc
+    process=processes.rpo4_tc
 )
 
 Variable(
@@ -36,7 +36,7 @@ Variable(
     units='mg-P/L/d',
     description='Organic phosphorus decay to dissolve inorganic phosphorus',
     use='dynamic',
-    process=phosphorus_processes.OrgP_DIP_decay
+    process=processes.OrgP_DIP_decay
 )
 
 Variable(
@@ -45,7 +45,7 @@ Variable(
     units='mg-P/L/d',
     description='Organic phosphorus settling to sediment',
     use='dynamic',
-    process=phosphorus_processes.OrgP_Settling
+    process=processes.OrgP_Settling
 )
 
 Variable(
@@ -54,7 +54,7 @@ Variable(
     units='mg-P/L/d',
     description='Algal death turning into organic phosphorus',
     use='dynamic',
-    process=phosphorus_processes.ApDeath_OrgP
+    process=processes.ApDeath_OrgP
 )
 
 Variable(
@@ -63,7 +63,7 @@ Variable(
     units='mg-P/L/d',
     description='Benthic algal death turning into organic phosphorus',
     use='dynamic',
-    process=phosphorus_processes.AbDeath_OrgP
+    process=processes.AbDeath_OrgP
 )
 
 Variable(
@@ -72,7 +72,7 @@ Variable(
     units='mg-P/L/d',
     description='Change in organic phosphorus concentration',
     use='dynamic',
-    process=phosphorus_processes.dOrgPdt
+    process=processes.dOrgPdt
 )
 
 Variable(
@@ -81,7 +81,7 @@ Variable(
     units='mg-P/L/d',
     description='Dissolved Organic Phosphorus coming from Bed calculated using SedFlux modules',
     use='dynamic',
-    process=phosphorus_processes.DIPfromBed_SedFlux
+    process=processes.DIPfromBed_SedFlux
 )
 
 Variable(
@@ -90,7 +90,7 @@ Variable(
     units='mg-P/L/d',
     description='Dissolved Organic Phosphorus coming from Bed calculated without SedFlux modules',
     use='dynamic',
-    process=phosphorus_processes.DIPfromBed_NoSedFlux
+    process=processes.DIPfromBed_NoSedFlux
 )
 
 Variable(
@@ -99,7 +99,7 @@ Variable(
     units='mg-P/L/d',
     description='Total inorganic phosphorus settling from water to bed',
     use='dynamic',
-    process=phosphorus_processes.TIP_Settling
+    process=processes.TIP_Settling
 )
 
 Variable(
@@ -108,7 +108,7 @@ Variable(
     units='mg-P/L/d',
     description='Total organic phosphorus decaying to dissolved inorganic phosphrous',
     use='dynamic',
-    process=phosphorus_processes.OrgP_DIP_decay
+    process=processes.OrgP_DIP_decay
 )
 
 Variable(
@@ -117,7 +117,7 @@ Variable(
     units='mg-P/L/d',
     description='Dissolved inorganic phosphorus released from algal respiration',
     use='dynamic',
-    process=phosphorus_processes.DIP_ApRespiration
+    process=processes.DIP_ApRespiration
 )
 
 Variable(
@@ -126,7 +126,7 @@ Variable(
     units='mg-P/L/d',
     description='Dissolved inorganic phosphorus consumed for algal growth',
     use='dynamic',
-    process=phosphorus_processes.DIP_ApGrowth
+    process=processes.DIP_ApGrowth
 )
 
 Variable(
@@ -135,7 +135,7 @@ Variable(
     units='mg-P/L/d',
     description='Dissolved inorganic phosphorus released for benthic algal respiration',
     use='dynamic',
-    process=phosphorus_processes.DIP_AbRespiration
+    process=processes.DIP_AbRespiration
 )
 
 Variable(
@@ -144,7 +144,7 @@ Variable(
     units='mg-P/L/d',
     description='Dissolved inorganic phosphorus consumed for benthic algal growth',
     use='dynamic',
-    process=phosphorus_processes.DIP_AbGrowth
+    process=processes.DIP_AbGrowth
 )
 
 Variable(
@@ -153,26 +153,9 @@ Variable(
     units='mg-P/L/d',
     description='Change in dissolved inorganic phosphorus water concentration',
     use='dynamic',
-    process=phosphorus_processes.dTIPdt
+    process=processes.dTIPdt
 )
 
-Variable(
-    name='TIP_new',
-    long_name='New total inorganic phosphorus',
-    units='mg-P/L',
-    description='New total inorganic phosphorus',
-    use='dynamic',
-    process=phosphorus_processes.TIP_new
-)
-
-Variable(
-    name='OrgP_new',
-    long_name='New total organic phosphorus',
-    units='mg-P/L',
-    description='New total organic phosphorus',
-    use='dynamic',
-    process=phosphorus_processes.OrgP_new
-)
 
 Variable(
     name='TOP',
@@ -180,7 +163,7 @@ Variable(
     units='mg-P/L',
     description='Total organic phosphorus',
     use='dynamic',
-    process=phosphorus_processes.TOP
+    process=processes.TOP
 )
 
 Variable(
@@ -189,7 +172,7 @@ Variable(
     units='mg-P/L',
     description='Total phosphorus',
     use='dynamic',
-    process=phosphorus_processes.TP
+    process=processes.TP
 )
 
 Variable(
@@ -198,5 +181,5 @@ Variable(
     units='mg-P/L',
     description='Dissolve inorganich phosphorus',
     use='dynamic',
-    process=phosphorus_processes.DIP
+    process=processes.DIP
 )

@@ -1,18 +1,15 @@
 """
-File includes static variables only used in Nitrogen module
+File contains static variables related to the Nitrogen module
 """
 
 import clearwater_modules.base as base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
 
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
-# TODO: verify all these values
 
-# Only Nitrogen Variables
 
 
 Variable(
@@ -52,7 +49,7 @@ Variable(
     long_name='Sediment release rate of NH4 at 20C',
     units='g-N/m^2/d',
     description='Sediment release rate of NH4 at 20C',
-    use='static',
+    use='static'
 )
 
 Variable(
@@ -85,5 +82,13 @@ Variable(
     long_name='NH4 preference factor benthic algae',
     units='unitless',
     description='NH4 preference factor benthic algae (1=full NH4, 0=full NO3)',
+    use='static',
+)
+
+Variable(
+    name='vson',
+    long_name='OrgN settling velocity',
+    units='m/d',
+    description='OrgN settling velocity',
     use='static',
 )

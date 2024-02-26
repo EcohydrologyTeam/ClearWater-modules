@@ -1,39 +1,20 @@
-import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
-from clearwater_modules.nsm1.carbon.model import CarbonBudget
-from clearwater_modules.nsm1.POM import processes
+from clearwater_modules.nsm1.model import NutrientBudget
+import clearwater_modules.nsm1.POM.processes as processes
+import clearwater_modules.shared.processes as shared_processes
 
 
-@base.register_variable(models=CarbonBudget)
+@base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
 
-
 Variable(
-    name='kdb_T',
-    long_name='Benthic algal mortality rate adjusted for temperature',
-    units='1/d',
-    description='Benthic algal mortality rate adjusted for temperature',
-    use='dynamic',
-    process=processes.kdb_T
-)
-
-Variable(
-    name='kpom_T',
+    name='kpom_tc',
     long_name='POM dissolution rate adjusted for temperature',
     units='1/d',
     description='POM dissolution rate adjusted for temperature',
     use='dynamic',
-    process=processes.kpom_T
-)
-
-Variable(
-    name='depth',
-    long_name='Water depth in computation cell',
-    units='m',
-    description='Water depth in computation cell',
-    use='dynamic',
-    process=shared_processes.compute_depth
+    process=processes.kpom_tc
 )
 
 Variable(

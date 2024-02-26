@@ -1,10 +1,11 @@
 """
-File includes dynamic variables computed in Algae module. Dynamic variables may be accessed by other modules.
+File contains dynamic variables related to the SedFlux module
 """
 
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
+from clearwater_modules.nsm1.sedflux import processes
 
 
 @base.register_variable(models=NutrientBudget)

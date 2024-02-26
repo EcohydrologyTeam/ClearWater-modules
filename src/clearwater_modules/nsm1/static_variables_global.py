@@ -1,7 +1,7 @@
 import clearwater_modules.base as base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.algae.algae_processes as algae_processes
-import clearwater_modules.nsm1.nitrogen.nitrogen_processes as nitrogen_processes
+import clearwater_modules.nsm1.algae.processes as processes
+import clearwater_modules.nsm1.nitrogen.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)
@@ -53,6 +53,22 @@ Variable(
 )
 
 Variable(
+    name='vsop',
+    long_name='Organic phosphorus settling velocity',
+    units='m/d',
+    description='Organic phosphorus settling velocity',
+    use='static'
+)
+
+Variable(
+    name='vs',
+    long_name='Sediment settling velocity',
+    units='m/d',
+    description='Sediment settling velocity',
+    use='static'
+)
+
+Variable(
     name='SOD_20',
     long_name='Sediment oxygen demand at 20 degrees C',
     units='g-O2/m/d',
@@ -65,6 +81,55 @@ Variable(
     long_name='Arrhenius coefficient for sediment oxygen demand',
     units='unitless',
     description='Arrhenius coefficient for sediment oxygen demand',
+    use='static'
+)
+
+Variable(
+    name='fcom',
+    long_name='Fraction of carbon in organic matter',
+    units='mg-C/mg-D',
+    description='Fraction of carbon in organic matter',
+    use='static'
+)
+
+Variable(
+    name='vb',
+    long_name='Burial velocity',
+    units='m/d',
+    description='Rate at which constituents are buried on the bottom',
+    use='static'
+)
+
+
+Variable(
+    name='kaw_20_user',
+    long_name='Wind oxygen reaeration velocity at 20C',
+    units='m/d',
+    description='Wind oxygen reaeration velocity at 20C',
+    use='static'
+)
+
+Variable(
+    name='kah_20_user',
+    long_name='Hydraulic oxygen reaeration rate at 20C',
+    units='1/d',
+    description='Hydraulic oxygen reaeration rate at 20C',
+    use='static'
+)
+
+Variable(
+    name='hydraulic_reaeration_option',
+    long_name='Option for chosing the method by which O2 reaeration rate is calculated',
+    units='unitless',
+    description='Selects method for computing O2 reaeration rate',
+    use='static'
+)
+
+Variable(
+    name='wind_reaeration_option',
+    long_name='Option for chosing the method by which wind reaeration is calculated',
+    units='unitless',
+    description='Selects method for computing O2 reaeration due to wind',
     use='static'
 )
 
@@ -191,9 +256,93 @@ Variable(
 )
 
 Variable(
-    name='use_POM2',
+    name='use_POM',
     long_name='Use particulate organic matter module',
     units='unitless',
     description='True/False use particulate organic matter module',
+    use='static',
+)
+
+Variable(
+    name='timestep',
+    long_name='timestep',
+    units='d',
+    description='calculation timestep',
+    use='static',
+)
+
+#Assume these are static within the one cell calculation but is pulled from the flow model
+
+Variable(
+    name='velocity',
+    long_name='velocity',
+    units='m/s',
+    description='Average water velocity in cell',
+    use='static',
+)
+
+Variable(
+    name='flow',
+    long_name='flow',
+    units='m3/s',
+    description='Average flow rate in cell',
+    use='static',
+)
+
+Variable(
+    name='topwidth',
+    long_name='topwidth',
+    units='m',
+    description='Average topwidth of cell',
+    use='static',
+)
+
+#TODO find units for slope
+Variable(
+    name='slope',
+    long_name='slope',
+    units='TODO',
+    description='Average slope of bottom surface',
+    use='static',
+)
+
+Variable(
+    name='shear_velocity',
+    long_name='shear_velocity',
+    units='TODO',
+    description='Average shear velocity on bottom surface',
+    use='static',
+)
+
+Variable(
+    name='pressure_atm',
+    long_name='pressure_atm',
+    units='TODO',
+    description='atmospheric pressure in atm',
+    use='static',
+)
+
+Variable(
+    name='wind_speed',
+    long_name='Wind speed at 10 meters above the water surface',
+    units='m/s',
+    description='Wind speed at 10 meters above the water surface',
+    use='static',
+)
+
+Variable(
+    name='wind_reaeration_option',
+    long_name='wind reaeration option',
+    units='unitless',
+    description='Integer value which selects method for computing wind oxygen reaeration velocity',
+    use='static',
+)
+
+#TODO figure out what Solid is
+Variable(
+    name='Solid',
+    long_name='Solid reaeration option',
+    units='Unknown',
+    description='Solid',
     use='static',
 )
