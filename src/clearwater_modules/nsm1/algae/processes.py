@@ -108,58 +108,6 @@ def kdp_tc(
 
     return arrhenius_correction(TwaterC, kdp_20, 1.047)
 
-@numba.njit
-def L(
-    lambda0: xr.DataArray,
-    lambda1: xr.DataArray,
-    lambda2: xr.DataArray,
-    lambdas: xr.DataArray,
-    lambdam: xr.DataArray,
-    Solid: xr.DataArray,
-    POC: xr.DataArray,
-    focm: xr.DataArray,
-    use_Algae: xr.DataArray,
-    use_POC: xr.DataArray,
-    Ap: xr.DataArray,
-
-) -> xr.DataArray:
-    """Compute L: lambda: light extinction coefficient (unitless)
-
-    Args:
-        lambda0: background portion (1/m)
-        lambda1: linear self shading (1/m/(ug Chla/L))
-        lambda2: non-linear (unitless),
-        lambdas: ISS portion (L/mg/m),
-        lambdam: POM portion (L/mg/m)
-        Solid: #TODO define this
-        POC: particulate organic carbon (mg-C/L)
-        focm: ratio of carbon to organic matter (mg-C/mg-D)
-        use_Algae: true/false use algae module (t/f)
-        use_POC: true/falseo use particulate organic carbon module (t/f)
-        Ap: algae concentration (ug-Chla/L)
-    """
-    L=lambda0 + lambdas * Solid
-
-    L=xr.where (use_POC, L+lambdam*POC/focm, L)
-    L=xr.where (use_Algae, L+lambda1*Ap + lambda2*Ap**0.66667, L)
-
-    return L
-
-@numba.njit
-def PAR(
-    use_Algae : bool,
-    use_Balgae: bool,
-    q_solar: xr.DataArray,
-    Fr_PAR: xr.DataArray,
-) -> xr.DataArray :
-    """Calculate temperature in kelvin (K)
-    Args:
-        use_Algae : true/false use algae module (t/f)
-        use_Balgae: true/falsoe use balgae module (t/f)
-        q_solar: solar radiation (1/d),
-        Fr_PAR: fraction of soalr radiation within the PAR of the spectrum
-    """
-    return xr.where (use_Algae or use_Balgae, q_solar * Fr_PAR)
 
 @numba.njit
 def FL(

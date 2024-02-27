@@ -84,11 +84,3 @@ Variable(
     description='NH4 preference factor benthic algae (1=full NH4, 0=full NO3)',
     use='static',
 )
-
-Variable(
-    name='vson',
-    long_name='OrgN settling velocity',
-    units='m/d',
-    description='OrgN settling velocity',
-    use='static',
-)

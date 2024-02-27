@@ -58,10 +58,10 @@ Variable(
 )
 
 Variable(
-    name='PX_new',
+    name='PX',
     long_name='New pathogen concentration',
     units='cfu/100mL',
     description='New pathogen concentration',
     use='dynamic',
-    process=processes.PX_new
+    process=processes.PX
 )

@@ -330,14 +330,6 @@ Variable(
     use='static',
 )
 
-Variable(
-    name='wind_reaeration_option',
-    long_name='wind reaeration option',
-    units='unitless',
-    description='Integer value which selects method for computing wind oxygen reaeration velocity',
-    use='static',
-)
-
 #TODO figure out what Solid is
 Variable(
     name='Solid',

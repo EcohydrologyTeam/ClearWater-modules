@@ -298,7 +298,7 @@ def dAbdt(
     return AbGrowth - AbRespiration - AbDeath
 
 @numba.njit
-def Ab_new(
+def Ab(
     Ab: xr.DataArray,
     dAbdt: xr.DataArray
     

@@ -99,7 +99,7 @@ def kah_20(
 
 
 @numba.njit
-def kah_T(
+def kah_tc(
     water_temp_c: xr.DataArray,
     kah_20: xr.DataArray,
     theta: xr.DataArray
@@ -147,7 +147,7 @@ def kaw_20(
 
 
 @numba.njit
-def kaw_T(
+def kaw_tc(
     water_temp_c: xr.DataArray,
     kaw_20: xr.DataArray,
     theta: xr.DataArray
@@ -163,19 +163,19 @@ def kaw_T(
 
 
 @numba.njit
-def ka_T(
-    kah_T: xr.DataArray,
-    kaw_T: xr.DataArray,
+def ka_tc(
+    kah_tc: xr.DataArray,
+    kaw_tc: xr.DataArray,
     depth: xr.DataArray
 ) -> xr.DataArray:
     """Compute the oxygen reaeration rate, adjusted for temperature (1/d)
 
     Args:
-        kah_T: Oxygen reaeration rate adjusted for temperature (1/d)
-        kaw_T: Wind oxygen reaeration velocity adjusted for temperature (m/d)
+        kah_tc: Oxygen reaeration rate adjusted for temperature (1/d)
+        kaw_tc: Wind oxygen reaeration velocity adjusted for temperature (m/d)
         depth: Average water depth in cell (m)
     """
-    return kaw_T / depth + kah_T
+    return kaw_tc / depth + kah_tc
 
 def SOD_tc(
     SOD_20: xr.DataArray,
@@ -198,3 +198,73 @@ def SOD_tc(
     da: xr.DataArray = xr.where(use_DOX == True, SOD_tc * DOX / (DOX + KsSOD), SOD_tc)
 
     return da
+
+@numba.njit
+def L(
+    lambda0: xr.DataArray,
+    lambda1: xr.DataArray,
+    lambda2: xr.DataArray,
+    lambdas: xr.DataArray,
+    lambdam: xr.DataArray,
+    Solid: xr.DataArray,
+    POC: xr.DataArray,
+    focm: xr.DataArray,
+    use_Algae: xr.DataArray,
+    use_POC: xr.DataArray,
+    Ap: xr.DataArray,
+
+) -> xr.DataArray:
+    """Compute L: lambda: light extinction coefficient (unitless)
+
+    Args:
+        lambda0: background portion (1/m)
+        lambda1: linear self shading (1/m/(ug Chla/L))
+        lambda2: non-linear (unitless),
+        lambdas: ISS portion (L/mg/m),
+        lambdam: POM portion (L/mg/m)
+        Solid: #TODO define this
+        POC: particulate organic carbon (mg-C/L)
+        focm: ratio of carbon to organic matter (mg-C/mg-D)
+        use_Algae: true/false use algae module (t/f)
+        use_POC: true/falseo use particulate organic carbon module (t/f)
+        Ap: algae concentration (ug-Chla/L)
+    """
+    L=lambda0 + lambdas * Solid
+
+    L=xr.where (use_POC, L+lambdam*POC/focm, L)
+    L=xr.where (use_Algae, L+lambda1*Ap + lambda2*Ap**0.66667, L)
+
+    return L
+
+@numba.njit
+def PAR(
+    use_Algae : bool,
+    use_Balgae: bool,
+    q_solar: xr.DataArray,
+    Fr_PAR: xr.DataArray,
+) -> xr.DataArray :
+    """Calculate temperature in kelvin (K)
+    Args:
+        use_Algae : true/false use algae module (t/f)
+        use_Balgae: true/falsoe use balgae module (t/f)
+        q_solar: solar radiation (1/d),
+        Fr_PAR: fraction of soalr radiation within the PAR of the spectrum
+    """
+    return xr.where (use_Algae or use_Balgae, q_solar * Fr_PAR)
+
+@numba.njit
+def fdp(
+    use_TIP: bool,
+    Solid : xr.DataArray,
+    kdop4: xr.DataArray
+) -> xr.DataArray :
+
+    """Calculate kop_tc: Decay rate of organic P to DIP temperature correction (1/d).
+
+    Args:
+        use_TIP: true/false use total inorganic phosphrous,
+        Solid : #TODO define this
+        kdop4: solid partitioning coeff. of PO4 (L/kg)
+    """
+  
+    return xr.where(use_TIP, 1/(1+kdop4 * Solid/0.000001), 0)
