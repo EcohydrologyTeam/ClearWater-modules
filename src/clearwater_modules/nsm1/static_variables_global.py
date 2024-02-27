@@ -11,31 +11,6 @@ class Variable(base.Variable):
 
 # Global parameters
 
-
-Variable(
-    name='L',
-    long_name='Light attenuation coefficient',
-    units='unitless',
-    description='Light attenuation coefficient',
-    use='static',
-)
-
-Variable(
-    name='fdp',
-    long_name='Fraction P dissolved',
-    units='unitless',
-    description='Fraction P dissolved',
-    use='static',
-)
-
-Variable(
-    name='PAR',
-    long_name='Surface light intensity',
-    units='W/m^2',
-    description='Surface light intensity',
-    use='static',
-)
-
 Variable(
     name='vson',
     long_name='Organic N settling velocity',
@@ -327,6 +302,14 @@ Variable(
     long_name='Wind speed at 10 meters above the water surface',
     units='m/s',
     description='Wind speed at 10 meters above the water surface',
+    use='static',
+)
+
+Variable(
+    name='q_solar',
+    long_name='Incident short-wave solar radiation',
+    units='W/m2',
+    description='Incident short-wave solar radiation',
     use='static',
 )
 

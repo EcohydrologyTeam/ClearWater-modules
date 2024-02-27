@@ -89,7 +89,7 @@ Variable(
     units='1/d',
     description='Oxygen reaeration rate',
     use='dynamic',
-    process=shared_processes.ka_T
+    process=shared_processes.ka_tc
 )
 
 
@@ -99,7 +99,7 @@ Variable(
     units='unitless',
     description='Light attenuation coefficient',
     use='dynamic',
-    process=processes.L
+    process=shared_processes.L
 )
 
 Variable(
@@ -108,5 +108,14 @@ Variable(
     units='W/m2',
     description='surface light intensity',
     use='dynamic',
-    process=processes.PAR
+    process=shared_processes.PAR
+)
+
+Variable(
+    name='fdp',
+    long_name='Fraction phosphorus dissolved',
+    units='Unitless',
+    description='Fraction phosphorus dissolved',
+    use='dynamic',
+    process=shared_processes.fdp
 )

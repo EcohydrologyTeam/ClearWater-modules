@@ -63,7 +63,7 @@ def N2sat(
 
 @numba.njit    
 def dN2dt(
-    ka_tc : xr.DataArray, #TODO this should be calculated in Carbon based on kah_tc and kaw_tc 
+    ka_tc : xr.DataArray, 
     N2sat : xr.DataArray,
     N2: xr.DataArray,
 ) -> xr.DataArray: 

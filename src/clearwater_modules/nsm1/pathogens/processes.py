@@ -50,7 +50,7 @@ def PathogenDecay(
 
     Args:
       apx: light efficiency factor for pathogen decay,
-      q_solar: solar radiation (1/d),
+      q_solar: Incident short-wave solar radiation (W/m2),
       L: lambda (1/m),
       depth: water depth (m),
       PX: Pathogen concentration (cfu/100mL)

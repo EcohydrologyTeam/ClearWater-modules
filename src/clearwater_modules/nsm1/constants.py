@@ -259,12 +259,12 @@ DEFAULT_ALKALINITY = AlkalinityStaticVariables(
 class PhosphorusStaticVariables(TypedDict):
     kop_20: float
     rpo4_20: float
-    kdop4: float
+    kdpo4: float
 
 DEFAULT_PHOSPHORUS = PhosphorusStaticVariables(
     kop_20 = 0.1,
     rpo4_20 =0,
-    kdop4 = 0.0,
+    kdpo4 = 0.0,
 )
 
 class POMStaticVariables(TypedDict):
@@ -325,7 +325,8 @@ class GlobalVars(TypedDict):
     kaw_20_user: float
     kah_20_user: float
     hydraulic_reaeration_option: int
-    wind_reaeration_option: int               
+    wind_reaeration_option: int
+    #TODO: Add vars we'd pull from the engine               
 
 DEFAULT_GLOBALVARS = GlobalVars(
     vson = 0.01,

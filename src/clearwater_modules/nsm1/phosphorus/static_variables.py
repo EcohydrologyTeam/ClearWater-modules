@@ -28,7 +28,7 @@ Variable(
 
 
 Variable(
-    name='kdop4',
+    name='kdpo4',
     long_name='solid partitioning coeff. of PO4',
     units='L/kg',
     description='solid partitioning coeff. of PO4',

@@ -252,11 +252,12 @@ def PAR(
     """
     return xr.where (use_Algae or use_Balgae, q_solar * Fr_PAR)
 
+
 @numba.njit
 def fdp(
     use_TIP: bool,
     Solid : xr.DataArray,
-    kdop4: xr.DataArray
+    kdpo4: xr.DataArray
 ) -> xr.DataArray :
 
     """Calculate kop_tc: Decay rate of organic P to DIP temperature correction (1/d).
@@ -264,7 +265,7 @@ def fdp(
     Args:
         use_TIP: true/false use total inorganic phosphrous,
         Solid : #TODO define this
-        kdop4: solid partitioning coeff. of PO4 (L/kg)
+        kdpo4: solid partitioning coeff. of PO4 (L/kg)
     """
   
-    return xr.where(use_TIP, 1/(1+kdop4 * Solid/0.000001), 0)
+    return xr.where(use_TIP, 1/(1+kdpo4 * Solid/0.000001), 0)
