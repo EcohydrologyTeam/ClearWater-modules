@@ -31,7 +31,7 @@ Variable(
     units='ug-Chla/L',
     description='Algal Concentration',
     use='state',
-    process=algae_processes.Ap_new 
+    process=algae_processes.Ap 
 )
 
 Variable(

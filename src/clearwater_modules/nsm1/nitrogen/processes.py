@@ -556,7 +556,7 @@ def NO3_AbGrowth(
     return xr.where(use_Balgae, (AbUptakeFr_NO3 * rnb * Fb * AbGrowth) / depth, 0.0)
 
 @numba.njit
-def NH4_new(
+def NH4(
     dNH4dt: xr.DataArray,
     NH4: xr.DataArray
     
@@ -621,7 +621,7 @@ def NO3(
     return NO3 + dNO3dt*timestep
 
 @numba.njit
-def NO3_new(
+def NO3(
     dNO3dt: xr.DataArray,
     NO3: xr.DataArray
     

@@ -26,22 +26,6 @@ Variable(
     use='static',
 )
 
-Variable(
-    name='vsop',
-    long_name='Orgnaic P settling velocity',
-    units='m/d',
-    description='Orgnaic P settling velocity',
-    use='static',
-)
-
-
-Variable(
-    name='vs',
-    long_name='Sediment settling velocity',
-    units='m/d',
-    description='Sediment settling velocity',
-    use='static',
-)
 
 Variable(
     name='kdop4',

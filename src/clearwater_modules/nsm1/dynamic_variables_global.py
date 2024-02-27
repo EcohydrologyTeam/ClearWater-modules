@@ -57,12 +57,12 @@ Variable(
 )
 
 Variable(
-    name='kah_T',
+    name='kah_tc',
     long_name='Hydraulic oxygen reaeration rate adjusted for temperature',
     units='1/d',
     description='Hydraulic oxygen reaeration rate adjusted for temperature',
     use='dynamic',
-    process=shared_processes.kah_T
+    process=shared_processes.kah_tc
 )
 
 Variable(
@@ -75,19 +75,38 @@ Variable(
 )
 
 Variable(
-    name='kaw_T',
+    name='kaw_tc',
     long_name='Wind oxygen reaeration velocity adjusted for temperature',
     units='m/d',
     description='Wind oxygen reaeration velocity adjusted for temperature',
     use='dynamic',
-    process=shared_processes.kaw_T
+    process=shared_processes.kaw_tc
 )
 
 Variable(
-    name='ka_T',
+    name='ka_tc',
     long_name='Oxygen reaeration rate',
     units='1/d',
     description='Oxygen reaeration rate',
     use='dynamic',
     process=shared_processes.ka_T
+)
+
+
+Variable(
+    name='L',
+    long_name='Light attenuation coefficient',
+    units='unitless',
+    description='Light attenuation coefficient',
+    use='dynamic',
+    process=processes.L
+)
+
+Variable(
+    name='PAR',
+    long_name='surface light intensity',
+    units='W/m2',
+    description='surface light intensity',
+    use='dynamic',
+    process=processes.PAR
 )

@@ -13,24 +13,6 @@ class Variable(base.Variable):
     ...
 
 Variable(
-    name='L',
-    long_name='Light attenuation coefficient',
-    units='unitless',
-    description='Light attenuation coefficient',
-    use='dynamic',
-    process=processes.L
-)
-
-Variable(
-    name='PAR',
-    long_name='surface light intensity',
-    units='W/m2',
-    description='surface light intensity',
-    use='dynamic',
-    process=processes.PAR
-)
-
-Variable(
     name='rna',
     long_name='Algal N:Chla Ratio',
     units='mg-N/ug Chla',

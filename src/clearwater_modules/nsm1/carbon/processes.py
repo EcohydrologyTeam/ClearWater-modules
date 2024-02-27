@@ -118,7 +118,7 @@ def dPOCdt(
 
 
 @numba.njit
-def POC_new(
+def POC(
     POC: xr.DataArray,
     dPOCdt: xr.DataArray,
     timestep: xr.DataArray
@@ -265,7 +265,7 @@ def Henrys_k(
 
 @numba.njit
 def Atmospheric_CO2_reaeration(
-    ka_T: xr.DataArray,
+    ka_tc: xr.DataArray,
     K_H: xr.DataArray,
     pCO2: xr.DataArray,
     FCO2: xr.DataArray,
@@ -274,13 +274,13 @@ def Atmospheric_CO2_reaeration(
     """Calculates the atmospheric input of CO2 into the waterbody
 
     Args:
-        ka_T: CO2 reaeration rate adjusted for temperature, same as O2 reaeration rate (1/d)
+        ka_tc: CO2 reaeration rate adjusted for temperature, same as O2 reaeration rate (1/d)
         K_H: Henry's Law constant (mol/L/atm)
         pCO2: Partial pressure of CO2 in the atmosphere (ppm)
         FCO2: Fraction of CO2 in total inorganic carbon
         DIC: Dissolved inorganic carbon concentration (mg/L)
     """
-    return 12 * ka_T * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
+    return 12 * ka_tc * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
 
 
 def DIC_algal_respiration(
@@ -385,7 +385,7 @@ def DIC_CBOD_oxidation(
 
 
 def DIC_sed_release(
-    SOD_tcc: xr.DataArray,
+    SOD_tc: xr.DataArray,
     roc: xr.DataArray,
     depth: xr.DataArray,
     JDIC: xr.DataArray,
@@ -394,13 +394,13 @@ def DIC_sed_release(
     """Computes the sediment release of DIC
 
     Args:
-        SOD_tcc: Sediment oxygen demand adjusted for water temperature (mg-O2/L/d)
+        SOD_tc: Sediment oxygen demand adjusted for water temperature (mg-O2/L/d)
         roc: Ratio of O2 to carbon for carbon oxidation (mg-O2/mg-C)
         depth: Water depth (m)
         JDIC: Sediment-water flux of dissolved inorganic carbon (g-C/m2/d)
         use_SedFlux: Option to consider full sediment flux budget in DIC sediment contribution (bool)
     """
-    da: xr.DataArray = xr.where(use_SedFlux == True, JDIC / depth, SOD_tcc / roc / depth)
+    da: xr.DataArray = xr.where(use_SedFlux == True, JDIC / depth, SOD_tc / roc / depth)
 
     return da
 
