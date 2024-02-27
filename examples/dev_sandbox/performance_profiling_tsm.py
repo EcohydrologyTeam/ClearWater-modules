@@ -61,6 +61,7 @@ def run_performance_test(
 
             # instantiate the TSM module
             tsm = clearwater_modules.tsm.EnergyBudget(
+                time_steps=iters,
                 initial_state_values=state_i,
                 meteo_parameters=meteo_parameters,
             )
@@ -89,9 +90,9 @@ if __name__ == '__main__':
         sys.exit(1)
 
     log_file = sys.argv[1]
-    # iterations_list = [1, 10, 100, 1000, 10000, 100000]
-    # gridsize_list = [1, 1000, 10000]
-    iterations_list = [10000]
-    gridsize_list = [10000]
-    detailed_profile = True
+    iterations_list = [1, 10, 100, 1000, 10000, 100000]
+    gridsize_list = [1, 1000, 10000]
+    # iterations_list = [10000]
+    # gridsize_list = [10000]
+    detailed_profile = False
     run_performance_test(iterations_list, gridsize_list, log_file, detailed_profile)

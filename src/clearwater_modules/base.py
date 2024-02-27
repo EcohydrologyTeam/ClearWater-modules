@@ -36,6 +36,7 @@ class Model(CanRegisterVariable):
         track_dynamic_variables: bool = True,
         hotstart_dataset: Optional[xr.Dataset] = None,
         time_dim: Optional[str] = None,
+        timestep: Optional[int] = 0,
     ) -> None:
         """Initialize the model, should be accessed by subclasses.
 
@@ -62,6 +63,8 @@ class Model(CanRegisterVariable):
         self.static_variable_values = static_variable_values
         self.hotstart_dataset = hotstart_dataset
         self.track_dynamic_variables = track_dynamic_variables
+        self.timestep = timestep
+        self.time_steps = time_steps + 1  # xarray indexing
 
         if not time_dim:
             time_dim = 'time_step'
@@ -78,7 +81,7 @@ class Model(CanRegisterVariable):
                 initial_state_values=self.initial_state_values,
                 static_variable_values=self.static_variable_values,
                 updateable_static_variables=self.updateable_static_variables,
-                time_steps=time_steps,
+                time_steps=self.time_steps,
             )
 
         elif isinstance(hotstart_dataset, xr.Dataset):
@@ -374,6 +377,21 @@ class Model(CanRegisterVariable):
                 var.name for var in self.static_variables if var.name not in self.updateable_static_variables
             ]
         return self.__non_updateable_static_variables
+    
+    def _iter_computations(self):
+            inputs = map(
+                lambda x: utils._prep_inputs(
+                    self.dataset.isel({self.time_dim: self.timestep}),
+                    x),
+                self.computation_order
+            )
+            for name, func, arrays in inputs:
+                array: np.ndarray = func(*arrays)
+                dims = self.dataset[name].dims
+                if self.time_dim in dims:
+                    self.dataset[name].loc[{self.time_dim: self.timestep}] = array
+                else:
+                    self.dataset[name] = (dims, array)
 
 
     def increment_timestep(
@@ -381,14 +399,17 @@ class Model(CanRegisterVariable):
         update_state_values: Optional[dict[str, xr.DataArray]] = None,
     ) -> xr.Dataset:
         """Run the process."""
+        self.timestep +=1
+
         if update_state_values is None:
             update_state_values = {}
-        
-        # get the last timestep as a xr.DataArray
-        last_timestep: int = self.dataset[self.time_dim].values[-1]
-        timestep_ds: xr.Dataset = self.dataset.isel(
-            {self.time_dim: -1},
-        ).copy(deep=True)
+
+        # by default, set current timestep equal to last timestep
+        self.dataset[self.state_variables_names + self.updateable_static_variables].loc[
+            {self.time_dim: self.timestep}
+        ] = self.dataset[self.state_variables_names + self.updateable_static_variables].isel(
+            {self.time_dim: self.timestep - 1}
+        )
 
         # update the state variables as necessary (i.e. interacting w/ other models)
         for var_name, value in update_state_values.items():
@@ -396,30 +417,35 @@ class Model(CanRegisterVariable):
                 raise ValueError(
                     f'Variable {var_name} cannot be updated between timesteps, skipping.',
                 )
-            utils.validate_arrays(value, timestep_ds[var_name])
-            timestep_ds[var_name] = value
+            utils.validate_arrays(
+                value,
+                self.dataset[var_name].isel(
+                    {self.time_dim: self.timestep}
+                )
+            )
+            self.dataset[var_name].loc[{self.time_dim: self.timestep}] = value
+        
+        # add dynamic variables to ds
+        for dynamic_variable in self.dynamic_variables_names:
+            self.dataset[dynamic_variable] = xr.DataArray(
+                np.full(
+                        tuple(
+                            self.dataset[self.static_variables_names[0]].sizes[dim] 
+                            for dim in self.dataset[self.static_variables_names[0]].dims),
+                        np.nan
+                    ),
+                    dims=self.dataset[self.static_variables_names[0]].dims
+            )
 
         # compute the dynamic variables in order
-        timestep_ds = utils.iter_computations(
-            timestep_ds,
-            self.computation_order,
-        )
-        if not self.track_dynamic_variables:
-            timestep_ds = timestep_ds.drop_vars(self.dynamic_variables_names)
-        
-        timestep_ds = timestep_ds.drop_vars(self._non_updateable_static_variables)
-        timestep_ds = timestep_ds.expand_dims(
-            {self.time_dim: [last_timestep + 1]},
-        )
+        self._iter_computations()
 
-        self.dataset = xr.concat(
-            [
-                self.dataset,
-                timestep_ds,
-            ],
-            dim=self.time_dim,
-            data_vars='minimal',
-        )
+        if not self.track_dynamic_variables:
+             self.dataset.loc[{self.time_dim: self.timestep}] = self.dataset.isel(
+                 {self.time_dim: self.timestep}
+             ).drop_vars(
+                 self.dynamic_variables_names
+            )
 
         # add dynamic variable attributes
         if self.track_dynamic_variables:
@@ -430,8 +456,6 @@ class Model(CanRegisterVariable):
                         'units': var.units,
                         'description': var.description,
                     }
-
-        return self.dataset
 
 
 def register_variable(models: CanRegisterVariable | Iterable[CanRegisterVariable]):
