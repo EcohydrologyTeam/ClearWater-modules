@@ -85,12 +85,12 @@ Variable(
 )
 
 Variable(#TODO: find correct process
-    name='DIPfromBed_NoSedFlux',
+    name='DIPfromBed',
     long_name='Dissolved Organic Phosphorus coming from Bed calculated without SedFlux modules',
     units='mg-P/L/d',
     description='Dissolved Organic Phosphorus coming from Bed calculated without SedFlux modules',
     use='dynamic',
-    process=processes.DIPfromBed_NoSedFlux
+    process=processes.DIPfromBed
 )
 
 Variable(

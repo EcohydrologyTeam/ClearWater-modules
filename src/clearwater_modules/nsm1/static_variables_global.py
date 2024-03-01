@@ -238,6 +238,57 @@ Variable(
     use='static',
 )
 
+
+Variable(##
+    name='Fr_PAR',
+    long_name='fraction of solar radiation within the PAR of the spectrum',
+    units='unitless',
+    description='fraction of solar radiation within the PAR of the spectrum',
+    use='static',
+)
+
+Variable(
+    name='lambda0',
+    long_name='background portion',
+    units='1/m',
+    description='background portion',
+    use='static',
+)
+
+Variable(
+    name='lambda1',
+    long_name='linear self shading',
+    units='1/m/(ug Chla/L)',
+    description='linear self shading',
+    use='static',
+)
+
+Variable(
+    name='lambda2',
+    long_name='non-linear',
+    units='unitless',
+    description='non-linear',
+    use='static',
+)
+
+Variable(
+    name='lambdas',
+    long_name='ISS portion',
+    units='L/mg/m',
+    description='ISS portion',
+    use='static',
+)
+
+Variable(
+    name='lambdam',
+    long_name='POM portion',
+    units='L/mg/m',
+    description='POM portion',
+    use='static',
+)
+
+#Assume these are static within the one cell calculation but is pulled from the flow model
+
 Variable(
     name='timestep',
     long_name='timestep',
@@ -245,8 +296,6 @@ Variable(
     description='calculation timestep',
     use='static',
 )
-
-#Assume these are static within the one cell calculation but is pulled from the flow model
 
 Variable(
     name='velocity',

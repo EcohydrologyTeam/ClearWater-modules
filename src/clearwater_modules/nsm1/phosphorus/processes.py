@@ -135,7 +135,6 @@ def dOrgPdt(
     return xr.where(use_OrgP, -OrgP_DIP_decay-OrgP_Settling + ApDeath_OrgP + AbDeath_OrgP, 0)
     
 #TODO will this be a problem if use_SedFlux is False
-@numba.njit
 def DIPfromBed_SedFlux(
     use_SedFlux: bool,
     JDIP: xr.DataArray,
@@ -151,6 +150,19 @@ def DIPfromBed_SedFlux(
         rpo4_tc: Benthic sediment release rate of DIP temperature correction(g-P/m2/d)
     """    
     return xr.where(use_SedFlux, JDIP / depth, rpo4_tc/depth)
+
+@numba.njit
+def DIPfromBed(
+    depth:xr.DataArray,
+    rpo4_tc: xr.DataArray,
+) -> xr.DataArray :
+    """Calculate DIPfromBed: Dissolved Organic Phosphorus coming from Bed calculated without a SedFlux module (mg-P/L/d).
+
+    Args:
+        depth: water depth (m)
+        rpo4_tc: Benthic sediment release rate of DIP temperature correction(g-P/m2/d)
+    """    
+    return rpo4_tc / depth
 
 #TODO calcuate fdp?
 @numba.njit
@@ -243,7 +255,7 @@ def DIP_AbGrowth(
 def dTIPdt(
     OrgP_DIP_decay: xr.DataArray,
     TIP_Settling: xr.DataArray,
-    DIPfromBed_SedFlux: xr.DataArray,
+    DIPfromBed: xr.DataArray,
     DIP_ApRespiration: xr.DataArray,
     DIP_ApGrowth: xr.DataArray,
     DIP_AbRespiration: xr.DataArray,
@@ -273,7 +285,7 @@ def dTIPdt(
                 + DIP From Benthos          (Benthos -> DIP) 
     """
 
-    return xr.where(use_TIP, - TIP_Settling + DIPfromBed_SedFlux + OrgP_DIP_decay + DIP_ApRespiration - DIP_ApGrowth + DIP_AbRespiration - DIP_AbGrowth, 0)
+    return xr.where(use_TIP, - TIP_Settling + DIPfromBed + OrgP_DIP_decay + DIP_ApRespiration - DIP_ApGrowth + DIP_AbRespiration - DIP_AbGrowth, 0)
 
 
 @numba.njit

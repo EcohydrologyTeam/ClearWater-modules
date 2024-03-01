@@ -59,7 +59,7 @@ def TwaterK(
     Args:
         TwaterC: water temperature celcius (C)
     """
-    return celsius_to_kelvin(TwaterK)
+    return celsius_to_kelvin(TwaterC)
 
 
 def kah_20(
@@ -208,7 +208,7 @@ def L(
     lambdam: xr.DataArray,
     Solid: xr.DataArray,
     POC: xr.DataArray,
-    focm: xr.DataArray,
+    fcom: xr.DataArray,
     use_Algae: xr.DataArray,
     use_POC: xr.DataArray,
     Ap: xr.DataArray,
@@ -224,14 +224,14 @@ def L(
         lambdam: POM portion (L/mg/m)
         Solid: #TODO define this
         POC: particulate organic carbon (mg-C/L)
-        focm: ratio of carbon to organic matter (mg-C/mg-D)
+        fcom: ratio of carbon to organic matter (mg-C/mg-D)
         use_Algae: true/false use algae module (t/f)
         use_POC: true/falseo use particulate organic carbon module (t/f)
         Ap: algae concentration (ug-Chla/L)
     """
     L=lambda0 + lambdas * Solid
 
-    L=xr.where (use_POC, L+lambdam*POC/focm, L)
+    L=xr.where (use_POC, L+lambdam*POC/fcom, L)
     L=xr.where (use_Algae, L+lambda1*Ap + lambda2*Ap**0.66667, L)
 
     return L
@@ -248,7 +248,7 @@ def PAR(
         use_Algae : true/false use algae module (t/f)
         use_Balgae: true/falsoe use balgae module (t/f)
         q_solar: solar radiation (1/d),
-        Fr_PAR: fraction of soalr radiation within the PAR of the spectrum
+        Fr_PAR: fraction of solar radiation within the PAR of the spectrum
     """
     return xr.where (use_Algae or use_Balgae, q_solar * Fr_PAR)
 

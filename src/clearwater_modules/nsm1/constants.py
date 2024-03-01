@@ -326,7 +326,23 @@ class GlobalVars(TypedDict):
     kah_20_user: float
     hydraulic_reaeration_option: int
     wind_reaeration_option: int
-    #TODO: Add vars we'd pull from the engine               
+    Fr_PAR: float
+    lambda0: float
+    lambda1: float
+    lambda2: float
+    lambdas: float
+    lambdam: float
+    timestep: float
+    velocity: float
+    flow: float
+    topwidth: float
+    slope: float
+    shear_velocity: float
+    pressure_atm: float
+    wind_speed: float
+    q_solar: float
+    Solid: int
+              
 
 DEFAULT_GLOBALVARS = GlobalVars(
     vson = 0.01,
@@ -341,4 +357,20 @@ DEFAULT_GLOBALVARS = GlobalVars(
     kah_20_user = 999,
     hydraulic_reaeration_option = 2,
     wind_reaeration_option = 2,
+    Fr_PAR = .5,
+    lambda0 = .5,
+    lambda1 = .5,
+    lambda2 = .5,
+    lambdas = .5,
+    lambdam = .5,    
+    timestep = 86400,
+    velocity = 1,
+    flow = 2,
+    topwidth = 1,
+    slope = 2,
+    shear_velocity = 4,
+    pressure_atm = 2,
+    wind_speed = 4,
+    q_solar = 4,
+    Solid = 1
 )
