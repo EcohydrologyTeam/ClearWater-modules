@@ -8,14 +8,6 @@ class Variable(base.Variable):
     ...
 
 ############################################ From dynamic_variables_global
-Variable(
-    name='depth',
-    long_name='Average water depth in cell',
-    units='m',
-    description='Average water depth in cell computed by dividing volume by surface area',
-    use='dynamic',
-    process=processes.compute_depth
-)
 
 Variable(
     name='TwaterK',
@@ -750,15 +742,6 @@ Variable(
     process=processes.dOrgPdt
 )
 
-Variable(
-    name='DIPfromBed_SedFlux',
-    long_name='Dissolved Organic Phosphorus coming from Bed calculated using SedFlux modules',
-    units='mg-P/L/d',
-    description='Dissolved Organic Phosphorus coming from Bed calculated using SedFlux modules',
-    use='dynamic',
-    process=processes.DIPfromBed_SedFlux
-)
-
 Variable(#TODO: find correct process
     name='DIPfromBed',
     long_name='Dissolved Organic Phosphorus coming from Bed calculated without SedFlux modules',
@@ -1051,12 +1034,12 @@ Variable(
 )
 
 Variable(
-    name='DOC_oxidation',
+    name='DOC_DIC_oxidation',
     long_name='DOC concentration lost to cell due to oxidation',
     units='mg/L/d',
     description='DOC concentration lost to cell due to oxidation',
     use='dynamic',
-    process=processes.DOC_oxidation
+    process=processes.DOC_DIC_oxidation
 )
 
 Variable(
@@ -1131,6 +1114,7 @@ Variable(
     process=processes.DIC_CBOD_oxidation
 )
 
+
 Variable(
     name='DIC_sed_release',
     long_name='DIC concentration change due to sediment release',
@@ -1186,7 +1170,6 @@ Variable(
     process=processes.Atm_O2_reaeration
 )
 
-# TODO: UPDATE BASED ON FORTRAN
 Variable(
     name='DOX_ApGrowth',
     long_name='Dissolved oxygen flux due to algal photosynthesis',
@@ -1196,9 +1179,8 @@ Variable(
     process=processes.DOX_ApGrowth
 )
 
-# TODO: UPDATE BASED ON FORTRAN
 Variable(
-    name='DOX_algal_respiration',
+    name='DOX_ApRespiration',
     long_name='Dissolved oxygen flux due to algal respiration',
     units='mg/L/d',
     description='Dissolved oxygen flux due to algal respiration',
@@ -1216,21 +1198,21 @@ Variable(
 )
 
 Variable(
-    name='DOX_DOC_Oxidation',
+    name='DOX_DOC_oxidation',
     long_name='Dissolved oxygen flux due to DOC oxidation',
     units='mg/L/d',
     description='Dissolved oxygen flux due to DOC oxidation',
     use='dynamic',
-    process=processes.DOX_DOC_Oxidation
+    process=processes.DOX_DOC_oxidation
 )
 
 Variable(
-    name='DOX_CBOD_Oxidation',
+    name='DOX_CBOD_oxidation',
     long_name='Dissolved oxygen flux due to CBOD oxidation',
     units='mg/L/d',
     description='Dissolved oxygen flux due to CBOD oxidation',
     use='dynamic',
-    process=processes.DOX_CBOD_Oxidation
+    process=processes.DOX_CBOD_oxidation
 )
 
 Variable(

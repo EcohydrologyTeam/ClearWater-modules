@@ -249,7 +249,6 @@ DEFAULT_GLOBALPARAMETERS = GlobalParameters(
     use_POM = True         
 )
 
-
 class GlobalVars(TypedDict):
     vson: float
     vsoc: float
@@ -264,7 +263,9 @@ class GlobalVars(TypedDict):
     hydraulic_reaeration_option: int
     wind_reaeration_option: int
     timestep: float
+    depth: float
     TwaterC: float
+    theta: float
     velocity: float
     flow: float
     topwidth: float
@@ -290,7 +291,9 @@ DEFAULT_GLOBALVARS = GlobalVars(
     hydraulic_reaeration_option = 2,
     wind_reaeration_option = 2,  
     timestep = 86400,
+    depth = 1,
     TwaterC = 20,
+    theta = 1.047,
     velocity = 1,
     flow = 2,
     topwidth = 1,

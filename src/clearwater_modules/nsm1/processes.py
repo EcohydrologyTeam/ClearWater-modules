@@ -40,18 +40,6 @@ def arrhenius_correction(
     """
     return rc20 * theta**(TwaterC - 20.0)
 
-@numba.njit
-def compute_depth(
-    surface_area: xr.DataArray,
-    volume: xr.DataArray
-) -> xr.DataArray:
-    """Compute depth of a computation cell
-
-    Args:
-        surface_area: state variable for surface area of computational cell provided by CWR engine
-        volume: state variable for volume of computational cell provided by CWR engine
-    """
-    return volume / surface_area
 
 @numba.njit
 def TwaterK(
@@ -182,7 +170,7 @@ def ka_tc(
 def SOD_tc(
     SOD_20: xr.DataArray,
     TwaterC: xr.DataArray,
-    theta: xr.DataArray,
+    SOD_theta: xr.DataArray,
     DOX: xr.DataArray,
     KsSOD: xr.DataArray,
     use_DOX: xr.DataArray
@@ -195,7 +183,7 @@ def SOD_tc(
         theta: Arrhenius coefficient
         use_DOX: Option to consider DOX concentration in water in calculation of sediment oxygen demand
     """
-    SOD_tc = arrhenius_correction(TwaterC, SOD_20, theta)
+    SOD_tc = arrhenius_correction(TwaterC, SOD_20, SOD_theta)
 
     da: xr.DataArray = xr.where(use_DOX == True, SOD_tc * DOX / (DOX + KsSOD), SOD_tc)
 
@@ -1219,8 +1207,6 @@ def NH4_Nitrification(
 
 @numba.njit
 def NH4fromBed(
-    use_SedFlux: bool,
-    JNH4: xr.DataArray,
     depth: xr.DataArray,
     rnh4_tc: xr.DataArray,
 
@@ -1228,14 +1214,12 @@ def NH4fromBed(
     """Calculate NH4fromBed: bed ->  NH4 (diffusion)    (mg-N/L/day)
 
     Args:
-        use_SedFlux: true/false to use sediment flux module (unitless),
         depth: water depth (m),
-        JNH4: Sediment water flux of ammonium (g-N/m^2/d),
         rnh4_tc: Sediment release rate of NH4 temperature correction(1/d).
 
     """
 
-    return xr.where(use_SedFlux, JNH4 / depth, rnh4_tc / depth)
+    return rnh4_tc / depth
 
 @numba.njit
 def NH4_ApRespiration(
@@ -1391,8 +1375,6 @@ def NO3_Denit(
 
 @numba.njit
 def NO3_BedDenit(
-    use_SedFlux: bool,
-    JNO3: xr.DataArray,
     depth: xr.DataArray,
     vno3_tc: xr.DataArray,
     NO3: xr.DataArray,
@@ -1401,15 +1383,13 @@ def NO3_BedDenit(
     """Calculate NO3_BedDenit: Sediment denitrification   (mg-N/L/day) 
 
     Args:
-        use_SedFlux: true/false to use sediment flux module (unitless),
         depth: water depth (m),
-        NO3: Nitrate concentration (mg-N/L),
-        JNO3: Sediment water flux of nitrate (g-N/m^2/d),
+        NO3: Nitrate concentration (mg-N/L)
         vno3_tc: Sediment denitrification velocity temperature correction (m/d)
 
     """
     
-    return xr.where(use_SedFlux, JNO3 / depth,vno3_tc * NO3 / depth)
+    return vno3_tc * NO3 / depth
 
 @numba.njit
 def NO3_ApGrowth(
@@ -1717,23 +1697,6 @@ def dOrgPdt(
     """     
 
     return xr.where(use_OrgP, -OrgP_DIP_decay-OrgP_Settling + ApDeath_OrgP + AbDeath_OrgP, 0)
-    
-#TODO will this be a problem if use_SedFlux is False
-def DIPfromBed_SedFlux(
-    use_SedFlux: bool,
-    JDIP: xr.DataArray,
-    depth:xr.DataArray,
-    rpo4_tc: xr.DataArray,
-) -> xr.DataArray :
-    """Calculate DIPfromBed_SedFlux: Dissolved Organic Phosphorus coming from Bed calculated using SedFlux modules (mg-P/L/d).
-
-    Args:
-        use_SedFlux: true/false to use the sediment flux module (unitless)
-        JDIP: Sediment-water flux of phosphate (g-P/m^2/d)
-        depth: water depth (m)
-        rpo4_tc: Benthic sediment release rate of DIP temperature correction(g-P/m2/d)
-    """    
-    return xr.where(use_SedFlux, JDIP / depth, rpo4_tc/depth)
 
 @numba.njit
 def DIPfromBed(
@@ -2016,7 +1979,7 @@ def POM_POC_settling(
     POC: xr.DataArray,
     vsoc: xr.DataArray,
     depth: xr.DataArray,
-    focm: xr.DataArray,
+    fcom: xr.DataArray,
     use_POC: xr.DataArray
 ) -> xr.DataArray:
     """Calculates particulate organic matter concentration change due to POM settling
@@ -2028,7 +1991,7 @@ def POM_POC_settling(
         fcom: Fraction of carbon in organic matter (mg-C/mg-D) 
         use_POC: Option to consider particulate organic carbon
     """
-    da: xr.DataArray = xr.where(use_POC == True, vsoc * POC / depth / focm, 0)
+    da: xr.DataArray = xr.where(use_POC == True, vsoc * POC / depth / fcom, 0)
     
     return da
 
@@ -2277,7 +2240,7 @@ def POC_algal_mortality(
 
 def POC_benthic_algae_mortality(
     depth: xr.DataArray,
-    F_pocb: xr.DataArray,
+    f_pocb: xr.DataArray,
     kdb_tc: xr.DataArray,
     rcb: xr.DataArray,
     Ab: xr.DataArray,
@@ -2289,7 +2252,7 @@ def POC_benthic_algae_mortality(
 
     Args: 
         depth: Water depth in cell (m)
-        F_pocb: Fraction of benthic algal mortality into POC
+        f_pocb: Fraction of benthic algal mortality into POC
         kdb_tc: Benthic algae death rate (1/d)
         rcb: Benthic algae C to biomass weight ratio (mg-C/mg-D)
         Ab: Benthic algae concentration (mg/L)
@@ -2297,7 +2260,7 @@ def POC_benthic_algae_mortality(
         Fw: Fraction of benthic algae mortality into water column
         use_Balgae: Option for considering benthic algae in POC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * F_pocb * kdb_tc * rcb * Ab * Fb * Fw, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * f_pocb * kdb_tc * rcb * Ab * Fb * Fw, 0)
 
     return da
 
@@ -2358,7 +2321,7 @@ def DOC_algal_mortality(
 
 def DOC_benthic_algae_mortality(
     depth: xr.DataArray,
-    F_pocb: xr.DataArray,
+    f_pocb: xr.DataArray,
     kdb_tc: xr.DataArray,
     rcb: xr.DataArray,
     Ab: xr.DataArray,
@@ -2378,7 +2341,7 @@ def DOC_benthic_algae_mortality(
         Fw: Fraction of benthic algae mortality into water column
         use_Balgae: Option for considering benthic algae in DOC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * (1 - F_pocb) * kdb_tc * rcb * Ab * Fb * Fw, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * (1 - f_pocb) * kdb_tc * rcb * Ab * Fb * Fw, 0)
 
     return da
 
@@ -2397,7 +2360,7 @@ def kdoc_tc(
     return arrhenius_correction(TwaterC, kdoc_20, 1.047)
 
 
-def DOC_oxidation(
+def DOC_DIC_oxidation(
     DOX: xr.DataArray,
     KsOxmc: xr.DataArray,
     kdoc_tc: xr.DataArray,
@@ -2420,7 +2383,7 @@ def DOC_oxidation(
 
 @numba.njit
 def dDOCdt(
-    DOC_oxidation: xr.DataArray,
+    DOC_DIC_oxidation: xr.DataArray,
     POC_hydrolysis: xr.DataArray,
     DOC_algal_mortality: xr.DataArray,
     DOC_benthic_algae_mortality: xr.DataArray
@@ -2435,7 +2398,7 @@ def dDOCdt(
         DOC_benthic_algae_mortality: DOC concentration change due to benthic algae mortality (mg/L/d)
         DOC_oxidation: DOC concentration change due to DOC oxidation (mg/L/d)
     """
-    return POC_hydrolysis + DOC_algal_mortality + DOC_benthic_algae_mortality - DOC_oxidation
+    return POC_hydrolysis + DOC_algal_mortality + DOC_benthic_algae_mortality - DOC_DIC_oxidation
 
 
 @numba.njit
@@ -2589,8 +2552,7 @@ def DIC_sed_release(
     SOD_tc: xr.DataArray,
     roc: xr.DataArray,
     depth: xr.DataArray,
-    JDIC: xr.DataArray,
-    use_SedFlux: xr.DataArray
+
 ) -> xr.DataArray:
     """Computes the sediment release of DIC
 
@@ -2598,12 +2560,8 @@ def DIC_sed_release(
         SOD_tc: Sediment oxygen demand adjusted for water temperature (mg-O2/L/d)
         roc: Ratio of O2 to carbon for carbon oxidation (mg-O2/mg-C)
         depth: Water depth (m)
-        JDIC: Sediment-water flux of dissolved inorganic carbon (g-C/m2/d)
-        use_SedFlux: Option to consider full sediment flux budget in DIC sediment contribution (bool)
     """
-    da: xr.DataArray = xr.where(use_SedFlux == True, JDIC / depth, SOD_tc / roc / depth)
-
-    return da
+    return SOD_tc / roc / depth
 
 
 @numba.njit
@@ -2613,7 +2571,6 @@ def dDICdt(
     DIC_algal_photosynthesis: xr.DataArray,
     DIC_benthic_algae_respiration: xr.DataArray,
     DIC_benthic_algae_photosynthesis: xr.DataArray,
-    DIC_DOC_oxidation: xr.DataArray,
     DIC_CBOD_oxidation: xr.DataArray,
     DIC_sed_release: xr.DataArray
 ) -> xr.DataArray:
@@ -2628,7 +2585,7 @@ def dDICdt(
         DIC_CBOD_oxidation: DIC concentration change due to CBOD oxidation (mg/L/d)
         DIC_sed_release: DIC concentration change due to sediment release (mg/L/d)
     """
-    return Atm_CO2_reaeration + DIC_algal_respiration + DIC_benthic_algae_respiration + DIC_DOC_oxidation + DIC_CBOD_oxidation + DIC_sed_release - DIC_algal_photosynthesis - DIC_benthic_algae_photosynthesis
+    return Atm_CO2_reaeration + DIC_algal_respiration + DIC_benthic_algae_respiration + DIC_CBOD_oxidation + DIC_sed_release - DIC_algal_photosynthesis - DIC_benthic_algae_photosynthesis
 
 
 @numba.njit
@@ -2775,25 +2732,25 @@ def DOX_Nitrification(
     return da
 
 
-def DOX_DOC_Oxidation(
-    DOC_Oxidation: xr.DataArray,
+def DOX_DOC_oxidation(
+    DOC_DIC_oxidation: xr.DataArray,
     roc: xr.DataArray,
     use_DOC: xr.DataArray
 ) -> xr.DataArray:
     """Computes dissolved oxygen flux due to oxidation of dissolved organic carbon
 
     Args:
-        DOC_Oxidation: Dissolved organic carbon oxidation, calculated in carbon module (mg/L/d)
+        DOC_DIC_Oxidation: Dissolved organic carbon oxidation, calculated in carbon module (mg/L/d)
         roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
     """
-    da: xr.DataArray = xr.where(use_DOC == True, roc * DOC_Oxidation, 0)
+    da: xr.DataArray = xr.where(use_DOC == True, roc * DOC_DIC_oxidation, 0)
 
     return da
 
 
 @numba.njit
-def DOX_CBOD_Oxidation(
-    DIC_CBOD_Oxidation: xr.DataArray,
+def DOX_CBOD_oxidation(
+    DIC_CBOD_oxidation: xr.DataArray,
     roc: xr.DataArray
 ) -> xr.DataArray:
     """Compute dissolved oxygen flux due to CBOD oxidation
@@ -2802,7 +2759,7 @@ def DOX_CBOD_Oxidation(
         DIC_CBOD_Oxidation: Carbonaceous biochemical oxygen demand oxidation, calculated in CBOD module (mg/L/d)
         roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
     """
-    return DIC_CBOD_Oxidation * roc
+    return DIC_CBOD_oxidation * roc
 
 
 def DOX_AbGrowth(
@@ -2836,7 +2793,7 @@ def DOX_AbRespiration(
     AbRespiration: xr.DataArray,
     Fb: xr.DataArray,
     depth: xr.DataArray,
-    use_BAlgae: xr.DataArray
+    use_Balgae: xr.DataArray
 ) -> xr.DataArray:
     """Compute dissolved oxygen flux due to benthic algae respiration
 
@@ -2849,29 +2806,23 @@ def DOX_AbRespiration(
         use_BAlgae: Option to consider benthic algae in the DOX budget
     """
 
-    da: xr.DataArray = xr.where(use_BAlgae == True, roc * rcb * AbRespiration * Fb / depth, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, roc * rcb * AbRespiration * Fb / depth, 0)
 
     return da
 
 
 def DOX_SOD(
-    SOD_Bed: xr.DataArray,
     depth: xr.DataArray,
-    SOD_tc: xr.DataArray,
-    use_SedFlux: xr.DataArray
+    SOD_tc: xr.DataArray
 ) -> xr.DataArray:
     """Compute dissolved oxygen flux due to sediment oxygen demand
 
     Args:
-        SOD_Bed: Sediment oxygen demand if calculated using the SedFlux module (mg-O2/m2)
         depth: Water depth (m)
         SOD_tc: Sediment oxygen demand not considering the SedFlux budget (mg-O2/m2)
-        use_SedFlux: Option to consider sediment flux in DOX budget (boolean)
     """
 
-    da: xr.DataArray = xr.where(use_SedFlux == 1, SOD_Bed / depth, SOD_tc / depth)
-
-    return da
+    return SOD_tc / depth
 
 @numba.njit
 def dDOXdt(
@@ -2879,8 +2830,8 @@ def dDOXdt(
     DOX_ApGrowth: xr.DataArray,
     DOX_ApRespiration: xr.DataArray,
     DOX_Nitrification: xr.DataArray,
-    DOX_DOC_Oxidation: xr.DataArray,
-    DOX_CBOD_Oxidation: xr.DataArray,
+    DOX_DOC_oxidation: xr.DataArray,
+    DOX_CBOD_oxidation: xr.DataArray,
     DOX_AbGrowth: xr.DataArray,
     DOX_AbRespiration: xr.DataArray,
     DOX_SOD: xr.DataArray
@@ -2892,13 +2843,13 @@ def dDOXdt(
         DOX_ApGrowth: DOX concentration change due to algal photosynthesis (mg/L/d)
         DOX_ApRespiration: DOX concentration change due to algal respiration (mg/L/d)
         DOX_Nitrification: DOX concentration change due to nitrification (mg/L/d)
-        DOX_DOC_Oxidation: DOX concentration change due to DOC oxidation (mg/L/d)
-        DOX_CBOD_Oxidation: DOX concentration change due to CBOD oxidation (mg/L/d)
+        DOX_DOC_oxidation: DOX concentration change due to DOC oxidation (mg/L/d)
+        DOX_CBOD_oxidation: DOX concentration change due to CBOD oxidation (mg/L/d)
         DOX_AbGrowth: DOX concentration change due to benthic algae photosynthesis (mg/L/d)
         DOX_AbRespiration: DOX concentration change due to benthic algae respiration (mg/L/d)
         DOX_SOD: DOX concentration change due to sediment oxygen demand (mg/L/d)
     """
-    return Atm_O2_reaeration + DOX_ApGrowth - DOX_ApRespiration - DOX_Nitrification - DOX_DOC_Oxidation - DOX_CBOD_Oxidation + DOX_AbGrowth - DOX_AbRespiration - DOX_SOD
+    return Atm_O2_reaeration + DOX_ApGrowth - DOX_ApRespiration - DOX_Nitrification - DOX_DOC_oxidation - DOX_CBOD_oxidation + DOX_AbGrowth - DOX_AbRespiration - DOX_SOD
 
 
 @numba.njit

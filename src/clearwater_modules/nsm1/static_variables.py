@@ -240,11 +240,27 @@ Variable(
 )
 
 Variable(
+    name='depth',
+    long_name='Depth of water in cell',
+    units='m',
+    description='Depth of water in cell',
+    use='static',
+)
+
+Variable(
     name='TwaterC',
     long_name='Water temperature in celsius',
     units='degrees C',
     description='Water temperature in celsius',
-    use='static',
+    use='static'
+)
+
+Variable(
+    name='theta',
+    long_name='Water temperature theta adjustment factor',
+    units='unitless',
+    description='Water temperature theta adjustment factor',
+    use='static'
 )
 
 Variable(
