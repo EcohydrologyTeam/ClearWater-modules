@@ -10,7 +10,6 @@ class AlgaeStaticVariables(TypedDict):
     AWn: float                          
     AWp: float                          
     AWa: float                          
-
     KL: float                           
     KsN: float                          
     KsP: float                          
@@ -19,7 +18,13 @@ class AlgaeStaticVariables(TypedDict):
     krp_20: float                          
     vsap: float                         
     growth_rate_option: int             
-    light_limitation_option: int        
+    light_limitation_option: int 
+    lambda0: float
+    lambda1: float
+    lambda2: float
+    lambdas: float
+    lambdam: float
+    Fr_PAR: float        
 
 DEFAULT_ALGAE = AlgaeStaticVariables(
     AWd = 100,
@@ -27,7 +32,6 @@ DEFAULT_ALGAE = AlgaeStaticVariables(
     AWn= 7.2,
     AWp= 1,
     AWa= 1000,
-    
     KL= 10,
     KsN= 0.04,
     KsP= 0.0012,
@@ -36,7 +40,13 @@ DEFAULT_ALGAE = AlgaeStaticVariables(
     krp_20= 0.2,
     vsap= 0.15,
     growth_rate_option = 1,
-    light_limitation_option = 1
+    light_limitation_option = 1,
+    lambda0 = .5,
+    lambda1 = .5,
+    lambda2 = .5,
+    lambdas = .5,
+    lambdam = .5, 
+    Fr_PAR = .5   
 )
 
 class AlkalinityStaticVariables(TypedDict):
@@ -326,13 +336,8 @@ class GlobalVars(TypedDict):
     kah_20_user: float
     hydraulic_reaeration_option: int
     wind_reaeration_option: int
-    Fr_PAR: float
-    lambda0: float
-    lambda1: float
-    lambda2: float
-    lambdas: float
-    lambdam: float
     timestep: float
+    TwaterC: float
     velocity: float
     flow: float
     topwidth: float
@@ -356,14 +361,9 @@ DEFAULT_GLOBALVARS = GlobalVars(
     kaw_20_user = 999,
     kah_20_user = 999,
     hydraulic_reaeration_option = 2,
-    wind_reaeration_option = 2,
-    Fr_PAR = .5,
-    lambda0 = .5,
-    lambda1 = .5,
-    lambda2 = .5,
-    lambdas = .5,
-    lambdam = .5,    
+    wind_reaeration_option = 2,  
     timestep = 86400,
+    TwaterC = 20,
     velocity = 1,
     flow = 2,
     topwidth = 1,

@@ -1,17 +1,6 @@
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.algae.processes as algae_processes
-import clearwater_modules.nsm1.alkalinity.processes as alkalinity_processes
-import clearwater_modules.nsm1.balgae.processes as balgae_processes
-import clearwater_modules.nsm1.carbon.processes as carbon_processes
-import clearwater_modules.nsm1.CBOD.processes as CBOD_processes
-import clearwater_modules.nsm1.DOX.processes as DOX_processes
-import clearwater_modules.nsm1.n2.processes as n2_processes
-import clearwater_modules.nsm1.nitrogen.processes as nitrogen_processes
-import clearwater_modules.nsm1.pathogens.processes as pathogens_processes
-import clearwater_modules.nsm1.phosphorus.processes as phosphorus_processes
-import clearwater_modules.nsm1.POM.processes as POM_processes
-import clearwater_modules.shared.processes as shared_processes
+import clearwater_modules.nsm1.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)
@@ -23,15 +12,13 @@ class Variable(base.Variable):
 def mock_equation(water_temp_c: float) -> float:
     return water_temp_c ** 2
 
-# TODO: import state variables from CWR such as surface_area volume, and timestep, as well as kah inputs
-
 Variable(
     name='Ap',
     long_name='Algae Concentration',
     units='ug-Chla/L',
     description='Algal Concentration',
     use='state',
-    process=algae_processes.Ap 
+    process=processes.Ap 
 )
 
 Variable(
@@ -40,7 +27,7 @@ Variable(
     units='g-D/m^2',
     description='Benthic Algae Concentration',
     use='state',
-    process=balgae_processes.Ab
+    process=processes.Ab
 )
 
 Variable(
@@ -49,7 +36,7 @@ Variable(
     units='mg-N/L',
     description='Ammonium Concentration',
     use='state',
-    process=nitrogen_processes.NH4
+    process=processes.NH4
 )
 
 Variable(
@@ -58,7 +45,7 @@ Variable(
     units='mg-N/L',
     description='Nitrate Concentration',
     use='state',
-    process=nitrogen_processes.NO3
+    process=processes.NO3
 )
 
 Variable(
@@ -67,7 +54,7 @@ Variable(
     units='mg-N/L',
     description='Organic Nitrogen Concentration',
     use='state',
-    process=nitrogen_processes.OrgN
+    process=processes.OrgN
 )
 
 Variable(
@@ -76,7 +63,7 @@ Variable(
     units='mg-N/L',
     description='Nitrogen concentration air',
     use='state',
-    process=n2_processes.N2
+    process=processes.N2
 )
 
 Variable(
@@ -85,7 +72,7 @@ Variable(
     units='mg-P/L',
     description='Total Inorganic Phosphorus Concentration',
     use='state',
-    process=phosphorus_processes.TIP
+    process=processes.TIP
 )
 
 Variable(
@@ -94,7 +81,7 @@ Variable(
     units='mg-P/L',
     description='Total Organic Phosphorus Concentration',
     use='state',
-    process=phosphorus_processes.OrgP
+    process=processes.OrgP
 )
 
 Variable(
@@ -103,7 +90,7 @@ Variable(
     units='mg-C/L',
     description='Particulate Organic Carbon Concentration',
     use='state',
-    process=carbon_processes.POC
+    process=processes.POC
 )
 
 Variable(
@@ -112,7 +99,7 @@ Variable(
     units='mg-C/L',
     description='Dissolved Organic Carbon Concentration',
     use='state',
-    process=carbon_processes.DOC
+    process=processes.DOC
 )
 
 Variable(
@@ -121,7 +108,7 @@ Variable(
     units='mg-C/L',
     description='Dissolved Inorganic Carbon Concentration',
     use='state',
-    process=carbon_processes.DIC
+    process=processes.DIC
 )
 
 Variable(
@@ -130,16 +117,7 @@ Variable(
     units='mg-D/L',
     description='Particulate Organic Matter Concentration',
     use='state',
-    process=POM_processes.POM
-)
-
-Variable(
-    name='POM2',
-    long_name='Sediment Particulate Organic Matter',
-    units='mg-D/L',
-    description='Sediment Particulate Organic Matter Concentration',
-    use='state',
-    process=mock_equation#TODO might be Sedflux
+    process=processes.POM
 )
 
 Variable(
@@ -148,7 +126,7 @@ Variable(
     units='mg-O2/L',
     description='Carbonaceous Biochemical Oxygen Demand Concentration',
     use='state',
-    process=CBOD_processes.CBOD
+    process=processes.CBOD
 )
 
 Variable(
@@ -157,7 +135,7 @@ Variable(
     units='mg-O2/L',
     description='Dissolved Oxygen',
     use='state',
-    process=DOX_processes.DOX
+    process=processes.DOX
 )
 
 Variable(
@@ -166,7 +144,7 @@ Variable(
     units='cfu/100mL',
     description='Pathogen concentration',
     use='state',
-    process=pathogens_processes.PX
+    process=processes.PX
 )
 
 Variable(
@@ -175,5 +153,5 @@ Variable(
     units='mg-CaCO3/L',
     description='Alkalinity concentration',
     use='state',
-    process=alkalinity_processes.Alk 
+    process=processes.Alk 
 )
