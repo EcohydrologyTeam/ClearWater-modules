@@ -70,7 +70,7 @@ DEFAULT_Alkalinity = AlkalinityStaticVariables(
 class BalgaeStaticVariables(TypedDict):
     BWd: float
     BWc: float
-    Bwn: float
+    BWn: float
     BWp: float
     BWa: float
 
@@ -89,7 +89,7 @@ class BalgaeStaticVariables(TypedDict):
 DEFAULT_BALGAE = BalgaeStaticVariables(
     BWd = 100,
     BWc= 40,
-    Bwn=7.2,
+    BWn=7.2,
     BWp= 1,
     BWa= 3500,
 
