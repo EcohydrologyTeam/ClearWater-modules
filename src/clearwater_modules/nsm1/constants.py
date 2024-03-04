@@ -57,7 +57,7 @@ class AlkalinityStaticVariables(TypedDict):
     r_alkba: float
     r_alkbn: float
       
-DEFAULT_Alkalinity = AlkalinityStaticVariables(
+DEFAULT_ALKALINITY = AlkalinityStaticVariables(
     r_alkaa = 14.0 / 106.0 / 12.0 / 1000.0,
     r_alkan= 18.0 / 106.0 / 12.0 / 1000.0,
     r_alkn = 2.0 / 14.0 / 1000.0,
@@ -137,12 +137,11 @@ class CarbonStaticVariables(TypedDict):
     f_pocb: float
     kpoc_20: float
     KsOxmc: float
-    kac_20: float
     pCO2: float
     FCO2: float
     roc: float
 
-DEFAULT_Carbon = CarbonStaticVariables(
+DEFAULT_CARBON = CarbonStaticVariables(
     f_pocp = 0.9,
     kdoc_20= 0.01,
     f_pocb=0.9,
@@ -154,14 +153,14 @@ DEFAULT_Carbon = CarbonStaticVariables(
 )
 
 class CBODStaticVariables(TypedDict):
+    KsOxbod: float
     kbod_20: float
     ksbod_20: float
-    KsOxbod: float
 
 DEFAULT_CBOD = CBODStaticVariables(
+    KsOxbod = 0.5,
     kbod_20 =  0.12,
-    ksbod_20 = 0.0,
-    KsOxbod = 0.5
+    ksbod_20 = 0.0
 )
 
 class DOXStaticVariables(TypedDict):
@@ -180,61 +179,12 @@ DEFAULT_N2 = N2StaticVariables(
 
 )
 
-class PhosphorusStaticVariables(TypedDict):
-    kop_20: float
-    rpo4_20: float
-
-DEFAULT_PHOSPHORUS = PhosphorusStaticVariables(
-    kop_20 = 0.1,
-    rpo4_20 = 0
-)
-
 
 class POMStaticVariables(TypedDict):
     kpom_20: float
 
 DEFAULT_POM = POMStaticVariables(
     kpom_20 = 0.1
-)
-
-
-class CBODStaticVariables(TypedDict):
-    kbod_20: float
-    ksbod_20: float
-    ksOxbod: float
-
-DEFAULT_CBOD = CBODStaticVariables(
-    kbod_20 = 0.12,
-    ksbod_20 = 0,
-    ksOxbod = 0.5
-)
-
-
-class CarbonStaticVariables(TypedDict):
-    F_pocp: float
-    kdoc_20: float
-    F_pocb: float
-    kpoc_20: float
-    K_sOxmc: float
-    pCO2: float
-    FCO2: float
-    
-DEFAULT_CARBON = CarbonStaticVariables(
-    F_pocp = 0.9,
-    kdoc_20 = 0.01,
-    F_pocb = 0.9,
-    kpoc_20 = 0.005,
-    K_sOxmc = 1,
-    pCO2 = 383,
-    FCO2 = 0.2
-)
-
-
-class DOXStaticVariables(TypedDict):
-    ...
-
-DEFAULT_DOX = DOXStaticVariables(
-    
 )
 
 
@@ -249,23 +199,6 @@ DEFAULT_PATHOGEN = PathogenStaticVariables(
     vx=1
 )
 
-class AlkalinityStaticVariables(TypedDict):
-    r_alkaa: float
-    r_alkan: float
-    r_alkn: float
-    r_alkden: float
-    r_alkba: float
-    r_alkbn: float
-    
-DEFAULT_ALKALINITY = AlkalinityStaticVariables(
-    r_alkaa = 1,
-    r_alkan = 1,
-    r_alkn = 1,
-    r_alkden = 1,
-    r_alkba = 1,
-    r_alkbn = 1 
-)
-
 class PhosphorusStaticVariables(TypedDict):
     kop_20: float
     rpo4_20: float
@@ -277,12 +210,6 @@ DEFAULT_PHOSPHORUS = PhosphorusStaticVariables(
     kdpo4 = 0.0,
 )
 
-class POMStaticVariables(TypedDict):
-    kpom_20: float
-
-DEFAULT_POM = POMStaticVariables(
-    kpom_20 = 0.01,
-)
 
 class GlobalParameters(TypedDict):
     use_NH4 : bool
