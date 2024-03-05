@@ -2769,7 +2769,7 @@ def DOX_AbGrowth(
     AbGrowth: xr.DataArray,
     Fb: xr.DataArray,
     depth: xr.DataArray,
-    use_BAlgae: xr.DataArray
+    use_Balgae: xr.DataArray
 ) -> xr.DataArray:
     """Compute dissolved oxygen flux due to benthic algae growth
 

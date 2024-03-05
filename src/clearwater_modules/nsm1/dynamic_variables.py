@@ -1175,7 +1175,7 @@ Variable(
     long_name='Dissolved oxygen flux due to algal photosynthesis',
     units='mg/L/d',
     description='Dissolved oxygen flux due to algal photosynthesis',
-    use='dynamics',
+    use='dynamic',
     process=processes.DOX_ApGrowth
 )
 
@@ -1220,7 +1220,7 @@ Variable(
     long_name='Dissolved oxygen flux due to benthic algae photosynthesis',
     units='mg/L/d',
     description='Dissolved oxygen flux due to benthic algae photosynthesis',
-    use='dynamics',
+    use='dynamic',
     process=processes.DOX_AbGrowth
 )
 
