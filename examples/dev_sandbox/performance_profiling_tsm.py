@@ -4,6 +4,7 @@ import sys
 import logging
 import numpy as np
 import xarray as xr
+import cProfile
 
 from typing import (
     List
@@ -89,11 +90,16 @@ if __name__ == '__main__':
         print("Usage: python performance_profiling_tsm.py <log_file>")
         sys.exit(1)
 
-    log_file = sys.argv[1]
+    log_file = f"{sys.argv[1]}.log"
+    cprofile_file = f"{sys.argv[1]}.prof"
     # iterations_list = [1, 10, 100, 1000, 10000, 100000]
     # gridsize_list = [1, 1000, 10000]
     # detailed_profile = False
-    iterations_list = [10000]
-    gridsize_list = [10000]
+    iterations_list = [1000]
+    gridsize_list = [1]
     detailed_profile = True
+    # profiler = cProfile.Profile()
+    # profiler.enable()
     run_performance_test(iterations_list, gridsize_list, log_file, detailed_profile)
+    # profiler.disable()
+    # profiler.dump_stats(cprofile_file)
