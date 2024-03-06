@@ -219,10 +219,10 @@ def L(
         use_POC: true/falseo use particulate organic carbon module (t/f)
         Ap: algae concentration (ug-Chla/L)
     """
-    L=lambda0 + lambdas * Solid
+    L = lambda0 + lambdas * Solid
 
-    L=xr.where (use_POC, L+lambdam*POC/fcom, L)
-    L=xr.where (use_Algae, L+lambda1*Ap + lambda2*Ap**0.66667, L)
+    L: xr.DataArray = xr.where (use_POC, L+lambdam*POC/fcom, L)
+    L: xr.DataArray = xr.where (use_Algae, L+lambda1*Ap + lambda2*Ap**0.66667, L)
 
     return L
 
