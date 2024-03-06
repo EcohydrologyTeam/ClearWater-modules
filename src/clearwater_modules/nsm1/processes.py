@@ -2780,9 +2780,9 @@ def DOX_AbGrowth(
         AbGrowth: Benthic algae photosynthesis, calculated in benthic algae module (mg/L/d)
         Fb: Fraction of bottom area available for benthic algae growth
         depth: Water depth (m)
-        use_BAlgae: Option to consider benthic algae in the DOX budget
+        use_Balgae: Option to consider benthic algae in the DOX budget
     """
-    da: xr.DataArray = xr.where(use_BAlgae == True, (138 / 106 - 32 / 106 * AbUptakeFr_NH4) * roc * rcb * AbGrowth * Fb / depth, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, (138 / 106 - 32 / 106 * AbUptakeFr_NH4) * roc * rcb * AbGrowth * Fb / depth, 0)
 
     return da
 
