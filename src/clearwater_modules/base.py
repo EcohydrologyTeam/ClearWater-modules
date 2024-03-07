@@ -427,18 +427,14 @@ class Model(CanRegisterVariable):
     def _iter_computations(self):
             inputs = map(
                 lambda x: utils._prep_inputs(
-                    self.dataset.isel({self.time_dim: self.timestep}),
+                    self.timestep_ds,
                     x),
                 self.computation_order
             )
             for name, func, arrays in inputs:
                 array: np.ndarray = func(*arrays)
-                dims = self.dataset[name].dims
-                if self.time_dim in dims:
-                    self.dataset[name].loc[{self.time_dim: self.timestep}] = array
-                else:
-                    self.dataset[name] = (dims, array)
-
+                dims = self.timestep_ds[name].dims
+                self.timestep_ds[name] = (dims, array)
 
     def increment_timestep(
         self,
@@ -451,9 +447,7 @@ class Model(CanRegisterVariable):
             update_state_values = {}
 
         # by default, set current timestep equal to last timestep
-        self.dataset[self.temporal_variables].loc[
-            {self.time_dim: self.timestep}
-        ] = self.dataset[self.temporal_variables].isel(
+        self.timestep_ds: xr.Dataset = self.dataset.isel(
             {self.time_dim: self.timestep - 1}
         )
 
@@ -463,33 +457,19 @@ class Model(CanRegisterVariable):
                 raise ValueError(
                     f'Variable {var_name} cannot be updated between timesteps, skipping.',
                 )
-            utils.validate_arrays(
-                value,
-                self.dataset[var_name].isel(
-                    {self.time_dim: self.timestep}
-                )
-            )
-            self.dataset[var_name].loc[{self.time_dim: self.timestep}] = value
+            utils.validate_arrays(value, self.timestep_ds[var_name])
+            self.timestep_ds[var_name] = value
 
         # compute the dynamic variables in order
         self._iter_computations()
 
-        # if not self.track_dynamic_variables:
-        #      self.dataset.loc[{self.time_dim: self.timestep}] = self.dataset.isel(
-        #          {self.time_dim: self.timestep}
-        #      ).drop_vars(
-        #          self.dynamic_variables_names
-        #     )
+        if not self.track_dynamic_variables:
+            self.timestep_ds = self.timestep_ds.drop_vars(self.dynamic_variables_names)
+        self.timestep_ds = self.timestep_ds.drop_vars(self._non_updateable_static_variables)
 
-        # add dynamic variable attributes
-        # if self.track_dynamic_variables:
-        #     for var in self.dynamic_variables:
-        #         if var.name in self.dataset.data_vars.keys():
-        #             self.dataset[var.name].attrs = {
-        #                 'long_name': var.long_name,
-        #                 'units': var.units,
-        #                 'description': var.description,
-        #             }
+        self.dataset[self.temporal_variables].loc[
+            {self.time_dim: self.timestep}
+        ] = self.timestep_ds
 
 
 def register_variable(models: CanRegisterVariable | Iterable[CanRegisterVariable]):

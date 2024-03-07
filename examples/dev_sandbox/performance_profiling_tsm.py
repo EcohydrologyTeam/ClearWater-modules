@@ -92,12 +92,12 @@ if __name__ == '__main__':
 
     log_file = f"{sys.argv[1]}.log"
     cprofile_file = f"{sys.argv[1]}.prof"
-    # iterations_list = [1, 10, 100, 1000, 10000, 100000]
-    # gridsize_list = [1, 1000, 10000]
-    # detailed_profile = False
-    iterations_list = [1000]
-    gridsize_list = [1]
-    detailed_profile = True
+    iterations_list = [1, 10, 100, 1000, 10000, 100000]
+    gridsize_list = [1, 1000, 10000]
+    detailed_profile = False
+    # iterations_list = [1000]
+    # gridsize_list = [1]
+    # detailed_profile = True
     # profiler = cProfile.Profile()
     # profiler.enable()
     run_performance_test(iterations_list, gridsize_list, log_file, detailed_profile)
