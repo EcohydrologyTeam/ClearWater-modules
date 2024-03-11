@@ -74,6 +74,36 @@ def kah_20(
         slope: Average slope of bottom surface 
         shear_velocity: Average shear velocity on bottom surface (m/s)
     """
+    condlist = [hydraulic_reaeration_option == 1, 
+                hydraulic_reaeration_option == 2, 
+                hydraulic_reaeration_option == 3, 
+                hydraulic_reaeration_option == 4, 
+                hydraulic_reaeration_option == 5 & depth < 0.61,
+                hydraulic_reaeration_option == 5 & depth > 0.61,
+                hydraulic_reaeration_option == 5 & depth == 0.61, 
+                hydraulic_reaeration_option == 6 & flow < 0.556,
+                hydraulic_reaeration_option == 6 & flow >= 0.556,
+                hydraulic_reaeration_option == 7 & flow < 0.556, 
+                hydraulic_reaeration_option == 7 & flow >= 0.556, 
+                hydraulic_reaeration_option == 8 & flow < 0.425, 
+                hydraulic_reaeration_option == 8 & flow >= 0.425,
+                hydraulic_reaeration_option == 9]
+    
+    choicelist = [kah_20_user, 
+                  (3.93 * velocity**0.5) / (depth**1.5), 
+                  (5.32 * velocity**0.67) / (depth**1.85), 
+                  (5.026 * velocity) / (depth**1.67), 
+                  (5.32 * velocity**0.67) / (depth**1.85),
+                  (3.93 * velocity**0.5) / (depth**1.5),
+                  (5.026 * velocity) / (depth**1.67),
+                  517 * (velocity * slope)**0.524 * flow**-0.242,
+                  596 * (velocity * slope)**0.528 * flow**-0.136,
+                  88 * (velocity * slope)**0.313 * depth**-0.353,
+                  142 * (velocity * slope)**0.333 * depth**-0.66 * topwidth**-0.243, 
+                  31183 * velocity * slope,
+                  15308 * velocity * slope,
+                  2.16 * (1 + 9 * (velocity / (9.81 * depth)**0.5)**0.25) * shear_velocity / depth
+                  ]
 
     da: xr.DataArray = xr.where(hydraulic_reaeration_option == 1, kah_20_user,
                         xr.where(hydraulic_reaeration_option == 2, (3.93 * velocity**0.5) / (depth**1.5),
@@ -189,7 +219,6 @@ def SOD_tc(
 
     return da
 
-@numba.njit
 def L(
     lambda0: xr.DataArray,
     lambda1: xr.DataArray,
@@ -226,7 +255,6 @@ def L(
 
     return L
 
-@numba.njit
 def PAR(
     use_Algae : bool,
     use_Balgae: bool,
@@ -240,10 +268,9 @@ def PAR(
         q_solar: solar radiation (1/d),
         Fr_PAR: fraction of solar radiation within the PAR of the spectrum
     """
-    return xr.where (use_Algae or use_Balgae, q_solar * Fr_PAR)
+    return xr.where (use_Algae or use_Balgae, q_solar * Fr_PAR, 0)
 
 
-@numba.njit
 def fdp(
     use_TIP: bool,
     Solid : xr.DataArray,
@@ -363,7 +390,6 @@ def kdp_tc(
     return arrhenius_correction(TwaterC, kdp_20, 1.047)
 
 
-@numba.njit
 def FL(
     L: xr.DataArray,
     depth: xr.DataArray,
@@ -399,7 +425,6 @@ def FL(
     return FL
 
 
-@numba.njit
 def FN(
     use_NH4: bool,
     use_NO3: bool,
@@ -425,7 +450,6 @@ def FN(
     return FN
 
 
-@numba.njit
 def FP(
     fdp: xr.DataArray,
     TIP: xr.DataArray,
@@ -448,7 +472,6 @@ def FP(
     return FP
 
 
-@numba.njit
 def mu(
     mu_max_tc: xr.DataArray,
     growth_rate_option: int,
@@ -666,7 +689,6 @@ def rab(
     return BWa/BWd
 
 
-@numba.njit
 def FLb(
     L: xr.DataArray,
     depth: xr.DataArray,
@@ -703,7 +725,6 @@ def FLb(
     return FLb
 
 
-@numba.njit
 def FNb(
     use_NH4: bool,
     use_NO3: bool,
@@ -728,7 +749,6 @@ def FNb(
     return FNb
 
 
-@numba.njit
 def FPb(
     fdp: xr.DataArray,
     TIP: xr.DataArray,
@@ -751,7 +771,6 @@ def FPb(
     return FPb
 
 
-@numba.njit
 def FSb(
     Ab: xr.DataArray,
     Ksb: xr.DataArray,
@@ -771,8 +790,6 @@ def FSb(
     
     return FSb
 
-
-@numba.njit
 def mub(
     mub_max_tc: xr.DataArray,
     b_growth_rate_option: int,
@@ -970,7 +987,6 @@ def kdnit_tc(
     return arrhenius_correction(TwaterC, kdnit_20, 1.045)
 
 
-@numba.njit
 def ApUptakeFr_NH4(
     use_NH4: bool,
     use_NO3: bool,
@@ -1017,7 +1033,6 @@ def ApUptakeFr_NO3(
     return 1 - ApUptakeFr_NH4
 
 
-@numba.njit
 def AbUptakeFr_NH4(
     use_NH4: bool,
     use_NO3: bool,
@@ -1060,7 +1075,6 @@ def AbUptakeFr_NO3(
 
     return 1 - AbUptakeFr_NH4
 
-@numba.njit
 def OrgN_NH4_Decay(
     kon_tc: xr.DataArray,
     OrgN: xr.DataArray,
@@ -1091,7 +1105,6 @@ def OrgN_Settling(
 
     return vson / depth * OrgN
 
-@numba.njit
 def ApDeath_OrgN(
     use_Algae: bool,
     rna: xr.DataArray,
@@ -1107,7 +1120,6 @@ def ApDeath_OrgN(
 
     return xr.where(use_Algae, rna * ApDeath, 0.0)
 
-@numba.njit
 def AbDeath_OrgN(
     use_Balgae: bool,
     rnb: xr.DataArray,
@@ -1129,7 +1141,6 @@ def AbDeath_OrgN(
 
     return xr.where(use_Balgae, rnb * Fw * Fb * AbDeath / depth, 0.0)
 
-@numba.njit
 def dOrgNdt(
     use_OrgN: bool,
     ApDeath_OrgN: xr.DataArray,
@@ -1169,7 +1180,6 @@ def OrgN(
 
     return OrgN + dOrgNdt * timestep
 
-@numba.njit
 def NitrificationInhibition(
     use_DOX: bool,
     KNR: xr.DataArray,
@@ -1187,7 +1197,6 @@ def NitrificationInhibition(
 
     return xr.where (use_DOX, 1.0 - math.exp(-KNR * DOX), 1.0)
 
-@numba.njit
 def NH4_Nitrification(
     NitrificationInhibition: xr.DataArray,
     NH4: xr.DataArray,
@@ -1221,7 +1230,6 @@ def NH4fromBed(
 
     return rnh4_tc / depth
 
-@numba.njit
 def NH4_ApRespiration(
     use_Algae: bool,
     ApRespiration: xr.DataArray,
@@ -1238,7 +1246,6 @@ def NH4_ApRespiration(
 
     return xr.where (use_Algae, rna * ApRespiration, 0.0)
 
-@numba.njit
 def NH4_ApGrowth(
     use_Algae: bool,
     ApGrowth: xr.DataArray,
@@ -1257,7 +1264,6 @@ def NH4_ApGrowth(
 
     return xr.where(use_Algae, ApUptakeFr_NH4 * rna * ApGrowth, 0.0)
 
-@numba.njit
 def NH4_AbRespiration(
     use_Balgae: bool,
     rnb: xr.DataArray,
@@ -1275,7 +1281,6 @@ def NH4_AbRespiration(
 
     return xr.where(use_Balgae, rnb * AbRespiration, 0.0 )
 
-@numba.njit
 def NH4_AbGrowth(
     use_Balgae: bool,
     rnb: xr.DataArray,
@@ -1298,7 +1303,6 @@ def NH4_AbGrowth(
 
     return xr.where(use_Balgae,(AbUptakeFr_NH4 * rnb * Fb * AbGrowth) / depth, 0.0 )
 
-@numba.njit
 def dNH4dt(
     use_NH4: bool,
     NH4_Nitrification: xr.DataArray,
@@ -1352,7 +1356,6 @@ def NH4(
 
     return NH4 + dNH4dt * timestep
 
-@numba.njit
 def NO3_Denit(
     use_DOX: bool,
     DOX: xr.DataArray,
@@ -1391,7 +1394,6 @@ def NO3_BedDenit(
     
     return vno3_tc * NO3 / depth
 
-@numba.njit
 def NO3_ApGrowth(
     use_Algae: bool,
     ApUptakeFr_NO3: xr.DataArray,
@@ -1412,7 +1414,6 @@ def NO3_ApGrowth(
 
     return xr.where(use_Algae, ApUptakeFr_NO3 * rna * ApGrowth, 0.0)
 
-@numba.njit
 def NO3_AbGrowth(
     use_Balgae: bool,
     AbUptakeFr_NO3: xr.DataArray,
@@ -1436,7 +1437,6 @@ def NO3_AbGrowth(
     return xr.where(use_Balgae, (AbUptakeFr_NO3 * rnb * Fb * AbGrowth) / depth, 0.0)
 
 
-@numba.njit
 def dNO3dt(
     use_NO3: bool,
     NH4_Nitrification: xr.DataArray,
@@ -1487,7 +1487,6 @@ def NO3(
     return NO3 + dNO3dt * timestep
 
 
-@numba.njit
 def DIN(
     use_NH4: bool,
     use_NO3: bool,
@@ -1510,7 +1509,6 @@ def DIN(
     return DIN
 
 
-@numba.njit
 def TON(
     use_OrgN: bool,
     use_Algae: bool,
@@ -1536,7 +1534,6 @@ def TON(
     return TON
 
 
-@numba.njit
 def TKN(
     use_NH4: bool,
     NH4: xr.DataArray,
@@ -1602,7 +1599,6 @@ def rpo4_tc(
 
     return arrhenius_correction(TwaterC, rpo4_20, 1.074)
 
-@numba.njit
 def OrgP_DIP_decay(
     kop_tc : xr.DataArray,
     OrgP: xr.DataArray,
@@ -1634,7 +1630,6 @@ def OrgP_Settling(
     """        
     return (vsop / depth) * OrgP
 
-@numba.njit
 def ApDeath_OrgP(
     rpa : xr.DataArray,
     ApDeath: xr.DataArray,
@@ -1652,7 +1647,6 @@ def ApDeath_OrgP(
 
     return xr.where(use_Algae, rpa * ApDeath,0)
 
-@numba.njit
 def AbDeath_OrgP(
     rpb : xr.DataArray,
     AbDeath: xr.DataArray,
@@ -1676,7 +1670,6 @@ def AbDeath_OrgP(
 
     return xr.where(use_Balgae, (rpb * Fw *Fb * AbDeath) / depth,0)      
 
-@numba.njit
 def dOrgPdt(
     ApDeath_OrgP : xr.DataArray,
     AbDeath_OrgP: xr.DataArray,
@@ -1730,7 +1723,6 @@ def TIP_Settling(
     """             
     return vs / depth * (1.0 - fdp) * TIP
 
-@numba.njit
 def DIP_ApRespiration(
     rpa: xr.DataArray,
     ApRespiration: xr.DataArray,
@@ -1746,7 +1738,6 @@ def DIP_ApRespiration(
     """ 
     return xr.where(use_Algae, rpa * ApRespiration,0)
 
-@numba.njit
 def DIP_ApGrowth(
     rpa: xr.DataArray,
     ApGrowth: xr.DataArray,
@@ -1762,7 +1753,6 @@ def DIP_ApGrowth(
     """ 
     return xr.where(use_Algae, rpa * ApGrowth,0)
 
-@numba.njit
 def DIP_AbRespiration(
     rpb: xr.DataArray,
     AbRespiration: xr.DataArray,
@@ -1778,7 +1768,6 @@ def DIP_AbRespiration(
     """     
     return xr.where(use_Balgae, rpb * AbRespiration,0)
 
-@numba.njit
 def DIP_AbGrowth(
     rpb: xr.DataArray,
     AbGrowth: xr.DataArray,
@@ -1798,7 +1787,6 @@ def DIP_AbGrowth(
     """     
     return xr.where(use_Balgae, rpb * Fb * AbGrowth / depth,0)
 
-@numba.njit
 def dTIPdt(
     OrgP_DIP_decay: xr.DataArray,
     TIP_Settling: xr.DataArray,
@@ -1867,7 +1855,6 @@ def OrgP(
     """     
     return OrgP + dOrgPdt * timestep
 
-@numba.njit
 def TOP(
     use_OrgP: bool,
     OrgP: xr.DataArray,
@@ -1892,7 +1879,6 @@ def TOP(
     return TOP
 
 
-@numba.njit
 def TP(
     use_TIP: bool,
     TOP: xr.DataArray,
@@ -3180,8 +3166,7 @@ def P_wv(
 
     """
     return math.exp(11.8571  - (3840.70 / TwaterK) - (216961.0 / (TwaterK**2)))
-
-@numba.njit     
+  
 
 def N2sat(
     KHN2_tc : xr.DataArray,
@@ -3236,7 +3221,6 @@ def N2(
         
     return N2 + dN2dt * timestep
 
-@numba.njit    
 def TDG(
     N2: xr.DataArray,
     N2sat : xr.DataArray,
