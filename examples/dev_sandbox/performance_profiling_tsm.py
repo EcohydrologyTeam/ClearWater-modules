@@ -65,6 +65,7 @@ def run_performance_test(
                 time_steps=iters,
                 initial_state_values=state_i,
                 meteo_parameters=meteo_parameters,
+                track_dynamic_variables=False,
             )
 
             t2 = time.time()

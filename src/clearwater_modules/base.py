@@ -153,10 +153,10 @@ class Model(CanRegisterVariable):
             static_variable_values,
             time_steps,
         )
-
-        dataset: xr.Dataset = self._init_dynamic_arrays(
-            dataset,
-        )
+        if self.track_dynamic_variables:
+            dataset: xr.Dataset = self._init_dynamic_arrays(
+                dataset,
+            )
 
         print('Model initialized from input dicts successfully!.')
         return dataset
@@ -299,11 +299,7 @@ class Model(CanRegisterVariable):
             dataset: xr.Dataset,
     ) -> xr.Dataset:
         """Initialize dynamic variables."""
-        if self.track_dynamic_variables:
-            k = self.state_variables_names[0]
-        else:
-            return
-
+        k = self.state_variables_names[0]
         for dynamic_variable in self.dynamic_variables_names:
                 dataset[dynamic_variable] = xr.DataArray(
                     np.full(
@@ -431,9 +427,10 @@ class Model(CanRegisterVariable):
                     x),
                 self.computation_order
             )
+            dims = self.timestep_ds.dims 
+
             for name, func, arrays in inputs:
                 array: np.ndarray = func(*arrays)
-                dims = self.timestep_ds[name].dims
                 self.timestep_ds[name] = (dims, array)
 
     def increment_timestep(
