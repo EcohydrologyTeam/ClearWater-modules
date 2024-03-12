@@ -74,22 +74,23 @@ def kah_20(
         slope: Average slope of bottom surface 
         shear_velocity: Average shear velocity on bottom surface (m/s)
     """
-    condlist = [hydraulic_reaeration_option == 1, 
+    da: np.ndarray = np.select(
+        condlist = [hydraulic_reaeration_option == 1, 
                 hydraulic_reaeration_option == 2, 
                 hydraulic_reaeration_option == 3, 
                 hydraulic_reaeration_option == 4, 
-                hydraulic_reaeration_option == 5 & depth < 0.61,
-                hydraulic_reaeration_option == 5 & depth > 0.61,
-                hydraulic_reaeration_option == 5 & depth == 0.61, 
-                hydraulic_reaeration_option == 6 & flow < 0.556,
-                hydraulic_reaeration_option == 6 & flow >= 0.556,
-                hydraulic_reaeration_option == 7 & flow < 0.556, 
-                hydraulic_reaeration_option == 7 & flow >= 0.556, 
-                hydraulic_reaeration_option == 8 & flow < 0.425, 
-                hydraulic_reaeration_option == 8 & flow >= 0.425,
-                hydraulic_reaeration_option == 9]
+                hydraulic_reaeration_option == 5 and depth < 0.61,
+                hydraulic_reaeration_option == 5 and depth > 0.61,
+                hydraulic_reaeration_option == 5 and depth == 0.61, 
+                hydraulic_reaeration_option == 6 and flow < 0.556,
+                hydraulic_reaeration_option == 6 and flow >= 0.556,
+                hydraulic_reaeration_option == 7 and flow < 0.556, 
+                hydraulic_reaeration_option == 7 and flow >= 0.556, 
+                hydraulic_reaeration_option == 8 and flow < 0.425, 
+                hydraulic_reaeration_option == 8 and flow >= 0.425,
+                hydraulic_reaeration_option == 9],
     
-    choicelist = [kah_20_user, 
+        choicelist = [kah_20_user, 
                   (3.93 * velocity**0.5) / (depth**1.5), 
                   (5.32 * velocity**0.67) / (depth**1.85), 
                   (5.026 * velocity) / (depth**1.67), 
@@ -103,18 +104,10 @@ def kah_20(
                   31183 * velocity * slope,
                   15308 * velocity * slope,
                   2.16 * (1 + 9 * (velocity / (9.81 * depth)**0.5)**0.25) * shear_velocity / depth
-                  ]
+                  ],
+        default = kah_20_user,
+        )
 
-    da: xr.DataArray = xr.where(hydraulic_reaeration_option == 1, kah_20_user,
-                        xr.where(hydraulic_reaeration_option == 2, (3.93 * velocity**0.5) / (depth**1.5),
-                        xr.where(hydraulic_reaeration_option == 3, (5.32 * velocity**0.67) / (depth**1.85),
-                        xr.where(hydraulic_reaeration_option == 4, (5.026 * velocity) / (depth**1.67),
-                        xr.where(hydraulic_reaeration_option == 5, xr.where(depth < 0.61, (5.32 * velocity**0.67) / (depth**1.85), xr.where(depth > 0.61, (3.93 * velocity**0.5) / (depth**1.5), (5.026 * velocity) / (depth**1.67))),
-                        xr.where(hydraulic_reaeration_option == 6, xr.where(flow < 0.556, 517 * (velocity * slope)**0.524 * flow**-0.242, 596 * (velocity * slope)**0.528 * flow**-0.136),
-                        xr.where(hydraulic_reaeration_option == 7, xr.where(flow < 0.556, 88 * (velocity * slope)**0.313 * depth**-0.353, 142 * (velocity * slope)**0.333 * depth**-0.66 * topwidth**-0.243),
-                        xr.where(hydraulic_reaeration_option == 8, xr.where(flow < 0.425, 31183 * velocity * slope, 15308 * velocity * slope),
-                        xr.where(hydraulic_reaeration_option == 9, 2.16 * (1 + 9 * (velocity / (9.81 * depth)**0.5)**0.25) * shear_velocity / depth, -9999
-                                 )))))))))
     return da
 
 
@@ -148,20 +141,48 @@ def kaw_20(
     """
     Uw10 = wind_speed * (10 / 2)**0.143
 
-    da: xr.DataArray = xr.where(wind_reaeration_option == 1, kaw_20_user,
-                        xr.where(wind_reaeration_option == 2, 0.864 * Uw10,
-                        xr.where(wind_reaeration_option == 3, xr.where(Uw10 <= 3.5, 0.2 * Uw10, 0.057 * Uw10**2),
-                        xr.where(wind_reaeration_option == 4, 0.728 * Uw10**0.5 - 0.317 * Uw10 + 0.0372 * Uw10**2,
-                        xr.where(wind_reaeration_option == 5, 0.0986 * Uw10**1.64,
-                        xr.where(wind_reaeration_option == 6, 0.5 + 0.05 * Uw10**2,
-                        xr.where(wind_reaeration_option == 7, xr.where(Uw10 <= 5.5, 0.362 * Uw10**0.5, 0.0277 * Uw10**2),
-                        xr.where(wind_reaeration_option == 8, 0.64 + 0.128 * Uw10**2,
-                        xr.where(wind_reaeration_option == 9, xr.where(Uw10 <= 4.1, 0.156 * Uw10**0.63, 0.0269 * Uw10**1.9),
-                        xr.where(wind_reaeration_option == 10, 0.0276 * Uw10**2,
-                        xr.where(wind_reaeration_option == 11, 0.0432 * Uw10**2,
-                        xr.where(wind_reaeration_option == 12, 0.319 * Uw10,
-                        xr.where(wind_reaeration_option == 13, xr.where(Uw10 < 1.6, 0.398, 0.155 * Uw10**2), -9999
-                                 )))))))))))))
+    da: np.ndarray = np.select(
+        condlist = [
+        wind_reaeration_option == 1,
+        wind_reaeration_option == 2,
+        wind_reaeration_option == 3 and Uw10 <= 3.5,
+        wind_reaeration_option == 3 and Uw10 > 3.5,
+        wind_reaeration_option == 4,
+        wind_reaeration_option == 5,
+        wind_reaeration_option == 6,
+        wind_reaeration_option == 7 and Uw10 <= 5.5,
+        wind_reaeration_option == 7 and Uw10 > 5.5,
+        wind_reaeration_option == 8,
+        wind_reaeration_option == 9 and Uw10 <= 4.1,
+        wind_reaeration_option == 9 and Uw10 > 4.1,
+        wind_reaeration_option == 10,
+        wind_reaeration_option == 11,
+        wind_reaeration_option == 12,
+        wind_reaeration_option == 13 and Uw10 < 1.6,
+        wind_reaeration_option == 13 and Uw10 >= 1.6,
+    ],
+    
+    choicelist = [
+        kaw_20_user,
+        0.864 * Uw10,
+        0.2 * Uw10,
+        0.057 * Uw10**2,
+        0.728 * Uw10**0.5 - 0.317 * Uw10 + 0.0372 * Uw10**2,
+        0.0986 * Uw10**1.64,
+        0.5 + 0.05 * Uw10**2,
+        0.362 * Uw10**0.5,
+        0.0277 * Uw10**2,
+        0.64 + 0.128 * Uw10**2,
+        0.156 * Uw10**0.63,
+        0.0269 * Uw10**1.9,
+        0.0276 * Uw10**2,
+        0.0432 * Uw10**2,
+        0.319 * Uw10,
+        0.398,
+        0.155 * Uw10**2
+    ],
+    default = kaw_20_user,
+    )
     
     return da
 
@@ -411,12 +432,39 @@ def FL(
 
     KEXT = L * depth
 
-    FL = xr.where(Ap <= 0.0 or KEXT <= 0.0 or PAR <= 0.0, 0, 
-         xr.where(light_limitation_option==1, (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT))),
-         xr.where(light_limitation_option==2,
-         xr.where(abs(KL)<0.0000000001, 1, (1.0 / KEXT) * math.log( (PAR / KL + ((1.0 + (PAR / KL)**2.0)**0.5)) / (PAR * math.exp(-KEXT) / KL + ((1.0 + (PAR * math.exp(-KEXT) / KL)**2.0)**0.5)))), 
-         xr.where(light_limitation_option==3,
-         xr.where(abs(KL)<0.0000000001,0,(2.718/KEXT) * (math.exp(-PAR/KL * math.exp(-KEXT)) - math.exp(-PAR/KL))), "NaN"))))
+    FL: np.ndarray = np.select(
+        condlist = [
+            Ap <= 0.0 or KEXT <= 0.0 or PAR <= 0.0,
+            light_limitation_option == 1,
+            light_limitation_option == 2 and abs(KL) < 0.0000000001,
+            light_limitation_option == 2 and abs(KL) >= 0.0000000001,
+            light_limitation_option == 3 and abs(KL) < 0.0000000001,
+            light_limitation_option == 3 and abs(KL) >= 0.0000000001,
+        ],
+        
+        choicelist = [
+            0,
+            (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT))),
+            1,
+            (1.0 / KEXT) * math.log( (PAR / KL + ((1.0 + (PAR / KL)**2.0)**0.5)) / (PAR * math.exp(-KEXT) / KL + ((1.0 + (PAR * math.exp(-KEXT) / KL)**2.0)**0.5))),
+            0,
+            (2.718/KEXT) * (math.exp(-PAR/KL * math.exp(-KEXT)) - math.exp(-PAR/KL))
+        ],
+        default = "NaN",
+    )
+    
+    FL: np.ndarray = np.select(
+        condlist = [
+            FL > 1.0,
+            FL < 0.0,
+        ]
+        
+        choicelist = [
+            1.0,
+            0.0
+        ]
+        default = FL
+    )
           
     
     FL= xr.where(FL > 1.0, 1.0,
