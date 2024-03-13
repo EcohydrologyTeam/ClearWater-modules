@@ -432,7 +432,7 @@ def FL(
 
     KEXT = L * depth
 
-    FL: np.ndarray = np.select(
+    FL_orig: np.ndarray = np.select(
         condlist = [
             Ap <= 0.0 or KEXT <= 0.0 or PAR <= 0.0,
             light_limitation_option == 1,
@@ -450,20 +450,22 @@ def FL(
             0,
             (2.718/KEXT) * (math.exp(-PAR/KL * math.exp(-KEXT)) - math.exp(-PAR/KL))
         ],
-        default = "NaN",
+        
+        default = "NaN"
     )
     
     FL: np.ndarray = np.select(
         condlist = [
-            FL > 1.0,
-            FL < 0.0,
-        ]
+            FL_orig > 1.0,
+            FL_orig < 0.0,
+        ],
         
         choicelist = [
             1.0,
             0.0
-        ]
-        default = FL
+        ],
+        
+        default = FL_orig
     )
           
     
