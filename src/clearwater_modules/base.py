@@ -33,7 +33,7 @@ class Model(CanRegisterVariable):
         initial_state_values: Optional[InitialVariablesDict] = None,
         static_variable_values: Optional[InitialVariablesDict] = None,
         updateable_static_variables: Optional[list[str]] = None,
-        track_dynamic_variables: bool = True,
+        track_dynamic_variables: bool = False,
         hotstart_dataset: Optional[xr.Dataset] = None,
         time_dim: Optional[str] = None,
         timestep: Optional[int] = 0,
@@ -42,7 +42,7 @@ class Model(CanRegisterVariable):
 
         Args:
             time_steps: An integer to indicate the number of timesteps to run.
-            initial_state_values: A dict with variable names as keys, and initial 
+            initial_state_values: A dict with variable names as keys, and initial
                 state variables as values.
             static_variable_values: A dict with variable names as keys, and static
                 values as values. All Model.static_variables must be present.
@@ -52,9 +52,9 @@ class Model(CanRegisterVariable):
                 between timesteps. Note that these still don't have process functions.
             track_dynamic_variables: If True, dynamic variables will be tracked
                 in the model dataset. If False, they will not be tracked.
-            hotstart_dataset: An optional dataset to use as a hotstart. 
-                This skips the initialization of the model dataset, and uses the 
-                provided dataset instead after validating the presence of all static 
+            hotstart_dataset: An optional dataset to use as a hotstart.
+                This skips the initialization of the model dataset, and uses the
+                provided dataset instead after validating the presence of all static
                 and state variables.
             time_dim: The name of the time dimension. If not provided, defaults
                 to 'time_step'.
@@ -70,7 +70,7 @@ class Model(CanRegisterVariable):
         if not time_dim:
             time_dim = 'time_step'
         self.time_dim = time_dim
-        
+
         if not isinstance(updateable_static_variables, list):
             updateable_static_variables = []
         self.updateable_static_variables = updateable_static_variables
@@ -122,7 +122,7 @@ class Model(CanRegisterVariable):
                 raise ValueError(
                     f'No initial value found for state variable: {state_var.name}.'
                 )
-        
+
         # reassign updateable_static_variables to state variables
         for static in updateable_static_variables:
             if static not in static_variable_values.keys():
@@ -132,16 +132,14 @@ class Model(CanRegisterVariable):
                 continue
             else:
                 initial_state_values[static] = static_variable_values.pop(static)
-        
+
         # create list of temporal variables
         if self.track_dynamic_variables:
             self.temporal_variables = self.state_variables_names + \
                     self.updateable_static_variables + self.dynamic_variables_names
         else:
             self.temporal_variables = self.state_variables_names + \
-                    self.updateable_static_variables   
-
-        
+                    self.updateable_static_variables
 
         # initialize the main model dataset
         dataset: xr.Dataset = self._init_state_arrays(
@@ -197,9 +195,9 @@ class Model(CanRegisterVariable):
             ds = xr.Dataset(
                 data_vars={
                     k: (
-                        data_arrays[k].dims + (self.time_dim,), 
+                        data_arrays[k].dims + (self.time_dim,),
                         np.full(
-                            tuple(data_arrays[k].sizes[dim] for dim in data_arrays[k].dims) + (time_steps,), 
+                            tuple(data_arrays[k].sizes[dim] for dim in data_arrays[k].dims) + (time_steps,),
                             np.nan
                         )
                     )
@@ -207,7 +205,7 @@ class Model(CanRegisterVariable):
                 },
                 coords={
                     **coords,
-                    self.time_dim: np.arange(time_steps), 
+                    self.time_dim: np.arange(time_steps),
                 }
             )
         else:
@@ -216,10 +214,15 @@ class Model(CanRegisterVariable):
                     k: (
                         ('x', 'y', self.time_dim),
                         np.full((1, 1, time_steps), np.nan)
-                    ) 
+                    )
                     for k in match_dims
                 },
-                coords={'x': [1.0], 'y': [1.0], self.time_dim: np.arange(time_steps)}
+                coords={
+                    'x': [1.0],
+                    'y': [1.0],
+                    self.time_dim:
+                    np.arange(time_steps)
+                }
             )
 
         for var_name in match_dims + add_data:
@@ -240,7 +243,7 @@ class Model(CanRegisterVariable):
                 )
 
                 ds[var_name].loc[{self.time_dim: 0}] = xr.full_like(
-                    ds[var_name].isel({self.time_dim: 0}), 
+                    ds[var_name].isel({self.time_dim: 0}),
                     initial_state_values[var_name],
                     dtype=type(initial_state_values[var_name]),
                 )
@@ -262,7 +265,7 @@ class Model(CanRegisterVariable):
 
         Args:
             dataset: The dataset to broadcast to.
-            static_variable_values: A dictionary of static variable names and 
+            static_variable_values: A dictionary of static variable names and
                 values (either float/bool/int or a xarray.DataArray).
 
         Returns:
@@ -293,7 +296,7 @@ class Model(CanRegisterVariable):
             )
             dataset[var.name].attrs = attrs
         return dataset
-    
+
     def _init_dynamic_arrays(
             self,
             dataset: xr.Dataset,
@@ -301,16 +304,16 @@ class Model(CanRegisterVariable):
         """Initialize dynamic variables."""
         k = self.state_variables_names[0]
         for dynamic_variable in self.dynamic_variables_names:
-                dataset[dynamic_variable] = xr.DataArray(
-                    np.full(
-                            tuple(
-                                dataset[k].sizes[dim] 
-                                for dim in dataset[k].dims),
-                            np.nan
-                        ),
-                        dims=dataset[k].dims
-                )
-        
+            dataset[dynamic_variable] = xr.DataArray(
+                np.full(
+                        tuple(
+                            dataset[k].sizes[dim]
+                            for dim in dataset[k].dims),
+                        np.nan
+                    ),
+                dims=dataset[k].dims
+            )
+
         for var in self.dynamic_variables:
             if var.name in dataset.data_vars.keys():
                 dataset[var.name].attrs = {
@@ -318,7 +321,7 @@ class Model(CanRegisterVariable):
                     'units': var.units,
                     'description': var.description,
                 }
-                
+
         return dataset
 
     @classmethod
@@ -329,7 +332,7 @@ class Model(CanRegisterVariable):
     @classmethod
     def get_state_variables(cls) -> list[Variable]:
         """Returns a list of state variable names and types.
-        This can be used to inform the 'initial_state_values' argument 
+        This can be used to inform the 'initial_state_values' argument
         pre-initialization.
         """
         return [var for var in cls._variables if var.use == 'state']
@@ -410,7 +413,7 @@ class Model(CanRegisterVariable):
             return self.dynamic_variables_names + self.state_variables_names
         else:
             return self.state_variables_names
- 
+
     @property
     def _non_updateable_static_variables(self) -> list[str]:
         """Return a list of static variable names that are non-updateable (2-D)."""
@@ -419,26 +422,27 @@ class Model(CanRegisterVariable):
                 var.name for var in self.static_variables if var.name not in self.updateable_static_variables
             ]
         return self.__non_updateable_static_variables
-    
-    def _iter_computations(self):
-            inputs = map(
-                lambda x: utils._prep_inputs(
-                    self.timestep_ds,
-                    x),
-                self.computation_order
-            )
-            dims = self.timestep_ds.dims 
 
-            for name, func, arrays in inputs:
-                array: np.ndarray = func(*arrays)
-                self.timestep_ds[name] = (dims, array)
+    def _iter_computations(self):
+        """Iterate over the computation order."""
+        inputs = map(
+            lambda x: utils._prep_inputs(
+                self.timestep_ds,
+                x),
+            self.computation_order
+        )
+        dims = self.timestep_ds.dims
+
+        for name, func, arrays in inputs:
+            array: np.ndarray = func(*arrays)
+            self.timestep_ds[name] = (dims, array)
 
     def increment_timestep(
         self,
         update_state_values: Optional[dict[str, xr.DataArray]] = None,
     ) -> xr.Dataset:
         """Run the process."""
-        self.timestep +=1
+        self.timestep += 1
 
         if update_state_values is None:
             update_state_values = {}
@@ -461,15 +465,21 @@ class Model(CanRegisterVariable):
         self._iter_computations()
 
         if not self.track_dynamic_variables:
-            self.timestep_ds = self.timestep_ds.drop_vars(self.dynamic_variables_names)
-        self.timestep_ds = self.timestep_ds.drop_vars(self._non_updateable_static_variables)
+            self.timestep_ds = self.timestep_ds.drop_vars(
+                self.dynamic_variables_names
+            )
+        self.timestep_ds = self.timestep_ds.drop_vars(
+            self._non_updateable_static_variables
+        )
 
         self.dataset[self.temporal_variables].loc[
             {self.time_dim: self.timestep}
         ] = self.timestep_ds
 
 
-def register_variable(models: CanRegisterVariable | Iterable[CanRegisterVariable]):
+def register_variable(
+    models: CanRegisterVariable | Iterable[CanRegisterVariable]
+):
     """A decorator to register a variable with a model."""
     if not isinstance(models, Iterable):
         models = [models]
