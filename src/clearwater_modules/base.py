@@ -62,7 +62,7 @@ class Model(CanRegisterVariable):
         self.initial_state_values = initial_state_values
         self.static_variable_values = static_variable_values
         self.hotstart_dataset = hotstart_dataset
-        self.track_dynamic_variables = track_dynamic_variables
+        self._track_dynamic_variables = track_dynamic_variables
         self.timestep = timestep
         self.time_steps = time_steps + 1  # xarray indexing
         self.temporal_variables: list = []
@@ -134,7 +134,7 @@ class Model(CanRegisterVariable):
                 initial_state_values[static] = static_variable_values.pop(static)
 
         # create list of temporal variables
-        if self.track_dynamic_variables:
+        if self._track_dynamic_variables:
             self.temporal_variables = self.state_variables_names + \
                     self.updateable_static_variables + self.dynamic_variables_names
         else:
@@ -151,7 +151,7 @@ class Model(CanRegisterVariable):
             static_variable_values,
             time_steps,
         )
-        if self.track_dynamic_variables:
+        if self._track_dynamic_variables:
             dataset: xr.Dataset = self._init_dynamic_arrays(
                 dataset,
             )
@@ -195,33 +195,32 @@ class Model(CanRegisterVariable):
             ds = xr.Dataset(
                 data_vars={
                     k: (
-                        data_arrays[k].dims + (self.time_dim,),
+                        (self.time_dim,) + data_arrays[k].dims,
                         np.full(
-                            tuple(data_arrays[k].sizes[dim] for dim in data_arrays[k].dims) + (time_steps,),
+                            (time_steps,) + tuple(data_arrays[k].sizes[dim] for dim in data_arrays[k].dims),
                             np.nan
                         )
                     )
                     for k in data_arrays.keys()
                 },
                 coords={
-                    **coords,
                     self.time_dim: np.arange(time_steps),
+                    **coords,
                 }
             )
         else:
             ds = xr.Dataset(
                 data_vars={
                     k: (
-                        ('x', 'y', self.time_dim),
-                        np.full((1, 1, time_steps), np.nan)
+                        (self.time_dim, 'x', 'y'),
+                        np.full((time_steps, 1, 1), np.nan)
                     )
                     for k in match_dims
                 },
                 coords={
+                    self.time_dim: np.arange(time_steps),
                     'x': [1.0],
                     'y': [1.0],
-                    self.time_dim:
-                    np.arange(time_steps)
                 }
             )
 
@@ -409,7 +408,7 @@ class Model(CanRegisterVariable):
     @property
     def _update_vars(self) -> list[str]:
         """Return a list of variables to update."""
-        if self.track_dynamic_variables:
+        if self._track_dynamic_variables:
             return self.dynamic_variables_names + self.state_variables_names
         else:
             return self.state_variables_names
@@ -422,6 +421,22 @@ class Model(CanRegisterVariable):
                 var.name for var in self.static_variables if var.name not in self.updateable_static_variables
             ]
         return self.__non_updateable_static_variables
+
+    @property
+    def track_dynamic_variables(self) -> bool:
+        """Track dynamic variables property."""
+        return self._track_dynamic_variables
+    
+    @track_dynamic_variables.setter
+    def track_dynamic_variables(self, value: bool) -> bool:
+        if self._track_dynamic_variables == value:
+            pass
+        elif value:
+            self._track_dynamic_variables = value
+            self.dataset = self._init_dynamic_arrays(
+                self.dataset,
+            )
+            self.temporal_variables = self.temporal_variables + self.dynamic_variables_names
 
     def _iter_computations(self):
         """Iterate over the computation order."""
@@ -464,7 +479,7 @@ class Model(CanRegisterVariable):
         # compute the dynamic variables in order
         self._iter_computations()
 
-        if not self.track_dynamic_variables:
+        if not self._track_dynamic_variables:
             self.timestep_ds = self.timestep_ds.drop_vars(
                 self.dynamic_variables_names
             )
@@ -475,6 +490,8 @@ class Model(CanRegisterVariable):
         self.dataset[self.temporal_variables].loc[
             {self.time_dim: self.timestep}
         ] = self.timestep_ds
+    
+        return self.dataset
 
 
 def register_variable(

@@ -20,6 +20,10 @@ def initial_tsm_state() -> dict[str, float]:
         'volume': 1.0,
     }
 
+@pytest.fixture(scope='module')
+def time_steps() -> int:
+    return 1
+
 
 @pytest.fixture(scope='function')
 def default_meteo_params() -> Meteorological:
@@ -75,6 +79,7 @@ def default_temp_params() -> Temperature:
 
 
 def get_energy_budget_instance(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -82,6 +87,7 @@ def get_energy_budget_instance(
 ) -> EnergyBudget:
     """Return an instance of the TSM class."""
     return EnergyBudget(
+        time_steps=time_steps,
         initial_state_values=initial_tsm_state,
         meteo_parameters=default_meteo_params,
         temp_parameters=default_temp_params,
@@ -97,6 +103,7 @@ def tolerance() -> float:
 
 
 def test_defaults(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -107,6 +114,7 @@ def test_defaults(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -121,6 +129,7 @@ def test_defaults(
 
 
 def test_changed_water_temp_c(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -133,6 +142,7 @@ def test_changed_water_temp_c(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -147,6 +157,7 @@ def test_changed_water_temp_c(
 
 
 def test_changed_surface_area(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -159,6 +170,7 @@ def test_changed_surface_area(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_state_dict,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -173,6 +185,7 @@ def test_changed_surface_area(
 
 
 def test_changed_volume(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -185,6 +198,7 @@ def test_changed_volume(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_state_dict,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -199,6 +213,7 @@ def test_changed_volume(
 
 
 def test_changed_air_temp_c(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -210,6 +225,7 @@ def test_changed_air_temp_c(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -224,6 +240,7 @@ def test_changed_air_temp_c(
 
 
 def test_changed_sed_temp_c(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -235,6 +252,7 @@ def test_changed_sed_temp_c(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -249,6 +267,7 @@ def test_changed_sed_temp_c(
 
 
 def test_changed_q_solar(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -260,6 +279,7 @@ def test_changed_q_solar(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -274,6 +294,7 @@ def test_changed_q_solar(
 
 
 def test_changed_wind_kh_kw(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -285,6 +306,7 @@ def test_changed_wind_kh_kw(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -299,6 +321,7 @@ def test_changed_wind_kh_kw(
 
 
 def test_changed_eair_mb(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -310,6 +333,7 @@ def test_changed_eair_mb(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -324,6 +348,7 @@ def test_changed_eair_mb(
 
 
 def test_changed_pressure_mb(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -335,6 +360,7 @@ def test_changed_pressure_mb(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -349,6 +375,7 @@ def test_changed_pressure_mb(
 
 
 def test_changed_cloudiness(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -360,6 +387,7 @@ def test_changed_cloudiness(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -374,6 +402,7 @@ def test_changed_cloudiness(
 
 
 def test_changed_wind_a(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -385,6 +414,7 @@ def test_changed_wind_a(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -399,6 +429,7 @@ def test_changed_wind_a(
 
 
 def test_changed_wind_b(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -410,6 +441,7 @@ def test_changed_wind_b(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -424,6 +456,7 @@ def test_changed_wind_b(
 
 
 def test_changed_wind_c(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -435,6 +468,7 @@ def test_changed_wind_c(
 
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
@@ -449,6 +483,7 @@ def test_changed_wind_c(
 
 
 def test_use_sed_temp(
+    time_steps,
     initial_tsm_state,
     default_meteo_params,
     default_temp_params,
@@ -457,6 +492,7 @@ def test_use_sed_temp(
     """test the model with default parameters."""
     # instantiate the model
     tsm: EnergyBudget = get_energy_budget_instance(
+        time_steps=time_steps,
         initial_tsm_state=initial_tsm_state,
         default_meteo_params=default_meteo_params,
         default_temp_params=default_temp_params,
