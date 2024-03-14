@@ -217,14 +217,20 @@ def test_variable_attributes(model: Model) -> None:
         assert 'description' in model.dataset[var].attrs
 
 
-def test_model_hotstart(model: Model) -> None:
+def test_model_hotstart(
+    model: Model,
+    time_steps: int,
+) -> None:
     """Test if the hotstart works."""
     ds = model.increment_timestep()
     ds.attrs['hotstart'] = True
+    ds = ds.isel(time_step=slice(0,2))
 
     hotstart_model = MockModel(
+        time_steps=time_steps,
         hotstart_dataset=ds,
     )
+
     assert isinstance(hotstart_model, Model)
     assert len(hotstart_model.dataset[model.time_dim]) == 2
     assert model.dataset.attrs.get('hotstart') == True
