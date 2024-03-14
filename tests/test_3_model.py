@@ -232,7 +232,8 @@ def test_model_hotstart(
     )
 
     assert isinstance(hotstart_model, Model)
-    assert len(hotstart_model.dataset[model.time_dim]) == 2
+    assert len(hotstart_model.dataset[model.time_dim]) == time_steps
+    assert hotstart_model.dataset.isel(time_step=0) == ds.isel(time_step=1)
     assert model.dataset.attrs.get('hotstart') == True
 
 
