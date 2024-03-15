@@ -21,6 +21,16 @@ Version 1.0
 Initial Version: June 5, 2021
 """
 
+from clearwater_modules.nsm1 import algae
+from clearwater_modules.nsm1 import alkalinity
+from clearwater_modules.nsm1 import balgae
+from clearwater_modules.nsm1 import carbon
+from clearwater_modules.nsm1 import CBOD
+from clearwater_modules.nsm1 import DOX
+from clearwater_modules.nsm1 import nitrogen
+from clearwater_modules.nsm1 import POM
+
+
 class NSM1:
     def __init__(self):
         pass

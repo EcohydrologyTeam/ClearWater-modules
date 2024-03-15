@@ -1,44 +1,39 @@
-import numpy as np
+"""
+File contains process to calculate new carbon concentration and associated dependent variables
+"""
+
 import numba
 import xarray as xr
-from clearwater_modules.shared.processes import (
-    arrhenius_correction
-)
-from clearwater_modules.nsm1.carbon import dynamic_variables
-from clearwater_modules.nsm1.carbon import static_variables
-from clearwater_modules.nsm1 import static_variables_global
-# from clearwater_modules.nsm1 import dynamic_variables_global
-from clearwater_modules.nsm1 import state_variables
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 
 @numba.njit
-def kpoc_T(
-    water_temp_c: xr.DataArray,
+def kpoc_tc(
+    TwaterC: xr.DataArray,
     kpoc_20: xr.DataArray,
-    theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted POC hydrolysis rate (/d)
 
     Args:
-        water_temp_c: Water temperature in Celsius
+        TwaterC: Water temperature in Celsius
         kpoc_20: POC hydrolysis rate at 20 degrees Celsius (1/d)
-        theta: Arrhenius coefficient for kpoc
     """
-    return arrhenius_correction(water_temp_c, kpoc_20, theta)
+    return arrhenius_correction(TwaterC, kpoc_20, 1.047)
 
 
 @numba.njit
 def POC_hydrolysis(
-    kpoc_T: xr.DataArray,
+    kpoc_tc: xr.DataArray,
     POC: xr.DataArray,
 ) -> xr.DataArray:
     """Calculate the POC concentration change due to hydrolysis for a given timestep
 
     Args:
-        kpoc_T: POC hydrolysis rate at given water temperature (1/d)
+        kpoc_tc: POC hydrolysis rate at given water temperature (1/d)
         POC: POC concentration (mg/L)
     """
-    return kpoc_T * POC
+    return kpoc_tc * POC
 
 
 @numba.njit
@@ -59,7 +54,7 @@ def POC_settling(
 
 def POC_algal_mortality(
     f_pocp: xr.DataArray,
-    kdp_T: xr.DataArray,
+    kdp_tc: xr.DataArray,
     rca: xr.DataArray,
     Ap: xr.DataArray,
     use_Algae: xr.DataArray
@@ -68,12 +63,12 @@ def POC_algal_mortality(
 
     Args:
         f_pocp: Fraction of algal mortality into POC
-        kdp_T: Algal death rate at water temperature (1/d)
+        kdp_tc: Algal death rate at water temperature (1/d)
         rca: Algal C to chlorophyll-a ratio (mg-C/ugChla)
         Ap: Algae concentration (mg/L)
         use_Algae: Option for considering algae in POC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Algae == True, f_pocp * kdp_T * rca * Ap, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, f_pocp * kdp_tc * rca * Ap, 0)
 
     return da
 
@@ -81,7 +76,7 @@ def POC_algal_mortality(
 def POC_benthic_algae_mortality(
     depth: xr.DataArray,
     F_pocb: xr.DataArray,
-    kdb_T: xr.DataArray,
+    kdb_tc: xr.DataArray,
     rcb: xr.DataArray,
     Ab: xr.DataArray,
     Fb: xr.DataArray,
@@ -93,14 +88,14 @@ def POC_benthic_algae_mortality(
     Args: 
         depth: Water depth in cell (m)
         F_pocb: Fraction of benthic algal mortality into POC
-        kdb_T: Benthic algae death rate (1/d)
+        kdb_tc: Benthic algae death rate (1/d)
         rcb: Benthic algae C to biomass weight ratio (mg-C/mg-D)
         Ab: Benthic algae concentration (mg/L)
         Fb: Fraction of bottom area available for benthic algae growth
         Fw: Fraction of benthic algae mortality into water column
         use_Balgae: Option for considering benthic algae in POC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * F_pocb * kdb_T * rcb * Ab * Fb * Fw, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * F_pocb * kdb_tc * rcb * Ab * Fb * Fw, 0)
 
     return da
 
@@ -123,7 +118,7 @@ def dPOCdt(
 
 
 @numba.njit
-def POC_new(
+def POC(
     POC: xr.DataArray,
     dPOCdt: xr.DataArray,
     timestep: xr.DataArray
@@ -140,7 +135,7 @@ def POC_new(
 
 def DOC_algal_mortality(
         f_pocp: xr.DataArray,
-        kdp_T: xr.DataArray,
+        kdp_tc: xr.DataArray,
         rca: xr.DataArray,
         Ap: xr.DataArray,
         use_Algae: xr.DataArray
@@ -149,12 +144,12 @@ def DOC_algal_mortality(
 
     Args:
         f_pocp: Fraction of algal mortality into POC 
-        kdp_T: Algal death rate at water temperature (1/d) 
+        kdp_tc: Algal death rate at water temperature (1/d) 
         rca: Algal C to chlorophyll-a ratio (mg-C/ug-Chla)
         Ap: Algae concentration (mg/L)
         use_Algae: Option for considering algae in DOC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Algae == True, (1 - f_pocp) * kdp_T * rca * Ap, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, (1 - f_pocp) * kdp_tc * rca * Ap, 0)
 
     return da
 
@@ -162,7 +157,7 @@ def DOC_algal_mortality(
 def DOC_benthic_algae_mortality(
     depth: xr.DataArray,
     F_pocb: xr.DataArray,
-    kdb_T: xr.DataArray,
+    kdb_tc: xr.DataArray,
     rcb: xr.DataArray,
     Ab: xr.DataArray,
     Fb: xr.DataArray,
@@ -174,38 +169,36 @@ def DOC_benthic_algae_mortality(
     Args: 
         depth: Water depth in cell (m)
         F_pocb: Fraction of benthic algal mortality into POC
-        kdb_T: Benthic algae death rate (1/d)
+        kdb_tc: Benthic algae death rate (1/d)
         rcb: Benthic algae C to biomass weight ratio (mg-C/mg-D)
         Ab: Benthic algae concentration (mg/L)
         Fb: Fraction of bottom area available for benthic algae growth
         Fw: Fraction of benthic algae mortality into water column
         use_Balgae: Option for considering benthic algae in DOC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * (1 - F_pocb) * kdb_T * rcb * Ab * Fb * Fw, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * (1 - F_pocb) * kdb_tc * rcb * Ab * Fb * Fw, 0)
 
     return da
 
 
 @numba.njit
-def kdoc_T(
-    water_temp_c: xr.DataArray,
+def kdoc_tc(
+    TwaterC: xr.DataArray,
     kdoc_20: xr.DataArray,
-    theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted DOC oxidation rate (1/d)
 
     Args:
-        water_temp_c: Water temperature in Celsius
+        TwaterC: Water temperature in Celsius
         kdoc_20: DOC oxidation rate at 20 degrees Celsius (1/d)
-        theta: Arrhenius coefficient
     """
-    return arrhenius_correction(water_temp_c, kdoc_20, theta)
+    return arrhenius_correction(TwaterC, kdoc_20, 1.047)
 
 
 def DOC_oxidation(
     DOX: xr.DataArray,
     KsOxmc: xr.DataArray,
-    kdoc_T: xr.DataArray,
+    kdoc_tc: xr.DataArray,
     DOC: xr.DataArray,
     use_DOX: xr.DataArray
 ) -> xr.DataArray:
@@ -214,11 +207,11 @@ def DOC_oxidation(
     Args:
         DOX: Concentration of dissolved oxygen (mg/L)
         KsOxmc: Half saturation oxygen attenuation constant for DOC oxidation rate (mg-O2/L)
-        kdoc_T: DOC oxidation rate (1/d)
+        kdoc_tc: DOC oxidation rate (1/d)
         DOC: Concentration of dissolved organic carbon (mg/L)
         use_DOX: Option for considering dissolved oxygen concentration in DOC oxidation calculation (boolean)
     """
-    da: xr.DataArray = xr.where(use_DOX == True, DOX / (KsOxmc + DOX) * kdoc_T * DOC, kdoc_T * DOC)
+    da: xr.DataArray = xr.where(use_DOX == True, DOX / (KsOxmc + DOX) * kdoc_tc * DOC, kdoc_tc * DOC)
 
     return da
 
@@ -244,7 +237,7 @@ def dDOCdt(
 
 
 @numba.njit
-def DOC_new(
+def DOC(
     DOC: xr.DataArray,
     dDOCdt: xr.DataArray,
     timestep: xr.DataArray
@@ -261,35 +254,18 @@ def DOC_new(
 
 @numba.njit
 def Henrys_k(
-    water_temp_c: xr.DataArray
+    TwaterC: xr.DataArray
 ) -> xr.DataArray:
     """Calculates the temperature dependent Henry's coefficient (mol/L/atm)
 
     Args:
-        water_temp_c: Water temperature in celsius
+        TwaterC: Water temperature in celsius
     """
-    return 10**(2385.73 / (water_temp_c + 273.15) + .0152642 * (water_temp_c + 273.15) - 14.0184)
-
-
-@numba.njit
-def kac_T(
-    water_temp_c: xr.DataArray,
-    kac_20: xr.DataArray,
-    theta: xr.DataArray
-) -> xr.DataArray:
-    """Calculate the temperature adjusted CO2 reaeration rate (1/d)
-
-    Args:
-        water_temp_c: Water temperature in Celsius
-        kac_20: CO2 reaeration rate at 20 degrees Celsius (1/d)
-        theta: Arrhenius coefficient
-    """
-    return arrhenius_correction(water_temp_c, kac_20, theta)
-
+    return 10**(2385.73 / (TwaterC + 273.15) + .0152642 * (TwaterC + 273.15) - 14.0184)
 
 @numba.njit
 def Atmospheric_CO2_reaeration(
-    kac_T: xr.DataArray,
+    ka_tc: xr.DataArray,
     K_H: xr.DataArray,
     pCO2: xr.DataArray,
     FCO2: xr.DataArray,
@@ -298,13 +274,13 @@ def Atmospheric_CO2_reaeration(
     """Calculates the atmospheric input of CO2 into the waterbody
 
     Args:
-        kac_T: CO2 reaeration rate adjusted for temperature (1/d)
+        ka_tc: CO2 reaeration rate adjusted for temperature, same as O2 reaeration rate (1/d)
         K_H: Henry's Law constant (mol/L/atm)
         pCO2: Partial pressure of CO2 in the atmosphere (ppm)
         FCO2: Fraction of CO2 in total inorganic carbon
         DIC: Dissolved inorganic carbon concentration (mg/L)
     """
-    return 12 * kac_T * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
+    return 12 * ka_tc * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
 
 
 def DIC_algal_respiration(
@@ -387,7 +363,7 @@ def DIC_CBOD_oxidation(
     DOX: xr.DataArray,
     CBOD: xr.DataArray,
     roc: xr.DataArray,
-    kbod_T: xr.DataArray, #imported from CBOD module
+    kbod_tc: xr.DataArray, #imported from CBOD module
     KsOxbod: xr.DataArray, #imported from CBOD module
     use_DOX: xr.DataArray
 ) -> xr.DataArray:
@@ -397,12 +373,12 @@ def DIC_CBOD_oxidation(
         DOX: Dissolved oxygen concentration (mg/L)
         CBOD: Carbonaceous biochemical oxygen demand concentration (mg/L) 
         roc: Ratio of O2 to carbon for carbon oxidation (mg-O2/mg-C)
-        kbod_T: CBOD oxidation rate (1/d)
+        kbod_tc: CBOD oxidation rate (1/d)
         KsOxbod: Half saturation oxygen attenuation constant for CBOD oxidation (mg-O2/L)
         use_DOX: Option to consider dissolved oxygen in CBOD oxidation calculation (boolean)
     """
     
-    da: xr.DataArray = xr.where(use_DOX == True, (1 / roc) * (DOX / (KsOxbod + DOX)) * kbod_T * CBOD, CBOD * kbod_T)
+    da: xr.DataArray = xr.where(use_DOX == True, (1 / roc) * (DOX / (KsOxbod + DOX)) * kbod_tc * CBOD, CBOD * kbod_tc)
 
     return da
 
@@ -418,7 +394,7 @@ def DIC_sed_release(
     """Computes the sediment release of DIC
 
     Args:
-        SOD_T: Sediment oxygen demand adjusted for water temperature (mg-O2/L/d)
+        SOD_tc: Sediment oxygen demand adjusted for water temperature (mg-O2/L/d)
         roc: Ratio of O2 to carbon for carbon oxidation (mg-O2/mg-C)
         depth: Water depth (m)
         JDIC: Sediment-water flux of dissolved inorganic carbon (g-C/m2/d)
@@ -454,7 +430,7 @@ def dDICdt(
 
 
 @numba.njit
-def DIC_new(
+def DIC(
     DIC: xr.DataArray,
     dDICdt: xr.DataArray,
     timestep: xr.DataArray

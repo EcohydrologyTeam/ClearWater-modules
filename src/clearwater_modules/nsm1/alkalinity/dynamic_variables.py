@@ -1,42 +1,16 @@
-# TODO: figure out imports
+"""
+File contains dynamic variables related to the alkalinity module
+"""
 
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
-from clearwater_modules.nsm1.carbon.model import CarbonBudget
-from clearwater_modules.nsm1.alkalinity import processes
+from clearwater_modules.nsm1.model import NutrientBudget
+import clearwater_modules.nsm1.alkalinity.processes as processes
 
 
-@base.register_variable(models=CarbonBudget)
+@base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
-
-
-Variable(
-    name='depth',
-    long_name='Average water depth in cell',
-    units='m',
-    description='Average water depth in cell computed by dividing volume by surface area',
-    use='dynamic',
-    process=shared_processes.compute_depth
-)
-
-Variable(
-    name='knit_T',
-    long_name='Nitrification rate corrected for temperature',
-    units='1/d',
-    description='Nitrification rate corrected for temperature',
-    use='dynamic',
-    process=processes.knit_T
-)
-
-Variable(
-    name='kdnit_T',
-    long_name='Denitrification rate corrected for temperature',
-    units='1/d',
-    description='Denitrification rate corrected for temperature',
-    use='dynamic',
-    process=processes.kdnit_T
-)
 
 Variable(
     name='Alk_denitrification',
@@ -100,4 +74,6 @@ Variable(
     use='dynamic',
     process=processes.dAlkdt
 )
+
+
 

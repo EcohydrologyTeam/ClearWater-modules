@@ -1,22 +1,22 @@
 """
-File includes static variables only used in Pathogen module
+File contains static variables related to the Pathogens module
 """
 
 import clearwater_modules.base as base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.pathogens.pathogen_processes as pathogen_processes
 
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
-# TODO: verify all these values
+
+
 
 Variable(
-    name='kdx',
-    long_name='Pathogen death rate',
+    name='kdx_20',
+    long_name='Pathogen death rate at 20C',
     units='1/d',
-    description='Pathogen death rate',
+    description='Pathogen death rate at 20C',
     use='static',
 )
 

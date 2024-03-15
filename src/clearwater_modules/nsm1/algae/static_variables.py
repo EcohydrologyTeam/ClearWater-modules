@@ -1,22 +1,18 @@
 """
-File includes static variables only used in Algae module
+File contains static variables related to the Algae module
 """
 
 import clearwater_modules.base as base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.algae.algae_processes as algae_processes
 
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
-# TODO: verify all these values
-
-# Only Algae Variables
 
 
 Variable(
-    name='Awd',
+    name='AWd',
     long_name='Algal Dry Weight',
     units='mg',
     description='Algal Dry Weight',
@@ -121,17 +117,58 @@ Variable(
 )
 
 Variable(
-    name='growth_rate_option',
-    long_name='Growth Rate Option',
-    units='1/d',
-    description='Algal growth rate option 1) multiplicative, 2) Limiting Nutrient, 3) Harmonic Mean Option',
-    use='static',
-)
-
-Variable(
     name='light_limitation_option',
     long_name='Light Limitation Option',
     units='1/d',
     description='Algal light limitation 1) half-saturation, 2) Smith model, 3) Steele model',
+    use='static',
+)
+
+
+Variable(
+    name='lambda0',
+    long_name='lambda0',
+    units='1/m',
+    description='background portion',
+    use='static',
+)
+
+Variable(
+    name='lambda1',
+    long_name='lambda1',
+    units='1/m/(ug Chla/L)',
+    description='linear self shading',
+    use='static',
+)
+
+Variable(
+    name='lambda2',
+    long_name='lambda2',
+    units='unitless',
+    description='nonlinear',
+    use='static',
+)
+
+Variable(
+    name='lambdas',
+    long_name='lambdas',
+    units='L/mg/m',
+    description='ISS portion',
+    use='static',
+)
+
+Variable(
+    name='lambdam',
+    long_name='lambdam',
+    units='L/mg/m',
+    description='POM portion',
+    use='static',
+)
+
+Variable(
+    name='Fr_PAR',
+    long_name='fraction PAR',
+    units='unitless',
+    description='fraction of solar radiation within the PAR of the spectrum',
     use='static',
 )
