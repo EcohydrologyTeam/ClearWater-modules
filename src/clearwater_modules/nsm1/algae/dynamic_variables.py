@@ -1,17 +1,16 @@
 """
-File includes dynamic variables computed in Algae module. Dynamic variables may be accessed by other modules.
+File contains dynamic variables related to the Algae module
 """
 
 import clearwater_modules.shared.processes as shared_processes
 from clearwater_modules import base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.algae.algae_processes as algae_processes
+import clearwater_modules.nsm1.algae.processes as processes
 
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
-
 
 Variable(
     name='rna',
@@ -19,7 +18,7 @@ Variable(
     units='mg-N/ug Chla',
     description='Algal N:Chla Ratio',
     use='dynamic',
-    process=algae_processes.rna
+    process=processes.rna
 )
 
 Variable(
@@ -28,7 +27,7 @@ Variable(
     units='mg-P/ug Chla',
     description='Algal P:Chla Ratio',
     use='dynamic',
-    process=algae_processes.rpa
+    process=processes.rpa
 )
 
 Variable(
@@ -37,7 +36,7 @@ Variable(
     units='mg-C/ug Chla',
     description='Algal C:Chla Ratio',
     use='dynamic',
-    process=algae_processes.rca
+    process=processes.rca
 )
 
 Variable(
@@ -46,7 +45,7 @@ Variable(
     units='mg-D/ug Chla',
     description='Algal D:Chla Ratio',
     use='dynamic',
-    process=algae_processes.rda
+    process=processes.rda
 )
 
 Variable(
@@ -55,7 +54,7 @@ Variable(
     units='1/d',
     description='Max Algae Growth with Temperature Correction',
     use='dynamic',
-    process=algae_processes.mu_max_tc,
+    process=processes.mu_max_tc,
 )
 
 Variable(
@@ -64,7 +63,7 @@ Variable(
     units='1/d',
     description='Algal Respiration Rate with Temperature Correction',
     use='dynamic',
-    process=algae_processes.krp_tc,
+    process=processes.krp_tc,
 )
 
 Variable(
@@ -73,7 +72,7 @@ Variable(
     units='1/d',
     description='Algal Mortality Rate with Temperature Correction',
     use='dynamic',
-    process=algae_processes.kdp_tc,
+    process=processes.kdp_tc,
 )
 
 Variable(
@@ -82,7 +81,7 @@ Variable(
     units='unitless',
     description='Algal Light Limitation',
     use='dynamic',
-    process=algae_processes.FL,
+    process=processes.FL,
 )
 
 Variable(
@@ -91,7 +90,7 @@ Variable(
     units='unitless',
     description='Algal Nitrogen Limitation',
     use='dynamic',
-    process=algae_processes.FN,
+    process=processes.FN,
 )
 
 Variable(
@@ -100,7 +99,7 @@ Variable(
     units='unitless',
     description='Algal Phosphorus Limitation',
     use='dynamic',
-    process=algae_processes.FP,
+    process=processes.FP,
 )
 
 Variable(
@@ -109,7 +108,7 @@ Variable(
     units='1/d',
     description='Algal Growth Rate',
     use='dynamic',
-    process=algae_processes.mu,
+    process=processes.mu,
 )
 
 Variable(
@@ -118,7 +117,7 @@ Variable(
     units='ug-Chala/L/d',
     description='Algal Growth',
     use='dynamic',
-    process=algae_processes.ApGrowth,
+    process=processes.ApGrowth,
 )
 
 Variable(
@@ -127,7 +126,7 @@ Variable(
     units='ug-Chala/L/d',
     description='Algal Respiration',
     use='dynamic',
-    process=algae_processes.ApRespiration,
+    process=processes.ApRespiration,
 )
 
 Variable(
@@ -136,7 +135,7 @@ Variable(
     units='ug-Chala/L/d',
     description='Algal Death',
     use='dynamic',
-    process=algae_processes.ApDeath,
+    process=processes.ApDeath,
 )
 
 Variable(
@@ -145,7 +144,7 @@ Variable(
     units='ug-Chala/L/d',
     description='Algal Settling',
     use='dynamic',
-    process=algae_processes.ApSettling,
+    process=processes.ApSettling,
 )
 
 Variable(
@@ -154,14 +153,14 @@ Variable(
     units='ug-Chala/L/d',
     description='Algal Biomass Concentration Change',
     use='dynamic',
-    process=algae_processes.dApdt,
+    process=processes.dApdt,
 )
 
 Variable(
-    name='Ap_new',
+    name='Ap',
     long_name='New algal biomass concentration',
     units='ug-Chala/L/d',
     description='New algal biomass concentration',
     use='dynamic',
-    process=algae_processes.Ap_new,
+    process=processes.Ap,
 )

@@ -1,12 +1,10 @@
 """
 File contains process to calculate new algae biomass concentration and associated dependent variables
 """
-
-# TODO calculate lambda?
-import math
-from clearwater_modules.shared.processes import arrhenius_correction
 import numba
 import xarray as xr
+from clearwater_modules.shared.processes import arrhenius_correction
+import math
 
 
 @numba.njit
@@ -132,36 +130,17 @@ def FL(
     """
 
     KEXT = L * depth
-    sqrt1 = 0.0
-    sqrt2 = 0.0
 
-    FL0 = xr.where(Ap <= 0.0 | KEXT <= 0.0 | PAR <= 0.0, 0, -1) # After sunset or if there is no algae present
-    FL1= xr.where(FL0<0 | light_limitation_option>0 | light_limitation_option <2, (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT))),-1) # Half-saturation formulation
-    FL2= xr.where(FL0<0 | light_limitation_option>1 | light_limitation_option <3, (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT)))) # Half-saturation formulation
-
-    elif light_limitation_option == 2:
-        # Smith's model
-        if abs(KL) < 1.0E-10:
-            FL = 1.0
-        else:
-            sqrt1 = (1.0 + (PAR / KL)**2.0)**0.5
-            sqrt2 = (1.0 + (PAR * math.exp(-KEXT) / KL)**2.0)**0.5
-            FL = (1.0 / KEXT) * math.log((PAR / KL + sqrt1) /
-                                         (PAR * math.exp(-KEXT) / KL + sqrt2))
-    elif light_limitation_option == 3:
-        # Steele's model
-        if abs(KL) < 1.0E-10:
-            FL = 0.0
-        else:
-            FL = (2.718/KEXT) * (math.exp(-PAR/KL *
-                                          math.exp(-KEXT)) - math.exp(-PAR/KL))
-
-    # Limit factor to between 0.0 and 1.0.
-    # This should never happen, but it would be a mess if it did.
-    if FL > 1.0:
-        FL = 1.0
-    if FL < 0.0:
-        FL = 0.0
+    FL = xr.where(Ap <= 0.0 or KEXT <= 0.0 or PAR <= 0.0, 0, 
+         xr.where(light_limitation_option==1, (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT))),
+         xr.where(light_limitation_option==2,
+         xr.where(abs(KL)<0.0000000001, 1, (1.0 / KEXT) * math.log( (PAR / KL + ((1.0 + (PAR / KL)**2.0)**0.5)) / (PAR * math.exp(-KEXT) / KL + ((1.0 + (PAR * math.exp(-KEXT) / KL)**2.0)**0.5)))), 
+         xr.where(light_limitation_option==3,
+         xr.where(abs(KL)<0.0000000001,0,(2.718/KEXT) * (math.exp(-PAR/KL * math.exp(-KEXT)) - math.exp(-PAR/KL))), "NaN"))))
+          
+    
+    FL= xr.where(FL > 1.0, 1.0,
+        xr.where(FL<0.0, 0.0, FL))
 
     return FL
 
@@ -185,14 +164,9 @@ def FN(
         KsN: Michaelis-Menton half-saturation constant relating inorganic N to algal growth (mg-N/L)
     """
 
-    if use_NH4 or use_NO3:
-        FN = (NH4 + NO3) / (KsN + NH4 + NO3)
-        if math.isnan(FN):
-            FN = 0.0
-        if FN > 1.0:
-            FN = 1.0
-    else:
-        FN = 1.0
+    FN = xr.where(use_NH4 or use_NO3, (NH4 + NO3) / (KsN + NH4 + NO3), 1)
+    FN = xr.where(math.isnan(FN), 0,
+         xr.where(FN>1.0,1.0,FN))
 
     return FN
 
@@ -213,15 +187,9 @@ def FP(
         fdp: Fraction P dissolved (unitless)
     """
 
-    if use_TIP:
-
-        FP = fdp * TIP / (KsP + fdp * TIP)
-        if math.isnan(FP):
-            FP = 0.0
-        if FP > 1.0:
-            FP = 1.0
-    else:
-        FP = 1.0
+    FP = xr.where(use_TIP, fdp * TIP / (KsP + fdp * TIP), 1.0)
+    FP = xr.where(math.isnan(FP), 0, 
+         xr.where(FP>1.0, 1, FP))
 
     return FP
 
@@ -245,20 +213,10 @@ def mu(
         FN: Algae nitrogen limitation factor (unitless)
     """
 
-    if growth_rate_option == 1:
-        # (1) Multiplicative (day-1)
-        mu = mu_max_tc * FL * FP * FN
-    elif growth_rate_option == 2:
-        # (2) Limiting nutrient (day-1)
-        mu = mu_max_tc * FL * min(FP, FN)
-    elif growth_rate_option == 3:
-        # (3) Harmonic Mean Option (day-1)
-        if FN == 0.0 or FP == 0.0:
-            mu = 0.0
-        else:
-            mu = mu_max_tc * FL * 2.0 / (1.0 / FN + 1.0 / FP)
-
-    return mu
+    return xr.where(growth_rate_option == 1, mu_max_tc * FL * FP * FN,
+           xr.where(growth_rate_option == 2, mu_max_tc * FL * min(FP, FN),
+           xr.where(growth_rate_option == 3,
+           xr.where(FN==0.0 or FP==0.0, 0.0, mu_max_tc * FL * 2.0 / (1.0 / FN + 1.0 / FP)), "NaN")))
 
 
 @numba.njit
@@ -341,14 +299,16 @@ def dApdt(
 
 
 @numba.njit
-def Ap_new(
+def Ap(
     Ap: xr.DataArray,
     dApdt: xr.DataArray,
+    timestep: xr.DataArray
 ) -> xr.DataArray:
     """Calculate new algae concentration (ug-Chla/L)
 
     Args:
         Ap: Initial algae biomass concentration (ug-Chla/L)
         dApdt: Change in algae biomass concentration (ug-Chla/L/d)
+        timestep: current iteration timestep (d)
     """
-    return Ap + dApdt
+    return Ap + dApdt*timestep

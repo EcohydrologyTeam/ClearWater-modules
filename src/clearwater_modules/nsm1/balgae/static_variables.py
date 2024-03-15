@@ -1,18 +1,13 @@
 """
-File includes static variables only used in Algae module
+File contains static variables related to the Benthic Algae module
 """
 
 import clearwater_modules.base as base
 from clearwater_modules.nsm1.model import NutrientBudget
-import clearwater_modules.nsm1.algae.algae_processes as algae_processes
-
 
 @base.register_variable(models=NutrientBudget)
 class Variable(base.Variable):
     ...
-# TODO: verify all these values
-
-#Only Balgae Variables 
 
 Variable(
     name='Fw',
@@ -138,6 +133,22 @@ Variable(
     name='b_light_limitation_option',
     long_name='Benthic Algal light limitation rate options',
     units='unitless',
-    description='Benthic Algal light limitation rate with three options: 1) Half-saturation formulation, 2) Smiths Model, 3) Steeles Model'
+    description='Benthic Algal light limitation rate with three options: 1) Half-saturation formulation, 2) Smiths Model, 3) Steeles Model',
     use='static',
+)
+
+Variable(
+    name='Fb',
+    long_name='Fraction of bottom area available for benthic algae growth',
+    units='unitless',
+    description='Fraction of bottom area available for benthic algae growth',
+    use='static'
+)
+
+Variable(
+    name='Fw',
+    long_name='Fraction of benthic algae mortality into water column',
+    units='unitless',
+    description='Fraction of benthic algae mortality into water column',
+    use='static'
 )
