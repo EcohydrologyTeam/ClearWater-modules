@@ -2,23 +2,53 @@
 import clearwater_modules
 import time 
 import sys
+import xarray as xr
+import numpy as np
 
-def main(iters: int):
+
+def main(iters: int, type: str):
     ti = time.time()
     # define starting state values
-    state_i = {
-        'water_temp_c': 40.0,
-        'surface_area': 1.0,
-        'volume': 1.0,
-    }
+    if type == 'baseline':
+        state_i = {
+            'water_temp_c': 40.0,
+            'surface_area': 1.0,
+            'volume': 1.0,
+        }
+    elif type in ['arrays', 'hotstart']:
+        state_i = {
+            'water_temp_c': xr.DataArray(
+                np.full(10, 40),
+                dims='cell',
+                coords={'cell': np.arange(10)}),
+            'surface_area': xr.DataArray(
+                np.full(10, 1.0),
+                dims='cell',
+                coords={'cell': np.arange(10)}),
+            'volume': xr.DataArray(
+                np.full(10, 1.0),
+                dims='cell',
+                coords={'cell': np.arange(10)}),
+        }
+       
 
     # instantiate the TSM module
     tsm = clearwater_modules.tsm.EnergyBudget(
+        time_steps=iters,
         initial_state_values=state_i,
         meteo_parameters={'wind_c': 1.0},
+        updateable_static_variables=['wind_c']
     )
-    print(tsm.static_variable_values)
+    
     t2 = time.time()
+
+    if type == 'hotstart':
+        tsm = clearwater_modules.tsm.EnergyBudget(
+            time_steps=iters,
+            hotstart_dataset=tsm.dataset,
+        )
+        t2 = time.time()
+
     for _ in range(iters):
         tsm.increment_timestep()
     print(f'Increment timestep speed (average of {iters}): {(time.time() - t2) / 100}')
@@ -35,4 +65,4 @@ if __name__ == '__main__':
         print('No argument given, defaulting to 100 iteration.')
         iters = 100
             
-    main(iters=iters)
+    main(iters=iters, type='baseline')
