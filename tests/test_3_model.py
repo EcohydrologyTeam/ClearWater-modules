@@ -190,7 +190,7 @@ def test_computation_no_dynamics(model: Model) -> None:
     model.track_dynamic_variables = False
     ds = model.increment_timestep()
     assert isinstance(ds, xr.Dataset)
-    assert len(model.dataset[model.time_dim]) == 2
+    assert model.dataset.sel(time_step=1).isnull().any() == False
     assert 'dynamic_0' not in model.dataset.data_vars
 
 
