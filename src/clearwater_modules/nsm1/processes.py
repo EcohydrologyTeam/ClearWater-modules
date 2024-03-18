@@ -441,7 +441,7 @@ def FL(
             light_limitation_option == 3 and abs(KL) < 0.0000000001,
             light_limitation_option == 3 and abs(KL) >= 0.0000000001,
         ],
-        
+    
         choicelist = [
             0,
             (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT))),
@@ -467,10 +467,6 @@ def FL(
         
         default = FL_orig
     )
-          
-    
-    FL= xr.where(FL > 1.0, 1.0,
-        xr.where(FL<0.0, 0.0, FL))
 
     return FL
 
@@ -493,10 +489,23 @@ def FN(
         KsN: Michaelis-Menton half-saturation constant relating inorganic N to algal growth (mg-N/L)
     """
 
-    FN = xr.where(use_NH4 or use_NO3, (NH4 + NO3) / (KsN + NH4 + NO3), 1)
-    FN = xr.where(math.isnan(FN), 0,
-         xr.where(FN>1.0,1.0,FN))
+    FN_orig = xr.where(use_NH4 or use_NO3, (NH4 + NO3) / (KsN + NH4 + NO3), 1)
+    
 
+    FN: np.ndarray = np.select(
+        condlist= [
+            math.isnan(FN_orig),
+            FN_orig > 1.0
+        ],
+        
+        choicelist= [
+            0,
+            1.0
+        ],
+        
+        default = FN_orig
+    )
+    
     return FN
 
 
@@ -515,9 +524,21 @@ def FP(
         fdp: Fraction P dissolved (unitless)
     """
 
-    FP = xr.where(use_TIP, fdp * TIP / (KsP + fdp * TIP), 1.0)
-    FP = xr.where(math.isnan(FP), 0, 
-         xr.where(FP>1.0, 1, FP))
+    FP_orig = xr.where(use_TIP, fdp * TIP / (KsP + fdp * TIP), 1.0)
+    
+    FP: np.ndarray = np.select(
+        condlist= [
+            math.isnan(FP_orig),
+            FP_orig > 1.0
+        ],
+        
+        choicelist= [
+            0,
+            1.0
+        ],
+        
+        default = FP_orig
+    )
 
     return FP
 
@@ -540,10 +561,25 @@ def mu(
         FN: Algae nitrogen limitation factor (unitless)
     """
 
-    return xr.where(growth_rate_option == 1, mu_max_tc * FL * FP * FN,
-           xr.where(growth_rate_option == 2, mu_max_tc * FL * min(FP, FN),
-           xr.where(growth_rate_option == 3,
-           xr.where(FN==0.0 or FP==0.0, 0.0, mu_max_tc * FL * 2.0 / (1.0 / FN + 1.0 / FP)), "NaN")))
+    mu: np.ndarray = np.select(
+        condlist = [
+            growth_rate_option == 1,
+            growth_rate_option == 2,
+            growth_rate_option == 3 and (FN == 0.0 or FP == 0.0),
+            growth_rate_option == 3 and FN != 0 and FP != 0
+        ],
+        
+        choicelist = [
+            mu_max_tc * FL * FP * FN,
+            mu_max_tc * FL * min(FP, FN),
+            0,
+            mu_max_tc * FL * 2.0 / (1.0 / FN + 1.0 / FP)
+        ],
+        
+        default = 'NaN'
+    )
+
+    return mu
 
 
 @numba.njit
@@ -762,16 +798,41 @@ def FLb(
     # Note that KENT is defined differently here than it was for the algal equations.
     # The equations are different, this expression is more convenient here.
     KEXT = math.exp(-L*depth)
+    
+    FLb_orig: np.ndarray = np.select(
+        condlist = [
+            Ab <= 0.0 or KEXT <= 0.0 or PAR <= 0.0,
+            b_light_limitation_option == 1,
+            b_light_limitation_option == 2,
+            b_light_limitation_option == 3 and abs(KLb) < 1.0E-10,
+            b_light_limitation_option == 3 and abs(KLb) >= 1.0E-10
+        ],
+        
+        choicelist = [
+            0.0,
+            PAR * KEXT / (KLb + PAR * KEXT),
+            PAR * KEXT / ((KLb**2.0 + (PAR * KEXT)**2.0)**0.5),
+            0.0,
+            PAR * KEXT / KLb * math.exp(1.0 - PAR * KEXT / KLb)
+        ],
+        
+        default = 'NaN'
+    )
 
-    FLb = xr.where(Ab <= 0.0 or KEXT <= 0.0 or PAR <= 0.0, 0.0,
-          xr.where(b_light_limitation_option == 1, PAR * KEXT / (KLb + PAR * KEXT),
-          xr.where(b_light_limitation_option == 2, PAR * KEXT / ((KLb**2.0 + (PAR * KEXT)**2.0)**0.5),
-          xr.where(b_light_limitation_option == 3, 
-          xr.where(abs(KLb) < 1.0E-10, 0.0, PAR * KEXT / KLb * math.exp(1.0 - PAR * KEXT / KLb)), "NaN"
-          ))))
-    FLb = xr.where(FLb > 1.0, 1.0,
-          xr.where(FLb < 0.0, 0.0, FLb))
-
+    FLb: np.ndarray = np.select(
+        condlist = [
+            FLb_orig > 1.0,
+            FLb_orig < 0.0
+        ],
+        
+        choicelist = [
+            1.0,
+            0.0
+        ],
+        
+        default = FLb_orig
+    )
+    
     return FLb
 
 
@@ -792,10 +853,23 @@ def FNb(
         NO3: Nitrate concentration (mg-N/L)
         KsNb: Michaelis-Menton half-saturation constant relating inorganic N to benthic algal growth (mg-N/L)
     """
-    FNb = xr.where(use_NH4 or use_NO3, (NH4 + NO3) / (KsNb + NH4 + NO3),1)
-    FNb = xr.where(math.isnan(FNb),0.0,
-          xr.where(FNb < 1.0, 1, FNb))
 
+    FNb_orig = xr.where(use_NH4 or use_NO3, (NH4 + NO3) / (KsNb + NH4 + NO3),1)
+    
+    FNb: np.ndarray = np.select(
+        condlist= [
+            math.isnan(FNb_orig),
+            FNb_orig > 1.0
+        ],
+        
+        choicelist= [
+            0.0,
+            1.0
+        ],
+        
+        default = FNb_orig
+    )
+    
     return FNb
 
 
@@ -814,10 +888,22 @@ def FPb(
         fdp: Fraction P dissolved (unitless)
     """
 
-    FPb = xr.where(use_TIP, fdp * TIP / (KsPb + fdp * TIP),1.0)
-    FPb = xr.where(math.isnan(FPb),0.0,
-          xr.where(FPb > 1.0, 1.0, FPb))
+    FPb_orig = xr.where(use_TIP, fdp * TIP / (KsPb + fdp * TIP),1.0)
 
+    FPb: np.ndarray = np.select(
+        condlist= [
+            math.isnan(FPb_orig),
+            FPb_orig > 1.0
+        ],
+        
+        choicelist= [
+            0.0,
+            1.0
+        ],
+        
+        default = FPb_orig
+    )
+    
     return FPb
 
 
@@ -834,9 +920,21 @@ def FSb(
 
     """
 
-    FSb = 1.0 - (Ab / (Ab + Ksb))
-    FSb = xr.where(math.isnan(FSb), 1.0, 
-          xr.where(FSb > 1.0, 1.0, FSb))
+    FSb_orig = 1.0 - (Ab / (Ab + Ksb))
+    
+    FSb: np.ndarray = np.select(
+        condlist= [
+            math.isnan(FSb_orig),
+            FSb_orig > 1.0
+        ],
+        
+        choicelist= [
+            0.0,
+            1.0
+        ],
+        
+        default = FSb_orig
+    )
     
     return FSb
 
@@ -1059,10 +1157,23 @@ def ApUptakeFr_NH4(
     ApUptakeFr_NH4 = 0
 
     # set value of UptakeFr_NH4/NO3 for special conditions
-    ApUptakeFr_NH4 = xr.where(use_NH4 and not use_NO3, 1.0,
-                     xr.where(not use_NH4 and use_NO3, 0.0,
-                     xr.where(not use_NH4 and not use_NO3, 0.5,
-                     xr.where(use_Algae and use_NH4 and use_NO3, PN * NH4 / (PN * NH4 + (1.0 - PN) * NO3), "NaN"))))
+    ApUptakeFr_NH4: np.ndarray = np.select(
+        choicelist = [
+            use_NH4 and not use_NO3,
+            not use_NH4 and use_NO3,
+            not use_NH4 and not use_NO3,
+            use_Algae and use_NH4 and use_NO3
+        ],
+        
+        condlist = [
+            1.0,
+            0.0,
+            0.5,
+            PN * NH4 / (PN * NH4 + (1.0 - PN) * NO3)
+        ],
+        
+        default = 'NaN'
+    )
     
     # Check for case when NH4 and NO3 are very small.  If so, force uptake_fractions appropriately.
     ApUptakeFr_NH4 = xr.where(math.isnan(ApUptakeFr_NH4),PN,ApUptakeFr_NH4)
@@ -1103,10 +1214,24 @@ def AbUptakeFr_NH4(
         NO3: Nitrate water concentration (mg-N/L)
     """
     AbUptakeFr_NH4 = 0
-    AbUptakeFr_NH4 = xr.where(use_NH4 and not use_NO3, 1.0,
-                     xr.where(not use_NH4 and use_NO3, 0.0,
-                     xr.where(not use_NH4 and not use_NO3, 0.5,
-                     xr.where(use_Balgae and use_NH4 and use_NO3, (PNb * NH4) / (PNb * NH4 + (1.0 - PNb) * NO3), "NaN"))))
+    
+    AbUptakeFr_NH4: np.ndarray = np.select(
+        choicelist = [
+            use_NH4 and not use_NO3,
+            not use_NH4 and use_NO3,
+            not use_NH4 and not use_NO3,
+            use_Balgae and use_NH4 and use_NO3
+        ],
+        
+        condlist = [
+            1.0,
+            0.0,
+            0.5,
+            (PNb * NH4) / (PNb * NH4 + (1.0 - PNb) * NO3)
+        ], 
+        
+        default = 'NaN'
+    )
     
     AbUptakeFr_NH4 = xr.where(math.isnan(AbUptakeFr_NH4),PNb,AbUptakeFr_NH4)
 
@@ -1355,6 +1480,7 @@ def NH4_AbGrowth(
 
 def dNH4dt(
     use_NH4: bool,
+    OrgN_NH4_Decay: xr.DataArray,
     NH4_Nitrification: xr.DataArray,
     NH4fromBed: xr.DataArray, 
     NH4_ApRespiration: xr.DataArray, 
@@ -1369,6 +1495,7 @@ def dNH4dt(
     Args:
         use_OrgN: true/false to use organic nitrogen module (unitless),
         use_NH4: true/false to use ammonium module (unitless),
+        OrgN_NH4_Decay: OrgN -> NH4 (mg-N/L/d)
         NH4_Nitrification: NH4 -> NO3  Nitrification  (mg-N/L/day)
         NH4fromBed: bed ->  NH4 (diffusion)    (mg-N/L/day)
         NH4_ApRespiration: Floating algae -> NH4      (mg-N/L/day)   
@@ -1424,7 +1551,22 @@ def NO3_Denit(
         kdnit_tc: Denitrification rate temperature correction (1/d)
 
     """
-    return xr.where(use_DOX,xr.where(math.isnan((1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3),kdnit_tc * NO3,(1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3),0.0)
+    
+    NO3_Denit: np.ndarray = np.select(
+        choicelist = [
+            use_DOX and math.isnan((1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3),
+            use_DOX
+        ],
+        
+        condlist = [
+            kdnit_tc * NO3,
+            (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3
+        ],
+        
+        default = 0.0
+    )
+    
+    return NO3_Denit
 
 @numba.njit
 def NO3_BedDenit(
@@ -3031,7 +3173,20 @@ def Alk_denitrification(
         use_NO3: Option to use nitrate
         use_DOX: Option to use dissolved oxygen 
     """
-    da: xr.DataArray = xr.where(use_NO3 == True, xr.where(use_DOX == True, r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3, r_alkden * kdnit_tc * NO3), 0)
+    
+    da: np.ndarray = np.select(
+        choicelist = [
+            use_NO3 == True and use_DOX == True,
+            use_NO3 == True
+        ],
+        
+        condlist = [
+            r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3,
+            r_alkden * kdnit_tc * NO3
+        ],
+        
+        default = 0
+    )
 
     return da
 
@@ -3056,8 +3211,21 @@ def Alk_nitrification(
         use_NH4: Option to use ammonium
         use_DOX: Option to use dissolved oxygen
     """
-    da: xr.DataArray = xr.where(use_NH4 == True, xr.where(use_DOX == True, r_alkn * (1 - math.exp(-KNR * DOX)) * knit_tc * NH4, knit_tc * NH4), 0)
-
+    
+    da: np.ndarray = np.select(
+        choicelist = [
+            use_NH4 == True and use_DOX == True,
+            use_NH4 == True
+        ],
+        
+        condlist = [
+            r_alkn * (1 - math.exp(-KNR * DOX)) * knit_tc * NH4,
+            knit_tc * NH4
+        ],
+        
+        default = 0
+    )
+    
     return da
 
 
