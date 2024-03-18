@@ -418,7 +418,7 @@ def FL(
     PAR: xr.DataArray,
     light_limitation_option: int,
     KL: xr.DataArray,
-) -> xr.DataArray:
+) -> np.ndarray:
     """Calculate Algal light limitation: FL (unitless).
 
     Args:
@@ -451,7 +451,7 @@ def FL(
             (2.718/KEXT) * (math.exp(-PAR/KL * math.exp(-KEXT)) - math.exp(-PAR/KL))
         ],
         
-        default = "NaN"
+        default = np.nan
     )
     
     FL: np.ndarray = np.select(
@@ -576,7 +576,7 @@ def mu(
             mu_max_tc * FL * 2.0 / (1.0 / FN + 1.0 / FP)
         ],
         
-        default = 'NaN'
+        default = np.nan
     )
 
     return mu
@@ -816,7 +816,7 @@ def FLb(
             PAR * KEXT / KLb * math.exp(1.0 - PAR * KEXT / KLb)
         ],
         
-        default = 'NaN'
+        default = np.nan
     )
 
     FLb: np.ndarray = np.select(
@@ -1154,25 +1154,23 @@ def ApUptakeFr_NH4(
         NH4: Ammonium water concentration (mg-N/L)
         NO3: Nitrate water concentration (mg-N/L)
     """
-    ApUptakeFr_NH4 = 0
-
     # set value of UptakeFr_NH4/NO3 for special conditions
     ApUptakeFr_NH4: np.ndarray = np.select(
-        choicelist = [
-            use_NH4 and not use_NO3,
-            not use_NH4 and use_NO3,
-            not use_NH4 and not use_NO3,
-            use_Algae and use_NH4 and use_NO3
+        condlist = [
+            use_NH4 & ~use_NO3,
+            ~use_NH4 & use_NO3,
+            ~use_NH4 & ~use_NO3,
+            use_Algae & use_NH4 & use_NO3
         ],
         
-        condlist = [
+        choicelist = [
             1.0,
             0.0,
             0.5,
             PN * NH4 / (PN * NH4 + (1.0 - PN) * NO3)
         ],
         
-        default = 'NaN'
+        default = np.nan
     )
     
     # Check for case when NH4 and NO3 are very small.  If so, force uptake_fractions appropriately.
@@ -1212,25 +1210,23 @@ def AbUptakeFr_NH4(
         PNb: NH4 preference factor benthic algae (unitless)
         NH4: Ammonium water concentration (mg-N/L)
         NO3: Nitrate water concentration (mg-N/L)
-    """
-    AbUptakeFr_NH4 = 0
-    
+    """    
     AbUptakeFr_NH4: np.ndarray = np.select(
-        choicelist = [
+        condlist = [
             use_NH4 and not use_NO3,
             not use_NH4 and use_NO3,
             not use_NH4 and not use_NO3,
             use_Balgae and use_NH4 and use_NO3
         ],
         
-        condlist = [
+        choicelist = [
             1.0,
             0.0,
             0.5,
             (PNb * NH4) / (PNb * NH4 + (1.0 - PNb) * NO3)
         ], 
         
-        default = 'NaN'
+        default = np.nan
     )
     
     AbUptakeFr_NH4 = xr.where(math.isnan(AbUptakeFr_NH4),PNb,AbUptakeFr_NH4)
@@ -1370,7 +1366,7 @@ def NitrificationInhibition(
 
     """
 
-    return xr.where (use_DOX, 1.0 - math.exp(-KNR * DOX), 1.0)
+    return xr.where (use_DOX, 1.0 - np.exp(-KNR * DOX), 1.0)
 
 def NH4_Nitrification(
     NitrificationInhibition: xr.DataArray,
@@ -1553,12 +1549,12 @@ def NO3_Denit(
     """
     
     NO3_Denit: np.ndarray = np.select(
-        choicelist = [
+        condlist = [
             use_DOX and math.isnan((1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3),
             use_DOX
         ],
         
-        condlist = [
+        choicelist = [
             kdnit_tc * NO3,
             (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3
         ],
@@ -2086,6 +2082,7 @@ def TP(
     """  
     TP = TOP
     TP = xr.where(use_TIP,TP + TIP,TP)
+    return TP
 
 @numba.njit
 def DIP(
@@ -3078,7 +3075,6 @@ def PathogenDeath(
     """
     return kdx_tc * PX
 
-@numba.njit
 def PathogenDecay(
     apx: xr.DataArray,
     q_solar: xr.DataArray,
@@ -3097,7 +3093,7 @@ def PathogenDecay(
       PX: Pathogen concentration (cfu/100mL)
 
     """
-    return apx * q_solar / (L * depth) * (1 - math.exp(-L * depth)) * PX
+    return apx * q_solar / (L * depth) * (1 - np.exp(-L * depth)) * PX
 
 @numba.njit
 def PathogenSettling(
@@ -3175,12 +3171,12 @@ def Alk_denitrification(
     """
     
     da: np.ndarray = np.select(
-        choicelist = [
-            use_NO3 == True and use_DOX == True,
-            use_NO3 == True
+        condlist = [
+            use_NO3 and use_DOX,
+            use_NO3
         ],
         
-        condlist = [
+        choicelist = [
             r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3,
             r_alkden * kdnit_tc * NO3
         ],
@@ -3213,13 +3209,13 @@ def Alk_nitrification(
     """
     
     da: np.ndarray = np.select(
-        choicelist = [
-            use_NH4 == True and use_DOX == True,
-            use_NH4 == True
+        condlist = [
+            use_NH4 and use_DOX,
+            use_NH4
         ],
         
-        condlist = [
-            r_alkn * (1 - math.exp(-KNR * DOX)) * knit_tc * NH4,
+        choicelist = [
+            r_alkn * (1 - np.exp(-KNR * DOX)) * knit_tc * NH4,
             knit_tc * NH4
         ],
         
@@ -3352,7 +3348,6 @@ def Alk(
 ##################################### From N2
 
 
-@numba.njit
 def KHN2_tc(
     TwaterK : xr.DataArray,
 ) -> xr.DataArray :
@@ -3368,9 +3363,9 @@ def KHN2_tc(
         Reference temperature: 298.15 (K) 
     """
 
-    return 0.00065 * math.exp(1300.0 * (1.0 / TwaterK - 1 / 298.15))   
+    return 0.00065 * np.exp(1300.0 * (1.0 / TwaterK - 1 / 298.15))   
         
-@numba.njit
+
 def P_wv(
     TwaterK : xr.DataArray,
 ) -> xr.DataArray :
@@ -3383,7 +3378,7 @@ def P_wv(
         TwaterK: water temperature kelvin (K)
 
     """
-    return math.exp(11.8571  - (3840.70 / TwaterK) - (216961.0 / (TwaterK**2)))
+    return np.exp(11.8571  - (3840.70 / TwaterK) - (216961.0 / (TwaterK**2)))
   
 
 def N2sat(
