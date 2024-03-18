@@ -19,12 +19,6 @@ class AlgaeStaticVariables(TypedDict):
     vsap: float                         
     growth_rate_option: int             
     light_limitation_option: int 
-    lambda0: float
-    lambda1: float
-    lambda2: float
-    lambdas: float
-    lambdam: float
-    Fr_PAR: float        
 
 DEFAULT_ALGAE = AlgaeStaticVariables(
     AWd = 100,
@@ -41,12 +35,6 @@ DEFAULT_ALGAE = AlgaeStaticVariables(
     vsap= 0.15,
     growth_rate_option = 1,
     light_limitation_option = 1,
-    lambda0 = .5,
-    lambda1 = .5,
-    lambda2 = .5,
-    lambdas = .5,
-    lambdam = .5, 
-    Fr_PAR = .5   
 )
 
 class AlkalinityStaticVariables(TypedDict):
@@ -275,6 +263,13 @@ class GlobalVars(TypedDict):
     wind_speed: float
     q_solar: float
     Solid: int
+    lambda0: float
+    lambda1: float
+    lambda2: float
+    lambdas: float
+    lambdam: float
+    Fr_PAR: float        
+
               
 
 DEFAULT_GLOBALVARS = GlobalVars(
@@ -290,8 +285,8 @@ DEFAULT_GLOBALVARS = GlobalVars(
     kah_20_user = 999,
     hydraulic_reaeration_option = 2,
     wind_reaeration_option = 2,  
-    timestep = 86400,
-    depth = 1,
+    timestep = 86400,    #TODO Dynamic or static?
+    depth = 1.5,         #TODO Dynamic or static?
     TwaterC = 20,
     theta = 1.047,
     velocity = 1,
@@ -301,6 +296,12 @@ DEFAULT_GLOBALVARS = GlobalVars(
     shear_velocity = 4,
     pressure_atm = 2,
     wind_speed = 4,
-    q_solar = 4,
-    Solid = 1
+    q_solar = 500,
+    Solid = 1,
+    lambda0 = .02,
+    lambda1 = .0088,
+    lambda2 = .054,
+    lambdas = .052,
+    lambdam = .0174, 
+    Fr_PAR = .47   
 )
