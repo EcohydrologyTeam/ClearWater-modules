@@ -31,6 +31,10 @@ def initial_state_values(
 
 
 @pytest.fixture(scope='module')
+def time_steps() -> int:
+    return 2
+
+@pytest.fixture(scope='module')
 def state_variable() -> Variable:
     return Variable(
         name='state_variable',
@@ -44,6 +48,7 @@ def state_variable() -> Variable:
 
 @pytest.fixture(scope='function')
 def model(
+    time_steps: int,
     static_variables: list[Variable],
     dynamic_variables: list[Variable],
     state_variable: Variable,
@@ -62,6 +67,7 @@ def model(
     assert len(MockModel.get_state_variables()) == 1
     assert isinstance(MockModel.get_state_variables()[0], Variable)
     model_instance = MockModel(
+        time_steps=time_steps,
         initial_state_values=initial_state_values,
         static_variable_values=initial_static_values,
         updateable_static_variables=['a'],
@@ -114,15 +120,22 @@ def test_model_state_variables(
     assert model.state_variables_names[0] == model.state_variables[0].name
 
 
-def test_initial_state(model: Model, state_variable: Variable) -> None:
+def test_initial_state(
+    model: Model,
+    state_variable: Variable,
+    time_steps: int,
+) -> None:
     """Test the initial state."""
     assert state_variable.name in model.dataset.data_vars
     assert len(model.dataset[state_variable.name].dims) == 3
     assert 'time_step' in model.dataset[state_variable.name].dims
-    assert model.dataset[state_variable.name].shape == (1, 10, 10)
+    assert model.dataset[state_variable.name].shape == (time_steps + 1, 10, 10)
 
 
-def test_static_array(model: Model) -> None:
+def test_static_array(
+    model: Model,
+    time_steps: int,
+) -> None:
     """Test the static array."""
     for var in model.static_variables:
         assert var.name in model.dataset.data_vars
@@ -131,18 +144,21 @@ def test_static_array(model: Model) -> None:
         assert 'description' in model.dataset[var.name].attrs
         if var.name in model.updateable_static_variables:
             assert len(model.dataset[var.name].dims) == 3
-            assert model.dataset[var.name].shape == (1, 10, 10)
+            assert model.dataset[var.name].shape == (time_steps + 1, 10, 10)
         else:
             assert len(model.dataset[var.name].dims) == 2
             assert model.dataset[var.name].shape == (10, 10)
 
 
-def test_state_array(model: Model) -> None:
+def test_state_array(
+    model: Model,
+    time_steps: int,
+) -> None:
     """Test the state array."""
     for var in model.state_variables:
         assert var.name in model.dataset.data_vars
         assert len(model.dataset[var.name].dims) == 3
-        assert model.dataset[var.name].shape == (1, 10, 10)
+        assert model.dataset[var.name].shape == (time_steps + 1, 10, 10)
         assert 'long_name' in model.dataset[var.name].attrs
         assert 'units' in model.dataset[var.name].attrs
         assert 'description' in model.dataset[var.name].attrs
@@ -165,7 +181,7 @@ def test_computation_with_dynamics(model: Model) -> None:
     model.track_dynamic_variables = True
     ds: xr.Dataset = model.increment_timestep()
     assert isinstance(ds, xr.Dataset)
-    assert len(model.dataset[model.time_dim]) == 2
+    assert model.dataset.sel(time_step=1).isnull().any() == False
     assert 'dynamic_0' in model.dataset.data_vars
 
 
@@ -174,7 +190,7 @@ def test_computation_no_dynamics(model: Model) -> None:
     model.track_dynamic_variables = False
     ds = model.increment_timestep()
     assert isinstance(ds, xr.Dataset)
-    assert len(model.dataset[model.time_dim]) == 2
+    assert model.dataset.sel(time_step=1).isnull().any() == False
     assert 'dynamic_0' not in model.dataset.data_vars
 
 
@@ -201,27 +217,37 @@ def test_variable_attributes(model: Model) -> None:
         assert 'description' in model.dataset[var].attrs
 
 
-def test_model_hotstart(model: Model) -> None:
+def test_model_hotstart(
+    model: Model,
+    time_steps: int,
+) -> None:
     """Test if the hotstart works."""
     ds = model.increment_timestep()
     ds.attrs['hotstart'] = True
+    ds = ds.isel(time_step=slice(0,2))
 
     hotstart_model = MockModel(
+        time_steps=time_steps,
         hotstart_dataset=ds,
     )
+
     assert isinstance(hotstart_model, Model)
-    assert len(hotstart_model.dataset[model.time_dim]) == 2
+    assert len(hotstart_model.dataset[model.time_dim]) == time_steps
+    assert hotstart_model.dataset.isel(time_step=0) == ds.isel(time_step=1)
     assert model.dataset.attrs.get('hotstart') == True
 
 
-def test_model_update_state(model: Model) -> None:
+def test_model_update_state(
+    model: Model,
+    time_steps: int
+) -> None:
     """Tests that we can update the state variable between timesteps"""
     ds = model.increment_timestep()
-    mean_state_i: float = ds.state_variable.isel(time_step=-1).mean().item()
-    mean_static_i: float = ds.a.isel(time_step=-1).mean().item()
+    mean_state_i: float = ds.state_variable.sel(time_step=time_steps-1).mean().item()
+    mean_static_i: float = ds.a.sel(time_step=time_steps-1).mean().item()
 
-    updated_state = ds['state_variable'].isel(time_step=-1) * 100
-    updated_static = ds['a'].isel(time_step=-1) * 100
+    updated_state = ds['state_variable'].sel(time_step=time_steps-1) * 100
+    updated_static = ds['a'].sel(time_step=time_steps-1) * 100
 
     ds = model.increment_timestep(
         update_state_values={
@@ -231,9 +257,9 @@ def test_model_update_state(model: Model) -> None:
     )
     assert isinstance(ds, xr.Dataset)
 
-    mean_state_f: float = ds.state_variable.isel(time_step=-1).mean().item()
+    mean_state_f: float = ds.state_variable.sel(time_step=time_steps).mean().item()
     assert mean_state_f > mean_state_i * 100
 
-    mean_static_f: float = ds.a.isel(time_step=-1).mean().item()
+    mean_static_f: float = ds.a.sel(time_step=time_steps).mean().item()
     assert mean_static_f >= mean_static_i * 100
 

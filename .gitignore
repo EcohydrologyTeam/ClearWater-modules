@@ -84,6 +84,9 @@ target/
 .ipynb_checkpoints
 .virtual_documents
 
+# profiling
+*.prof
+
 # IPython
 profile_default/
 ipython_config.py
