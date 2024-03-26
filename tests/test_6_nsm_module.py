@@ -19,7 +19,6 @@ from clearwater_modules.nsm1.constants import (
     DEFAULT_PHOSPHORUS,
     DEFAULT_GLOBALPARAMETERS,
     DEFAULT_GLOBALVARS
-
 )
 
 
@@ -67,16 +66,16 @@ def nutrient_budget_instance(
         time_steps=time_steps,
         initial_state_values=initial_nsm1_state,
         updateable_static_variables=['a0'],
-        time_dim='tsm_time_step',
+        time_dim='nsm1_time_step',
     )
 
 
 def test_nsm1_specific_attributes(nutrient_budget_instance) -> None:
     """Checks that all NSM1  variables are present."""
-    assert nutrient_budget_instance.time_dim == 'tsm_time_step'
+    assert nutrient_budget_instance.time_dim == 'nsm1_time_step'
     assert isinstance(nutrient_budget_instance.algae_parameters, dict)
     assert isinstance(nutrient_budget_instance.alkalinity_parameters, dict)
-    assert isinstance(nutrient_budget_instance.Balgae_parameters, dict)
+    assert isinstance(nutrient_budget_instance.balgae_parameters, dict)
     assert isinstance(nutrient_budget_instance.nitrogen_parameters, dict)
     assert isinstance(nutrient_budget_instance.carbon_parameters, dict)
     assert isinstance(nutrient_budget_instance.CBOD_parameters, dict)
@@ -85,14 +84,14 @@ def test_nsm1_specific_attributes(nutrient_budget_instance) -> None:
     assert isinstance(nutrient_budget_instance.POM_parameters, dict)
     assert isinstance(nutrient_budget_instance.pathogen_parameters, dict)
     assert isinstance(nutrient_budget_instance.phosphorus_parameters, dict)
-    assert isinstance(nutrient_budget_instance.gp_parameters, dict)
-    assert isinstance(nutrient_budget_instance.gvars_parameters, dict)
+    assert isinstance(nutrient_budget_instance.global_parameters, dict)
+    assert isinstance(nutrient_budget_instance.global_vars, dict)
 
     assert nutrient_budget_instance.updateable_static_variables == ['a0']
 
     assert nutrient_budget_instance.algae_parameters == DEFAULT_ALGAE
     assert nutrient_budget_instance.alkalinity_parameters == DEFAULT_ALKALINITY
-    assert nutrient_budget_instance.Balgae_parameters == DEFAULT_BALGAE
+    assert nutrient_budget_instance.balgae_parameters == DEFAULT_BALGAE
     assert nutrient_budget_instance.nitrogen_parameters == DEFAULT_NITROGEN
     assert nutrient_budget_instance.carbon_parameters == DEFAULT_CARBON
     assert nutrient_budget_instance.CBOD_parameters == DEFAULT_CBOD
@@ -101,34 +100,19 @@ def test_nsm1_specific_attributes(nutrient_budget_instance) -> None:
     assert nutrient_budget_instance.POM_parameters == DEFAULT_POM
     assert nutrient_budget_instance.pathogen_parameters == DEFAULT_PATHOGEN
     assert nutrient_budget_instance.phosphorus_parameters == DEFAULT_PHOSPHORUS
-    assert nutrient_budget_instance.gp_parameters == DEFAULT_GLOBALPARAMETERS
-    assert nutrient_budget_instance.gvars_parameters == DEFAULT_GLOBALVARS
+    assert nutrient_budget_instance.global_parameters == DEFAULT_GLOBALPARAMETERS
+    assert nutrient_budget_instance.global_vars == DEFAULT_GLOBALVARS
 
 def test_nsm1_variable_sorting(nutrient_budget_instance) -> None:
     """Checks that we can auto-sort our NSM1 variable"""
     assert isinstance(nutrient_budget_instance.computation_order, list)
-    assert nutrient_budget_instance.computation_order[-1].name == 'water_temp_c' #TODO what is first?
+    assert nutrient_budget_instance.computation_order[-1].name == 'DOX' #TODO what is first?
 
 
 def test_nsm1_timestep(nutrient_budget_instance) -> None:
     """Checks that we can auto-sort our NSM1 variable"""
     nutrient_budget_instance.increment_timestep()
-    assert len(nutrient_budget_instance.dataset.tsm_time_step) == 2
-    assert nutrient_budget_instance.dataset.sel(tsm_time_step=1).isnull().any() == False
 
+    assert len(nutrient_budget_instance.dataset.nsm1_time_step) == 2
+    assert nutrient_budget_instance.dataset.sel(nsm1_time_step=1).isnull().any() == False
 
-#TODO do we need this for NSM?
-def test_use_sed_temp(
-    initial_tsm_state,
-    time_steps,
-) -> None:
-    """Tests that when we set use_sed_temp to False we get a False boolean array."""
-    if 'a0' in initial_tsm_state:
-        del initial_tsm_state['a0']
-    no_sed_temp = NutrientBudget(
-        time_steps=time_steps,
-        initial_state_values=initial_tsm_state,
-        use_sed_temp=False,
-    )
-    assert no_sed_temp.dataset.use_sed_temp.dtype == bool
-    assert bool(np.all(no_sed_temp.dataset.use_sed_temp == False))

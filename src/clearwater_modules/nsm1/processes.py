@@ -269,10 +269,10 @@ def L(
         use_POC: true/falseo use particulate organic carbon module (t/f)
         Ap: algae concentration (ug-Chla/L)
     """
-    L = lambda0 #+ lambdas * Solid
+    L: xr.DataArray = lambda0 #+ lambdas * Solid
 
-    L: xr.DataArray = xr.where (use_POC, L+lambdam*POC/fcom, L)
-    L: xr.DataArray = xr.where (use_Algae, L+lambda1*Ap + lambda2*Ap**0.66667, L)
+    L: xr.DataArray = xr.where (use_POC, L+lambdam*(POC/fcom), L)
+    L: xr.DataArray = xr.where (use_Algae, L+lambda1*Ap + lambda2*Ap**(2/3), L)
 
     return L
 
@@ -291,7 +291,7 @@ def PAR(
     """
     return xr.where (use_Algae or use_Balgae, q_solar * Fr_PAR, 0)
 
-
+#TODO does not appear HEC-RAS actually uses Solid in any calculations
 def fdp(
     use_TIP: bool,
     Solid : xr.DataArray,
@@ -306,7 +306,7 @@ def fdp(
         kdpo4: solid partitioning coeff. of PO4 (L/kg)
     """
   
-    return xr.where(use_TIP, 1/(1+kdpo4 * Solid/0.000001), 0)
+    return xr.where(use_TIP, 1, 0)
 
 ############################################ From algae
 
@@ -416,7 +416,7 @@ def FL(
     depth: xr.DataArray,
     Ap: xr.DataArray,
     PAR: xr.DataArray,
-    light_limitation_option: int,
+    light_limitation_option: xr.DataArray,
     KL: xr.DataArray,
 ) -> np.ndarray:
     """Calculate Algal light limitation: FL (unitless).
@@ -429,26 +429,25 @@ def FL(
         light_limitation_option: Algal light limitation  option 1) Half-saturation, 2) Smith model, 3) Steele model (unitless)
         KL: Light limitation  constant for algal growth (W/m^2)
     """
-
-    KEXT = L * depth
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
 
     FL_orig: np.ndarray = np.select(
         condlist = [
-            Ap <= 0.0 or KEXT <= 0.0 or PAR <= 0.0,
+            Ap <= 0.0 or (L * depth) <= 0.0 or PAR <= 0.0,
             light_limitation_option == 1,
-            light_limitation_option == 2 and abs(KL) < 0.0000000001,
-            light_limitation_option == 2 and abs(KL) >= 0.0000000001,
-            light_limitation_option == 3 and abs(KL) < 0.0000000001,
-            light_limitation_option == 3 and abs(KL) >= 0.0000000001,
+            light_limitation_option == 2 and np.abs(KL) < 0.0000000001,
+            light_limitation_option == 2 and np.abs(KL) >= 0.0000000001,
+            light_limitation_option == 3 and np.abs(KL) < 0.0000000001,
+            light_limitation_option == 3 and np.abs(KL) >= 0.0000000001,
         ],
     
         choicelist = [
             0,
-            (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT))),
+            (1.0 / (L * depth)) * np.log((KL + PAR) /(KL + PAR * np.exp(-(L * depth)))),
             1,
-            (1.0 / KEXT) * math.log( (PAR / KL + ((1.0 + (PAR / KL)**2.0)**0.5)) / (PAR * math.exp(-KEXT) / KL + ((1.0 + (PAR * math.exp(-KEXT) / KL)**2.0)**0.5))),
+            (1.0 / (L * depth)) * np.log( (PAR / KL + ((1.0 + (PAR / KL)**2.0)**0.5)) / (PAR * np.exp(-(L * depth)) / KL + ((1.0 + (PAR * np.exp(-(L * depth)) / KL)**2.0)**0.5))),
             0,
-            (2.718/KEXT) * (math.exp(-PAR/KL * math.exp(-KEXT)) - math.exp(-PAR/KL))
+            (2.718/(L * depth)) * (np.exp(-PAR/KL * np.exp(-(L * depth))) - np.exp(-PAR/KL))
         ],
         
         default = np.nan
@@ -467,7 +466,7 @@ def FL(
         
         default = FL_orig
     )
-
+    warnings.filterwarnings("default", category=RuntimeWarning)
     return FL
 
 
