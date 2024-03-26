@@ -5,16 +5,16 @@ import xarray as xr
 import math
 
 ############################################ From shared processes
-@numba.njit
+
 def celsius_to_kelvin(tempc: xr.DataArray) -> xr.DataArray:
     return tempc + 273.16
 
 
-@numba.njit
+
 def kelvin_to_celsius(tempk: xr.DataArray) -> xr.DataArray:
     return tempk - 273.16
 
-@numba.njit
+
 def arrhenius_correction(
     TwaterC: xr.DataArray,
     rc20: xr.DataArray,
@@ -41,7 +41,7 @@ def arrhenius_correction(
     return rc20 * theta**(TwaterC - 20.0)
 
 
-@numba.njit
+
 def TwaterK(
     TwaterC : xr.DataArray,
 ) -> xr.DataArray :
@@ -111,7 +111,7 @@ def kah_20(
     return da
 
 
-@numba.njit
+
 def kah_tc(
     TwaterC: xr.DataArray,
     kah_20: xr.DataArray,
@@ -187,7 +187,7 @@ def kaw_20(
     return da
 
 
-@numba.njit
+
 def kaw_tc(
     TwaterC: xr.DataArray,
     kaw_20: xr.DataArray,
@@ -203,7 +203,7 @@ def kaw_tc(
     return arrhenius_correction(TwaterC, kaw_20, theta)
 
 
-@numba.njit
+
 def ka_tc(
     kah_tc: xr.DataArray,
     kaw_tc: xr.DataArray,
@@ -309,7 +309,7 @@ def fdp(
     return xr.where(use_TIP, 1/(1+kdpo4 * Solid/0.000001), 0)
 
 ############################################ From algae
-@numba.njit
+
 def rna(
     AWn: xr.DataArray,
     AWa: xr.DataArray
@@ -323,7 +323,7 @@ def rna(
     return AWn/AWa
 
 
-@numba.njit
+
 def rpa(
     AWp: xr.DataArray,
     AWa: xr.DataArray
@@ -338,7 +338,7 @@ def rpa(
     return AWp/AWa
 
 
-@numba.njit
+
 def rca(
     AWc: xr.DataArray,
     AWa: xr.DataArray
@@ -352,7 +352,7 @@ def rca(
     return AWc/AWa
 
 
-@numba.njit
+
 def rda(
     AWd: xr.DataArray,
     AWa: xr.DataArray
@@ -366,7 +366,7 @@ def rda(
     return AWd/AWa
 
 
-@numba.njit
+
 def mu_max_tc(
     TwaterC: xr.DataArray,
     mu_max_20: xr.DataArray
@@ -381,7 +381,7 @@ def mu_max_tc(
     return arrhenius_correction(TwaterC, mu_max_20, 1.047)
 
 
-@numba.njit
+
 def krp_tc(
     TwaterC: xr.DataArray,
     krp_20: xr.DataArray
@@ -396,7 +396,7 @@ def krp_tc(
     return arrhenius_correction(TwaterC, krp_20, 1.047)
 
 
-@numba.njit
+
 def kdp_tc(
     TwaterC: xr.DataArray,
     kdp_20: xr.DataArray
@@ -418,7 +418,7 @@ def FL(
     PAR: xr.DataArray,
     light_limitation_option: int,
     KL: xr.DataArray,
-) -> xr.DataArray:
+) -> np.ndarray:
     """Calculate Algal light limitation: FL (unitless).
 
     Args:
@@ -451,7 +451,7 @@ def FL(
             (2.718/KEXT) * (math.exp(-PAR/KL * math.exp(-KEXT)) - math.exp(-PAR/KL))
         ],
         
-        default = "NaN"
+        default = np.nan
     )
     
     FL: np.ndarray = np.select(
@@ -576,13 +576,13 @@ def mu(
             mu_max_tc * FL * 2.0 / (1.0 / FN + 1.0 / FP)
         ],
         
-        default = 'NaN'
+        default = np.nan
     )
 
     return mu
 
 
-@numba.njit
+
 def ApGrowth(
     mu: xr.DataArray,
     Ap: xr.DataArray
@@ -597,7 +597,7 @@ def ApGrowth(
     return mu * Ap
 
 
-@numba.njit
+
 def ApRespiration(
     krp_tc: xr.DataArray,
     Ap: xr.DataArray
@@ -612,7 +612,7 @@ def ApRespiration(
     return krp_tc * Ap
 
 
-@numba.njit
+
 def ApDeath(
     kdp_tc: xr.DataArray,
     Ap: xr.DataArray
@@ -626,7 +626,7 @@ def ApDeath(
     return kdp_tc * Ap
 
 
-@numba.njit
+
 def ApSettling(
     vsap: xr.DataArray,
     Ap: xr.DataArray,
@@ -642,7 +642,7 @@ def ApSettling(
     return vsap / depth * Ap
 
 
-@numba.njit
+
 def dApdt(
     ApGrowth: xr.DataArray,
     ApRespiration: xr.DataArray,
@@ -661,7 +661,7 @@ def dApdt(
     return ApGrowth - ApRespiration - ApDeath - ApSettling
 
 
-@numba.njit
+
 def Ap(
     Ap: xr.DataArray,
     dApdt: xr.DataArray,
@@ -677,7 +677,7 @@ def Ap(
     return Ap + dApdt * timestep
 
 ############################################ From benthic algae
-@numba.njit
+
 def mub_max_tc(
     mub_max_20: xr.DataArray,
     TwaterC: xr.DataArray
@@ -691,7 +691,7 @@ def mub_max_tc(
     return arrhenius_correction(TwaterC, mub_max_20, 1.047)
 
 
-@numba.njit
+
 def krb_tc(
     krb_20: xr.DataArray,
     TwaterC: xr.DataArray
@@ -705,7 +705,7 @@ def krb_tc(
     return arrhenius_correction(TwaterC, krb_20, 1.06)
 
 
-@numba.njit
+
 def kdb_tc(
     kdb_20: xr.DataArray,
     TwaterC: xr.DataArray
@@ -719,7 +719,7 @@ def kdb_tc(
     return arrhenius_correction(TwaterC, kdb_20, 1.047)
 
 
-@numba.njit
+
 def rnb(
     BWn: xr.DataArray,
     BWd: xr.DataArray
@@ -733,7 +733,7 @@ def rnb(
     return BWn/BWd
 
 
-@numba.njit
+
 def rpb(
     BWp: xr.DataArray,
     BWd: xr.DataArray
@@ -747,7 +747,7 @@ def rpb(
     return BWp/BWd
 
 
-@numba.njit
+
 def rcb(
     BWc: xr.DataArray,
     BWd: xr.DataArray
@@ -761,7 +761,7 @@ def rcb(
     return BWc/BWd
 
 
-@numba.njit
+
 def rab(
     BWa: xr.DataArray,
     BWd: xr.DataArray
@@ -816,7 +816,7 @@ def FLb(
             PAR * KEXT / KLb * math.exp(1.0 - PAR * KEXT / KLb)
         ],
         
-        default = 'NaN'
+        default = np.nan
     )
 
     FLb: np.ndarray = np.select(
@@ -963,7 +963,7 @@ def mub(
 
 
 
-@numba.njit
+
 def AbGrowth(
     mub: xr.DataArray,
     Ab: xr.DataArray
@@ -978,7 +978,7 @@ def AbGrowth(
     return mub * Ab
 
 
-@numba.njit
+
 def AbRespiration(
     krb_tc: xr.DataArray,
     Ab: xr.DataArray
@@ -992,7 +992,7 @@ def AbRespiration(
     return krb_tc * Ab
 
 
-@numba.njit
+
 def AbDeath(
     kdb_tc: xr.DataArray,
     Ab: xr.DataArray
@@ -1007,7 +1007,7 @@ def AbDeath(
     return kdb_tc * Ab
 
 
-@numba.njit
+
 def dAbdt(
     AbGrowth: xr.DataArray,
     AbRespiration: xr.DataArray,
@@ -1024,7 +1024,7 @@ def dAbdt(
     return AbGrowth - AbRespiration - AbDeath
 
 
-@numba.njit
+
 def Ab(
     Ab: xr.DataArray,
     dAbdt: xr.DataArray,
@@ -1042,7 +1042,7 @@ def Ab(
 
     return Ab + dAbdt * timestep
 
-@numba.njit
+
 def Chlb(
     rab: xr.DataArray,
     Ab: xr.DataArray,
@@ -1060,7 +1060,7 @@ def Chlb(
 
 ############################################ From nitrogen
 
-@numba.njit
+
 def knit_tc(
     TwaterC: xr.DataArray,
     knit_20: xr.DataArray
@@ -1075,7 +1075,7 @@ def knit_tc(
     return arrhenius_correction(TwaterC, knit_20, 1.083)
 
 
-@numba.njit
+
 def rnh4_tc(
     TwaterC: xr.DataArray,
     rnh4_20: xr.DataArray
@@ -1090,7 +1090,7 @@ def rnh4_tc(
     return arrhenius_correction(TwaterC, rnh4_20, 1.074)
 
 
-@numba.njit
+
 def vno3_tc(
     TwaterC: xr.DataArray,
     vno3_20: xr.DataArray
@@ -1105,7 +1105,7 @@ def vno3_tc(
     return arrhenius_correction(TwaterC, vno3_20, 1.08)
 
 
-@numba.njit
+
 def kon_tc(
     TwaterC: xr.DataArray,
     kon_20: xr.DataArray
@@ -1120,7 +1120,7 @@ def kon_tc(
     return arrhenius_correction(TwaterC, kon_20, 1.074)
 
 
-@numba.njit
+
 def kdnit_tc(
     TwaterC: xr.DataArray,
     kdnit_20: xr.DataArray
@@ -1154,25 +1154,23 @@ def ApUptakeFr_NH4(
         NH4: Ammonium water concentration (mg-N/L)
         NO3: Nitrate water concentration (mg-N/L)
     """
-    ApUptakeFr_NH4 = 0
-
     # set value of UptakeFr_NH4/NO3 for special conditions
     ApUptakeFr_NH4: np.ndarray = np.select(
-        choicelist = [
-            use_NH4 and not use_NO3,
-            not use_NH4 and use_NO3,
-            not use_NH4 and not use_NO3,
-            use_Algae and use_NH4 and use_NO3
+        condlist = [
+            use_NH4 & ~use_NO3,
+            ~use_NH4 & use_NO3,
+            ~use_NH4 & ~use_NO3,
+            use_Algae & use_NH4 & use_NO3
         ],
         
-        condlist = [
+        choicelist = [
             1.0,
             0.0,
             0.5,
             PN * NH4 / (PN * NH4 + (1.0 - PN) * NO3)
         ],
         
-        default = 'NaN'
+        default = np.nan
     )
     
     # Check for case when NH4 and NO3 are very small.  If so, force uptake_fractions appropriately.
@@ -1181,7 +1179,7 @@ def ApUptakeFr_NH4(
     return ApUptakeFr_NH4
 
 
-@numba.njit
+
 def ApUptakeFr_NO3(
     ApUptakeFr_NH4: xr.DataArray
 ) -> xr.DataArray:
@@ -1212,25 +1210,23 @@ def AbUptakeFr_NH4(
         PNb: NH4 preference factor benthic algae (unitless)
         NH4: Ammonium water concentration (mg-N/L)
         NO3: Nitrate water concentration (mg-N/L)
-    """
-    AbUptakeFr_NH4 = 0
-    
+    """    
     AbUptakeFr_NH4: np.ndarray = np.select(
-        choicelist = [
+        condlist = [
             use_NH4 and not use_NO3,
             not use_NH4 and use_NO3,
             not use_NH4 and not use_NO3,
             use_Balgae and use_NH4 and use_NO3
         ],
         
-        condlist = [
+        choicelist = [
             1.0,
             0.0,
             0.5,
             (PNb * NH4) / (PNb * NH4 + (1.0 - PNb) * NO3)
         ], 
         
-        default = 'NaN'
+        default = np.nan
     )
     
     AbUptakeFr_NH4 = xr.where(math.isnan(AbUptakeFr_NH4),PNb,AbUptakeFr_NH4)
@@ -1238,7 +1234,7 @@ def AbUptakeFr_NH4(
     return AbUptakeFr_NH4
 
 
-@numba.njit
+
 def AbUptakeFr_NO3(
     AbUptakeFr_NH4: xr.DataArray
 ) -> xr.DataArray:
@@ -1265,7 +1261,7 @@ def OrgN_NH4_Decay(
 
     return xr.where(use_OrgN, kon_tc * OrgN,0)
 
-@numba.njit
+
 def OrgN_Settling(
     vson: xr.DataArray,
     depth: xr.DataArray,
@@ -1337,7 +1333,7 @@ def dOrgNdt(
 
     return xr.where(use_OrgN, ApDeath_OrgN + AbDeath_OrgN - OrgN_NH4_Decay - OrgN_Settling,0)
 
-@numba.njit
+
 def OrgN(
     OrgN: xr.DataArray,
     dOrgNdt: xr.DataArray,
@@ -1370,7 +1366,7 @@ def NitrificationInhibition(
 
     """
 
-    return xr.where (use_DOX, 1.0 - math.exp(-KNR * DOX), 1.0)
+    return xr.where (use_DOX, 1.0 - np.exp(-KNR * DOX), 1.0)
 
 def NH4_Nitrification(
     NitrificationInhibition: xr.DataArray,
@@ -1389,7 +1385,7 @@ def NH4_Nitrification(
 
     return xr.where(use_NH4,NitrificationInhibition * knit_tc * NH4,0)
 
-@numba.njit
+
 def NH4fromBed(
     depth: xr.DataArray,
     rnh4_tc: xr.DataArray,
@@ -1515,7 +1511,7 @@ def dNH4dt(
 
     return xr.where(use_NH4, OrgN_NH4_Decay - NH4_Nitrification + NH4fromBed + NH4_ApRespiration - NH4_ApGrowth + NH4_AbRespiration - NH4_AbGrowth, 0.0)
 
-@numba.njit
+
 def NH4(
     NH4: xr.DataArray,
     dNH4dt: xr.DataArray,
@@ -1553,12 +1549,12 @@ def NO3_Denit(
     """
     
     NO3_Denit: np.ndarray = np.select(
-        choicelist = [
+        condlist = [
             use_DOX and math.isnan((1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3),
             use_DOX
         ],
         
-        condlist = [
+        choicelist = [
             kdnit_tc * NO3,
             (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3
         ],
@@ -1568,7 +1564,7 @@ def NO3_Denit(
     
     return NO3_Denit
 
-@numba.njit
+
 def NO3_BedDenit(
     depth: xr.DataArray,
     vno3_tc: xr.DataArray,
@@ -1660,7 +1656,7 @@ def dNO3dt(
 
     return xr.where(use_NO3, NH4_Nitrification - NO3_Denit - NO3_BedDenit - NO3_ApGrowth - NO3_AbGrowth ,0)
 
-@numba.njit
+
 def NO3(
     NO3: xr.DataArray,
     dNO3dt: xr.DataArray,
@@ -1745,7 +1741,7 @@ def TKN(
     return TKN + TON
 
 
-@numba.njit
+
 def TN(
     DIN: xr.DataArray,
     TON: xr.DataArray,
@@ -1761,7 +1757,7 @@ def TN(
     return DIN + TON
 
 ################################### From phosphorus
-@numba.njit
+
 def kop_tc(
     TwaterC : xr.DataArray,
     kop_20: xr.DataArray
@@ -1776,7 +1772,7 @@ def kop_tc(
 
     return arrhenius_correction(TwaterC, kop_20, 1.047)
 
-@numba.njit
+
 def rpo4_tc(
     TwaterC : xr.DataArray,
     rpo4_20: xr.DataArray
@@ -1806,7 +1802,7 @@ def OrgP_DIP_decay(
     """        
     return xr.where(use_OrgP,kop_tc * OrgP,0)
 
-@numba.njit
+
 def OrgP_Settling(
     vsop : xr.DataArray,
     depth: xr.DataArray,
@@ -1883,7 +1879,7 @@ def dOrgPdt(
 
     return xr.where(use_OrgP, -OrgP_DIP_decay-OrgP_Settling + ApDeath_OrgP + AbDeath_OrgP, 0)
 
-@numba.njit
+
 def DIPfromBed(
     depth:xr.DataArray,
     rpo4_tc: xr.DataArray,
@@ -1897,7 +1893,7 @@ def DIPfromBed(
     return rpo4_tc / depth
 
 #TODO calcuate fdp?
-@numba.njit
+
 def TIP_Settling(
     vs: xr.DataArray,
     depth: xr.DataArray,
@@ -2015,7 +2011,7 @@ def dTIPdt(
     return xr.where(use_TIP, - TIP_Settling + DIPfromBed + OrgP_DIP_decay + DIP_ApRespiration - DIP_ApGrowth + DIP_AbRespiration - DIP_AbGrowth, 0)
 
 
-@numba.njit
+
 def TIP(
     TIP: xr.DataArray,
     dTIPdt: xr.DataArray,
@@ -2031,7 +2027,7 @@ def TIP(
     """     
     return TIP + dTIPdt * timestep
 
-@numba.njit
+
 def OrgP(
     OrgP: xr.DataArray,
     dOrgPdt: xr.DataArray,
@@ -2086,8 +2082,9 @@ def TP(
     """  
     TP = TOP
     TP = xr.where(use_TIP,TP + TIP,TP)
+    return TP
 
-@numba.njit
+
 def DIP(
     fdp: xr.DataArray,
     TIP: xr.DataArray
@@ -2103,7 +2100,7 @@ def DIP(
 
 
 ################################### From POM
-@numba.njit
+
 def kpom_tc(
     TwaterC: float,
     kpom_20: float,
@@ -2138,7 +2135,7 @@ def POM_algal_settling(
     return da
 
 
-@numba.njit
+
 def POM_dissolution(
     POM: xr.DataArray,
     kpom_tc: xr.DataArray
@@ -2197,7 +2194,7 @@ def POM_benthic_algae_mortality(
     return da
 
 
-@numba.njit
+
 def POM_burial(
     vb: xr.DataArray,
     POM: xr.DataArray,
@@ -2213,7 +2210,7 @@ def POM_burial(
     return vb * POM / depth
 
 
-@numba.njit
+
 def dPOMdt(
     POM_algal_settling: xr.DataArray,
     POM_dissolution: xr.DataArray,
@@ -2233,7 +2230,7 @@ def dPOMdt(
     return POM_algal_settling - POM_dissolution + POM_POC_settling + POM_benthic_algae_mortality - POM_burial
 
 
-@numba.njit
+
 def POM(
     dPOMdt: xr.DataArray,
     POM: xr.DataArray,
@@ -2250,7 +2247,7 @@ def POM(
 
 
 ################################## From CBOD
-@numba.njit
+
 def kbod_tc(
     TwaterC: xr.DataArray,
     kbod_20: xr.DataArray,
@@ -2266,7 +2263,7 @@ def kbod_tc(
     return kbod_tc
 
 
-@numba.njit
+
 def ksbod_tc(
     TwaterC: xr.DataArray,
     ksbod_20: xr.DataArray,
@@ -2304,7 +2301,7 @@ def CBOD_oxidation(
     return da
 
 
-@numba.njit
+
 def CBOD_sedimentation(
     CBOD: xr.DataArray,
     ksbod_tc: xr.DataArray
@@ -2320,7 +2317,7 @@ def CBOD_sedimentation(
     return CBOD_sedimentation
 
 
-@numba.njit
+
 def dCBODdt(
     CBOD_oxidation: xr.DataArray,
     CBOD_sedimentation: xr.DataArray
@@ -2334,7 +2331,7 @@ def dCBODdt(
     return - CBOD_oxidation - CBOD_sedimentation
 
 
-@numba.njit
+
 def CBOD(
     CBOD: xr.DataArray,
     dCBODdt: xr.DataArray,
@@ -2351,7 +2348,7 @@ def CBOD(
 
 ############################### From Carbon
 
-@numba.njit
+
 def kpoc_tc(
     TwaterC: xr.DataArray,
     kpoc_20: xr.DataArray,
@@ -2365,7 +2362,7 @@ def kpoc_tc(
     return arrhenius_correction(TwaterC, kpoc_20, 1.047)
 
 
-@numba.njit
+
 def POC_hydrolysis(
     kpoc_tc: xr.DataArray,
     POC: xr.DataArray,
@@ -2379,7 +2376,7 @@ def POC_hydrolysis(
     return kpoc_tc * POC
 
 
-@numba.njit
+
 def POC_settling(
     vsoc: xr.DataArray,
     depth: xr.DataArray,
@@ -2442,7 +2439,7 @@ def POC_benthic_algae_mortality(
 
     return da
 
-@numba.njit
+
 def dPOCdt(
     POC_settling: xr.DataArray,
     POC_hydrolysis: xr.DataArray,
@@ -2460,7 +2457,7 @@ def dPOCdt(
     return POC_algal_mortality + POC_benthic_algae_mortality - POC_settling - POC_hydrolysis
 
 
-@numba.njit
+
 def POC(
     POC: xr.DataArray,
     dPOCdt: xr.DataArray,
@@ -2524,7 +2521,7 @@ def DOC_benthic_algae_mortality(
     return da
 
 
-@numba.njit
+
 def kdoc_tc(
     TwaterC: xr.DataArray,
     kdoc_20: xr.DataArray,
@@ -2559,7 +2556,7 @@ def DOC_DIC_oxidation(
     return da
 
 
-@numba.njit
+
 def dDOCdt(
     DOC_DIC_oxidation: xr.DataArray,
     POC_hydrolysis: xr.DataArray,
@@ -2579,7 +2576,7 @@ def dDOCdt(
     return POC_hydrolysis + DOC_algal_mortality + DOC_benthic_algae_mortality - DOC_DIC_oxidation
 
 
-@numba.njit
+
 def DOC(
     DOC: xr.DataArray,
     dDOCdt: xr.DataArray,
@@ -2595,7 +2592,7 @@ def DOC(
     return DOC + dDOCdt * timestep
 
 
-@numba.njit
+
 def Henrys_k(
     TwaterC: xr.DataArray
 ) -> xr.DataArray:
@@ -2606,7 +2603,7 @@ def Henrys_k(
     """
     return 10**(2385.73 / (TwaterC + 273.15) + .0152642 * (TwaterC + 273.15) - 14.0184)
 
-@numba.njit
+
 def Atmospheric_CO2_reaeration(
     ka_tc: xr.DataArray,
     K_H: xr.DataArray,
@@ -2742,7 +2739,7 @@ def DIC_sed_release(
     return SOD_tc / roc / depth
 
 
-@numba.njit
+
 def dDICdt(
     Atm_CO2_reaeration: xr.DataArray,
     DIC_algal_respiration: xr.DataArray,
@@ -2766,7 +2763,7 @@ def dDICdt(
     return Atm_CO2_reaeration + DIC_algal_respiration + DIC_benthic_algae_respiration + DIC_CBOD_oxidation + DIC_sed_release - DIC_algal_photosynthesis - DIC_benthic_algae_photosynthesis
 
 
-@numba.njit
+
 def DIC(
     DIC: xr.DataArray,
     dDICdt: xr.DataArray,
@@ -2786,7 +2783,7 @@ def DIC(
 
 
 #TODO: make sure np.exp will work here...
-@numba.njit
+
 def pwv(
     TwaterK: xr.DataArray
 ) -> xr.DataArray:
@@ -2798,7 +2795,7 @@ def pwv(
     return np.exp(11.8571 - 3840.70 / TwaterK - 216961 / TwaterK ** 2)
 
 
-@numba.njit
+
 def DOs_atm_alpha(
     TwaterK: xr.DataArray
 ) -> xr.DataArray:
@@ -2810,7 +2807,7 @@ def DOs_atm_alpha(
     return .000975 - 1.426 * 10 ** -5 * TwaterK + 6.436 * 10 ** -8 * TwaterK ** 2
 
 
-@numba.njit
+
 def DOX_sat(
     TwaterK: xr.DataArray,
     pressure_atm: xr.DataArray,
@@ -2834,7 +2831,7 @@ def DOX_sat(
     return DOX_sat_corrected
 
 
-@numba.njit
+
 def Atm_O2_reaeration(
     ka_tc: xr.DataArray,
     DOX_sat: xr.DataArray,
@@ -2926,7 +2923,7 @@ def DOX_DOC_oxidation(
     return da
 
 
-@numba.njit
+
 def DOX_CBOD_oxidation(
     DIC_CBOD_oxidation: xr.DataArray,
     roc: xr.DataArray
@@ -3002,7 +2999,7 @@ def DOX_SOD(
 
     return SOD_tc / depth
 
-@numba.njit
+
 def dDOXdt(
     Atm_O2_reaeration: xr.DataArray,
     DOX_ApGrowth: xr.DataArray,
@@ -3030,7 +3027,7 @@ def dDOXdt(
     return Atm_O2_reaeration + DOX_ApGrowth - DOX_ApRespiration - DOX_Nitrification - DOX_DOC_oxidation - DOX_CBOD_oxidation + DOX_AbGrowth - DOX_AbRespiration - DOX_SOD
 
 
-@numba.njit
+
 def DOX(
     DOX: xr.DataArray,
     dDOXdt: xr.DataArray,
@@ -3048,7 +3045,7 @@ def DOX(
 ######################################### From pathogen
 
 
-@numba.njit
+
 def kdx_tc(
     TwaterC : xr.DataArray,
     kdx_20: xr.DataArray
@@ -3063,7 +3060,7 @@ def kdx_tc(
 
     return arrhenius_correction(TwaterC, kdx_20, 1.07)
 
-@numba.njit
+
 def PathogenDeath(
     kdx_tc : xr.DataArray,
     PX: xr.DataArray
@@ -3078,7 +3075,6 @@ def PathogenDeath(
     """
     return kdx_tc * PX
 
-@numba.njit
 def PathogenDecay(
     apx: xr.DataArray,
     q_solar: xr.DataArray,
@@ -3097,9 +3093,9 @@ def PathogenDecay(
       PX: Pathogen concentration (cfu/100mL)
 
     """
-    return apx * q_solar / (L * depth) * (1 - math.exp(-L * depth)) * PX
+    return apx * q_solar / (L * depth) * (1 - np.exp(-L * depth)) * PX
 
-@numba.njit
+
 def PathogenSettling(
     vx: xr.DataArray,
     depth: xr.DataArray,
@@ -3115,7 +3111,7 @@ def PathogenSettling(
     """
     return vx/depth*PX
 
-@numba.njit
+
 def dPXdt(
     PathogenDeath: xr.DataArray,
     PathogenDecay: xr.DataArray,
@@ -3133,7 +3129,7 @@ def dPXdt(
     """
     return -PathogenDeath - PathogenDecay - PathogenSettling
 
-@numba.njit
+
 def PX(
     PX:xr.DataArray,
     dPXdt: xr.DataArray,
@@ -3175,12 +3171,12 @@ def Alk_denitrification(
     """
     
     da: np.ndarray = np.select(
-        choicelist = [
-            use_NO3 == True and use_DOX == True,
-            use_NO3 == True
+        condlist = [
+            use_NO3 and use_DOX,
+            use_NO3
         ],
         
-        condlist = [
+        choicelist = [
             r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3,
             r_alkden * kdnit_tc * NO3
         ],
@@ -3213,13 +3209,13 @@ def Alk_nitrification(
     """
     
     da: np.ndarray = np.select(
-        choicelist = [
-            use_NH4 == True and use_DOX == True,
-            use_NH4 == True
+        condlist = [
+            use_NH4 and use_DOX,
+            use_NH4
         ],
         
-        condlist = [
-            r_alkn * (1 - math.exp(-KNR * DOX)) * knit_tc * NH4,
+        choicelist = [
+            r_alkn * (1 - np.exp(-KNR * DOX)) * knit_tc * NH4,
             knit_tc * NH4
         ],
         
@@ -3312,7 +3308,7 @@ def Alk_benthic_algae_respiration(
     return da
 
 
-@numba.njit
+
 def dAlkdt(
     Alk_denitrification: xr.DataArray,
     Alk_nitrification: xr.DataArray,
@@ -3334,7 +3330,7 @@ def dAlkdt(
     return Alk_denitrification - Alk_nitrification - Alk_algal_growth + Alk_algal_respiration - Alk_benthic_algae_growth + Alk_benthic_algae_respiration
 
 
-@numba.njit
+
 def Alk(
     Alk: xr.DataArray,
     dAlkdt: xr.DataArray,
@@ -3352,7 +3348,6 @@ def Alk(
 ##################################### From N2
 
 
-@numba.njit
 def KHN2_tc(
     TwaterK : xr.DataArray,
 ) -> xr.DataArray :
@@ -3368,9 +3363,9 @@ def KHN2_tc(
         Reference temperature: 298.15 (K) 
     """
 
-    return 0.00065 * math.exp(1300.0 * (1.0 / TwaterK - 1 / 298.15))   
+    return 0.00065 * np.exp(1300.0 * (1.0 / TwaterK - 1 / 298.15))   
         
-@numba.njit
+
 def P_wv(
     TwaterK : xr.DataArray,
 ) -> xr.DataArray :
@@ -3383,7 +3378,7 @@ def P_wv(
         TwaterK: water temperature kelvin (K)
 
     """
-    return math.exp(11.8571  - (3840.70 / TwaterK) - (216961.0 / (TwaterK**2)))
+    return np.exp(11.8571  - (3840.70 / TwaterK) - (216961.0 / (TwaterK**2)))
   
 
 def N2sat(
@@ -3405,7 +3400,7 @@ def N2sat(
 
     return N2sat
 
-@numba.njit    
+    
 def dN2dt(
     ka_tc : xr.DataArray, 
     N2sat : xr.DataArray,
@@ -3422,7 +3417,7 @@ def dN2dt(
         
     return 1.034 * ka_tc * (N2sat - N2)
 
-@numba.njit    
+    
 def N2(
     N2: xr.DataArray,
     dN2dt : xr.DataArray,
