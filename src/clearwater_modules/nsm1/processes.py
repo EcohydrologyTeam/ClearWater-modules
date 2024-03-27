@@ -488,7 +488,25 @@ def FN(
         KsN: Michaelis-Menton half-saturation constant relating inorganic N to algal growth (mg-N/L)
     """
 
-    FN_orig = xr.where(use_NH4 or use_NO3, (NH4 + NO3) / (KsN + NH4 + NO3), 1)
+    #FN_orig = xr.where(use_NH4 or use_NO3, (NH4 + NO3) / (KsN + NH4 + NO3), 1)
+
+    FN_orig: np.ndarray = np.select(
+        condlist= [
+            use_NH4 == True and use_NO3 == True,
+            use_NH4 == False and use_NO3 == True,
+            use_NH4 == True and use_NO3 == False,
+            use_NH4 == False and use_NO3 == False,
+        ],
+        
+        choicelist= [
+            (NH4 + NO3) / (KsN + NH4 + NO3),
+            (NO3) / (KsN + NO3),
+            (NH4) / (KsN + NH4),
+            1
+        ],
+        
+        default = 1
+    )
     
 
     FN: np.ndarray = np.select(
@@ -853,8 +871,26 @@ def FNb(
         KsNb: Michaelis-Menton half-saturation constant relating inorganic N to benthic algal growth (mg-N/L)
     """
 
-    FNb_orig = xr.where(use_NH4 or use_NO3, (NH4 + NO3) / (KsNb + NH4 + NO3),1)
+    #FNb_orig = xr.where(use_NH4 or use_NO3, (NH4 + NO3) / (KsNb + NH4 + NO3),1)
     
+    FNb_orig: np.ndarray = np.select(
+        condlist= [
+            use_NH4 == True and use_NO3 == True,
+            use_NH4 == True and use_NO3 == False,
+            use_NH4 == False and use_NO3 == True,
+            use_NH4 == False and use_NO3 == False,
+        ],
+        
+        choicelist= [
+            (NH4 + NO3) / (KsNb + NH4 + NO3),
+            (NH4) / (KsNb + NH4),
+            (NO3) / (KsNb + NO3),
+            1
+        ],
+        
+        default = 1
+    )
+
     FNb: np.ndarray = np.select(
         condlist= [
             math.isnan(FNb_orig),
