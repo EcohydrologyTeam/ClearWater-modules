@@ -112,7 +112,6 @@ def test_nsm1_variable_sorting(nutrient_budget_instance) -> None:
 def test_nsm1_timestep(nutrient_budget_instance) -> None:
     """Checks that we can auto-sort our NSM1 variable"""
     nutrient_budget_instance.increment_timestep()
-
     assert len(nutrient_budget_instance.dataset.nsm1_time_step) == 2
     assert nutrient_budget_instance.dataset.sel(nsm1_time_step=1).isnull().any() == False
 

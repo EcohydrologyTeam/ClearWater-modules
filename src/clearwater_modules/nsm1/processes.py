@@ -79,15 +79,15 @@ def kah_20(
                 hydraulic_reaeration_option == 2, 
                 hydraulic_reaeration_option == 3, 
                 hydraulic_reaeration_option == 4, 
-                hydraulic_reaeration_option == 5 and depth < 0.61,
-                hydraulic_reaeration_option == 5 and depth > 0.61,
-                hydraulic_reaeration_option == 5 and depth == 0.61, 
-                hydraulic_reaeration_option == 6 and flow < 0.556,
-                hydraulic_reaeration_option == 6 and flow >= 0.556,
-                hydraulic_reaeration_option == 7 and flow < 0.556, 
-                hydraulic_reaeration_option == 7 and flow >= 0.556, 
-                hydraulic_reaeration_option == 8 and flow < 0.425, 
-                hydraulic_reaeration_option == 8 and flow >= 0.425,
+                (hydraulic_reaeration_option == 5) & (depth < 0.61),
+                (hydraulic_reaeration_option == 5) & (depth > 0.61),
+                (hydraulic_reaeration_option == 5) & (depth == 0.61), 
+                (hydraulic_reaeration_option == 6) & (flow < 0.556),
+                (hydraulic_reaeration_option == 6) & (flow >= 0.556),
+                (hydraulic_reaeration_option == 7) & (flow < 0.556), 
+                (hydraulic_reaeration_option == 7) & (flow >= 0.556), 
+                (hydraulic_reaeration_option == 8) & (flow < 0.425), 
+                (hydraulic_reaeration_option == 8) & (flow >= 0.425),
                 hydraulic_reaeration_option == 9],
     
         choicelist = [kah_20_user, 
@@ -145,21 +145,21 @@ def kaw_20(
         condlist = [
         wind_reaeration_option == 1,
         wind_reaeration_option == 2,
-        wind_reaeration_option == 3 and Uw10 <= 3.5,
-        wind_reaeration_option == 3 and Uw10 > 3.5,
+        (wind_reaeration_option == 3) & (Uw10 <= 3.5),
+        (wind_reaeration_option == 3) & (Uw10 > 3.5),
         wind_reaeration_option == 4,
         wind_reaeration_option == 5,
         wind_reaeration_option == 6,
-        wind_reaeration_option == 7 and Uw10 <= 5.5,
-        wind_reaeration_option == 7 and Uw10 > 5.5,
+        (wind_reaeration_option == 7) & (Uw10 <= 5.5),
+        (wind_reaeration_option == 7) & (Uw10 > 5.5),
         wind_reaeration_option == 8,
-        wind_reaeration_option == 9 and Uw10 <= 4.1,
-        wind_reaeration_option == 9 and Uw10 > 4.1,
+        (wind_reaeration_option == 9) & (Uw10 <= 4.1),
+        (wind_reaeration_option == 9) & (Uw10 > 4.1),
         wind_reaeration_option == 10,
         wind_reaeration_option == 11,
         wind_reaeration_option == 12,
-        wind_reaeration_option == 13 and Uw10 < 1.6,
-        wind_reaeration_option == 13 and Uw10 >= 1.6,
+        (wind_reaeration_option == 13) & (Uw10 < 1.6),
+        (wind_reaeration_option == 13) & (Uw10 >= 1.6),
     ],
     
     choicelist = [
@@ -289,7 +289,7 @@ def PAR(
         q_solar: solar radiation (1/d),
         Fr_PAR: fraction of solar radiation within the PAR of the spectrum
     """
-    return xr.where (use_Algae or use_Balgae, q_solar * Fr_PAR, 0)
+    return xr.where ((use_Algae) | (use_Balgae), q_solar * Fr_PAR, 0)
 
 #TODO does not appear HEC-RAS actually uses Solid in any calculations
 def fdp(
@@ -433,12 +433,12 @@ def FL(
 
     FL_orig: np.ndarray = np.select(
         condlist = [
-            Ap <= 0.0 or (L * depth) <= 0.0 or PAR <= 0.0,
+            (Ap <= 0.0) | (L * depth <= 0.0) | (PAR <= 0.0),
             light_limitation_option == 1,
-            light_limitation_option == 2 and np.abs(KL) < 0.0000000001,
-            light_limitation_option == 2 and np.abs(KL) >= 0.0000000001,
-            light_limitation_option == 3 and np.abs(KL) < 0.0000000001,
-            light_limitation_option == 3 and np.abs(KL) >= 0.0000000001,
+            (light_limitation_option == 2) & (np.abs(KL) < 0.0000000001),
+            (light_limitation_option == 2) & (np.abs(KL) >= 0.0000000001),
+            (light_limitation_option == 3) & (np.abs(KL) < 0.0000000001),
+            (light_limitation_option == 3) & (np.abs(KL) >= 0.0000000001),
         ],
     
         choicelist = [
@@ -492,10 +492,10 @@ def FN(
 
     FN_orig: np.ndarray = np.select(
         condlist= [
-            use_NH4 == True and use_NO3 == True,
-            use_NH4 == False and use_NO3 == True,
-            use_NH4 == True and use_NO3 == False,
-            use_NH4 == False and use_NO3 == False,
+            (use_NH4 == True) & (use_NO3 == True),
+            (use_NH4 == False) & (use_NO3 == True),
+            (use_NH4 == True) & (use_NO3 == False),
+            (use_NH4 == False) & (use_NO3 == False),
         ],
         
         choicelist= [
@@ -582,8 +582,8 @@ def mu(
         condlist = [
             growth_rate_option == 1,
             growth_rate_option == 2,
-            growth_rate_option == 3 and (FN == 0.0 or FP == 0.0),
-            growth_rate_option == 3 and FN != 0 and FP != 0
+            (growth_rate_option == 3) & ((FN == 0.0) | (FP == 0.0)),
+            (growth_rate_option == 3) & (FN != 0) & (FP != 0)
         ],
         
         choicelist = [
