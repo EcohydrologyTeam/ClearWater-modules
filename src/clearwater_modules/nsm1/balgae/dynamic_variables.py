@@ -12,7 +12,6 @@ import clearwater_modules.nsm1.balgae.processes as processes
 class Variable(base.Variable):
     ...
 
-
 Variable(
     name='mub_max_tc',
     long_name='Maximum benthic algal growth rate',

@@ -18,6 +18,7 @@ class NutrientBudget(base.Model):
 
     def __init__(
         self,
+        time_steps: int,
         initial_state_values: Optional[base.InitialVariablesDict] = None,
         updateable_static_variables: Optional[list[str]] = None,
         algae_parameters: Optional[dict[str, float]] = None,
@@ -168,6 +169,7 @@ class NutrientBudget(base.Model):
         #static_variable_values['use_sed_temp'] = use_sed_temp
 
         super().__init__(
+            time_steps=time_steps,
             initial_state_values=initial_state_values,
             static_variable_values=static_variable_values,
             updateable_static_variables=updateable_static_variables,            
