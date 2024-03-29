@@ -511,7 +511,7 @@ def FN(
 
     FN: np.ndarray = np.select(
         condlist= [
-            math.isnan(FN_orig),
+            np.isnan(FN_orig),
             FN_orig > 1.0
         ],
         
@@ -545,7 +545,7 @@ def FP(
     
     FP: np.ndarray = np.select(
         condlist= [
-            math.isnan(FP_orig),
+            np.isnan(FP_orig),
             FP_orig > 1.0
         ],
         
@@ -581,14 +581,16 @@ def mu(
     mu: np.ndarray = np.select(
         condlist = [
             growth_rate_option == 1,
-            growth_rate_option == 2,
+            (growth_rate_option == 2) & (FP > FN),
+            (growth_rate_option == 2) & (FN > FP),
             (growth_rate_option == 3) & ((FN == 0.0) | (FP == 0.0)),
             (growth_rate_option == 3) & (FN != 0) & (FP != 0)
         ],
         
         choicelist = [
             mu_max_tc * FL * FP * FN,
-            mu_max_tc * FL * min(FP, FN),
+            mu_max_tc * FL * FN,
+            mu_max_tc * FL * FP,
             0,
             mu_max_tc * FL * 2.0 / (1.0 / FN + 1.0 / FP)
         ],
@@ -814,15 +816,15 @@ def FLb(
 
     # Note that KENT is defined differently here than it was for the algal equations.
     # The equations are different, this expression is more convenient here.
-    KEXT = math.exp(-L*depth)
+    KEXT = np.exp(-L*depth)
     
     FLb_orig: np.ndarray = np.select(
         condlist = [
-            Ab <= 0.0 or KEXT <= 0.0 or PAR <= 0.0,
+            (Ab <= 0.0) | (KEXT <= 0.0) | (PAR <= 0.0),
             b_light_limitation_option == 1,
             b_light_limitation_option == 2,
-            b_light_limitation_option == 3 and abs(KLb) < 1.0E-10,
-            b_light_limitation_option == 3 and abs(KLb) >= 1.0E-10
+            (b_light_limitation_option == 3) & (abs(KLb) < 1.0E-10),
+            (b_light_limitation_option == 3) & (abs(KLb) >= 1.0E-10)
         ],
         
         choicelist = [
@@ -830,7 +832,7 @@ def FLb(
             PAR * KEXT / (KLb + PAR * KEXT),
             PAR * KEXT / ((KLb**2.0 + (PAR * KEXT)**2.0)**0.5),
             0.0,
-            PAR * KEXT / KLb * math.exp(1.0 - PAR * KEXT / KLb)
+            PAR * KEXT / KLb * np.exp(1.0 - PAR * KEXT / KLb)
         ],
         
         default = np.nan
@@ -875,10 +877,10 @@ def FNb(
     
     FNb_orig: np.ndarray = np.select(
         condlist= [
-            use_NH4 == True and use_NO3 == True,
-            use_NH4 == True and use_NO3 == False,
-            use_NH4 == False and use_NO3 == True,
-            use_NH4 == False and use_NO3 == False,
+            (use_NH4 == True) & (use_NO3 == True),
+            (use_NH4 == True) & (use_NO3 == False),
+            (use_NH4 == False) & (use_NO3 == True),
+            (use_NH4 == False) & (use_NO3 == False),
         ],
         
         choicelist= [
@@ -893,7 +895,7 @@ def FNb(
 
     FNb: np.ndarray = np.select(
         condlist= [
-            math.isnan(FNb_orig),
+            np.isnan(FNb_orig),
             FNb_orig > 1.0
         ],
         
@@ -927,7 +929,7 @@ def FPb(
 
     FPb: np.ndarray = np.select(
         condlist= [
-            math.isnan(FPb_orig),
+            np.isnan(FPb_orig),
             FPb_orig > 1.0
         ],
         
@@ -959,7 +961,7 @@ def FSb(
     
     FSb: np.ndarray = np.select(
         condlist= [
-            math.isnan(FSb_orig),
+            np.isnan(FSb_orig),
             FSb_orig > 1.0
         ],
         
@@ -994,9 +996,24 @@ def mub(
     """
 
     # Benthic Local Specific Growth Rate
-    return xr.where(b_growth_rate_option == 1, mub_max_tc * FLb * FPb * FNb * FSb, mub_max_tc * FLb * FSb * min(FPb, FNb))
-
-
+    
+    mub: np.ndarray = np.select(
+        condlist= [
+            b_growth_rate_option == 1,
+            (b_growth_rate_option != 1) & (FPb > FNb),
+            (b_growth_rate_option != 1) & (FNb > FPb)
+        ],
+        
+        choicelist= [
+            mub_max_tc * FLb * FPb * FNb * FSb,
+            mub_max_tc * FLb * FSb * FNb,
+            mub_max_tc * FLb * FSb * FPb
+        ],
+        
+        default = 0
+    )
+    
+    return mub
 
 
 def AbGrowth(
@@ -1209,7 +1226,7 @@ def ApUptakeFr_NH4(
     )
     
     # Check for case when NH4 and NO3 are very small.  If so, force uptake_fractions appropriately.
-    ApUptakeFr_NH4 = xr.where(math.isnan(ApUptakeFr_NH4),PN,ApUptakeFr_NH4)
+    ApUptakeFr_NH4 = xr.where(np.isnan(ApUptakeFr_NH4),PN,ApUptakeFr_NH4)
 
     return ApUptakeFr_NH4
 
@@ -1248,10 +1265,10 @@ def AbUptakeFr_NH4(
     """    
     AbUptakeFr_NH4: np.ndarray = np.select(
         condlist = [
-            use_NH4 and not use_NO3,
-            not use_NH4 and use_NO3,
-            not use_NH4 and not use_NO3,
-            use_Balgae and use_NH4 and use_NO3
+            (use_NH4) & (~use_NO3),
+            (~use_NH4) & (use_NO3),
+            (~use_NH4) & (~use_NO3),
+            (use_Balgae) & (use_NH4) & (use_NO3)
         ],
         
         choicelist = [
@@ -1264,7 +1281,7 @@ def AbUptakeFr_NH4(
         default = np.nan
     )
     
-    AbUptakeFr_NH4 = xr.where(math.isnan(AbUptakeFr_NH4),PNb,AbUptakeFr_NH4)
+    AbUptakeFr_NH4 = xr.where(np.isnan(AbUptakeFr_NH4),PNb,AbUptakeFr_NH4)
 
     return AbUptakeFr_NH4
 
@@ -1585,7 +1602,7 @@ def NO3_Denit(
     
     NO3_Denit: np.ndarray = np.select(
         condlist = [
-            use_DOX and math.isnan((1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3),
+            (use_DOX) & (np.isnan((1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3)),
             use_DOX
         ],
         
@@ -3207,7 +3224,7 @@ def Alk_denitrification(
     
     da: np.ndarray = np.select(
         condlist = [
-            use_NO3 and use_DOX,
+            (use_NO3) & (use_DOX),
             use_NO3
         ],
         
@@ -3245,7 +3262,7 @@ def Alk_nitrification(
     
     da: np.ndarray = np.select(
         condlist = [
-            use_NH4 and use_DOX,
+            (use_NH4) & (use_DOX),
             use_NH4
         ],
         
