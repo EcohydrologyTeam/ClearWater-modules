@@ -65,7 +65,7 @@ def nutrient_budget_instance(
     return NutrientBudget(
         time_steps=time_steps,
         initial_state_values=initial_nsm1_state,
-        updateable_static_variables=['a0'],
+        updateable_static_variables=['vson'],
         time_dim='nsm1_time_step',
     )
 
@@ -87,7 +87,7 @@ def test_nsm1_specific_attributes(nutrient_budget_instance) -> None:
     assert isinstance(nutrient_budget_instance.global_parameters, dict)
     assert isinstance(nutrient_budget_instance.global_vars, dict)
 
-    assert nutrient_budget_instance.updateable_static_variables == ['a0']
+    assert nutrient_budget_instance.updateable_static_variables == ['vson']
 
     assert nutrient_budget_instance.algae_parameters == DEFAULT_ALGAE
     assert nutrient_budget_instance.alkalinity_parameters == DEFAULT_ALKALINITY
