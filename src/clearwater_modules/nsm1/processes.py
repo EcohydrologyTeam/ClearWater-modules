@@ -684,16 +684,16 @@ def dApdt(
 def Ap(
     Ap: xr.DataArray,
     dApdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Calculate new algae concentration (ug-Chla/L)
 
     Args:
         Ap: Initial algae biomass concentration (ug-Chla/L)
         dApdt: Change in algae biomass concentration (ug-Chla/L/d)
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
     """
-    return Ap + dApdt * timestep
+    return Ap + dApdt * dt
 
 ############################################ From benthic algae
 
@@ -1080,7 +1080,7 @@ def dAbdt(
 def Ab(
     Ab: xr.DataArray,
     dAbdt: xr.DataArray,
-    timestep: xr.DataArray,
+    dt: xr.DataArray,
 
 ) -> xr.DataArray:
     """Calculate Ab: New concentration benthic algae (mg-N/L)
@@ -1088,11 +1088,11 @@ def Ab(
     Args:
         Ab: Concentration of benthic algae (mg-N/L)
         dAbdt: Change in Ab (mg-N/L/d)
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
 
     """
 
-    return Ab + dAbdt * timestep
+    return Ab + dAbdt * dt
 
 
 def Chlb(
@@ -1389,7 +1389,7 @@ def dOrgNdt(
 def OrgN(
     OrgN: xr.DataArray,
     dOrgNdt: xr.DataArray,
-    timestep: xr.DataArray,
+    dt: xr.DataArray,
 
 ) -> xr.DataArray:
     """Calculate OrgN: New concentration OrgN (mg-N/L)
@@ -1397,11 +1397,11 @@ def OrgN(
     Args:
         OrgN: Concentration of organic nitrogen (mg-N/L)
         dOrgNdt: Change in Organic Nitrogen (mg-N/L/d)
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
 
     """
 
-    return OrgN + dOrgNdt * timestep
+    return OrgN + dOrgNdt * dt
 
 def NitrificationInhibition(
     use_DOX: bool,
@@ -1567,7 +1567,7 @@ def dNH4dt(
 def NH4(
     NH4: xr.DataArray,
     dNH4dt: xr.DataArray,
-    timestep: xr.DataArray,
+    dt: xr.DataArray,
 
 ) -> xr.DataArray:
     """Calculate NH4: New concentration NH4 (mg-N/L)
@@ -1575,11 +1575,11 @@ def NH4(
     Args:
         NH4: Concentration of NH4 (mg-N/L)
         dNH4dt: Change in NH4 (mg-N/L/d)
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
 
     """
 
-    return NH4 + dNH4dt * timestep
+    return NH4 + dNH4dt * dt
 
 def NO3_Denit(
     use_DOX: bool,
@@ -1712,7 +1712,7 @@ def dNO3dt(
 def NO3(
     NO3: xr.DataArray,
     dNO3dt: xr.DataArray,
-    timestep: xr.DataArray,
+    dt: xr.DataArray,
 
 ) -> xr.DataArray:
     """Calculate NO3: New concentration NO# (mg-N/L)
@@ -1720,11 +1720,11 @@ def NO3(
     Args:
         NO3: Concentration of NO3 (mg-N/L)
         dNO3dt: Change in NO3(mg-N/L/d)
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
 
     """
 
-    return NO3 + dNO3dt * timestep
+    return NO3 + dNO3dt * dt
 
 
 def DIN(
@@ -2067,7 +2067,7 @@ def dTIPdt(
 def TIP(
     TIP: xr.DataArray,
     dTIPdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 
 ) -> xr.DataArray :
     """Calculate TIP: New total inorganic phosphorus (mg-P/L).
@@ -2075,15 +2075,15 @@ def TIP(
     Args:
         dTIPdt: Change in total inorganic phosphorus (mg-P/L/d)
         TIP: Total inorganic phosphorus water concentration (mg-P/L),
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
     """     
-    return TIP + dTIPdt * timestep
+    return TIP + dTIPdt * dt
 
 
 def OrgP(
     OrgP: xr.DataArray,
     dOrgPdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 
 ) -> xr.DataArray :
     """Calculate OrgP: New total organic phosphorus (mg-P/L).
@@ -2091,9 +2091,9 @@ def OrgP(
     Args:
         dOrgPdt: Change in total organic phosphorus (mg-P/L/d)
         OrgP: Total organic phosphorus water concentration (mg-P/L),
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
     """     
-    return OrgP + dOrgPdt * timestep
+    return OrgP + dOrgPdt * dt
 
 def TOP(
     use_OrgP: bool,
@@ -2270,7 +2270,7 @@ def dPOMdt(
     POM_benthic_algae_mortality: xr.DataArray,
     POM_burial: xr.DataArray,
 ) -> xr.DataArray:
-    """Calculates the concentration change of POM for one timestep
+    """Calculates the concentration change of POM for one dt
 
     Args:
         POM_algal_settling: POM concentration change due to algal settling (mg/L/d)
@@ -2286,16 +2286,16 @@ def dPOMdt(
 def POM(
     dPOMdt: xr.DataArray,
     POM: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Computes updated particulate organic matter concentration (mg/L)
     
     Args:
-        dPOMdt: Change in POM concentration over timestep (mg/L/d)
-        POM: POM concentration from previous timestep (mg/L)
-        timestep: Current iteration timestep (d)
+        dPOMdt: Change in POM concentration over dt (mg/L/d)
+        POM: POM concentration from previous dt (mg/L)
+        dt: Current iteration dt (d)
     """
-    return POM + dPOMdt * timestep
+    return POM + dPOMdt * dt
 
 
 ################################## From CBOD
@@ -2374,7 +2374,7 @@ def dCBODdt(
     CBOD_oxidation: xr.DataArray,
     CBOD_sedimentation: xr.DataArray
 ) -> xr.DataArray:
-    """Computes change in each CBOD group for a given timestep
+    """Computes change in each CBOD group for a given dt
 
     Args:
         CBOD_oxidation: CBOD concentration change due to oxidation (mg/L/d)
@@ -2387,16 +2387,16 @@ def dCBODdt(
 def CBOD(
     CBOD: xr.DataArray,
     dCBODdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
-    """Calculates new CBOD concentration for next timestep
+    """Calculates new CBOD concentration for next dt
 
     Args:
-        CBOD: CBOD concentration from previous timestep (mg/L)
-        dCBODdt: CBOD concentration change for current timestep (mg/L/d)
-        timestep: current iteration timestep (d)
+        CBOD: CBOD concentration from previous dt (mg/L)
+        dCBODdt: CBOD concentration change for current dt (mg/L/d)
+        dt: current iteration dt (d)
     """
-    return CBOD + dCBODdt * timestep
+    return CBOD + dCBODdt * dt
 
 ############################### From Carbon
 
@@ -2419,7 +2419,7 @@ def POC_hydrolysis(
     kpoc_tc: xr.DataArray,
     POC: xr.DataArray,
 ) -> xr.DataArray:
-    """Calculate the POC concentration change due to hydrolysis for a given timestep
+    """Calculate the POC concentration change due to hydrolysis for a given dt
 
     Args:
         kpoc_tc: POC hydrolysis rate at given water temperature (1/d)
@@ -2434,7 +2434,7 @@ def POC_settling(
     depth: xr.DataArray,
     POC: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate the POC concentration change due to settling for a given timestep
+    """Calculate the POC concentration change due to settling for a given dt
 
     Args:
         vsoc: POC settling velocity (m/d)
@@ -2513,16 +2513,16 @@ def dPOCdt(
 def POC(
     POC: xr.DataArray,
     dPOCdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the POC concentration at the next time step
 
     Args:
-        POC: Concentration of POC from previous timestep (mg/L)
-        dPOCdt: POC concentration change for current timestep (mg/L/d)
-        timestep: current iteration timestep (d)
+        POC: Concentration of POC from previous dt (mg/L)
+        dPOCdt: POC concentration change for current dt (mg/L/d)
+        dt: current iteration dt (d)
     """
-    return POC + dPOCdt * timestep
+    return POC + dPOCdt * dt
 
 
 def DOC_algal_mortality(
@@ -2632,16 +2632,16 @@ def dDOCdt(
 def DOC(
     DOC: xr.DataArray,
     dDOCdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the DOC concentration at the next time step
 
     Args:
-        DOC: Dissolved organic carbon concentration from previous timestep (mg/L)
-        dDOCdt: Dissolved organic carbon concentration change for current timestep (mg/L/d)
-        timestep: current iteration timestep (d)
+        DOC: Dissolved organic carbon concentration from previous dt (mg/L)
+        dDOCdt: Dissolved organic carbon concentration change for current dt (mg/L/d)
+        dt: current iteration dt (d)
     """
-    return DOC + dDOCdt * timestep
+    return DOC + dDOCdt * dt
 
 
 
@@ -2819,16 +2819,16 @@ def dDICdt(
 def DIC(
     DIC: xr.DataArray,
     dDICdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the DIC concentration at the next time step
 
     Args:
-        DIC: Concentration of DIC from previous timestep (mg/L)
-        dDICdt: Change in concentration of DIC for current timestep (mg/L/d)
-        timestep: Current iteration timestep (d)
+        DIC: Concentration of DIC from previous dt (mg/L)
+        dDICdt: Change in concentration of DIC for current dt (mg/L/d)
+        dt: Current iteration dt (d)
     """
-    return DIC + dDICdt * timestep
+    return DIC + dDICdt * dt
 
 
 ######################################## From DOX
@@ -3063,7 +3063,7 @@ def dDOXdt(
     DOX_AbRespiration: xr.DataArray,
     DOX_SOD: xr.DataArray
 ) -> xr.DataArray:
-    """Compute change in dissolved oxygen concentration for one timestep
+    """Compute change in dissolved oxygen concentration for one dt
 
     Args:
         Atm_O2_reaeration: DOX concentration change due to atmospheric O2 reaeration (mg/L/d)
@@ -3083,16 +3083,16 @@ def dDOXdt(
 def DOX(
     DOX: xr.DataArray,
     dDOXdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Computes updated dissolved oxygen concentration
 
     Args:
-        DOX: Dissolved oxygen concentration from previous timestep
-        dDOXdt: Change in dissolved oxygen concentration over timestep
-        timestep: Current iteration timestep (d)
+        DOX: Dissolved oxygen concentration from previous dt
+        dDOXdt: Change in dissolved oxygen concentration over dt
+        dt: Current iteration dt (d)
     """
-    return DOX + dDOXdt * timestep
+    return DOX + dDOXdt * dt
 
 ######################################### From pathogen
 
@@ -3185,7 +3185,7 @@ def dPXdt(
 def PX(
     PX:xr.DataArray,
     dPXdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 
 ) -> xr.DataArray :
 
@@ -3194,9 +3194,9 @@ def PX(
     Args:
       dPXdt: change in pathogen concentration (cfu/100mL/d)
       PX: Pathogen concentration (cfu/100mL)
-      timestep: Current iteration timestep (d)
+      dt: Current iteration dt (d)
     """
-    return PX + timestep * dPXdt
+    return PX + dt * dPXdt
 
 
 ##################################### From alkalinity
@@ -3369,7 +3369,7 @@ def dAlkdt(
     Alk_benthic_algae_growth: xr.DataArray,
     Alk_benthic_algae_respiration: xr.DataArray
 ) -> xr.DataArray:
-    """Computes the change in alkalinity for timestep
+    """Computes the change in alkalinity for dt
 
     Args:
         Alk_denitrification: xr.DataArray,
@@ -3386,16 +3386,16 @@ def dAlkdt(
 def Alk(
     Alk: xr.DataArray,
     dAlkdt: xr.DataArray,
-    timestep: xr.DataArray,
+    dt: xr.DataArray,
 ) -> xr.DataArray:
-    """Computes the alkalinity concentration at the next timestep
+    """Computes the alkalinity concentration at the next dt
 
     Args:
-        Alk: Concentration of alkalinity from previous timestep (mg/L)
-        dAlkdt: Change in concentration of alkalinity for current timestep (mg/L/d)
-        timestep: Current iteration timestep (d)
+        Alk: Concentration of alkalinity from previous dt (mg/L)
+        dAlkdt: Change in concentration of alkalinity for current dt (mg/L/d)
+        dt: Current iteration dt (d)
     """
-    return Alk + dAlkdt * timestep
+    return Alk + dAlkdt * dt
 
 ##################################### From N2
 
@@ -3473,7 +3473,7 @@ def dN2dt(
 def N2(
     N2: xr.DataArray,
     dN2dt : xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray: 
     
     """Calculate change in N2 air concentration (mg-N/L/d)
@@ -3481,10 +3481,10 @@ def N2(
     Args:
         N2: Nitrogen concentration air (mg-N/L)
         dN2dt: Change in nitrogen concentration air
-        timestep: Current iteration timestep (d)
+        dt: Current iteration dt (d)
     """
         
-    return N2 + dN2dt * timestep
+    return N2 + dN2dt * dt
 
 def TDG(
     N2: xr.DataArray,

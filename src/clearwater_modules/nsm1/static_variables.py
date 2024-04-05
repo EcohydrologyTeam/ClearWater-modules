@@ -232,10 +232,10 @@ Variable(
 )
 
 Variable(
-    name='timestep',
-    long_name='timestep',
+    name='dt',
+    long_name='dt',
     units='d',
-    description='calculation timestep',
+    description='calculation dt',
     use='static',
 )
 
