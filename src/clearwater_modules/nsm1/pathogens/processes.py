@@ -95,7 +95,8 @@ def dPXdt(
 @numba.njit
 def PX(
   PX:xr.DataArray,
-  dPXdt: xr.DataArray
+  dPXdt: xr.DataArray,
+  timestep: xr.DataArray
 
 ) -> xr.DataArray :
 
@@ -104,5 +105,6 @@ def PX(
     Args:
       dPXdt: change in pathogen concentration (cfu/100mL/d)
       PX: Pathogen concentration (cfu/100mL)
+      timestep: Current iteration timestep (d)
     """
-    return PX+dPXdt
+    return PX + timestep * dPXdt

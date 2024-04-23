@@ -72,6 +72,6 @@ Variable(
     name='roc',
     long_name='O2:C ratio for carbon oxidation',
     units='mg-O2/mg-C',
-    description='32/12',
+    description='O2:C ratio for carbon oxidation (32/12)',
     use='static'
 )

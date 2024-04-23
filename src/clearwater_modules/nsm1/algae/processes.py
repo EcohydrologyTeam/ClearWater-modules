@@ -3,6 +3,7 @@ File contains process to calculate new algae biomass concentration and associate
 """
 import numba
 import xarray as xr
+import numpy as np
 from clearwater_modules.shared.processes import arrhenius_correction
 import math
 
@@ -116,7 +117,7 @@ def FL(
     Ap: xr.DataArray,
     PAR: xr.DataArray,
     light_limitation_option: int,
-    KL: xr.DataArray,
+    KL: int,
 ) -> xr.DataArray:
     """Calculate Algal light limitation: FL (unitless).
 
@@ -131,12 +132,13 @@ def FL(
 
     KEXT = L * depth
 
+
     FL = xr.where(Ap <= 0.0 or KEXT <= 0.0 or PAR <= 0.0, 0, 
          xr.where(light_limitation_option==1, (1.0 / KEXT) * math.log((KL + PAR) /(KL + PAR * math.exp(-KEXT))),
          xr.where(light_limitation_option==2,
-         xr.where(abs(KL)<0.0000000001, 1, (1.0 / KEXT) * math.log( (PAR / KL + ((1.0 + (PAR / KL)**2.0)**0.5)) / (PAR * math.exp(-KEXT) / KL + ((1.0 + (PAR * math.exp(-KEXT) / KL)**2.0)**0.5)))), 
+         xr.where(abs(KL)< 0.0000000001, 1, (1.0 / KEXT) * math.log( (PAR / KL + ((1.0 + (PAR / KL)**2.0)**0.5)) / (PAR * math.exp(-KEXT) / KL + ((1.0 + (PAR * math.exp(-KEXT) / KL)**2.0)**0.5)))), 
          xr.where(light_limitation_option==3,
-         xr.where(abs(KL)<0.0000000001,0,(2.718/KEXT) * (math.exp(-PAR/KL * math.exp(-KEXT)) - math.exp(-PAR/KL))), "NaN"))))
+         xr.where(abs(KL)< 0.0000000001,0,(2.718/KEXT) * (math.exp(-PAR/KL * math.exp(-KEXT)) - math.exp(-PAR/KL))), "NaN"))))
           
     
     FL= xr.where(FL > 1.0, 1.0,

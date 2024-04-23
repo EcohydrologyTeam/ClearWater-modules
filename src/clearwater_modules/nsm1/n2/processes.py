@@ -82,6 +82,7 @@ def dN2dt(
 def N2(
     N2: xr.DataArray,
     dN2dt : xr.DataArray,
+    timestep: xr.DataArray
 ) -> xr.DataArray: 
     
     """Calculate change in N2 air concentration (mg-N/L/d)
@@ -89,9 +90,10 @@ def N2(
     Args:
         N2: Nitrogen concentration air (mg-N/L)
         dN2dt: Change in nitrogen concentration air
+        timestep: Current iteration timestep (d)
     """
         
-    return N2 + dN2dt
+    return N2 + dN2dt * timestep
 
 @numba.njit    
 def TDG(
