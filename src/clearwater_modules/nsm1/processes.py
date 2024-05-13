@@ -704,7 +704,7 @@ def mub_max_tc(
     """Calculate mub_max_tc: Maximum benthic algal growth rate with temperature correction (1/d).
 
     Args:
-        mu_max_20: Maximum benthic algal growth rate at 20C (1/d)
+        mub_max_20: Maximum benthic algal growth rate at 20C (1/d)
         TwaterC: Water temperature (C)
     """
     return arrhenius_correction(TwaterC, mub_max_20, 1.047)
@@ -1169,7 +1169,7 @@ def kon_tc(
         kon_20: Decay rate of OrgN to NH4 (1/d)
     """
 
-    return arrhenius_correction(TwaterC, kon_20, 1.074)
+    return arrhenius_correction(TwaterC, kon_20, 1.047)
 
 
 
@@ -1490,6 +1490,8 @@ def NH4_ApGrowth(
 def NH4_AbRespiration(
     use_Balgae: bool,
     rnb: xr.DataArray,
+    Fb: xr.DataArray,
+    depth: xr.DataArray,
     AbRespiration: xr.DataArray,
 
 ) -> xr.DataArray:
@@ -1499,10 +1501,12 @@ def NH4_AbRespiration(
         use_Balgae: true/false to use benthic algae module (unitless),
         rnb: xr.DataArray,
         AbRespiration: Benthic algal respiration rate (g/m^2/d),
+        depth: water depth (m),
+        Fb: Fraction of bottom area for benthic algae (unitless),
     """
     # TODO changed the calculation for respiration from the inital FORTRAN due to conflict with the reference guide
 
-    return xr.where(use_Balgae, rnb * AbRespiration, 0.0 )
+    return xr.where(use_Balgae, (rnb * AbRespiration*Fb)/depth, 0.0 )
 
 def NH4_AbGrowth(
     use_Balgae: bool,

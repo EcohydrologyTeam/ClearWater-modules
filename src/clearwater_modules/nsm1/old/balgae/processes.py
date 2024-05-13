@@ -15,7 +15,7 @@ def mub_max_tc(
     """Calculate mub_max_tc: Maximum benthic algal growth rate with temperature correction (1/d).
 
     Args:
-        mu_max_20: Maximum benthic algal growth rate at 20C (1/d)
+        mub_max_20: Maximum benthic algal growth rate at 20C (1/d)
         TwaterC: Water temperature (C)
     """
     return arrhenius_correction(TwaterC, mub_max_20, 1.047)
@@ -162,7 +162,7 @@ def FNb(
     """
     FNb = xr.where(use_NH4 or use_NO3, (NH4 + NO3) / (KsNb + NH4 + NO3),1)
     FNb = xr.where(math.isnan(FNb),0.0,
-          xr.where(FNb < 1.0, 1, FNb))
+          xr.where(FNb > 1.0, 1, FNb))
 
     return FNb
 
@@ -230,12 +230,12 @@ def mub(
         FPb: Benthic algae phosphorous limitation (unitless)
         FNb: Benthic algae nitrogen limitation (unitless)
         FSb: Benthic density attenuation (unitless),
-    """
+    """  
 
     # Benthic Local Specific Growth Rate
     return xr.where(b_growth_rate_option == 1, mub_max_tc * FLb * FPb * FNb * FSb, mub_max_tc * FLb * FSb * min(FPb, FNb))
 
-
+#TODO RAS WQ has an option for harmonic which the FORTAN code does not have 
 
 @numba.njit
 def AbGrowth(
