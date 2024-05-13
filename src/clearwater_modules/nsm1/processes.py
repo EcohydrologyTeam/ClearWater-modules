@@ -2672,7 +2672,7 @@ def Atmospheric_CO2_reaeration(
         FCO2: Fraction of CO2 in total inorganic carbon
         DIC: Dissolved inorganic carbon concentration (mg/L)
     """
-    return 12 * ka_tc * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
+    return 0.923 * ka_tc * (K_H * pCO2 / 1000000 - FCO2 * DIC)
 
 
 def DIC_algal_respiration(
