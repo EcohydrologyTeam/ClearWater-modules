@@ -2687,7 +2687,7 @@ def DIC_algal_respiration(
         rca: Ratio of carbon to chlorophyll-a (mg-C/ug-Chla)
         use_Algae: Option to consider algae in the DIC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Algae == True, ApRespiration * rca, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, ApRespiration * rca / 12000, 0)
 
     return da
 
@@ -2704,7 +2704,7 @@ def DIC_algal_photosynthesis(
         rca: Ratio of carbon to chlorophyll-a (mg-C/ug-Chla)
         use_Algae: Option to consider algae in the DIC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Algae == True, ApGrowth * rca, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, ApGrowth * rca / 12000, 0)
 
     return da
 
@@ -2725,7 +2725,7 @@ def DIC_benthic_algae_respiration(
         depth: Depth of water (m)
         use_Balgae: Option to consider benthic algae in the DIC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, AbRespiration * rcb * Fb * (1 / depth), 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, AbRespiration * rcb * Fb * (1 / depth) / 12000, 0)
 
     return da
 
@@ -2746,7 +2746,7 @@ def DIC_benthic_algae_photosynthesis(
         depth: Depth of water (m)
         use_Balgae: Option to consider benthic algae in the DIC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, AbGrowth * rcb * Fb * (1 / depth), 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, AbGrowth * rcb * Fb * (1 / depth) / 12000, 0)
 
     return da
 
@@ -2770,7 +2770,7 @@ def DIC_CBOD_oxidation(
         use_DOX: Option to consider dissolved oxygen in CBOD oxidation calculation (boolean)
     """
     
-    da: xr.DataArray = xr.where(use_DOX == True, (1 / roc) * (DOX / (KsOxbod + DOX)) * kbod_tc * CBOD, CBOD * kbod_tc)
+    da: xr.DataArray = xr.where(use_DOX == True, (1 / roc) * (DOX / (KsOxbod + DOX)) * kbod_tc * CBOD / 12000, CBOD * kbod_tc / 12000)
 
     return da
 
@@ -2788,7 +2788,7 @@ def DIC_sed_release(
         roc: Ratio of O2 to carbon for carbon oxidation (mg-O2/mg-C)
         depth: Water depth (m)
     """
-    return SOD_tc / roc / depth
+    return SOD_tc / roc / depth / 12000
 
 
 
