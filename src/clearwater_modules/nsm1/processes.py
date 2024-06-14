@@ -42,6 +42,7 @@ def arrhenius_correction(
 
 
 
+
 def TwaterK(
     TwaterC : xr.DataArray,
 ) -> xr.DataArray :
@@ -2151,6 +2152,7 @@ def DIP(
     return TIP * fdp
 
 
+
 ################################### From POM
 
 def kpom_tc(
@@ -3448,7 +3450,7 @@ def N2sat(
     """
         
     N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_atm - P_wv)  
-    N2sat = xr.where(N2sat < 0.0,0.0,N2sat) #Trap saturation concentration to ensure never negative
+    N2sat = xr.where(N2sat < 0.0,0.000001,N2sat) #Trap saturation concentration to ensure never negative
 
     return N2sat
 

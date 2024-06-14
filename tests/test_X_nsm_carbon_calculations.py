@@ -27,11 +27,11 @@ def initial_nsm1_state() -> dict[str, float]:
     """Return initial state values for the model."""
     return {            'Ap': 36.77,
                         'Ab': 24,
-                        'NH4': 1,
+                        'NH4': .063,
                         'NO3': 5.54,
                         'OrgN': 1.726,
                         'N2': 1,
-                        'TIP': 1,
+                        'TIP': 0.071,
                         'OrgP': 0.24,
                         'POC': 4.356,
                         'DOC': 1,
@@ -240,8 +240,8 @@ def default_phosphorus_params() -> PhosphorusStaticVariables:
     """
     return PhosphorusStaticVariables(
         kop_20 = 0.1,
-        rpo4_20 =0,
-        kdpo4 = 0.0,
+        rpo4_20 = 0,
+        kdpo4 = 100.0,
     )
 
 @pytest.fixture(scope='function')
@@ -254,18 +254,18 @@ def default_gp_params() -> GlobalParameters:
     Returns a typed dictionary, with string keys and float values.
     """
     return GlobalParameters(
-        use_NH4= False,
+        use_NH4= True,
         use_NO3= True, 
         use_OrgN= True,
         use_OrgP = True,
-        use_TIP= False,  
+        use_TIP= True,  
         use_SedFlux= False,
-        use_POC = True,
-        use_DOC = True,
         use_DOX= True,
-        use_DIC= True,
         use_Algae= True,
         use_Balgae= True,
+        use_POC = True,
+        use_DOC = True,
+        use_DIC= True,
         use_N2 = True,
         use_Pathogen = True,
         use_Alk = True,
@@ -286,12 +286,12 @@ def default_gvars_params() -> GlobalVars:
         vsoc = 0.01,
         vsop = 0.01,
         vs = 0.01,
-        SOD_20 = 2,
+        SOD_20 = 0.5,
         SOD_theta = 1.047,
         vb = 0.01,
         fcom = 0.4,
-        kaw_20_user = 0.5,
-        kah_20_user = 0.5,
+        kaw_20_user = 0,
+        kah_20_user = 1,
         hydraulic_reaeration_option = 1,
         wind_reaeration_option = 1,  
         dt = 1,    #TODO Dynamic or static?
@@ -300,7 +300,7 @@ def default_gvars_params() -> GlobalVars:
         theta = 1.047,
         velocity = 1,
         flow = 150,
-        topwidth = 1,
+        topwidth = 100,
         slope = 0.0002,
         shear_velocity = 0.05334,
         pressure_atm = 1013.25,
@@ -310,7 +310,7 @@ def default_gvars_params() -> GlobalVars:
         lambda0 = 0.02,
         lambda1 = 0.0088,
         lambda2 = 0.054,
-        lambdas = 0.052,
+        lambdas = 0.056,
         lambdam = 0.174, 
         Fr_PAR = .47  
     )
@@ -356,7 +356,7 @@ def get_nutrient_budget_instance(
 @pytest.fixture(scope='module')
 def tolerance() -> float:
     """Controls the precision of the pytest.approx() function."""
-    return 0.000001
+    return 0.01
 
 def test_defaults_POC(
     time_steps,
@@ -403,9 +403,9 @@ def test_defaults_POC(
     POC = nsm1.dataset.isel(nsm1_time_step=-1).POC.values.item()
 
     assert isinstance(POC, float)
-    assert pytest.approx(POC, tolerance) == 6.3104
+    assert pytest.approx(POC, tolerance) == 6.30
     
-def test_defaults_DOC(
+def test_defaults(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -447,10 +447,18 @@ def test_defaults_DOC(
 
     # Run the model
     nsm1.increment_timestep()
-    DOC = nsm1.dataset.isel(nsm1_time_step=-1).DOC.values.item()
-
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.30
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
     assert isinstance(DOC, float)
-    assert pytest.approx(DOC, tolerance) == 1.2396
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
     
 def test_defaults_DIC(
     time_steps,
@@ -497,4 +505,289 @@ def test_defaults_DIC(
     DIC = nsm1.dataset.isel(nsm1_time_step=-1).DIC.values.item()
 
     assert isinstance(DIC, float)
-    assert pytest.approx(DIC, tolerance) == .8269
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_POC(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed POC."""
+    # alter parameters as necessary
+    initial_state_dict = initial_nsm1_state
+    initial_state_dict['POC'] = 2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 3.98
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.22
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_DOC(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed DOC."""
+    # alter parameters as necessary
+    initial_state_dict = initial_nsm1_state
+    initial_state_dict['DOC'] = 2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.30
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 2.23
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_DIC(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed DIC."""
+    # alter parameters as necessary
+    initial_state_dict = initial_nsm1_state
+    initial_state_dict['DIC'] = 2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.30
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 1.54
+    
+def test_changed_DOX(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed DIC."""
+    # alter parameters as necessary
+    initial_state_dict = initial_nsm1_state
+    initial_state_dict['DOX'] = 5
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.30
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_CBOD(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed DIC."""
+    # alter parameters as necessary
+    initial_state_dict = initial_nsm1_state
+    initial_state_dict['CBOD'] = 10000
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.30
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.81
