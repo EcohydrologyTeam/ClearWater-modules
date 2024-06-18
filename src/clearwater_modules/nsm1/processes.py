@@ -722,7 +722,7 @@ def krb_tc(
         krb_20: Benthic algae respiration rate at 20C (1/d)
         TwaterC: Water temperature (C)
     """
-    return arrhenius_correction(TwaterC, krb_20, 1.06)
+    return arrhenius_correction(TwaterC, krb_20, 1.047)
 
 
 
