@@ -2849,7 +2849,7 @@ def pwv(
     return np.exp(11.8571 - 3840.70 / TwaterK - 216961 / TwaterK ** 2)
 
 
-
+#TwaterC??
 def DOs_atm_alpha(
     TwaterK: xr.DataArray
 ) -> xr.DataArray:
@@ -2859,7 +2859,6 @@ def DOs_atm_alpha(
         TwaterK: Water temperature kelvin
     """
     return .000975 - 1.426 * 10 ** -5 * TwaterK + 6.436 * 10 ** -8 * TwaterK ** 2
-
 
 
 def DOX_sat(
@@ -2876,12 +2875,16 @@ def DOX_sat(
         pwv: Patrial pressure of water vapor (atm)
         DOs_atm_alpha: DO saturation atmospheric correction coefficient
     """
-    DOX_sat_uncorrected = np.exp(-139.34410 + 1.575701 * 10 ** 5 / TwaterK - 6.642308 * 10 ** 7 / TwaterK ** 2
-                                 + 1.243800 * 10 ** 10 / TwaterK - 8.621949 * 10 ** 11 / TwaterK)
+    pressure_atm = pressure_atm * 0.000986923
+    
+    DOX_sat_uncorrected = np.exp(-139.34410 + ( 1.575701E05 / TwaterK ) - ( 6.642308E07 / (TwaterK**2.0) ) + ( 1.243800E10 / (TwaterK**3.0) ) - ( 8.621949E11 / (TwaterK**4.0) ))
 
     DOX_sat_corrected = DOX_sat_uncorrected * pressure_atm * \
         (1 - pwv / pressure_atm) * (1 - DOs_atm_alpha * pressure_atm) / \
         ((1 - pwv) * (1 - DOs_atm_alpha))
+    
+    print(DOX_sat_uncorrected)
+    print(DOX_sat_uncorrected)
     return DOX_sat_corrected
 
 
