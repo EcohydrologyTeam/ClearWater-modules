@@ -2851,14 +2851,14 @@ def pwv(
 
 #TwaterC??
 def DOs_atm_alpha(
-    TwaterK: xr.DataArray
+    TwaterC: xr.DataArray
 ) -> xr.DataArray:
     """Calculate DO saturation atmospheric correction coefficient
 
     Args:
         TwaterK: Water temperature kelvin
     """
-    return .000975 - 1.426 * 10 ** -5 * TwaterK + 6.436 * 10 ** -8 * TwaterK ** 2
+    return .000975 - 1.426 * 10 ** -5 * TwaterC + 6.436 * 10 ** -8 * TwaterC ** 2
 
 
 def DOX_sat(
@@ -2882,9 +2882,7 @@ def DOX_sat(
     DOX_sat_corrected = DOX_sat_uncorrected * pressure_atm * \
         (1 - pwv / pressure_atm) * (1 - DOs_atm_alpha * pressure_atm) / \
         ((1 - pwv) * (1 - DOs_atm_alpha))
-    
-    print(DOX_sat_uncorrected)
-    print(DOX_sat_uncorrected)
+
     return DOX_sat_corrected
 
 
@@ -2982,7 +2980,7 @@ def DOX_DOC_oxidation(
 
 
 def DOX_CBOD_oxidation(
-    DIC_CBOD_oxidation: xr.DataArray,
+    CBOD_oxidation: xr.DataArray,
     roc: xr.DataArray
 ) -> xr.DataArray:
     """Compute dissolved oxygen flux due to CBOD oxidation
@@ -2991,7 +2989,7 @@ def DOX_CBOD_oxidation(
         DIC_CBOD_Oxidation: Carbonaceous biochemical oxygen demand oxidation, calculated in CBOD module (mg/L/d)
         roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
     """
-    return DIC_CBOD_oxidation * roc
+    return CBOD_oxidation
 
 
 def DOX_AbGrowth(
