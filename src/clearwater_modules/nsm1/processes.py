@@ -1125,7 +1125,7 @@ def knit_tc(
         knit_20: Nitrification rate ammonia decay (1/d)
     """
 
-    return arrhenius_correction(TwaterC, knit_20, 1.083)
+    return arrhenius_correction(TwaterC, knit_20, 1.047)
 
 
 
@@ -1185,7 +1185,7 @@ def kdnit_tc(
         kdnit_20: Denitrification rate (1/d)
     """
 
-    return arrhenius_correction(TwaterC, kdnit_20, 1.045)
+    return arrhenius_correction(TwaterC, kdnit_20, 1.047)
 
 
 def ApUptakeFr_NH4(
@@ -1436,7 +1436,7 @@ def NH4_Nitrification(
         NH4: Ammonium concentration (mg-N/L),
     """
 
-    return xr.where(use_NH4,NitrificationInhibition * knit_tc * NH4,0)
+    return xr.where(use_NH4, NitrificationInhibition * knit_tc * NH4, 0)
 
 
 def NH4fromBed(
@@ -3232,8 +3232,8 @@ def Alk_denitrification(
         ],
         
         choicelist = [
-            r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3,
-            r_alkden * kdnit_tc * NO3
+            r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3 * 50000,
+            r_alkden * kdnit_tc * NO3 * 50000
         ],
         
         default = 0
@@ -3270,8 +3270,8 @@ def Alk_nitrification(
         ],
         
         choicelist = [
-            r_alkn * (1 - np.exp(-KNR * DOX)) * knit_tc * NH4,
-            knit_tc * NH4
+            r_alkn * (1 - np.exp(-KNR * DOX)) * knit_tc * NH4 * 50000,
+            knit_tc * NH4 * 50000
         ],
         
         default = 0
@@ -3285,6 +3285,7 @@ def Alk_algal_growth(
     r_alkaa: xr.DataArray,
     r_alkan: xr.DataArray,
     ApUptakeFr_NH4 : xr.DataArray,
+    rca: xr.DataArray,
     use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the alkalinity concentration change due to algal growth
@@ -3294,9 +3295,10 @@ def Alk_algal_growth(
         r_alkaa: Ratio translating algal growth into Alk if NH4 is the N source (eq/ug-Chla)
         r_alkan: Ratio translating algal growth into Alk if NO3 is the N source (eq/ug-Chla)
         ApUptakeFr_NH4 : Preference fraction of algal N uptake from NH4
+        rca: Algal C:Chla Ratio
         use_Algae: Option to use algae
     """
-    da: xr.DataArray = xr.where(use_Algae == True, (r_alkaa * ApUptakeFr_NH4  - r_alkan * (1 - ApUptakeFr_NH4 )) * ApGrowth, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, (r_alkaa * ApUptakeFr_NH4  - r_alkan * (1 - ApUptakeFr_NH4 )) * ApGrowth * rca * 50000, 0)
 
     return da
 
@@ -3304,6 +3306,7 @@ def Alk_algal_growth(
 def Alk_algal_respiration(
     ApRespiration: xr.DataArray,
     r_alkaa: xr.DataArray,
+    rca: xr.DataArray,
     use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the alkalinity concentration change due to algal respiration
@@ -3311,9 +3314,10 @@ def Alk_algal_respiration(
     Args:
         ApRespiration: Algae respiration calculated in algae module (ug-Chla/L/d)
         r_alkaa: Ratio translating algal growth into Alk if NH4 is the N source (eq/ug-Chla)
+        rca: Algal C:Chla Ratio
         use_Algae: Option to use algae
     """
-    da: xr.DataArray = xr.where(use_Algae == True, ApRespiration * r_alkaa, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, ApRespiration * r_alkaa * 50000 * rca, 0)
 
     return da
 
@@ -3325,6 +3329,7 @@ def Alk_benthic_algae_growth(
     r_alkbn: xr.DataArray,
     AbUptakeFr_NH4 : xr.DataArray,
     Fb: xr.DataArray,
+    rcb: xr.DataArray,
     use_Balgae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the alkalinity concentration change due to algal growth
@@ -3336,9 +3341,10 @@ def Alk_benthic_algae_growth(
         r_alkan: Ratio translating algal growth into Alk if NO3 is the N source (eq/ug-Chla)
         AbUptakeFr_NH4 : Preference fraction of benthic algae N uptake from NH4
         Fb: Fraction of bottom area available for benthic algae growth
+        rcb: Ratio benthic algae carbon to dry weight
         use_Balgae: Option to use benthic algae
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) *(r_alkba * AbUptakeFr_NH4  - r_alkbn * (1 - AbUptakeFr_NH4 )) * AbGrowth * Fb, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * (r_alkba * AbUptakeFr_NH4  - r_alkbn * (1 - AbUptakeFr_NH4 )) * AbGrowth * Fb * rcb * 50000, 0)
 
     return da
 
@@ -3348,6 +3354,7 @@ def Alk_benthic_algae_respiration(
     depth: xr.DataArray,
     r_alkba: xr.DataArray,
     Fb: xr.DataArray,
+    rcb: xr.DataArray,
     use_Balgae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the alkalinity concentration change due to algal respiration
@@ -3356,12 +3363,12 @@ def Alk_benthic_algae_respiration(
         ApRespiration: Algae respiration calculated in algae module (ug-Chla/L/d)
         r_alkaa: Ratio translating algal growth into Alk if NH4 is the N source (eq/ug-Chla)
         Fb: Fraction of bottom area available for benthic algae growth
+        rcb: Ratio benthic algae carbon to dry weight
         use_Balgae: Option to use betnhic algae
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * r_alkba * AbRespiration * Fb, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * r_alkba * AbRespiration * rcb * Fb * 50000, 0)
 
     return da
-
 
 
 def dAlkdt(
