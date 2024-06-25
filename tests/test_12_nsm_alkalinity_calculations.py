@@ -405,53 +405,6 @@ def test_defaults(
     assert isinstance(Alk, float)
     assert pytest.approx(Alk, tolerance) == 3.27
     
-def test_defaults(
-    time_steps,
-    initial_nsm1_state,
-    default_algae_params,
-    default_alkalinity_params,
-    default_balgae_params,
-    default_nitrogen_params,
-    default_carbon_params,
-    default_CBOD_params,
-    default_DOX_params,
-    default_N2_params,
-    default_POM_params,
-    default_pathogen_params,
-    default_phosphorus_params,
-    default_gp_params,
-    default_gvars_params,
-    tolerance,
-) -> None:
-    """Test the model with default parameters."""
-    # alter parameters as necessary
-
-    # instantiate the model
-    nsm1: NutrientBudget = get_nutrient_budget_instance(
-        time_steps=time_steps,
-        initial_nsm1_state=initial_nsm1_state,
-        default_algae_params=default_algae_params,
-        default_alkalinity_params=default_alkalinity_params,
-        default_balgae_params=default_balgae_params,
-        default_nitrogen_params=default_nitrogen_params,
-        default_carbon_params=default_carbon_params,
-        default_CBOD_params=default_CBOD_params,
-        default_DOX_params=default_DOX_params,
-        default_N2_params=default_N2_params,
-        default_POM_params=default_POM_params,
-        default_pathogen_params=default_pathogen_params,
-        default_phosphorus_params=default_phosphorus_params,
-        default_gp_params=default_gp_params,
-        default_gvars_params=default_gvars_params
-    )
-
-    # Run the model
-    nsm1.increment_timestep()
-    Alk = nsm1.dataset.isel(nsm1_time_step=-1).Alk.values.item()
-
-    assert isinstance(Alk, float)
-    assert pytest.approx(Alk, tolerance) == 3.27
-    
 def test_changed_Ap(
     time_steps,
     initial_nsm1_state,

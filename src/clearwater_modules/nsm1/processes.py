@@ -2329,7 +2329,7 @@ def ksbod_tc(
         ksbod_20: CBOD sedimentation rate at 20 degrees Celsius (m/d)
     """
 
-    ksbod_tc = arrhenius_correction(TwaterC, ksbod_20, 1.024)
+    ksbod_tc = arrhenius_correction(TwaterC, ksbod_20, 1.047)
     return ksbod_tc
 
 
