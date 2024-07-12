@@ -315,7 +315,7 @@ def rna(
     AWn: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rna (mg-N/ug-Chla).
+    """Calculate rna (mg-N/ug-Chla) using Redfield ratios.
 
     Args:
         AWn: Nitrogen Weight (mg)
@@ -329,7 +329,7 @@ def rpa(
     AWp: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rpa (mg-P/ug-Chla).
+    """Calculate rpa (mg-P/ug-Chla) using Redfield ratios.
 
     Args:
         AWp: Phosphorus Weight (mg)
@@ -344,7 +344,7 @@ def rca(
     AWc: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rca (mg-C/ug-Chla).
+    """Calculate rca (mg-C/ug-Chla) using Redfield ratios.
 
     Args:
         AWc: Carbon Weight (mg)
@@ -358,7 +358,7 @@ def rda(
     AWd: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rda (mg-D/ug-Chla).
+    """Calculate rda (mg-D/ug-Chla) using Redfield ratios.
 
     Args:
         AWd: Dry Algal Weight (mg)
@@ -705,7 +705,7 @@ def mub_max_tc(
     """Calculate mub_max_tc: Maximum benthic algal growth rate with temperature correction (1/d).
 
     Args:
-        mu_max_20: Maximum benthic algal growth rate at 20C (1/d)
+        mub_max_20: Maximum benthic algal growth rate at 20C (1/d)
         TwaterC: Water temperature (C)
     """
     return arrhenius_correction(TwaterC, mub_max_20, 1.047)
@@ -744,7 +744,7 @@ def rnb(
     BWn: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rnb (mg-N/mg-D).
+    """Calculate rnb (mg-N/mg-D) using Redfield ratios.
 
     Args:
         BWn: Benthic algae nitrogen (unitless)
@@ -758,7 +758,7 @@ def rpb(
     BWp: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rpd: Benthic algae phosphorus to dry weight ratio (mg-P/mg-D).
+    """Calculate rpd: Benthic algae phosphorus to dry weight ratio (mg-P/mg-D) using Redfield ratios.
 
     Args:
         BWp: Benthic algae phosphorus (mg-P)
@@ -772,7 +772,7 @@ def rcb(
     BWc: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rcb: Benthic algae carbon to dry weight ratio (mg-C/mg-D).
+    """Calculate rcb: Benthic algae carbon to dry weight ratio (mg-C/mg-D) using Redfield ratios.
 
     Args:
         BWc: Benthic algae carbon (mg-C)
@@ -786,7 +786,7 @@ def rab(
     BWa: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rab: Benthic algae chlorophyll-a to dry weight ratio (ug-Chla-a/mg-D).
+    """Calculate rab: Benthic algae chlorophyll-a to dry weight ratio (ug-Chla-a/mg-D) using Redfield ratios.
 
     Args:
         BWa: Benthic algae chlorophyll-a (ug-Chla-a)
@@ -907,7 +907,8 @@ def FNb(
         
         default = FNb_orig
     )
-    
+
+
     return FNb
 
 
@@ -1013,7 +1014,7 @@ def mub(
         
         default = 0
     )
-    
+
     return mub
 
 
@@ -1101,7 +1102,7 @@ def Chlb(
     Ab: xr.DataArray,
 
 ) -> xr.DataArray:
-    """Calculate chlorophyll-a concentration (mg-Chla/m^2)
+    """Calculate chlorophyll-a concentration (mg-Chla/m^2) using Redfield ratios
 
     Args:
         rab: Balgae Chla to Dry ratio (mg-D/ug-Chla)
@@ -1170,7 +1171,7 @@ def kon_tc(
         kon_20: Decay rate of OrgN to NH4 (1/d)
     """
 
-    return arrhenius_correction(TwaterC, kon_20, 1.074)
+    return arrhenius_correction(TwaterC, kon_20, 1.047)
 
 
 
@@ -1439,6 +1440,7 @@ def NH4_Nitrification(
     return xr.where(use_NH4, NitrificationInhibition * knit_tc * NH4, 0)
 
 
+
 def NH4fromBed(
     depth: xr.DataArray,
     rnh4_tc: xr.DataArray,
@@ -1485,12 +1487,13 @@ def NH4_ApGrowth(
         ApGrowth: Algal growth rate (ug-Chla/L/d),
         ApUptakeFr_NH4: Fraction of actual xr.DataArraying algal uptake from ammonia pool
     """
-
     return xr.where(use_Algae, ApUptakeFr_NH4 * rna * ApGrowth, 0.0)
 
 def NH4_AbRespiration(
     use_Balgae: bool,
     rnb: xr.DataArray,
+    Fb: xr.DataArray,
+    depth: xr.DataArray,
     AbRespiration: xr.DataArray,
 
 ) -> xr.DataArray:
@@ -1500,10 +1503,12 @@ def NH4_AbRespiration(
         use_Balgae: true/false to use benthic algae module (unitless),
         rnb: xr.DataArray,
         AbRespiration: Benthic algal respiration rate (g/m^2/d),
+        depth: water depth (m),
+        Fb: Fraction of bottom area for benthic algae (unitless),
     """
     # TODO changed the calculation for respiration from the inital FORTRAN due to conflict with the reference guide
 
-    return xr.where(use_Balgae, rnb * AbRespiration, 0.0 )
+    return xr.where(use_Balgae, (rnb * AbRespiration*Fb)/depth, 0.0 )
 
 def NH4_AbGrowth(
     use_Balgae: bool,
@@ -1705,7 +1710,6 @@ def dNO3dt(
                     - NO3 Benthic Algal Uptake    (NO3-> Benthic  Algae) 	
 
     """
-
 
     return xr.where(use_NO3, NH4_Nitrification - NO3_Denit - NO3_BedDenit - NO3_ApGrowth - NO3_AbGrowth ,0)
 
@@ -1944,8 +1948,6 @@ def DIPfromBed(
         rpo4_tc: Benthic sediment release rate of DIP temperature correction(g-P/m2/d)
     """    
     return rpo4_tc / depth
-
-#TODO calcuate fdp?
 
 def TIP_Settling(
     vs: xr.DataArray,
