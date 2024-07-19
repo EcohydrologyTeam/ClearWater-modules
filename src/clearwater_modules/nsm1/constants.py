@@ -15,7 +15,10 @@ class AlgaeStaticVariables(TypedDict):
     KsP: float                          
     mu_max_20: float                       
     kdp_20: float                          
-    krp_20: float                          
+    krp_20: float
+    mu_max_theta: float                       
+    kdp_theta: float                          
+    krp_theta: float                          
     vsap: float                         
     growth_rate_option: int             
     light_limitation_option: int 
@@ -32,6 +35,9 @@ DEFAULT_ALGAE = AlgaeStaticVariables(
     mu_max_20= 1,
     kdp_20= 0.15,
     krp_20= 0.2,
+    mu_max_theta= 1.047,
+    kdp_theta= 1.047,
+    krp_theta= 1.047,
     vsap= 0.15,
     growth_rate_option = 1,
     light_limitation_option = 1,
@@ -68,7 +74,10 @@ class BalgaeStaticVariables(TypedDict):
     Ksb: float
     mub_max_20: float
     krb_20: float
-    kdb_20: float                         
+    kdb_20: float  
+    mub_max_theta: float
+    krb_theta: float
+    kdb_theta: float                         
     b_growth_rate_option: float
     b_light_limitation_option: float
     Fw: float
@@ -88,6 +97,9 @@ DEFAULT_BALGAE = BalgaeStaticVariables(
     mub_max_20=0.4,
     krb_20=0.2,
     kdb_20=0.3,
+    mub_max_theta = 1.047,
+    krb_theta = 1.047,
+    kdb_theta = 1.047,
     b_growth_rate_option=1,
     b_light_limitation_option=1,
     Fw=0.9,
@@ -102,6 +114,11 @@ class NitrogenStaticVariables(TypedDict):
     kdnit_20: float
     rnh4_20: float
     vno3_20: float
+    knit_theta: float
+    kon_theta: float
+    kdnit_theta: float
+    rnh4_theta: float
+    vno3_theta: float
     KsOxdn: float
     PN: float
     PNb: float
@@ -113,6 +130,11 @@ DEFAULT_NITROGEN = NitrogenStaticVariables(
     kdnit_20=0.002,
     rnh4_20=0,
     vno3_20=0,
+    knit_theta= 1.047, ## Check values RAS/Kelsey's
+    kon_theta= 1.047,
+    kdnit_theta= 1.047,
+    rnh4_theta= 1.047,
+    vno3_theta= 1.047,
     KsOxdn=0.1,
     PN=0.5,
     PNb=0.5
@@ -122,8 +144,10 @@ DEFAULT_NITROGEN = NitrogenStaticVariables(
 class CarbonStaticVariables(TypedDict):
     f_pocp: float
     kdoc_20: float
+    kdoc_theta: float
     f_pocb: float
     kpoc_20: float
+    kpoc_theta: float
     KsOxmc: float
     pCO2: float
     FCO2: float
@@ -132,8 +156,10 @@ class CarbonStaticVariables(TypedDict):
 DEFAULT_CARBON = CarbonStaticVariables(
     f_pocp = 0.9,
     kdoc_20= 0.01,
+    kdoc_theta = 1.047,
     f_pocb=0.9,
     kpoc_20= 0.005,
+    kpoc_theta = 1.047,
     KsOxmc=1.0,
     pCO2 = 383.0,
     FCO2 = 0.2,
@@ -144,11 +170,15 @@ class CBODStaticVariables(TypedDict):
     KsOxbod: float
     kbod_20: float
     ksbod_20: float
+    kbod_theta: float
+    ksbod_theta: float
 
 DEFAULT_CBOD = CBODStaticVariables(
     KsOxbod = 0.5,
     kbod_20 =  0.12,
-    ksbod_20 = 0.0
+    ksbod_20 = 0.0,
+    kbod_theta =  1.047,
+    ksbod_theta = 1.047
 )
 
 class DOXStaticVariables(TypedDict):
@@ -170,19 +200,23 @@ DEFAULT_N2 = N2StaticVariables(
 
 class POMStaticVariables(TypedDict):
     kpom_20: float
+    kpom_theta: float
 
 DEFAULT_POM = POMStaticVariables(
-    kpom_20 = 0.1
+    kpom_20 = 0.1,
+    kpom_theta = 1.047
 )
 
 
 class PathogenStaticVariables(TypedDict):
     kdx_20: float
+    kdx_theta: float
     apx: float
     vx: float                  
 
 DEFAULT_PATHOGEN = PathogenStaticVariables(
     kdx_20=0.8,
+    kdx_theta = 1.047,
     apx=1,
     vx=1
 )
@@ -190,11 +224,15 @@ DEFAULT_PATHOGEN = PathogenStaticVariables(
 class PhosphorusStaticVariables(TypedDict):
     kop_20: float
     rpo4_20: float
+    kop_theta: float
+    rpo4_theta: float
     kdpo4: float
 
 DEFAULT_PHOSPHORUS = PhosphorusStaticVariables(
     kop_20 = 0.1,
     rpo4_20 =0,
+    kop_theta = 1.047,
+    rpo4_theta = 1.047,
     kdpo4 = 0.0,
 )
 
@@ -248,6 +286,8 @@ class GlobalVars(TypedDict):
     fcom: float
     kaw_20_user: float
     kah_20_user: float
+    kaw_theta: float
+    kah_theta: float
     hydraulic_reaeration_option: int
     wind_reaeration_option: int
     dt: float
@@ -283,6 +323,8 @@ DEFAULT_GLOBALVARS = GlobalVars(
     fcom = 0.4,
     kaw_20_user = 999,
     kah_20_user = 999,
+    kaw_theta = 1.047,
+    kah_theta = 1.047,
     hydraulic_reaeration_option = 2,
     wind_reaeration_option = 2,  
     dt = 1,    #TODO Dynamic or static?
