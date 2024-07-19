@@ -116,16 +116,16 @@ def kah_20(
 def kah_tc(
     TwaterC: xr.DataArray,
     kah_20: xr.DataArray,
-    theta: xr.DataArray
+    kah_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted hydraulic oxygen reaeration rate (/d)
 
     Args:
         TwaterC: Water temperature in Celsius
         kah_20: Hydraulic oxygen reaeration rate at 20 degrees Celsius
-        theta: Arrhenius coefficient
+        kah_theta: Arrhenius coefficient for hydraulic oxygen reaeration rate
     """
-    return arrhenius_correction(TwaterC, kah_20, theta)
+    return arrhenius_correction(TwaterC, kah_20, kah_theta)
 
 
 def kaw_20(
@@ -192,16 +192,16 @@ def kaw_20(
 def kaw_tc(
     TwaterC: xr.DataArray,
     kaw_20: xr.DataArray,
-    theta: xr.DataArray
+    kaw_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted wind oxygen reaeration velocity (m/d)
 
     Args:
         water_temp_c: Water temperature in Celsius
         kaw_20: Wind oxygen reaeration velocity at 20 degrees Celsius
-        theta: Arrhenius coefficient
+        kaw_theta: Arrhenius coefficient for wind oxygen reaeration velocity
     """
-    return arrhenius_correction(TwaterC, kaw_20, theta)
+    return arrhenius_correction(TwaterC, kaw_20, kaw_theta)
 
 
 
@@ -232,7 +232,7 @@ def SOD_tc(
     Args:
         SOD_20: Sediment oxygen demand at 20 degrees celsius (mg-O2/m2)
         TwaterC: Water temperature in degrees C
-        theta: Arrhenius coefficient
+        SOD_theta: Arrhenius coefficient for sediment oxygen demand
         use_DOX: Option to consider DOX concentration in water in calculation of sediment oxygen demand
     """
     SOD_tc = arrhenius_correction(TwaterC, SOD_20, SOD_theta)
@@ -315,7 +315,7 @@ def rna(
     AWn: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rna (mg-N/ug-Chla) using Redfield ratios.
+    """Calculate rna (mg-N/ug-Chla).
 
     Args:
         AWn: Nitrogen Weight (mg)
@@ -329,7 +329,7 @@ def rpa(
     AWp: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rpa (mg-P/ug-Chla) using Redfield ratios.
+    """Calculate rpa (mg-P/ug-Chla).
 
     Args:
         AWp: Phosphorus Weight (mg)
@@ -344,7 +344,7 @@ def rca(
     AWc: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rca (mg-C/ug-Chla) using Redfield ratios.
+    """Calculate rca (mg-C/ug-Chla).
 
     Args:
         AWc: Carbon Weight (mg)
@@ -358,7 +358,7 @@ def rda(
     AWd: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rda (mg-D/ug-Chla) using Redfield ratios.
+    """Calculate rda (mg-D/ug-Chla).
 
     Args:
         AWd: Dry Algal Weight (mg)
@@ -370,46 +370,52 @@ def rda(
 
 def mu_max_tc(
     TwaterC: xr.DataArray,
-    mu_max_20: xr.DataArray
+    mu_max_20: xr.DataArray,
+    mu_max_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate mu_max_tc (1/d).
 
     Args:
         TwaterC: Water temperature (C)
         mu_max: Max Algae growth (1/d)
+        mu_max_theta: Arrhenius coefficient for max algal growth rate
     """
 
-    return arrhenius_correction(TwaterC, mu_max_20, 1.047)
+    return arrhenius_correction(TwaterC, mu_max_20, mu_max_theta)
 
 
 
 def krp_tc(
     TwaterC: xr.DataArray,
-    krp_20: xr.DataArray
+    krp_20: xr.DataArray,
+    krp_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate krp_tc (1/d).
 
     Args:
         TwaterC: Water temperature (C)
         krp: Algal respiration rate at 20 degree (1/d)
+        krp_theta: Arrhenius coefficient for algal respiration rate
     """
 
-    return arrhenius_correction(TwaterC, krp_20, 1.047)
+    return arrhenius_correction(TwaterC, krp_20, krp_theta)
 
 
 
 def kdp_tc(
     TwaterC: xr.DataArray,
-    kdp_20: xr.DataArray
+    kdp_20: xr.DataArray,
+    kdp_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate kdp_tc (1/d).
 
     Args:
         TwaterC: Water temperature (C)
         kdp: Algal death rate at 20 degree (1/d)
+        kdp_theta: Arrhenius coefficient for algal death rate
     """
 
-    return arrhenius_correction(TwaterC, kdp_20, 1.047)
+    return arrhenius_correction(TwaterC, kdp_20, kdp_theta)
 
 
 def FL(
@@ -700,51 +706,56 @@ def Ap(
 
 def mub_max_tc(
     mub_max_20: xr.DataArray,
-    TwaterC: xr.DataArray
+    TwaterC: xr.DataArray,
+    mub_max_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate mub_max_tc: Maximum benthic algal growth rate with temperature correction (1/d).
 
     Args:
-        mub_max_20: Maximum benthic algal growth rate at 20C (1/d)
+        mu_max_20: Maximum benthic algal growth rate at 20C (1/d)
         TwaterC: Water temperature (C)
+        mub_max_theta: Arrhenius coefficient for benthic algae max growth rate
     """
-    return arrhenius_correction(TwaterC, mub_max_20, 1.047)
+    return arrhenius_correction(TwaterC, mub_max_20, mub_max_theta)
 
 
 
 def krb_tc(
     krb_20: xr.DataArray,
-    TwaterC: xr.DataArray
+    TwaterC: xr.DataArray,
+    krb_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate krb_tc: Benthic algae respiration rate with temperature correction (1/d).
 
     Args:
         krb_20: Benthic algae respiration rate at 20C (1/d)
         TwaterC: Water temperature (C)
+        krb_theta: Arrhenius coefficient for benthic algae respiration rate
     """
-    return arrhenius_correction(TwaterC, krb_20, 1.047)
+    return arrhenius_correction(TwaterC, krb_20, krb_theta)
 
 
 
 def kdb_tc(
     kdb_20: xr.DataArray,
-    TwaterC: xr.DataArray
+    TwaterC: xr.DataArray,
+    kdb_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate kdb_tc: Benthic algae mortality rate with temperature correction (1/d).
 
     Args:
         kdb_20: Benthic algae mortality rate at 20C (1/d)
         TwaterC: Water temperature (C)
+        kdb_theta: Arrhenius coefficient for benthic algae death rate
     """
-    return arrhenius_correction(TwaterC, kdb_20, 1.047)
-
+    return arrhenius_correction(TwaterC, kdb_20, kdb_theta)
 
 
 def rnb(
     BWn: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rnb (mg-N/mg-D) using Redfield ratios.
+    """Calculate rnb (mg-N/mg-D).
 
     Args:
         BWn: Benthic algae nitrogen (unitless)
@@ -758,7 +769,7 @@ def rpb(
     BWp: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rpd: Benthic algae phosphorus to dry weight ratio (mg-P/mg-D) using Redfield ratios.
+    """Calculate rpd: Benthic algae phosphorus to dry weight ratio (mg-P/mg-D).
 
     Args:
         BWp: Benthic algae phosphorus (mg-P)
@@ -772,7 +783,7 @@ def rcb(
     BWc: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rcb: Benthic algae carbon to dry weight ratio (mg-C/mg-D) using Redfield ratios.
+    """Calculate rcb: Benthic algae carbon to dry weight ratio (mg-C/mg-D).
 
     Args:
         BWc: Benthic algae carbon (mg-C)
@@ -786,7 +797,7 @@ def rab(
     BWa: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rab: Benthic algae chlorophyll-a to dry weight ratio (ug-Chla-a/mg-D) using Redfield ratios.
+    """Calculate rab: Benthic algae chlorophyll-a to dry weight ratio (ug-Chla-a/mg-D).
 
     Args:
         BWa: Benthic algae chlorophyll-a (ug-Chla-a)
@@ -907,8 +918,7 @@ def FNb(
         
         default = FNb_orig
     )
-
-
+    
     return FNb
 
 
@@ -1014,7 +1024,7 @@ def mub(
         
         default = 0
     )
-
+    
     return mub
 
 
@@ -1102,7 +1112,7 @@ def Chlb(
     Ab: xr.DataArray,
 
 ) -> xr.DataArray:
-    """Calculate chlorophyll-a concentration (mg-Chla/m^2) using Redfield ratios
+    """Calculate chlorophyll-a concentration (mg-Chla/m^2)
 
     Args:
         rab: Balgae Chla to Dry ratio (mg-D/ug-Chla)
@@ -1117,76 +1127,86 @@ def Chlb(
 
 def knit_tc(
     TwaterC: xr.DataArray,
-    knit_20: xr.DataArray
+    knit_20: xr.DataArray,
+    knit_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate knit_tc: Nitrification rate ammonia decay NH4 to NO3 temperature correction (1/d). #TODO only if use_NH4 = true
 
     Args:
         TwaterC: Water temperature (C)
         knit_20: Nitrification rate ammonia decay (1/d)
+        knit_theta: Arrhenius coefficient for ammonia decay
     """
 
-    return arrhenius_correction(TwaterC, knit_20, 1.047)
+    return arrhenius_correction(TwaterC, knit_20, knit_theta)
 
 
 
 def rnh4_tc(
     TwaterC: xr.DataArray,
-    rnh4_20: xr.DataArray
+    rnh4_20: xr.DataArray,
+    rnh4_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate rnh4_tc: Sediment release rate of NH4 temperature correction(1/d). #TODO only if use_sedflux = true
 
     Args:
         TwaterC: Water temperature (C)
         rnh4_20: Sediment release rate of NH4 (1/d)
+        rnh4_theta: Arrhenius coefficient for rate of sediment release rate of NH4
     """
 
-    return arrhenius_correction(TwaterC, rnh4_20, 1.074)
+    return arrhenius_correction(TwaterC, rnh4_20, rnh4_theta)
 
 
 
 def vno3_tc(
     TwaterC: xr.DataArray,
-    vno3_20: xr.DataArray
+    vno3_20: xr.DataArray,
+    vno3_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate vno3_tc: Sediment denitrification velocity temperature correction (m/d). #TODO only if use_sedflux = true
 
     Args:
         TwaterC: Water temperature (C)
         vno3_20: Sedimet release rate of NO3 (1/d)
+        vno3_theta: Arrhenius coefficient for sediment denitrification rate
     """
 
-    return arrhenius_correction(TwaterC, vno3_20, 1.08)
+    return arrhenius_correction(TwaterC, vno3_20, vno3_theta)
 
 
 
 def kon_tc(
     TwaterC: xr.DataArray,
-    kon_20: xr.DataArray
+    kon_20: xr.DataArray,
+    kon_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate kon_tc: Decay rate of OrgN to NH4 temperature correction(1/d). #TODO only if use_OrgN = true
 
     Args:
         TwaterC: Water temperature (C)
         kon_20: Decay rate of OrgN to NH4 (1/d)
+        kon_theta: Arrhenius coefficient for decay rate of OrgN
     """
 
-    return arrhenius_correction(TwaterC, kon_20, 1.047)
+    return arrhenius_correction(TwaterC, kon_20, kon_theta)
 
 
 
 def kdnit_tc(
     TwaterC: xr.DataArray,
-    kdnit_20: xr.DataArray
+    kdnit_20: xr.DataArray,
+    kdnit_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate kdnit_tc: Denitrification rate temperature correction (1/d). #TODO only if use_NO3 = true
 
     Args:
         TwaterC: Water temperature (C)
         kdnit_20: Denitrification rate (1/d)
+        kdnit_theta: Arrhenius coefficient for denitrification rate
     """
 
-    return arrhenius_correction(TwaterC, kdnit_20, 1.047)
+    return arrhenius_correction(TwaterC, kdnit_20, kdnit_theta)
 
 
 def ApUptakeFr_NH4(
@@ -1440,7 +1460,6 @@ def NH4_Nitrification(
     return xr.where(use_NH4, NitrificationInhibition * knit_tc * NH4, 0)
 
 
-
 def NH4fromBed(
     depth: xr.DataArray,
     rnh4_tc: xr.DataArray,
@@ -1487,13 +1506,12 @@ def NH4_ApGrowth(
         ApGrowth: Algal growth rate (ug-Chla/L/d),
         ApUptakeFr_NH4: Fraction of actual xr.DataArraying algal uptake from ammonia pool
     """
+
     return xr.where(use_Algae, ApUptakeFr_NH4 * rna * ApGrowth, 0.0)
 
 def NH4_AbRespiration(
     use_Balgae: bool,
     rnb: xr.DataArray,
-    Fb: xr.DataArray,
-    depth: xr.DataArray,
     AbRespiration: xr.DataArray,
 
 ) -> xr.DataArray:
@@ -1503,12 +1521,10 @@ def NH4_AbRespiration(
         use_Balgae: true/false to use benthic algae module (unitless),
         rnb: xr.DataArray,
         AbRespiration: Benthic algal respiration rate (g/m^2/d),
-        depth: water depth (m),
-        Fb: Fraction of bottom area for benthic algae (unitless),
     """
     # TODO changed the calculation for respiration from the inital FORTRAN due to conflict with the reference guide
 
-    return xr.where(use_Balgae, (rnb * AbRespiration*Fb)/depth, 0.0 )
+    return xr.where(use_Balgae, rnb * AbRespiration, 0.0 )
 
 def NH4_AbGrowth(
     use_Balgae: bool,
@@ -1711,6 +1727,7 @@ def dNO3dt(
 
     """
 
+
     return xr.where(use_NO3, NH4_Nitrification - NO3_Denit - NO3_BedDenit - NO3_ApGrowth - NO3_AbGrowth ,0)
 
 
@@ -1817,7 +1834,8 @@ def TN(
 
 def kop_tc(
     TwaterC : xr.DataArray,
-    kop_20: xr.DataArray
+    kop_20: xr.DataArray,
+    kop_theta: xr.DataArray
 ) -> xr.DataArray :
 
     """Calculate kop_tc: Decay rate of organic P to DIP temperature correction (1/d).
@@ -1825,14 +1843,16 @@ def kop_tc(
     Args:
         TwaterC: Water temperature (C)
         kop_20: Decay rate of organic P to DIP at 20C (1/d)
+        kop_theta: Arrenhius correction for decay rate of Org P
     """
 
-    return arrhenius_correction(TwaterC, kop_20, 1.047)
+    return arrhenius_correction(TwaterC, kop_20, kop_theta)
 
 
 def rpo4_tc(
     TwaterC : xr.DataArray,
-    rpo4_20: xr.DataArray
+    rpo4_20: xr.DataArray,
+    rpo4_theta: xr.DataArray
 ) -> xr.DataArray :
 
     """Calculate rpo4_tc: Benthic sediment release rate of DIP temperature correction(g-P/m2/d).
@@ -1840,9 +1860,10 @@ def rpo4_tc(
     Args:
         TwaterC: Water temperature (C)
         kop_20: Benthic sediment release rate of DIP at 20C (1/d)
+        rpo4_theta: Arrhenius coefficient for sediment release rate of DIP
     """
 
-    return arrhenius_correction(TwaterC, rpo4_20, 1.074)
+    return arrhenius_correction(TwaterC, rpo4_20, rpo4_theta)
 
 def OrgP_DIP_decay(
     kop_tc : xr.DataArray,
@@ -1948,6 +1969,8 @@ def DIPfromBed(
         rpo4_tc: Benthic sediment release rate of DIP temperature correction(g-P/m2/d)
     """    
     return rpo4_tc / depth
+
+#TODO calcuate fdp?
 
 def TIP_Settling(
     vs: xr.DataArray,
@@ -2158,16 +2181,18 @@ def DIP(
 ################################### From POM
 
 def kpom_tc(
-    TwaterC: float,
-    kpom_20: float,
+    TwaterC: xr.DataArray,
+    kpom_20: xr.DataArray,
+    kpom_theta: xr.DataArray
 ) -> float:
     """Calculate the temperature adjusted POM dissolution rate (1/d)
 
     Args:
         TwaterC: Water temperature in Celsius
         kpom_20: POM dissolution rate at 20 degrees Celsius (1/d)
+        kpom_theta: Arrhenius coefficient for POM dissolution rate
     """
-    return arrhenius_correction(TwaterC, kpom_20, 1.047)
+    return arrhenius_correction(TwaterC, kpom_20, kpom_theta)
 
 
 def POM_algal_settling(
@@ -2307,15 +2332,17 @@ def POM(
 def kbod_tc(
     TwaterC: xr.DataArray,
     kbod_20: xr.DataArray,
+    kbod_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted CBOD oxidation rate (1/d)
 
     Args:
         TwaterC: water temperature in Celsius
         kbod_20: CBOD oxidation rate at 20 degrees Celsius (1/d)
+        kbod_theta: Arrhenius coefficient for CBOD oxidation rate
     """
 
-    kbod_tc = arrhenius_correction(TwaterC, kbod_20, 1.047)
+    kbod_tc = arrhenius_correction(TwaterC, kbod_20, kbod_theta)
     return kbod_tc
 
 
@@ -2323,15 +2350,17 @@ def kbod_tc(
 def ksbod_tc(
     TwaterC: xr.DataArray,
     ksbod_20: xr.DataArray,
+    ksbod_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted CBOD sedimentation rate (m/d)
 
     Args:
         TwaterC: water temperature in Celsius
         ksbod_20: CBOD sedimentation rate at 20 degrees Celsius (m/d)
+        ksbod_theta: Arrhenius coefficient for CBOD sedimentation rate
     """
 
-    ksbod_tc = arrhenius_correction(TwaterC, ksbod_20, 1.047)
+    ksbod_tc = arrhenius_correction(TwaterC, ksbod_20, ksbod_theta)
     return ksbod_tc
 
 
@@ -2408,14 +2437,16 @@ def CBOD(
 def kpoc_tc(
     TwaterC: xr.DataArray,
     kpoc_20: xr.DataArray,
+    kpoc_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted POC hydrolysis rate (/d)
 
     Args:
         TwaterC: Water temperature in Celsius
         kpoc_20: POC hydrolysis rate at 20 degrees Celsius (1/d)
+        kpoc_theta: Arrhenius coefficient for POC hydrolysis rate
     """
-    return arrhenius_correction(TwaterC, kpoc_20, 1.047)
+    return arrhenius_correction(TwaterC, kpoc_20, kpoc_theta)
 
 
 
@@ -2581,14 +2612,16 @@ def DOC_benthic_algae_mortality(
 def kdoc_tc(
     TwaterC: xr.DataArray,
     kdoc_20: xr.DataArray,
+    kdoc_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted DOC oxidation rate (1/d)
 
     Args:
         TwaterC: Water temperature in Celsius
         kdoc_20: DOC oxidation rate at 20 degrees Celsius (1/d)
+        kdoc_theta: Arrhenius coefficient for DOC oxidation rate
     """
-    return arrhenius_correction(TwaterC, kdoc_20, 1.047)
+    return arrhenius_correction(TwaterC, kdoc_20, kdoc_theta)
 
 
 def DOC_DIC_oxidation(
@@ -3105,7 +3138,8 @@ def DOX(
 
 def kdx_tc(
     TwaterC : xr.DataArray,
-    kdx_20: xr.DataArray
+    kdx_20: xr.DataArray,
+    kdx_theta: xr.DataArray
 ) -> xr.DataArray :
 
     """Calculate kdx_tc: pathogen death rate (1/d).
@@ -3113,9 +3147,10 @@ def kdx_tc(
     Args:
         TwaterC: Water temperature (C)
         kdx_20: Pathogen death rate at 20 degree (1/d)
+        kdx_theta: Arrhenius coefficient for pathogen death rate
     """
 
-    return arrhenius_correction(TwaterC, kdx_20, 1.07)
+    return arrhenius_correction(TwaterC, kdx_20, kdx_theta)
 
 
 def PathogenDeath(
