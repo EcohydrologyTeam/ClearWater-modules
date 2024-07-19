@@ -1997,7 +1997,9 @@ def DIP_ApGrowth(
 def DIP_AbRespiration(
     rpb: xr.DataArray,
     AbRespiration: xr.DataArray,
-    use_Balgae: bool
+    use_Balgae: bool,
+    Fb: xr.DataArray,
+    depth: xr.DataArray
 
 ) -> xr.DataArray :
     """Calculate DIP_AbRespiration: Dissolved inorganic phosphorus released for benthic algal respiration (mg-P/L/d).
@@ -2005,9 +2007,11 @@ def DIP_AbRespiration(
     Args:
         rpb: Benthic algal P : Benthic algal dry ratio (mg-P/mg-D)
         AbRespiration: Benthic algal respiration rate (g/m^2/d)
-        use_Blgae: true/false to use benthic algae module (t/f)        
+        use_Blgae: true/false to use benthic algae module (t/f) 
+        Fb: Fraction of bottom area available for benthic algal (unitless)
+        depth: water depth (m)       
     """     
-    return xr.where(use_Balgae, rpb * AbRespiration,0)
+    return xr.where(use_Balgae, rpb * Fb * AbRespiration /depth,0)
 
 def DIP_AbGrowth(
     rpb: xr.DataArray,
