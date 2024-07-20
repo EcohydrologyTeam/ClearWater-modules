@@ -170,9 +170,11 @@ DEFAULT_N2 = N2StaticVariables(
 
 class POMStaticVariables(TypedDict):
     kpom_20: float
+    h2: float
 
 DEFAULT_POM = POMStaticVariables(
-    kpom_20 = 0.1
+    kpom_20 = 0.1,
+    h2=0.1
 )
 
 

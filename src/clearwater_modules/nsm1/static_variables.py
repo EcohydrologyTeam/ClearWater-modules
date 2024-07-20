@@ -750,6 +750,14 @@ Variable(
     use='static'
 )
 
+Variable(
+    name='h2',
+    long_name='active sediment layer thickness',
+    units='m',
+    description='active sediment layer thickness',
+    use='static'
+)
+
 ############################################ From CBOD
 Variable(
     name='kbod_20',
