@@ -67,6 +67,9 @@ def default_algae_params() -> AlgaeStaticVariables:
         mu_max_20= 1,
         kdp_20= 0.15,
         krp_20= 0.2,
+        mu_max_theta= 1.047,
+        kdp_theta= 1.047,
+        krp_theta= 1.047,
         vsap= 0.15,
         growth_rate_option = 1,
         light_limitation_option = 1,
@@ -112,6 +115,9 @@ def default_balgae_params() -> BalgaeStaticVariables:
         mub_max_20=0.4,
         krb_20=0.2,
         kdb_20=0.3,
+        mub_max_theta = 1.047,
+        krb_theta = 1.047,
+        kdb_theta = 1.047,
         b_growth_rate_option=1,
         b_light_limitation_option=1,
         Fw=0.9,
@@ -134,6 +140,11 @@ def default_nitrogen_params() -> NitrogenStaticVariables:
         kdnit_20=0.002,
         rnh4_20=0,
         vno3_20=0,
+        knit_theta= 1.047,
+        kon_theta= 1.047,
+        kdnit_theta= 1.047,
+        rnh4_theta= 1.047,
+        vno3_theta= 1.047,
         KsOxdn=0.1,
         PN=0.5,
         PNb=0.5
@@ -151,8 +162,10 @@ def default_carbon_params() -> CarbonStaticVariables:
     return CarbonStaticVariables(
         f_pocp = 0.9,
         kdoc_20= 0.01,
+        kdoc_theta = 1.047,
         f_pocb=0.9,
         kpoc_20= 0.005,
+        kpoc_theta = 1.047,
         KsOxmc=1.0,
         pCO2 = 383.0,
         FCO2 = 0.2,
@@ -171,7 +184,9 @@ def default_CBOD_params() -> CBODStaticVariables:
     return CBODStaticVariables(
         KsOxbod = 0.5,
         kbod_20 =  0.12,
-        ksbod_20 = 0.0
+        ksbod_20 = 0.0,
+        kbod_theta =  1.047,
+        ksbod_theta = 1.047
     )
 
 @pytest.fixture(scope='function')
@@ -211,7 +226,8 @@ def default_POM_params() -> POMStaticVariables:
     Returns a typed dictionary, with string keys and float values.
     """
     return POMStaticVariables(
-        kpom_20 = 0.1
+        kpom_20 = 0.1,
+        kpom_theta = 1.047
     )
 
 @pytest.fixture(scope='function')
@@ -225,6 +241,7 @@ def default_pathogen_params() -> PathogenStaticVariables:
     """
     return PathogenStaticVariables(
         kdx_20=0.8,
+        kdx_theta = 1.047,
         apx=1,
         vx=1
     )
@@ -241,7 +258,9 @@ def default_phosphorus_params() -> PhosphorusStaticVariables:
     return PhosphorusStaticVariables(
         kop_20 = 0.1,
         rpo4_20 = 0,
-        kdpo4 = 100.0,
+        kop_theta = 1.047,
+        rpo4_theta = 1.047,
+        kdpo4 = 100.0
     )
 
 @pytest.fixture(scope='function')
@@ -292,6 +311,8 @@ def default_gvars_params() -> GlobalVars:
         fcom = 0.4,
         kaw_20_user = 0,
         kah_20_user = 1,
+        kaw_theta = 1.047,
+        kah_theta = 1.047,
         hydraulic_reaeration_option = 1,
         wind_reaeration_option = 1,  
         dt = 1,    #TODO Dynamic or static?
