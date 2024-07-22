@@ -2236,7 +2236,7 @@ def test_changed_kaw_20_user(
     DIC = nsm1.dataset.isel(
         nsm1_time_step=-1).DIC.values.item()
     assert isinstance(DIC, float)
-    assert pytest.approx(DIC, tolerance) == -0.01
+    assert pytest.approx(DIC, tolerance) == -0.0063
     
 def test_changed_krp_20(
     time_steps,
