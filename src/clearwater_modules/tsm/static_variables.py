@@ -156,9 +156,9 @@ Variable(
 )
 Variable(
     name='eair_mb',
-    long_name='Eair MB',
+    long_name='Vapor pressure',
     units='mb',
-    description='The eair MB.',
+    description='Vapor pressure',
     use='static',
 )
 Variable(

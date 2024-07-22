@@ -139,14 +139,6 @@ Variable(
     process=processes.q_sediment,
 )
 Variable(
-    name='dTdt_sediment_c',
-    long_name='Sediment temperature change',
-    units='degC',
-    description='Sediment temperature change',
-    use='dynamic',
-    process=processes.dTdt_sediment_c,
-)
-Variable(
     name='q_net',
     long_name='Net heat flux',
     units='W/m^2',

@@ -56,6 +56,174 @@ Variable(
 )
 
 Variable(
+    name='kah_theta',
+    long_name='Arrhenius coefficient for hydraulic oxygen reaeration rate',
+    units='unitless',
+    description='Arrhenius coefficient for hydraulic oxygen reaeration rate',
+    use='static'
+)
+
+Variable(
+    name='kaw_theta',
+    long_name='Arrhenius coefficient for wind oxygen reaeration velocity',
+    units='unitless',
+    description='Arrhenius coefficient for wind oxygen reaeration velocity',
+    use='static'
+)
+
+Variable(
+    name='mu_max_theta',
+    long_name='Arrhenius coefficient for algal max growth rate',
+    units='unitless',
+    description='Arrhenius coefficient for algal max growth rate',
+    use='static'
+)
+
+Variable(
+    name='krp_theta',
+    long_name='Arrhenius coefficient for algal respiration rate',
+    units='unitless',
+    description='Arrhenius coefficient for algal respiration rate',
+    use='static'
+)
+
+Variable(
+    name='kdp_theta',
+    long_name='Arrhenius coefficient for algal death rate',
+    units='unitless',
+    description='Arrhenius coefficient for algal death rate',
+    use='static'
+)
+
+Variable(
+    name='mub_max_theta',
+    long_name='Arrhenius coefficient for benthic algae max growth rate',
+    units='unitless',
+    description='Arrhenius coefficient for benthic algae max growth rate',
+    use='static'
+)
+
+Variable(
+    name='krb_theta',
+    long_name='Arrhenius coefficient for benthic algae respiration rate',
+    units='unitless',
+    description='Arrhenius coefficient for benthic algae respiration rate',
+    use='static'
+)
+
+Variable(
+    name='kdb_theta',
+    long_name='Arrhenius coefficient for benthic algae death rate',
+    units='unitless',
+    description='Arrhenius coefficient for benthic algae death rate',
+    use='static'
+)
+
+Variable(
+    name='knit_theta',
+    long_name='Arrhenius coefficient for ammonia decay rate',
+    units='unitless',
+    description='Arrhenius coefficient for ammonia decay rate',
+    use='static'
+)
+
+Variable(
+    name='rnh4_theta',
+    long_name='Arrhenius coefficient for rate of sediment release rate of NH4',
+    units='unitless',
+    description='Arrhenius coefficient for rate of sediment release rate of NH4',
+    use='static'
+)
+
+Variable(
+    name='vno3_theta',
+    long_name='Arrhenius coefficient for sediment denitrification rate',
+    units='unitless',
+    description='Arrhenius coefficient for sediment denitrification rate',
+    use='static'
+)
+
+Variable(
+    name='kon_theta',
+    long_name='Arrhenius coefficient for decay rate of OrgN',
+    units='unitless',
+    description='Arrhenius coefficient for decay rate of OrgN',
+    use='static'
+)
+
+Variable(
+    name='kdnit_theta',
+    long_name='Arrhenius coefficient for denitrification rate',
+    units='unitless',
+    description='Arrhenius coefficient for denitrification rate',
+    use='static'
+)
+
+Variable(
+    name='kop_theta',
+    long_name='Arrhenius coefficient for decay rate of organic P',
+    units='unitless',
+    description='Arrhenius coefficient for decay rate of organic P',
+    use='static'
+)
+
+Variable(
+    name='rpo4_theta',
+    long_name='Arrhenius coefficient for sediment release rate of DIP',
+    units='unitless',
+    description='Arrhenius coefficient for sediment release rate of DIP',
+    use='static'
+)
+
+Variable(
+    name='kpom_theta',
+    long_name='Arrhenius coefficient for POM dissolution rate',
+    units='unitless',
+    description='Arrhenius coefficient for POM dissolution rate',
+    use='static'
+)
+
+Variable(
+    name='kbod_theta',
+    long_name='Arrhenius coefficient for CBOD oxidation rate',
+    units='unitless',
+    description='Arrhenius coefficient for CBOD oxidation rate',
+    use='static'
+)
+
+Variable(
+    name='ksbod_theta',
+    long_name='Arrhenius coefficient for CBOD sedimentation rate',
+    units='unitless',
+    description='Arrhenius coefficient for CBOD sedimentation rate',
+    use='static'
+)
+
+Variable(
+    name='kpoc_theta',
+    long_name='Arrhenius coefficient for POC hydrolysis rate',
+    units='unitless',
+    description='Arrhenius coefficient for POC hydrolysis rate',
+    use='static'
+)
+
+Variable(
+    name='kdoc_theta',
+    long_name='Arrhenius coefficient for DOC oxidation rate',
+    units='unitless',
+    description='Arrhenius coefficient for DOX oxidation rate',
+    use='static'
+)
+
+Variable(
+    name='kdx_theta',
+    long_name='Arrhenius coefficient for pathogen death rate',
+    units='unitless',
+    description='Arrhenius coefficient for pathogen death rate',
+    use='static'
+)
+
+Variable(
     name='fcom',
     long_name='Fraction of carbon in organic matter',
     units='mg-C/mg-D',
@@ -232,10 +400,10 @@ Variable(
 )
 
 Variable(
-    name='timestep',
-    long_name='timestep',
+    name='dt',
+    long_name='dt',
     units='d',
-    description='calculation timestep',
+    description='calculation dt',
     use='static',
 )
 
