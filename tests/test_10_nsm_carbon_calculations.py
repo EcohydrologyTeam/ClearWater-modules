@@ -3833,3 +3833,687 @@ def test_changed_KsSOD(
         nsm1_time_step=-1).DIC.values.item()
     assert isinstance(DIC, float)
     assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_kpoc_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed DIC."""
+    # alter parameters as necessary
+    default_carbon_dict = default_carbon_params
+    default_carbon_dict['kpoc_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.28
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.27
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_kdoc_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed DIC."""
+    # alter parameters as necessary
+    default_carbon_dict = default_carbon_params
+    default_carbon_dict['kdoc_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.31
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.23
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_SOD_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed SOD_theta."""
+    # alter parameters as necessary
+    default_gvars_dict = default_gvars_params
+    default_gvars_dict['SOD_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.31
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_kdp_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed kdp_theta."""
+    # alter parameters as necessary
+    default_algae_dict = default_algae_params
+    default_algae_dict['kdp_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.55
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.27
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_kdb_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed kdb_theta."""
+    # alter parameters as necessary
+    default_balgae_dict = default_balgae_params
+    default_balgae_dict['kdb_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 8.03
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.43
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_kbod_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed kbod_theta."""
+    # alter parameters as necessary
+    default_CBOD_dict = default_CBOD_params
+    default_CBOD_dict['kbod_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.31
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_kah_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed kah_theta."""
+    # alter parameters as necessary
+    default_gvars_dict = default_gvars_params
+    default_gvars_dict['kah_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.31
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.54
+    
+def test_changed_kaw_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed kaw_theta."""
+    # alter parameters as necessary
+    default_gvars_dict = default_gvars_params
+    default_gvars_dict['kaw_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.31
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_krp_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed krp_theta."""
+    # alter parameters as necessary
+    default_algae_dict = default_algae_params
+    default_algae_dict['krp_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.31
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+    
+def test_changed_krb_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed krb_theta."""
+    # alter parameters as necessary
+    default_balgae_dict = default_balgae_params
+    default_balgae_dict['krb_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.31
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+
+def test_changed_mu_max_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed mu_max_theta."""
+    # alter parameters as necessary
+    default_algae_dict = default_algae_params
+    default_algae_dict['mu_max_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.31
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77
+
+def test_changed_mub_max_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters and changed mub_max_theta."""
+    # alter parameters as necessary
+    default_balgae_dict = default_balgae_params
+    default_balgae_dict['mub_max_theta'] = 1.2
+
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    POC = nsm1.dataset.isel(
+        nsm1_time_step=-1).POC.values.item()
+    assert isinstance(POC, float)
+    assert pytest.approx(POC, tolerance) == 6.31
+    DOC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DOC.values.item()
+    assert isinstance(DOC, float)
+    assert pytest.approx(DOC, tolerance) == 1.24
+    DIC = nsm1.dataset.isel(
+        nsm1_time_step=-1).DIC.values.item()
+    assert isinstance(DIC, float)
+    assert pytest.approx(DIC, tolerance) == 0.77

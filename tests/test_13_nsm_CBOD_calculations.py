@@ -273,22 +273,22 @@ def default_gp_params() -> GlobalParameters:
     Returns a typed dictionary, with string keys and float values.
     """
     return GlobalParameters(
-        use_NH4= True,
-        use_NO3= True, 
-        use_OrgN= True,
-        use_OrgP = True,
-        use_TIP= True,  
+        use_NH4= False,
+        use_NO3= False, 
+        use_OrgN= False,
+        use_OrgP = False,
+        use_TIP= False,  
         use_SedFlux= False,
         use_DOX= True,
-        use_Algae= True,
-        use_Balgae= True,
-        use_POC = True,
-        use_DOC = True,
-        use_DIC= True,
-        use_N2 = True,
-        use_Pathogen = True,
-        use_Alk = True,
-        use_POM = True 
+        use_Algae= False,
+        use_Balgae= False,
+        use_POC = False,
+        use_DOC = False,
+        use_DIC= False,
+        use_N2 = False,
+        use_Pathogen = False,
+        use_Alk = False,
+        use_POM = False 
     )
 
 @pytest.fixture(scope='function')
@@ -768,3 +768,101 @@ def test_changed_use_DOX(
 
     assert isinstance(CBOD, float)
     assert pytest.approx(CBOD, tolerance) == 0.85
+    
+def test_changed_kbod_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters."""
+    # alter parameters as necessary
+    initial_CBOD_dict = default_CBOD_params
+    initial_CBOD_dict['kbod_theta'] = 1.2
+    
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    CBOD = nsm1.dataset.isel(nsm1_time_step=-1).CBOD.values.item()
+
+    assert isinstance(CBOD, float)
+    assert pytest.approx(CBOD, tolerance) == 0.72
+    
+def test_changed_ksbod_theta(
+    time_steps,
+    initial_nsm1_state,
+    default_algae_params,
+    default_alkalinity_params,
+    default_balgae_params,
+    default_nitrogen_params,
+    default_carbon_params,
+    default_CBOD_params,
+    default_DOX_params,
+    default_N2_params,
+    default_POM_params,
+    default_pathogen_params,
+    default_phosphorus_params,
+    default_gp_params,
+    default_gvars_params,
+    tolerance,
+) -> None:
+    """Test the model with default parameters."""
+    # alter parameters as necessary
+    initial_CBOD_dict = default_CBOD_params
+    initial_CBOD_dict['ksbod_theta'] = 1.2
+    
+    # instantiate the model
+    nsm1: NutrientBudget = get_nutrient_budget_instance(
+        time_steps=time_steps,
+        initial_nsm1_state=initial_nsm1_state,
+        default_algae_params=default_algae_params,
+        default_alkalinity_params=default_alkalinity_params,
+        default_balgae_params=default_balgae_params,
+        default_nitrogen_params=default_nitrogen_params,
+        default_carbon_params=default_carbon_params,
+        default_CBOD_params=default_CBOD_params,
+        default_DOX_params=default_DOX_params,
+        default_N2_params=default_N2_params,
+        default_POM_params=default_POM_params,
+        default_pathogen_params=default_pathogen_params,
+        default_phosphorus_params=default_phosphorus_params,
+        default_gp_params=default_gp_params,
+        default_gvars_params=default_gvars_params
+    )
+
+    # Run the model
+    nsm1.increment_timestep()
+    CBOD = nsm1.dataset.isel(nsm1_time_step=-1).CBOD.values.item()
+
+    assert isinstance(CBOD, float)
+    assert pytest.approx(CBOD, tolerance) == 0.86
