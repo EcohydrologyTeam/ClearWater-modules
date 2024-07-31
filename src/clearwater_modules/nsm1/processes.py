@@ -7,7 +7,7 @@ import math
 ############################################ From shared processes
 
 def celsius_to_kelvin(tempc: xr.DataArray) -> xr.DataArray:
-    return tempc + 273.16
+    return tempc + 273.15
 
 
 
@@ -115,16 +115,14 @@ def kah_20(
 def kah_tc(
     TwaterC: xr.DataArray,
     kah_20: xr.DataArray,
-    theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted hydraulic oxygen reaeration rate (/d)
 
     Args:
         TwaterC: Water temperature in Celsius
         kah_20: Hydraulic oxygen reaeration rate at 20 degrees Celsius
-        theta: Arrhenius coefficient
     """
-    return arrhenius_correction(TwaterC, kah_20, theta)
+    return arrhenius_correction(TwaterC, kah_20, 1.024)
 
 
 def kaw_20(
@@ -191,16 +189,16 @@ def kaw_20(
 def kaw_tc(
     TwaterC: xr.DataArray,
     kaw_20: xr.DataArray,
-    theta: xr.DataArray
+
 ) -> xr.DataArray:
     """Calculate the temperature adjusted wind oxygen reaeration velocity (m/d)
 
     Args:
         water_temp_c: Water temperature in Celsius
         kaw_20: Wind oxygen reaeration velocity at 20 degrees Celsius
-        theta: Arrhenius coefficient
+
     """
-    return arrhenius_correction(TwaterC, kaw_20, theta)
+    return arrhenius_correction(TwaterC, kaw_20, 1.024)
 
 
 
