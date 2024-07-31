@@ -42,6 +42,7 @@ def arrhenius_correction(
 
 
 
+
 def TwaterK(
     TwaterC : xr.DataArray,
 ) -> xr.DataArray :
@@ -115,14 +116,16 @@ def kah_20(
 def kah_tc(
     TwaterC: xr.DataArray,
     kah_20: xr.DataArray,
+    kah_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted hydraulic oxygen reaeration rate (/d)
 
     Args:
         TwaterC: Water temperature in Celsius
         kah_20: Hydraulic oxygen reaeration rate at 20 degrees Celsius
+        kah_theta: Arrhenius coefficient for hydraulic oxygen reaeration rate
     """
-    return arrhenius_correction(TwaterC, kah_20, 1.024)
+    return arrhenius_correction(TwaterC, kah_20, kah_theta)
 
 
 def kaw_20(
@@ -189,16 +192,16 @@ def kaw_20(
 def kaw_tc(
     TwaterC: xr.DataArray,
     kaw_20: xr.DataArray,
-
+    kaw_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted wind oxygen reaeration velocity (m/d)
 
     Args:
         water_temp_c: Water temperature in Celsius
         kaw_20: Wind oxygen reaeration velocity at 20 degrees Celsius
-
+        kaw_theta: Arrhenius coefficient for wind oxygen reaeration velocity
     """
-    return arrhenius_correction(TwaterC, kaw_20, 1.024)
+    return arrhenius_correction(TwaterC, kaw_20, kaw_theta)
 
 
 
@@ -229,7 +232,7 @@ def SOD_tc(
     Args:
         SOD_20: Sediment oxygen demand at 20 degrees celsius (mg-O2/m2)
         TwaterC: Water temperature in degrees C
-        theta: Arrhenius coefficient
+        SOD_theta: Arrhenius coefficient for sediment oxygen demand
         use_DOX: Option to consider DOX concentration in water in calculation of sediment oxygen demand
     """
     SOD_tc = arrhenius_correction(TwaterC, SOD_20, SOD_theta)
@@ -312,7 +315,7 @@ def rna(
     AWn: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rna (mg-N/ug-Chla) using Redfield ratios.
+    """Calculate rna (mg-N/ug-Chla).
 
     Args:
         AWn: Nitrogen Weight (mg)
@@ -326,7 +329,7 @@ def rpa(
     AWp: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rpa (mg-P/ug-Chla) using Redfield ratios.
+    """Calculate rpa (mg-P/ug-Chla).
 
     Args:
         AWp: Phosphorus Weight (mg)
@@ -341,7 +344,7 @@ def rca(
     AWc: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rca (mg-C/ug-Chla) using Redfield ratios.
+    """Calculate rca (mg-C/ug-Chla).
 
     Args:
         AWc: Carbon Weight (mg)
@@ -355,7 +358,7 @@ def rda(
     AWd: xr.DataArray,
     AWa: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rda (mg-D/ug-Chla) using Redfield ratios.
+    """Calculate rda (mg-D/ug-Chla).
 
     Args:
         AWd: Dry Algal Weight (mg)
@@ -367,46 +370,52 @@ def rda(
 
 def mu_max_tc(
     TwaterC: xr.DataArray,
-    mu_max_20: xr.DataArray
+    mu_max_20: xr.DataArray,
+    mu_max_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate mu_max_tc (1/d).
 
     Args:
         TwaterC: Water temperature (C)
         mu_max: Max Algae growth (1/d)
+        mu_max_theta: Arrhenius coefficient for max algal growth rate
     """
 
-    return arrhenius_correction(TwaterC, mu_max_20, 1.047)
+    return arrhenius_correction(TwaterC, mu_max_20, mu_max_theta)
 
 
 
 def krp_tc(
     TwaterC: xr.DataArray,
-    krp_20: xr.DataArray
+    krp_20: xr.DataArray,
+    krp_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate krp_tc (1/d).
 
     Args:
         TwaterC: Water temperature (C)
         krp: Algal respiration rate at 20 degree (1/d)
+        krp_theta: Arrhenius coefficient for algal respiration rate
     """
 
-    return arrhenius_correction(TwaterC, krp_20, 1.047)
+    return arrhenius_correction(TwaterC, krp_20, krp_theta)
 
 
 
 def kdp_tc(
     TwaterC: xr.DataArray,
-    kdp_20: xr.DataArray
+    kdp_20: xr.DataArray,
+    kdp_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate kdp_tc (1/d).
 
     Args:
         TwaterC: Water temperature (C)
         kdp: Algal death rate at 20 degree (1/d)
+        kdp_theta: Arrhenius coefficient for algal death rate
     """
 
-    return arrhenius_correction(TwaterC, kdp_20, 1.047)
+    return arrhenius_correction(TwaterC, kdp_20, kdp_theta)
 
 
 def FL(
@@ -682,66 +691,71 @@ def dApdt(
 def Ap(
     Ap: xr.DataArray,
     dApdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Calculate new algae concentration (ug-Chla/L)
 
     Args:
         Ap: Initial algae biomass concentration (ug-Chla/L)
         dApdt: Change in algae biomass concentration (ug-Chla/L/d)
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
     """
-    return Ap + dApdt * timestep
+    return Ap + dApdt * dt
 
 ############################################ From benthic algae
 
 def mub_max_tc(
     mub_max_20: xr.DataArray,
-    TwaterC: xr.DataArray
+    TwaterC: xr.DataArray,
+    mub_max_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate mub_max_tc: Maximum benthic algal growth rate with temperature correction (1/d).
 
     Args:
-        mub_max_20: Maximum benthic algal growth rate at 20C (1/d)
+        mu_max_20: Maximum benthic algal growth rate at 20C (1/d)
         TwaterC: Water temperature (C)
+        mub_max_theta: Arrhenius coefficient for benthic algae max growth rate
     """
-    return arrhenius_correction(TwaterC, mub_max_20, 1.047)
+    return arrhenius_correction(TwaterC, mub_max_20, mub_max_theta)
 
 
 
 def krb_tc(
     krb_20: xr.DataArray,
-    TwaterC: xr.DataArray
+    TwaterC: xr.DataArray,
+    krb_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate krb_tc: Benthic algae respiration rate with temperature correction (1/d).
 
     Args:
         krb_20: Benthic algae respiration rate at 20C (1/d)
         TwaterC: Water temperature (C)
+        krb_theta: Arrhenius coefficient for benthic algae respiration rate
     """
-    return arrhenius_correction(TwaterC, krb_20, 1.06)
+    return arrhenius_correction(TwaterC, krb_20, krb_theta)
 
 
 
 def kdb_tc(
     kdb_20: xr.DataArray,
-    TwaterC: xr.DataArray
+    TwaterC: xr.DataArray,
+    kdb_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate kdb_tc: Benthic algae mortality rate with temperature correction (1/d).
 
     Args:
         kdb_20: Benthic algae mortality rate at 20C (1/d)
         TwaterC: Water temperature (C)
+        kdb_theta: Arrhenius coefficient for benthic algae death rate
     """
-    return arrhenius_correction(TwaterC, kdb_20, 1.047)
-
+    return arrhenius_correction(TwaterC, kdb_20, kdb_theta)
 
 
 def rnb(
     BWn: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rnb (mg-N/mg-D) using Redfield ratios.
+    """Calculate rnb (mg-N/mg-D).
 
     Args:
         BWn: Benthic algae nitrogen (unitless)
@@ -755,7 +769,7 @@ def rpb(
     BWp: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rpd: Benthic algae phosphorus to dry weight ratio (mg-P/mg-D) using Redfield ratios.
+    """Calculate rpd: Benthic algae phosphorus to dry weight ratio (mg-P/mg-D).
 
     Args:
         BWp: Benthic algae phosphorus (mg-P)
@@ -769,7 +783,7 @@ def rcb(
     BWc: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rcb: Benthic algae carbon to dry weight ratio (mg-C/mg-D) using Redfield ratios.
+    """Calculate rcb: Benthic algae carbon to dry weight ratio (mg-C/mg-D).
 
     Args:
         BWc: Benthic algae carbon (mg-C)
@@ -783,7 +797,7 @@ def rab(
     BWa: xr.DataArray,
     BWd: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate rab: Benthic algae chlorophyll-a to dry weight ratio (ug-Chla-a/mg-D) using Redfield ratios.
+    """Calculate rab: Benthic algae chlorophyll-a to dry weight ratio (ug-Chla-a/mg-D).
 
     Args:
         BWa: Benthic algae chlorophyll-a (ug-Chla-a)
@@ -904,8 +918,7 @@ def FNb(
         
         default = FNb_orig
     )
-
-
+    
     return FNb
 
 
@@ -1011,7 +1024,7 @@ def mub(
         
         default = 0
     )
-
+    
     return mub
 
 
@@ -1079,7 +1092,7 @@ def dAbdt(
 def Ab(
     Ab: xr.DataArray,
     dAbdt: xr.DataArray,
-    timestep: xr.DataArray,
+    dt: xr.DataArray,
 
 ) -> xr.DataArray:
     """Calculate Ab: New concentration benthic algae (mg-N/L)
@@ -1087,11 +1100,11 @@ def Ab(
     Args:
         Ab: Concentration of benthic algae (mg-N/L)
         dAbdt: Change in Ab (mg-N/L/d)
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
 
     """
 
-    return Ab + dAbdt * timestep
+    return Ab + dAbdt * dt
 
 
 def Chlb(
@@ -1099,7 +1112,7 @@ def Chlb(
     Ab: xr.DataArray,
 
 ) -> xr.DataArray:
-    """Calculate chlorophyll-a concentration (mg-Chla/m^2) using Redfield ratios
+    """Calculate chlorophyll-a concentration (mg-Chla/m^2)
 
     Args:
         rab: Balgae Chla to Dry ratio (mg-D/ug-Chla)
@@ -1114,76 +1127,86 @@ def Chlb(
 
 def knit_tc(
     TwaterC: xr.DataArray,
-    knit_20: xr.DataArray
+    knit_20: xr.DataArray,
+    knit_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate knit_tc: Nitrification rate ammonia decay NH4 to NO3 temperature correction (1/d). #TODO only if use_NH4 = true
 
     Args:
         TwaterC: Water temperature (C)
         knit_20: Nitrification rate ammonia decay (1/d)
+        knit_theta: Arrhenius coefficient for ammonia decay
     """
 
-    return arrhenius_correction(TwaterC, knit_20, 1.083)
+    return arrhenius_correction(TwaterC, knit_20, knit_theta)
 
 
 
 def rnh4_tc(
     TwaterC: xr.DataArray,
-    rnh4_20: xr.DataArray
+    rnh4_20: xr.DataArray,
+    rnh4_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate rnh4_tc: Sediment release rate of NH4 temperature correction(1/d). #TODO only if use_sedflux = true
 
     Args:
         TwaterC: Water temperature (C)
         rnh4_20: Sediment release rate of NH4 (1/d)
+        rnh4_theta: Arrhenius coefficient for rate of sediment release rate of NH4
     """
 
-    return arrhenius_correction(TwaterC, rnh4_20, 1.074)
+    return arrhenius_correction(TwaterC, rnh4_20, rnh4_theta)
 
 
 
 def vno3_tc(
     TwaterC: xr.DataArray,
-    vno3_20: xr.DataArray
+    vno3_20: xr.DataArray,
+    vno3_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate vno3_tc: Sediment denitrification velocity temperature correction (m/d). #TODO only if use_sedflux = true
 
     Args:
         TwaterC: Water temperature (C)
         vno3_20: Sedimet release rate of NO3 (1/d)
+        vno3_theta: Arrhenius coefficient for sediment denitrification rate
     """
 
-    return arrhenius_correction(TwaterC, vno3_20, 1.08)
+    return arrhenius_correction(TwaterC, vno3_20, vno3_theta)
 
 
 
 def kon_tc(
     TwaterC: xr.DataArray,
-    kon_20: xr.DataArray
+    kon_20: xr.DataArray,
+    kon_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate kon_tc: Decay rate of OrgN to NH4 temperature correction(1/d). #TODO only if use_OrgN = true
 
     Args:
         TwaterC: Water temperature (C)
         kon_20: Decay rate of OrgN to NH4 (1/d)
+        kon_theta: Arrhenius coefficient for decay rate of OrgN
     """
 
-    return arrhenius_correction(TwaterC, kon_20, 1.047)
+    return arrhenius_correction(TwaterC, kon_20, kon_theta)
 
 
 
 def kdnit_tc(
     TwaterC: xr.DataArray,
-    kdnit_20: xr.DataArray
+    kdnit_20: xr.DataArray,
+    kdnit_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate kdnit_tc: Denitrification rate temperature correction (1/d). #TODO only if use_NO3 = true
 
     Args:
         TwaterC: Water temperature (C)
         kdnit_20: Denitrification rate (1/d)
+        kdnit_theta: Arrhenius coefficient for denitrification rate
     """
 
-    return arrhenius_correction(TwaterC, kdnit_20, 1.045)
+    return arrhenius_correction(TwaterC, kdnit_20, kdnit_theta)
 
 
 def ApUptakeFr_NH4(
@@ -1388,7 +1411,7 @@ def dOrgNdt(
 def OrgN(
     OrgN: xr.DataArray,
     dOrgNdt: xr.DataArray,
-    timestep: xr.DataArray,
+    dt: xr.DataArray,
 
 ) -> xr.DataArray:
     """Calculate OrgN: New concentration OrgN (mg-N/L)
@@ -1396,11 +1419,11 @@ def OrgN(
     Args:
         OrgN: Concentration of organic nitrogen (mg-N/L)
         dOrgNdt: Change in Organic Nitrogen (mg-N/L/d)
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
 
     """
 
-    return OrgN + dOrgNdt * timestep
+    return OrgN + dOrgNdt * dt
 
 def NitrificationInhibition(
     use_DOX: bool,
@@ -1433,8 +1456,8 @@ def NH4_Nitrification(
         knit_tc: Nitrification rate ammonia decay NH4 to NO3 temperature correction (1/d).
         NH4: Ammonium concentration (mg-N/L),
     """
-    print("NH4_Nitrification", NH4_Nitrification)
-    return xr.where(use_NH4,NitrificationInhibition * knit_tc * NH4,0)
+
+    return xr.where(use_NH4, NitrificationInhibition * knit_tc * NH4, 0)
 
 
 def NH4fromBed(
@@ -1483,13 +1506,12 @@ def NH4_ApGrowth(
         ApGrowth: Algal growth rate (ug-Chla/L/d),
         ApUptakeFr_NH4: Fraction of actual xr.DataArraying algal uptake from ammonia pool
     """
+
     return xr.where(use_Algae, ApUptakeFr_NH4 * rna * ApGrowth, 0.0)
 
 def NH4_AbRespiration(
     use_Balgae: bool,
     rnb: xr.DataArray,
-    Fb: xr.DataArray,
-    depth: xr.DataArray,
     AbRespiration: xr.DataArray,
 
 ) -> xr.DataArray:
@@ -1499,12 +1521,10 @@ def NH4_AbRespiration(
         use_Balgae: true/false to use benthic algae module (unitless),
         rnb: xr.DataArray,
         AbRespiration: Benthic algal respiration rate (g/m^2/d),
-        depth: water depth (m),
-        Fb: Fraction of bottom area for benthic algae (unitless),
     """
     # TODO changed the calculation for respiration from the inital FORTRAN due to conflict with the reference guide
 
-    return xr.where(use_Balgae, (rnb * AbRespiration*Fb)/depth, 0.0 )
+    return xr.where(use_Balgae, rnb * AbRespiration, 0.0 )
 
 def NH4_AbGrowth(
     use_Balgae: bool,
@@ -1569,7 +1589,7 @@ def dNH4dt(
 def NH4(
     NH4: xr.DataArray,
     dNH4dt: xr.DataArray,
-    timestep: xr.DataArray,
+    dt: xr.DataArray,
 
 ) -> xr.DataArray:
     """Calculate NH4: New concentration NH4 (mg-N/L)
@@ -1577,11 +1597,11 @@ def NH4(
     Args:
         NH4: Concentration of NH4 (mg-N/L)
         dNH4dt: Change in NH4 (mg-N/L/d)
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
 
     """
 
-    return NH4 + dNH4dt * timestep
+    return NH4 + dNH4dt * dt
 
 def NO3_Denit(
     use_DOX: bool,
@@ -1707,13 +1727,14 @@ def dNO3dt(
 
     """
 
+
     return xr.where(use_NO3, NH4_Nitrification - NO3_Denit - NO3_BedDenit - NO3_ApGrowth - NO3_AbGrowth ,0)
 
 
 def NO3(
     NO3: xr.DataArray,
     dNO3dt: xr.DataArray,
-    timestep: xr.DataArray,
+    dt: xr.DataArray,
 
 ) -> xr.DataArray:
     """Calculate NO3: New concentration NO# (mg-N/L)
@@ -1721,11 +1742,11 @@ def NO3(
     Args:
         NO3: Concentration of NO3 (mg-N/L)
         dNO3dt: Change in NO3(mg-N/L/d)
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
 
     """
 
-    return NO3 + dNO3dt * timestep
+    return NO3 + dNO3dt * dt
 
 
 def DIN(
@@ -1813,7 +1834,8 @@ def TN(
 
 def kop_tc(
     TwaterC : xr.DataArray,
-    kop_20: xr.DataArray
+    kop_20: xr.DataArray,
+    kop_theta: xr.DataArray
 ) -> xr.DataArray :
 
     """Calculate kop_tc: Decay rate of organic P to DIP temperature correction (1/d).
@@ -1821,14 +1843,16 @@ def kop_tc(
     Args:
         TwaterC: Water temperature (C)
         kop_20: Decay rate of organic P to DIP at 20C (1/d)
+        kop_theta: Arrenhius correction for decay rate of Org P
     """
 
-    return arrhenius_correction(TwaterC, kop_20, 1.047)
+    return arrhenius_correction(TwaterC, kop_20, kop_theta)
 
 
 def rpo4_tc(
     TwaterC : xr.DataArray,
-    rpo4_20: xr.DataArray
+    rpo4_20: xr.DataArray,
+    rpo4_theta: xr.DataArray
 ) -> xr.DataArray :
 
     """Calculate rpo4_tc: Benthic sediment release rate of DIP temperature correction(g-P/m2/d).
@@ -1836,9 +1860,10 @@ def rpo4_tc(
     Args:
         TwaterC: Water temperature (C)
         kop_20: Benthic sediment release rate of DIP at 20C (1/d)
+        rpo4_theta: Arrhenius coefficient for sediment release rate of DIP
     """
 
-    return arrhenius_correction(TwaterC, rpo4_20, 1.074)
+    return arrhenius_correction(TwaterC, rpo4_20, rpo4_theta)
 
 def OrgP_DIP_decay(
     kop_tc : xr.DataArray,
@@ -1944,6 +1969,8 @@ def DIPfromBed(
         rpo4_tc: Benthic sediment release rate of DIP temperature correction(g-P/m2/d)
     """    
     return rpo4_tc / depth
+
+#TODO calcuate fdp?
 
 def TIP_Settling(
     vs: xr.DataArray,
@@ -2070,7 +2097,7 @@ def dTIPdt(
 def TIP(
     TIP: xr.DataArray,
     dTIPdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 
 ) -> xr.DataArray :
     """Calculate TIP: New total inorganic phosphorus (mg-P/L).
@@ -2078,15 +2105,15 @@ def TIP(
     Args:
         dTIPdt: Change in total inorganic phosphorus (mg-P/L/d)
         TIP: Total inorganic phosphorus water concentration (mg-P/L),
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
     """     
-    return TIP + dTIPdt * timestep
+    return TIP + dTIPdt * dt
 
 
 def OrgP(
     OrgP: xr.DataArray,
     dOrgPdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 
 ) -> xr.DataArray :
     """Calculate OrgP: New total organic phosphorus (mg-P/L).
@@ -2094,9 +2121,9 @@ def OrgP(
     Args:
         dOrgPdt: Change in total organic phosphorus (mg-P/L/d)
         OrgP: Total organic phosphorus water concentration (mg-P/L),
-        timestep: current iteration timestep (d)
+        dt: current iteration dt (d)
     """     
-    return OrgP + dOrgPdt * timestep
+    return OrgP + dOrgPdt * dt
 
 def TOP(
     use_OrgP: bool,
@@ -2154,19 +2181,22 @@ def DIP(
     return TIP * fdp
 
 
+
 ################################### From POM
 
 def kpom_tc(
-    TwaterC: float,
-    kpom_20: float,
+    TwaterC: xr.DataArray,
+    kpom_20: xr.DataArray,
+    kpom_theta: xr.DataArray
 ) -> float:
     """Calculate the temperature adjusted POM dissolution rate (1/d)
 
     Args:
         TwaterC: Water temperature in Celsius
         kpom_20: POM dissolution rate at 20 degrees Celsius (1/d)
+        kpom_theta: Arrhenius coefficient for POM dissolution rate
     """
-    return arrhenius_correction(TwaterC, kpom_20, 1.047)
+    return arrhenius_correction(TwaterC, kpom_20, kpom_theta)
 
 
 def POM_algal_settling(
@@ -2273,7 +2303,7 @@ def dPOMdt(
     POM_benthic_algae_mortality: xr.DataArray,
     POM_burial: xr.DataArray,
 ) -> xr.DataArray:
-    """Calculates the concentration change of POM for one timestep
+    """Calculates the concentration change of POM for one dt
 
     Args:
         POM_algal_settling: POM concentration change due to algal settling (mg/L/d)
@@ -2289,16 +2319,16 @@ def dPOMdt(
 def POM(
     dPOMdt: xr.DataArray,
     POM: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Computes updated particulate organic matter concentration (mg/L)
     
     Args:
-        dPOMdt: Change in POM concentration over timestep (mg/L/d)
-        POM: POM concentration from previous timestep (mg/L)
-        timestep: Current iteration timestep (d)
+        dPOMdt: Change in POM concentration over dt (mg/L/d)
+        POM: POM concentration from previous dt (mg/L)
+        dt: Current iteration dt (d)
     """
-    return POM + dPOMdt * timestep
+    return POM + dPOMdt * dt
 
 
 ################################## From CBOD
@@ -2306,15 +2336,17 @@ def POM(
 def kbod_tc(
     TwaterC: xr.DataArray,
     kbod_20: xr.DataArray,
+    kbod_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted CBOD oxidation rate (1/d)
 
     Args:
         TwaterC: water temperature in Celsius
         kbod_20: CBOD oxidation rate at 20 degrees Celsius (1/d)
+        kbod_theta: Arrhenius coefficient for CBOD oxidation rate
     """
 
-    kbod_tc = arrhenius_correction(TwaterC, kbod_20, 1.047)
+    kbod_tc = arrhenius_correction(TwaterC, kbod_20, kbod_theta)
     return kbod_tc
 
 
@@ -2322,15 +2354,17 @@ def kbod_tc(
 def ksbod_tc(
     TwaterC: xr.DataArray,
     ksbod_20: xr.DataArray,
+    ksbod_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted CBOD sedimentation rate (m/d)
 
     Args:
         TwaterC: water temperature in Celsius
         ksbod_20: CBOD sedimentation rate at 20 degrees Celsius (m/d)
+        ksbod_theta: Arrhenius coefficient for CBOD sedimentation rate
     """
 
-    ksbod_tc = arrhenius_correction(TwaterC, ksbod_20, 1.024)
+    ksbod_tc = arrhenius_correction(TwaterC, ksbod_20, ksbod_theta)
     return ksbod_tc
 
 
@@ -2377,7 +2411,7 @@ def dCBODdt(
     CBOD_oxidation: xr.DataArray,
     CBOD_sedimentation: xr.DataArray
 ) -> xr.DataArray:
-    """Computes change in each CBOD group for a given timestep
+    """Computes change in each CBOD group for a given dt
 
     Args:
         CBOD_oxidation: CBOD concentration change due to oxidation (mg/L/d)
@@ -2390,16 +2424,16 @@ def dCBODdt(
 def CBOD(
     CBOD: xr.DataArray,
     dCBODdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
-    """Calculates new CBOD concentration for next timestep
+    """Calculates new CBOD concentration for next dt
 
     Args:
-        CBOD: CBOD concentration from previous timestep (mg/L)
-        dCBODdt: CBOD concentration change for current timestep (mg/L/d)
-        timestep: current iteration timestep (d)
+        CBOD: CBOD concentration from previous dt (mg/L)
+        dCBODdt: CBOD concentration change for current dt (mg/L/d)
+        dt: current iteration dt (d)
     """
-    return CBOD + dCBODdt * timestep
+    return CBOD + dCBODdt * dt
 
 ############################### From Carbon
 
@@ -2407,14 +2441,16 @@ def CBOD(
 def kpoc_tc(
     TwaterC: xr.DataArray,
     kpoc_20: xr.DataArray,
+    kpoc_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted POC hydrolysis rate (/d)
 
     Args:
         TwaterC: Water temperature in Celsius
         kpoc_20: POC hydrolysis rate at 20 degrees Celsius (1/d)
+        kpoc_theta: Arrhenius coefficient for POC hydrolysis rate
     """
-    return arrhenius_correction(TwaterC, kpoc_20, 1.047)
+    return arrhenius_correction(TwaterC, kpoc_20, kpoc_theta)
 
 
 
@@ -2422,7 +2458,7 @@ def POC_hydrolysis(
     kpoc_tc: xr.DataArray,
     POC: xr.DataArray,
 ) -> xr.DataArray:
-    """Calculate the POC concentration change due to hydrolysis for a given timestep
+    """Calculate the POC concentration change due to hydrolysis for a given dt
 
     Args:
         kpoc_tc: POC hydrolysis rate at given water temperature (1/d)
@@ -2437,7 +2473,7 @@ def POC_settling(
     depth: xr.DataArray,
     POC: xr.DataArray
 ) -> xr.DataArray:
-    """Calculate the POC concentration change due to settling for a given timestep
+    """Calculate the POC concentration change due to settling for a given dt
 
     Args:
         vsoc: POC settling velocity (m/d)
@@ -2516,16 +2552,16 @@ def dPOCdt(
 def POC(
     POC: xr.DataArray,
     dPOCdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the POC concentration at the next time step
 
     Args:
-        POC: Concentration of POC from previous timestep (mg/L)
-        dPOCdt: POC concentration change for current timestep (mg/L/d)
-        timestep: current iteration timestep (d)
+        POC: Concentration of POC from previous dt (mg/L)
+        dPOCdt: POC concentration change for current dt (mg/L/d)
+        dt: current iteration dt (d)
     """
-    return POC + dPOCdt * timestep
+    return POC + dPOCdt * dt
 
 
 def DOC_algal_mortality(
@@ -2580,14 +2616,16 @@ def DOC_benthic_algae_mortality(
 def kdoc_tc(
     TwaterC: xr.DataArray,
     kdoc_20: xr.DataArray,
+    kdoc_theta: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the temperature adjusted DOC oxidation rate (1/d)
 
     Args:
         TwaterC: Water temperature in Celsius
         kdoc_20: DOC oxidation rate at 20 degrees Celsius (1/d)
+        kdoc_theta: Arrhenius coefficient for DOC oxidation rate
     """
-    return arrhenius_correction(TwaterC, kdoc_20, 1.047)
+    return arrhenius_correction(TwaterC, kdoc_20, kdoc_theta)
 
 
 def DOC_DIC_oxidation(
@@ -2635,16 +2673,16 @@ def dDOCdt(
 def DOC(
     DOC: xr.DataArray,
     dDOCdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the DOC concentration at the next time step
 
     Args:
-        DOC: Dissolved organic carbon concentration from previous timestep (mg/L)
-        dDOCdt: Dissolved organic carbon concentration change for current timestep (mg/L/d)
-        timestep: current iteration timestep (d)
+        DOC: Dissolved organic carbon concentration from previous dt (mg/L)
+        dDOCdt: Dissolved organic carbon concentration change for current dt (mg/L/d)
+        dt: current iteration dt (d)
     """
-    return DOC + dDOCdt * timestep
+    return DOC + dDOCdt * dt
 
 
 
@@ -2675,7 +2713,7 @@ def Atmospheric_CO2_reaeration(
         FCO2: Fraction of CO2 in total inorganic carbon
         DIC: Dissolved inorganic carbon concentration (mg/L)
     """
-    return 12 * ka_tc * (10**-3 * K_H * pCO2 - 10**3 * FCO2 * DIC)
+    return 0.923 * ka_tc * (K_H * pCO2 / 1000000 - FCO2 * DIC)
 
 
 def DIC_algal_respiration(
@@ -2690,7 +2728,7 @@ def DIC_algal_respiration(
         rca: Ratio of carbon to chlorophyll-a (mg-C/ug-Chla)
         use_Algae: Option to consider algae in the DIC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Algae == True, ApRespiration * rca, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, ApRespiration * rca / 12000, 0)
 
     return da
 
@@ -2707,7 +2745,7 @@ def DIC_algal_photosynthesis(
         rca: Ratio of carbon to chlorophyll-a (mg-C/ug-Chla)
         use_Algae: Option to consider algae in the DIC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Algae == True, ApGrowth * rca, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, ApGrowth * rca / 12000, 0)
 
     return da
 
@@ -2728,7 +2766,7 @@ def DIC_benthic_algae_respiration(
         depth: Depth of water (m)
         use_Balgae: Option to consider benthic algae in the DIC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, AbRespiration * rcb * Fb * (1 / depth), 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, AbRespiration * rcb * Fb * (1 / depth) / 12000, 0)
 
     return da
 
@@ -2749,7 +2787,7 @@ def DIC_benthic_algae_photosynthesis(
         depth: Depth of water (m)
         use_Balgae: Option to consider benthic algae in the DIC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, AbGrowth * rcb * Fb * (1 / depth), 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, AbGrowth * rcb * Fb * (1 / depth) / 12000, 0)
 
     return da
 
@@ -2773,7 +2811,7 @@ def DIC_CBOD_oxidation(
         use_DOX: Option to consider dissolved oxygen in CBOD oxidation calculation (boolean)
     """
     
-    da: xr.DataArray = xr.where(use_DOX == True, (1 / roc) * (DOX / (KsOxbod + DOX)) * kbod_tc * CBOD, CBOD * kbod_tc)
+    da: xr.DataArray = xr.where(use_DOX == True, (1 / roc) * (DOX / (KsOxbod + DOX)) * kbod_tc * CBOD / 12000, CBOD * kbod_tc / 12000)
 
     return da
 
@@ -2791,7 +2829,7 @@ def DIC_sed_release(
         roc: Ratio of O2 to carbon for carbon oxidation (mg-O2/mg-C)
         depth: Water depth (m)
     """
-    return SOD_tc / roc / depth
+    return SOD_tc / roc / depth / 12000
 
 
 
@@ -2822,16 +2860,16 @@ def dDICdt(
 def DIC(
     DIC: xr.DataArray,
     dDICdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the DIC concentration at the next time step
 
     Args:
-        DIC: Concentration of DIC from previous timestep (mg/L)
-        dDICdt: Change in concentration of DIC for current timestep (mg/L/d)
-        timestep: Current iteration timestep (d)
+        DIC: Concentration of DIC from previous dt (mg/L)
+        dDICdt: Change in concentration of DIC for current dt (mg/L/d)
+        dt: Current iteration dt (d)
     """
-    return DIC + dDICdt * timestep
+    return DIC + dDICdt * dt
 
 
 ######################################## From DOX
@@ -2850,7 +2888,7 @@ def pwv(
     return np.exp(11.8571 - 3840.70 / TwaterK - 216961 / TwaterK ** 2)
 
 
-
+#TwaterC??
 def DOs_atm_alpha(
     TwaterC: xr.DataArray
 ) -> xr.DataArray:
@@ -2860,7 +2898,6 @@ def DOs_atm_alpha(
         TwaterK: Water temperature kelvin
     """
     return .000975 - 1.426 * 10 ** -5 * TwaterC + 6.436 * 10 ** -8 * TwaterC ** 2
-
 
 
 def DOX_sat(
@@ -2877,12 +2914,14 @@ def DOX_sat(
         pwv: Patrial pressure of water vapor (atm)
         DOs_atm_alpha: DO saturation atmospheric correction coefficient
     """
-    DOX_sat_uncorrected = np.exp(-139.34410 + 1.575701 * 10 ** 5 / TwaterK - 6.642308 * 10 ** 7 / TwaterK ** 2
-                                 + 1.243800 * 10 ** 10 / TwaterK - 8.621949 * 10 ** 11 / TwaterK)
+    pressure_atm = pressure_atm * 0.000986923
+    
+    DOX_sat_uncorrected = np.exp(-139.34410 + ( 1.575701E05 / TwaterK ) - ( 6.642308E07 / (TwaterK**2.0) ) + ( 1.243800E10 / (TwaterK**3.0) ) - ( 8.621949E11 / (TwaterK**4.0) ))
 
     DOX_sat_corrected = DOX_sat_uncorrected * pressure_atm * \
         (1 - pwv / pressure_atm) * (1 - DOs_atm_alpha * pressure_atm) / \
         ((1 - pwv) * (1 - DOs_atm_alpha))
+
     return DOX_sat_corrected
 
 
@@ -2980,7 +3019,7 @@ def DOX_DOC_oxidation(
 
 
 def DOX_CBOD_oxidation(
-    DIC_CBOD_oxidation: xr.DataArray,
+    CBOD_oxidation: xr.DataArray,
     roc: xr.DataArray
 ) -> xr.DataArray:
     """Compute dissolved oxygen flux due to CBOD oxidation
@@ -2989,7 +3028,7 @@ def DOX_CBOD_oxidation(
         DIC_CBOD_Oxidation: Carbonaceous biochemical oxygen demand oxidation, calculated in CBOD module (mg/L/d)
         roc: Ratio of oxygen to carbon for carbon oxidation (mg-O2/mg-C)
     """
-    return DIC_CBOD_oxidation * roc
+    return CBOD_oxidation
 
 
 def DOX_AbGrowth(
@@ -3066,7 +3105,7 @@ def dDOXdt(
     DOX_AbRespiration: xr.DataArray,
     DOX_SOD: xr.DataArray
 ) -> xr.DataArray:
-    """Compute change in dissolved oxygen concentration for one timestep
+    """Compute change in dissolved oxygen concentration for one dt
 
     Args:
         Atm_O2_reaeration: DOX concentration change due to atmospheric O2 reaeration (mg/L/d)
@@ -3086,16 +3125,16 @@ def dDOXdt(
 def DOX(
     DOX: xr.DataArray,
     dDOXdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray:
     """Computes updated dissolved oxygen concentration
 
     Args:
-        DOX: Dissolved oxygen concentration from previous timestep
-        dDOXdt: Change in dissolved oxygen concentration over timestep
-        timestep: Current iteration timestep (d)
+        DOX: Dissolved oxygen concentration from previous dt
+        dDOXdt: Change in dissolved oxygen concentration over dt
+        dt: Current iteration dt (d)
     """
-    return DOX + dDOXdt * timestep
+    return DOX + dDOXdt * dt
 
 ######################################### From pathogen
 
@@ -3103,7 +3142,8 @@ def DOX(
 
 def kdx_tc(
     TwaterC : xr.DataArray,
-    kdx_20: xr.DataArray
+    kdx_20: xr.DataArray,
+    kdx_theta: xr.DataArray
 ) -> xr.DataArray :
 
     """Calculate kdx_tc: pathogen death rate (1/d).
@@ -3111,9 +3151,10 @@ def kdx_tc(
     Args:
         TwaterC: Water temperature (C)
         kdx_20: Pathogen death rate at 20 degree (1/d)
+        kdx_theta: Arrhenius coefficient for pathogen death rate
     """
 
-    return arrhenius_correction(TwaterC, kdx_20, 1.07)
+    return arrhenius_correction(TwaterC, kdx_20, kdx_theta)
 
 
 def PathogenDeath(
@@ -3188,7 +3229,7 @@ def dPXdt(
 def PX(
     PX:xr.DataArray,
     dPXdt: xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 
 ) -> xr.DataArray :
 
@@ -3197,9 +3238,9 @@ def PX(
     Args:
       dPXdt: change in pathogen concentration (cfu/100mL/d)
       PX: Pathogen concentration (cfu/100mL)
-      timestep: Current iteration timestep (d)
+      dt: Current iteration dt (d)
     """
-    return PX + timestep * dPXdt
+    return PX + dt * dPXdt
 
 
 ##################################### From alkalinity
@@ -3232,8 +3273,8 @@ def Alk_denitrification(
         ],
         
         choicelist = [
-            r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3,
-            r_alkden * kdnit_tc * NO3
+            r_alkden * (1.0 - (DOX / (DOX + KsOxdn))) * kdnit_tc * NO3 * 50000,
+            r_alkden * kdnit_tc * NO3 * 50000
         ],
         
         default = 0
@@ -3270,8 +3311,8 @@ def Alk_nitrification(
         ],
         
         choicelist = [
-            r_alkn * (1 - np.exp(-KNR * DOX)) * knit_tc * NH4,
-            knit_tc * NH4
+            r_alkn * (1 - np.exp(-KNR * DOX)) * knit_tc * NH4 * 50000,
+            knit_tc * NH4 * 50000
         ],
         
         default = 0
@@ -3285,6 +3326,7 @@ def Alk_algal_growth(
     r_alkaa: xr.DataArray,
     r_alkan: xr.DataArray,
     ApUptakeFr_NH4 : xr.DataArray,
+    rca: xr.DataArray,
     use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the alkalinity concentration change due to algal growth
@@ -3294,9 +3336,10 @@ def Alk_algal_growth(
         r_alkaa: Ratio translating algal growth into Alk if NH4 is the N source (eq/ug-Chla)
         r_alkan: Ratio translating algal growth into Alk if NO3 is the N source (eq/ug-Chla)
         ApUptakeFr_NH4 : Preference fraction of algal N uptake from NH4
+        rca: Algal C:Chla Ratio
         use_Algae: Option to use algae
     """
-    da: xr.DataArray = xr.where(use_Algae == True, (r_alkaa * ApUptakeFr_NH4  - r_alkan * (1 - ApUptakeFr_NH4 )) * ApGrowth, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, (r_alkaa * ApUptakeFr_NH4  - r_alkan * (1 - ApUptakeFr_NH4 )) * ApGrowth * rca * 50000, 0)
 
     return da
 
@@ -3304,6 +3347,7 @@ def Alk_algal_growth(
 def Alk_algal_respiration(
     ApRespiration: xr.DataArray,
     r_alkaa: xr.DataArray,
+    rca: xr.DataArray,
     use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the alkalinity concentration change due to algal respiration
@@ -3311,9 +3355,10 @@ def Alk_algal_respiration(
     Args:
         ApRespiration: Algae respiration calculated in algae module (ug-Chla/L/d)
         r_alkaa: Ratio translating algal growth into Alk if NH4 is the N source (eq/ug-Chla)
+        rca: Algal C:Chla Ratio
         use_Algae: Option to use algae
     """
-    da: xr.DataArray = xr.where(use_Algae == True, ApRespiration * r_alkaa, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, ApRespiration * r_alkaa * 50000 * rca, 0)
 
     return da
 
@@ -3325,6 +3370,7 @@ def Alk_benthic_algae_growth(
     r_alkbn: xr.DataArray,
     AbUptakeFr_NH4 : xr.DataArray,
     Fb: xr.DataArray,
+    rcb: xr.DataArray,
     use_Balgae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the alkalinity concentration change due to algal growth
@@ -3336,9 +3382,10 @@ def Alk_benthic_algae_growth(
         r_alkan: Ratio translating algal growth into Alk if NO3 is the N source (eq/ug-Chla)
         AbUptakeFr_NH4 : Preference fraction of benthic algae N uptake from NH4
         Fb: Fraction of bottom area available for benthic algae growth
+        rcb: Ratio benthic algae carbon to dry weight
         use_Balgae: Option to use benthic algae
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) *(r_alkba * AbUptakeFr_NH4  - r_alkbn * (1 - AbUptakeFr_NH4 )) * AbGrowth * Fb, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * (r_alkba * AbUptakeFr_NH4  - r_alkbn * (1 - AbUptakeFr_NH4 )) * AbGrowth * Fb * rcb * 50000, 0)
 
     return da
 
@@ -3348,6 +3395,7 @@ def Alk_benthic_algae_respiration(
     depth: xr.DataArray,
     r_alkba: xr.DataArray,
     Fb: xr.DataArray,
+    rcb: xr.DataArray,
     use_Balgae: xr.DataArray
 ) -> xr.DataArray:
     """Calculate the alkalinity concentration change due to algal respiration
@@ -3356,12 +3404,12 @@ def Alk_benthic_algae_respiration(
         ApRespiration: Algae respiration calculated in algae module (ug-Chla/L/d)
         r_alkaa: Ratio translating algal growth into Alk if NH4 is the N source (eq/ug-Chla)
         Fb: Fraction of bottom area available for benthic algae growth
+        rcb: Ratio benthic algae carbon to dry weight
         use_Balgae: Option to use betnhic algae
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * r_alkba * AbRespiration * Fb, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, (1 / depth) * r_alkba * AbRespiration * rcb * Fb * 50000, 0)
 
     return da
-
 
 
 def dAlkdt(
@@ -3372,7 +3420,7 @@ def dAlkdt(
     Alk_benthic_algae_growth: xr.DataArray,
     Alk_benthic_algae_respiration: xr.DataArray
 ) -> xr.DataArray:
-    """Computes the change in alkalinity for timestep
+    """Computes the change in alkalinity for dt
 
     Args:
         Alk_denitrification: xr.DataArray,
@@ -3389,16 +3437,16 @@ def dAlkdt(
 def Alk(
     Alk: xr.DataArray,
     dAlkdt: xr.DataArray,
-    timestep: xr.DataArray,
+    dt: xr.DataArray,
 ) -> xr.DataArray:
-    """Computes the alkalinity concentration at the next timestep
+    """Computes the alkalinity concentration at the next dt
 
     Args:
-        Alk: Concentration of alkalinity from previous timestep (mg/L)
-        dAlkdt: Change in concentration of alkalinity for current timestep (mg/L/d)
-        timestep: Current iteration timestep (d)
+        Alk: Concentration of alkalinity from previous dt (mg/L)
+        dAlkdt: Change in concentration of alkalinity for current dt (mg/L/d)
+        dt: Current iteration dt (d)
     """
-    return Alk + dAlkdt * timestep
+    return Alk + dAlkdt * dt
 
 ##################################### From N2
 
@@ -3451,7 +3499,7 @@ def N2sat(
     """
         
     N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_atm - P_wv)  
-    N2sat = xr.where(N2sat < 0.0,0.0,N2sat) #Trap saturation concentration to ensure never negative
+    N2sat = xr.where(N2sat < 0.0,0.000001,N2sat) #Trap saturation concentration to ensure never negative
 
     return N2sat
 
@@ -3476,7 +3524,7 @@ def dN2dt(
 def N2(
     N2: xr.DataArray,
     dN2dt : xr.DataArray,
-    timestep: xr.DataArray
+    dt: xr.DataArray
 ) -> xr.DataArray: 
     
     """Calculate change in N2 air concentration (mg-N/L/d)
@@ -3484,10 +3532,10 @@ def N2(
     Args:
         N2: Nitrogen concentration air (mg-N/L)
         dN2dt: Change in nitrogen concentration air
-        timestep: Current iteration timestep (d)
+        dt: Current iteration dt (d)
     """
         
-    return N2 + dN2dt * timestep
+    return N2 + dN2dt * dt
 
 def TDG(
     N2: xr.DataArray,
