@@ -1371,14 +1371,6 @@ Variable(
     process=processes.KHN2_tc
 )
 
-Variable(
-    name='P_wv',
-    long_name='Partial pressure water vapor',
-    units='atm',
-    description='Partial pressure water vapor',
-    use='dynamic',
-    process=processes.P_wv
-)
 
 Variable(
     name='N2sat',

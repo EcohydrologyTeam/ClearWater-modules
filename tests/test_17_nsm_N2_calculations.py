@@ -34,7 +34,7 @@ def initial_nsm1_state() -> dict[str, float]:
         'OrgN': 1.726,
         'N2': 1, 
         'TIP': 0.071,
-        'OrgP': 0.24,
+        'OrgP': 0.25,
         'POC': 4.356,
         'DOC': 1,
         'DIC': 1,
@@ -74,6 +74,9 @@ def default_algae_params() -> AlgaeStaticVariables:
         vsap= 0.15,
         growth_rate_option = 1,
         light_limitation_option = 1,
+        mu_max_theta= 1.047,
+        kdp_theta= 1.047,
+        krp_theta= 1.047,
     )
 
 @pytest.fixture(scope='function')
@@ -119,7 +122,10 @@ def default_balgae_params() -> BalgaeStaticVariables:
         b_growth_rate_option=1,
         b_light_limitation_option=1,
         Fw=0.9,
-        Fb=0.9
+        Fb=0.9,
+        mub_max_theta = 1.047,
+        krb_theta = 1.06,
+        kdb_theta = 1.047,
     )
 
 @pytest.fixture(scope='function')
@@ -140,7 +146,12 @@ def default_nitrogen_params() -> NitrogenStaticVariables:
         vno3_20=0,
         KsOxdn=0.1,
         PN=0.5,
-        PNb=0.5
+        PNb=0.5,
+        knit_theta= 1.083,
+        kon_theta= 1.047,
+        kdnit_theta= 1.045,
+        rnh4_theta= 1.074,
+        vno3_theta= 1.08,
     )
 
 @pytest.fixture(scope='function')
@@ -160,7 +171,9 @@ def default_carbon_params() -> CarbonStaticVariables:
         KsOxmc=1.0,
         pCO2 = 383.0,
         FCO2 = 0.2,
-        roc = 32.0/12.0
+        roc = 32.0/12.0,
+        kpoc_theta = 1.047,
+        kdoc_theta = 1.047,
     )
 
 @pytest.fixture(scope='function')
@@ -175,7 +188,9 @@ def default_CBOD_params() -> CBODStaticVariables:
     return CBODStaticVariables(
         KsOxbod = 0.5,
         kbod_20 =  0.12,
-        ksbod_20 = 0.0
+        ksbod_20 = 0.0,
+        kbod_theta =  1.047,
+        ksbod_theta = 1.047
     )
 
 @pytest.fixture(scope='function')
@@ -216,7 +231,8 @@ def default_POM_params() -> POMStaticVariables:
     """
     return POMStaticVariables(
         kpom_20 = 0.1,
-        h2 = 0.1
+        h2 = 0.1,
+        kpom_theta = 1.047
     )
 
 @pytest.fixture(scope='function')
@@ -231,7 +247,8 @@ def default_pathogen_params() -> PathogenStaticVariables:
     return PathogenStaticVariables(
         kdx_20=0.8,
         apx=1,
-        vx=1
+        vx=1,
+        kdx_theta = 1.07,
     )
 
 @pytest.fixture(scope='function')
@@ -247,6 +264,8 @@ def default_phosphorus_params() -> PhosphorusStaticVariables:
         kop_20 = 0.1,
         rpo4_20 =0,
         kdpo4 = 0.0,
+        kop_theta = 1.047,
+        rpo4_theta = 1.074,
     )
 
 @pytest.fixture(scope='function')
@@ -302,7 +321,8 @@ def default_gvars_params() -> GlobalVars:
         timestep = 1,    #TODO Dynamic or static?
         depth = 1.5,         #TODO Dynamic or static?
         TwaterC = 25,
-        theta = 1.047,
+        kaw_theta = 1.024,
+        kah_theta = 1.024,
         velocity = 1,
         flow = 150,
         topwidth = 100,
@@ -405,33 +425,36 @@ def test_defaults(
     
     # Run the model
     nsm1.increment_timestep()
-
+    
+    
     ka_tc = nsm1.dataset.isel(nsm1_time_step=-1).ka_tc.item()
     assert isinstance(ka_tc, float)
     print("ka_tc",ka_tc)
 
-    N2sat = nsm1.dataset.isel(nsm1_time_step=-1).N2sat.item()
-    assert isinstance(N2sat, float)
-    print("N2sat",N2sat)
 
-    KHN2_tc = nsm1.dataset.isel(nsm1_time_step=-1).KHN2_tc.item()
-    assert isinstance(KHN2_tc, float)
-    print("KHN2_tc",KHN2_tc)
+    pwv = nsm1.dataset.isel(nsm1_time_step=-1).pwv.item()
+    assert isinstance(pwv, float)
+    print("pwv",pwv)
 
-    P_wv = nsm1.dataset.isel(nsm1_time_step=-1).P_wv.item()
-    assert isinstance(P_wv, float)
-    print("P_wv",P_wv)
+    DOX_sat = nsm1.dataset.isel(nsm1_time_step=-1).DOX_sat.item()
+    assert isinstance(DOX_sat, float)
+    print("DOX_sat",DOX_sat)
 
-    TwaterK = nsm1.dataset.isel(nsm1_time_step=-1).TwaterK.item()
-    assert isinstance(TwaterK, float)
-    print("TwaterK",TwaterK)
-    
+    DOX = nsm1.dataset.isel(nsm1_time_step=-1).DOX.item()
+    assert isinstance(DOX, float)
+    print("DOX",DOX)
+
     N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
 
     assert isinstance(N2, float)
     assert pytest.approx(N2, tolerance) == 16.0511281
 
+"""
+    TDG = nsm1.dataset.isel(nsm1_time_step=-1).TDG.values.item()
 
+    assert isinstance(TDG, float)
+    assert pytest.approx(TDG, tolerance) == 26.0020885
+"""
 '''
 def test_change_kop(
     time_steps,

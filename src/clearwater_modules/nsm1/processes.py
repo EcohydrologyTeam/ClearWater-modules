@@ -12,7 +12,7 @@ def celsius_to_kelvin(tempc: xr.DataArray) -> xr.DataArray:
 
 
 def kelvin_to_celsius(tempk: xr.DataArray) -> xr.DataArray:
-    return tempk - 273.16
+    return tempk - 273.15
 
 
 def arrhenius_correction(
@@ -1512,6 +1512,8 @@ def NH4_ApGrowth(
 def NH4_AbRespiration(
     use_Balgae: bool,
     rnb: xr.DataArray,
+    Fb: xr.DataArray,
+    depth: xr.DataArray,
     AbRespiration: xr.DataArray,
 
 ) -> xr.DataArray:
@@ -1521,10 +1523,12 @@ def NH4_AbRespiration(
         use_Balgae: true/false to use benthic algae module (unitless),
         rnb: xr.DataArray,
         AbRespiration: Benthic algal respiration rate (g/m^2/d),
+        depth: water depth (m),
+        Fb: Fraction of bottom area for benthic algae (unitless),
     """
     # TODO changed the calculation for respiration from the inital FORTRAN due to conflict with the reference guide
 
-    return xr.where(use_Balgae, rnb * AbRespiration, 0.0 )
+    return xr.where(use_Balgae, (rnb * AbRespiration*Fb)/depth, 0.0 )
 
 def NH4_AbGrowth(
     use_Balgae: bool,
@@ -3469,25 +3473,10 @@ def KHN2_tc(
     return 0.00065 * np.exp(1300.0 * (1.0 / TwaterK - 1 / 298.15))   
         
 
-def P_wv(
-    TwaterK : xr.DataArray,
-) -> xr.DataArray :
-        
-    """Calculate partial pressure water vapor (atm)
-
-    Constant values found in documentation
-
-    Args:
-        TwaterK: water temperature kelvin (K)
-
-    """
-    return np.exp(11.8571  - (3840.70 / TwaterK) - (216961.0 / (TwaterK**2)))
-  
-
 def N2sat(
     KHN2_tc : xr.DataArray,
     pressure_atm: xr.DataArray,
-    P_wv: xr.DataArray
+    pwv: xr.DataArray
 ) -> xr.DataArray:
     
     """Calculate N2 at saturation f(Twater and atm pressure) (mg-N/L)
@@ -3495,10 +3484,10 @@ def N2sat(
     Args:
         KHN2_tc: Henry's law constant (mol/L/atm)
         pressure_atm: atmosphric pressure in atm (atm)
-        P_wv: Partial pressure of water vapor (atm)
+        pwv: Partial pressure of water vapor (atm)
     """
         
-    N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_atm - P_wv)  
+    N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_atm - pwv)  
     N2sat = xr.where(N2sat < 0.0,0.000001,N2sat) #Trap saturation concentration to ensure never negative
 
     return N2sat

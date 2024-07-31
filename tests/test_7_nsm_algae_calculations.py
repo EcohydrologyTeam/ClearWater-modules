@@ -31,10 +31,10 @@ def initial_nsm1_state() -> dict[str, float]:
         'Ab': 24,
         'NH4': 0.05,
         'NO3': 5,
-        'OrgN': 1.7,
+        'OrgN': 1.726,
         'N2': 1, 
         'TIP': 0.07,
-        'OrgP': 0.25,
+        'OrgP': 0.24,
         'POC': 4,
         'DOC': 1,
         'DIC': 1,
@@ -74,6 +74,9 @@ def default_algae_params() -> AlgaeStaticVariables:
         vsap= 0.15,
         growth_rate_option = 1,
         light_limitation_option = 1,
+        mu_max_theta= 1.047,
+        kdp_theta= 1.047,
+        krp_theta= 1.047,
     )
 
 @pytest.fixture(scope='function')
@@ -108,7 +111,7 @@ def default_balgae_params() -> BalgaeStaticVariables:
         BWc= 40,
         BWn=7.2,
         BWp= 1,
-        BWa= 3500,
+        BWa= 5000,
         KLb= 10,
         KsNb= 0.25,
         KsPb=0.125,
@@ -119,7 +122,10 @@ def default_balgae_params() -> BalgaeStaticVariables:
         b_growth_rate_option=1,
         b_light_limitation_option=1,
         Fw=0.9,
-        Fb=0.9
+        Fb=0.9,
+        mub_max_theta = 1.047,
+        krb_theta = 1.06,
+        kdb_theta = 1.047,
     )
 
 @pytest.fixture(scope='function')
@@ -140,7 +146,12 @@ def default_nitrogen_params() -> NitrogenStaticVariables:
         vno3_20=0,
         KsOxdn=0.1,
         PN=0.5,
-        PNb=0.5
+        PNb=0.5,
+        knit_theta= 1.083,
+        kon_theta= 1.074,
+        kdnit_theta= 1.08,
+        rnh4_theta= 1.047,
+        vno3_theta= 1.045,
     )
 
 @pytest.fixture(scope='function')
@@ -160,7 +171,9 @@ def default_carbon_params() -> CarbonStaticVariables:
         KsOxmc=1.0,
         pCO2 = 383.0,
         FCO2 = 0.2,
-        roc = 32.0/12.0
+        roc = 32.0/12.0,
+        kpoc_theta = 1.047,
+        kdoc_theta = 1.047,
     )
 
 @pytest.fixture(scope='function')
@@ -175,7 +188,9 @@ def default_CBOD_params() -> CBODStaticVariables:
     return CBODStaticVariables(
         KsOxbod = 0.5,
         kbod_20 =  0.12,
-        ksbod_20 = 0.0
+        ksbod_20 = 0.0,
+        kbod_theta =  1.047,
+        ksbod_theta = 1.047
     )
 
 @pytest.fixture(scope='function')
@@ -215,7 +230,9 @@ def default_POM_params() -> POMStaticVariables:
     Returns a typed dictionary, with string keys and float values.
     """
     return POMStaticVariables(
-        kpom_20 = 0.1
+        kpom_20 = 0.1,
+        h2 = 0.1,
+        kpom_theta = 1.047
     )
 
 @pytest.fixture(scope='function')
@@ -230,7 +247,8 @@ def default_pathogen_params() -> PathogenStaticVariables:
     return PathogenStaticVariables(
         kdx_20=0.8,
         apx=1,
-        vx=1
+        vx=1,
+        kdx_theta = 1.07,
     )
 
 @pytest.fixture(scope='function')
@@ -246,6 +264,8 @@ def default_phosphorus_params() -> PhosphorusStaticVariables:
         kop_20 = 0.1,
         rpo4_20 =0,
         kdpo4 = 0.0,
+        kop_theta = 1.047,
+        rpo4_theta = 1.047,
     )
 
 @pytest.fixture(scope='function')
@@ -288,27 +308,29 @@ def default_gvars_params() -> GlobalVars:
     return GlobalVars(
         vson = 0.01,
         vsoc = 0.01,
-        vsop = 999,
-        vs = 999,
+        vsop = 0.01,
+        vs = 1,
         SOD_20 = 999,
         SOD_theta = 999,
+        theta=1.047,
         vb = 0.01,
         fcom = 0.4,
-        kaw_20_user = 999,
-        kah_20_user = 999,
-        hydraulic_reaeration_option = 2,
-        wind_reaeration_option = 2,  
+        kaw_20_user = 0,
+        kah_20_user = 1,
+        hydraulic_reaeration_option = 1,
+        wind_reaeration_option = 1,  
         timestep = 1,    #TODO Dynamic or static?
         depth = 1.5,         #TODO Dynamic or static?
         TwaterC = 25,
-        theta = 1.047,
+        kaw_theta = 1.024,
+        kah_theta = 1.024,
         velocity = 1,
-        flow = 2,
-        topwidth = 1,
-        slope = 2,
-        shear_velocity = 4,
-        pressure_atm = 2,
-        wind_speed = 4,
+        flow = 150,
+        topwidth = 100,
+        slope = 0.0002,
+        shear_velocity = 0.05334,
+        pressure_atm = 1,
+        wind_speed = 3,
         q_solar = 500,
         Solid = 1,
         lambda0 = .02,
