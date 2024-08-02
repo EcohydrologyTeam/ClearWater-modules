@@ -478,7 +478,7 @@ def test_changed_knit(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_nitrogen_params['knit_20'] = 10
+    default_nitrogen_params['knit_20'] = 5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -504,17 +504,17 @@ def test_changed_knit(
     NH4 = nsm1.dataset.isel(
         nsm1_time_step=-1).NH4.values.item()
     assert isinstance(NH4, float)
-    assert pytest.approx(NH4, tolerance) == -0.3114223
+    assert pytest.approx(NH4, tolerance) == 0.154017957758354
 
     NO3 = nsm1.dataset.isel(
         nsm1_time_step=-1).NO3.values.item()
     assert isinstance(NO3, float)
-    assert pytest.approx(NO3, tolerance) == 6.0476352
+    assert pytest.approx(NO3, tolerance) == 5.58219498187554
 
     OrgN = nsm1.dataset.isel(
         nsm1_time_step=-1).OrgN.values.item()
     assert isinstance(OrgN, float)
-    assert pytest.approx(OrgN, tolerance) == 1.8995017
+    assert pytest.approx(OrgN, tolerance) == 1.89950169149861
 
 def test_changed_kon(
     time_steps,
@@ -537,7 +537,7 @@ def test_changed_kon(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_nitrogen_params['kon_20'] = 1
+    default_nitrogen_params['kon_20'] = 0.5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -563,17 +563,17 @@ def test_changed_kon(
     NH4 = nsm1.dataset.isel(
         nsm1_time_step=-1).NH4.values.item()
     assert isinstance(NH4, float)
-    assert pytest.approx(NH4, tolerance) == 2.564564
+    assert pytest.approx(NH4, tolerance) == 1.47877811233963
 
     NO3 = nsm1.dataset.isel(
         nsm1_time_step=-1).NO3.values.item()
     assert isinstance(NO3, float)
-    assert pytest.approx(NO3, tolerance) == 5.1260636
+    assert pytest.approx(NO3, tolerance) == 5.12606356028487
 
     OrgN = nsm1.dataset.isel(
         nsm1_time_step=-1).OrgN.values.item()
     assert isinstance(OrgN, float)
-    assert pytest.approx(OrgN, tolerance) == -0.05491296
+    assert pytest.approx(OrgN, tolerance) == 1.03087295850801
 
 def test_changed_kdnit(
     time_steps,
@@ -655,7 +655,7 @@ def test_changed_rnh4(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_nitrogen_params['rnh4_20'] = -1
+    default_nitrogen_params['rnh4_20'] = -0.5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -681,12 +681,12 @@ def test_changed_rnh4(
     NH4 = nsm1.dataset.isel(
         nsm1_time_step=-1).NH4.values.item()
     assert isinstance(NH4, float)
-    assert pytest.approx(NH4, tolerance) == -0.3424935
+    assert pytest.approx(NH4, tolerance) == 0.133827915386814
 
     NO3 = nsm1.dataset.isel(
         nsm1_time_step=-1).NO3.values.item()
     assert isinstance(NO3, float)
-    assert pytest.approx(NO3, tolerance) == 5.12606356
+    assert pytest.approx(NO3, tolerance) == 5.12606356028487
 
     OrgN = nsm1.dataset.isel(
         nsm1_time_step=-1).OrgN.values.item()

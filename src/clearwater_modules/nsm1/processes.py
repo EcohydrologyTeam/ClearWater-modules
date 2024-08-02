@@ -700,7 +700,7 @@ def Ap(
         dApdt: Change in algae biomass concentration (ug-Chla/L/d)
         dt: current iteration dt (d)
     """
-    return Ap + dApdt * dt
+    return xr.where(Ap + dApdt * dt >0, Ap + dApdt * dt ,0)
 
 ############################################ From benthic algae
 
@@ -1104,7 +1104,7 @@ def Ab(
 
     """
 
-    return Ab + dAbdt * dt
+    return xr.where(Ab + dAbdt * dt > 0 , Ab + dAbdt * dt, 0)
 
 
 def Chlb(
@@ -1423,7 +1423,7 @@ def OrgN(
 
     """
 
-    return OrgN + dOrgNdt * dt
+    return xr.where(OrgN + dOrgNdt * dt > 0 , OrgN + dOrgNdt * dt , 0)
 
 def NitrificationInhibition(
     use_DOX: bool,
@@ -1605,7 +1605,7 @@ def NH4(
 
     """
 
-    return NH4 + dNH4dt * dt
+    return xr.where(NH4 + dNH4dt * dt > 0 , NH4 + dNH4dt * dt , 0)
 
 def NO3_Denit(
     use_DOX: bool,
@@ -1750,7 +1750,7 @@ def NO3(
 
     """
 
-    return NO3 + dNO3dt * dt
+    return xr.where(NO3 + dNO3dt * dt > 0 , NO3 + dNO3dt * dt, 0)
 
 
 def DIN(
@@ -2111,7 +2111,7 @@ def TIP(
         TIP: Total inorganic phosphorus water concentration (mg-P/L),
         dt: current iteration dt (d)
     """     
-    return TIP + dTIPdt * dt
+    return xr.where(TIP + dTIPdt * dt > 0, TIP + dTIPdt * dt,0)
 
 
 def OrgP(
@@ -2127,7 +2127,7 @@ def OrgP(
         OrgP: Total organic phosphorus water concentration (mg-P/L),
         dt: current iteration dt (d)
     """     
-    return OrgP + dOrgPdt * dt
+    return xr.where(OrgP + dOrgPdt * dt >0 , OrgP + dOrgPdt * dt,0)
 
 def TOP(
     use_OrgP: bool,
@@ -2332,7 +2332,7 @@ def POM(
         POM: POM concentration from previous dt (mg/L)
         dt: Current iteration dt (d)
     """
-    return POM + dPOMdt * dt
+    return xr.where(POM + dPOMdt * dt >0, POM + dPOMdt * dt, 0)
 
 
 ################################## From CBOD
@@ -2437,7 +2437,7 @@ def CBOD(
         dCBODdt: CBOD concentration change for current dt (mg/L/d)
         dt: current iteration dt (d)
     """
-    return CBOD + dCBODdt * dt
+    return xr.where(CBOD + dCBODdt * dt >0, CBOD + dCBODdt * dt,0)
 
 ############################### From Carbon
 
@@ -2565,7 +2565,7 @@ def POC(
         dPOCdt: POC concentration change for current dt (mg/L/d)
         dt: current iteration dt (d)
     """
-    return POC + dPOCdt * dt
+    return xr.where(POC + dPOCdt * dt>0, POC + dPOCdt * dt,0)
 
 
 def DOC_algal_mortality(
@@ -2686,7 +2686,7 @@ def DOC(
         dDOCdt: Dissolved organic carbon concentration change for current dt (mg/L/d)
         dt: current iteration dt (d)
     """
-    return DOC + dDOCdt * dt
+    return xr.where(DOC + dDOCdt * dt > 0, DOC + dDOCdt * dt, 0)
 
 
 
@@ -2873,7 +2873,7 @@ def DIC(
         dDICdt: Change in concentration of DIC for current dt (mg/L/d)
         dt: Current iteration dt (d)
     """
-    return DIC + dDICdt * dt
+    return xr.where(DIC + dDICdt * dt >0, DIC + dDICdt * dt,0)
 
 
 ######################################## From DOX
@@ -3138,7 +3138,7 @@ def DOX(
         dDOXdt: Change in dissolved oxygen concentration over dt
         dt: Current iteration dt (d)
     """
-    return DOX + dDOXdt * dt
+    return xr.where(DOX + dDOXdt * dt>0, DOX + dDOXdt * dt, 0)
 
 ######################################### From pathogen
 
@@ -3244,7 +3244,7 @@ def PX(
       PX: Pathogen concentration (cfu/100mL)
       dt: Current iteration dt (d)
     """
-    return PX + dt * dPXdt
+    return xr.where(PX + dt * dPXdt >0, PX + dt * dPXdt , 0)
 
 
 ##################################### From alkalinity
@@ -3450,7 +3450,7 @@ def Alk(
         dAlkdt: Change in concentration of alkalinity for current dt (mg/L/d)
         dt: Current iteration dt (d)
     """
-    return Alk + dAlkdt * dt
+    return xr.where(Alk + dAlkdt * dt > 0, Alk + dAlkdt * dt, 0)
 
 ##################################### From N2
 
@@ -3524,7 +3524,7 @@ def N2(
         dt: Current iteration dt (d)
     """
         
-    return N2 + dN2dt * dt
+    return xr.where(N2 + dN2dt * dt > 0 , N2 + dN2dt * dt , 0)
 
 def TDG(
     N2: xr.DataArray,

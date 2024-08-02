@@ -745,7 +745,7 @@ def test_changed_kdb(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_balgae_params['kdb_20'] = 0.8
+    default_balgae_params['kdb_20'] = 0.1
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -771,7 +771,7 @@ def test_changed_kdb(
     Ab = nsm1.dataset.isel(
         nsm1_time_step=-1).Ab.values.item()
     assert isinstance(Ab, float)
-    assert pytest.approx(Ab, tolerance) == -6.27152
+    assert pytest.approx(Ab, tolerance) == 14.8654507973722
 
 def test_changed_Ab(
     time_steps,
