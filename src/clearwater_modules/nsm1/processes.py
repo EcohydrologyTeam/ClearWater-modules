@@ -2906,7 +2906,7 @@ def DOs_atm_alpha(
 
 def DOX_sat(
     TwaterK: xr.DataArray,
-    pressure_atm: xr.DataArray,
+    pressure_mb: xr.DataArray,
     pwv: xr.DataArray,
     DOs_atm_alpha: xr.DataArray
 ) -> xr.DataArray:
@@ -2914,11 +2914,11 @@ def DOX_sat(
 
     Args:
         TwaterK: Water temperature kelvin
-        pressure_atm: Atmospheric pressure (atm)
+        pressure_mb: Atmospheric pressure (mb)
         pwv: Patrial pressure of water vapor (atm)
         DOs_atm_alpha: DO saturation atmospheric correction coefficient
     """
-    pressure_atm = pressure_atm * 0.000986923
+    pressure_atm = pressure_mb * 0.000986923
     
     DOX_sat_uncorrected = np.exp(-139.34410 + ( 1.575701E05 / TwaterK ) - ( 6.642308E07 / (TwaterK**2.0) ) + ( 1.243800E10 / (TwaterK**3.0) ) - ( 8.621949E11 / (TwaterK**4.0) ))
 
@@ -3475,7 +3475,7 @@ def KHN2_tc(
 
 def N2sat(
     KHN2_tc : xr.DataArray,
-    pressure_atm: xr.DataArray,
+    pressure_mb: xr.DataArray,
     pwv: xr.DataArray
 ) -> xr.DataArray:
     
@@ -3483,11 +3483,11 @@ def N2sat(
 
     Args:
         KHN2_tc: Henry's law constant (mol/L/atm)
-        pressure_atm: atmosphric pressure in atm (atm)
+        pressure_mb: atmosphric pressure in mb (mb)
         pwv: Partial pressure of water vapor (atm)
     """
         
-    N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_atm - pwv)  
+    N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_mb*0.000986923 - pwv)  
     N2sat = xr.where(N2sat < 0.0,0.000001,N2sat) #Trap saturation concentration to ensure never negative
 
     return N2sat

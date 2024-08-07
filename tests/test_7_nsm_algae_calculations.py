@@ -329,7 +329,7 @@ def default_gvars_params() -> GlobalVars:
         topwidth = 100,
         slope = 0.0002,
         shear_velocity = 0.05334,
-        pressure_atm = 1,
+        pressure_mb = 1013.25,
         wind_speed = 3,
         q_solar = 500,
         Solid = 1,

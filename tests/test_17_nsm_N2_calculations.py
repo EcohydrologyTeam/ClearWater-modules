@@ -328,7 +328,7 @@ def default_gvars_params() -> GlobalVars:
         topwidth = 100,
         slope = 0.0002,
         shear_velocity = 0.05334,
-        pressure_atm = 1,
+        pressure_mb = 1013.25,
         wind_speed = 3,
         q_solar = 500,
         Solid = 1,
@@ -623,7 +623,7 @@ def test_pressure_atm(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gvars_params['pressure_atm'] = 2
+    default_gvars_params['pressure_mb'] = 2026.5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
