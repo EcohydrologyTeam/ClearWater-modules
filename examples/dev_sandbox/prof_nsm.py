@@ -163,7 +163,7 @@ global_vars = {
     'topwidth': 1,
     'slope': 2,
     'shear_velocity': 4,
-    'pressure_atm': 2,
+    'pressure_mb': 2026.5,
     'wind_speed': 4,
     'q_solar': 4,
     'Solid': 1, 
