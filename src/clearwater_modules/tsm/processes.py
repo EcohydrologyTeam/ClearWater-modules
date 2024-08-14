@@ -422,6 +422,7 @@ def q_net(
     q_longwave_down: xr.DataArray,
     q_solar: xr.DataArray,
     q_sediment: xr.DataArray,
+    dt: xr.DataArray,
 ) -> xr.DataArray:
     """Net heat flux (W/m^2).
 
@@ -432,6 +433,7 @@ def q_net(
         q_longwave_down: Downward longwave radiation (W/m^2)
         q_solar: Solar radiation (W/m^2)
         q_sediment: Sediment heat flux (W/m^2)
+        dt: Change in time (days)
     """
     return (
         q_sensible +
@@ -440,7 +442,7 @@ def q_net(
         q_longwave_down -
         q_longwave_up -
         q_latent
-    )
+    ) * 86400 * dt
 
 
 def dTdt_water_c(

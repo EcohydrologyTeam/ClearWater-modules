@@ -210,3 +210,10 @@ Variable(
     description='The wind KH KW.',
     use='static',
 )
+Variable(
+    name='dt',
+    long_name='dt',
+    units='d',
+    description='calculation dt',
+    use='static',
+)
