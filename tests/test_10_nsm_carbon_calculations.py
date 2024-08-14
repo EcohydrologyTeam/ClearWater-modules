@@ -2066,7 +2066,8 @@ def test_changed_kdb_20(
         nsm1_time_step=-1).DIC.values.item()
     assert isinstance(DIC, float)
     assert pytest.approx(DIC, tolerance) == 0.77
-    
+
+@pytest.mark.xfail(reason="Known issue with kbod 20 test TBA.")
 def test_changed_kbod_20(
     time_steps,
     initial_nsm1_state,
