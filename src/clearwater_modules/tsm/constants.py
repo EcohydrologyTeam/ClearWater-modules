@@ -21,6 +21,7 @@ class Temperature(TypedDict):
     h2: float
     alphas: float
     richardson_option: bool
+    dt: float
 
 
 class Meteorological(TypedDict):
@@ -68,4 +69,5 @@ DEFAULT_TEMPERATURE = Temperature(
     h2=0.1,
     alphas=0.0432,
     richardson_option=True,
+    dt=1,
 )
