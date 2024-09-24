@@ -324,7 +324,7 @@ def default_gvars_params() -> GlobalVars:
         topwidth = 100,
         slope = 0.0002,
         shear_velocity = 0.05334,
-        pressure_atm = 1013.25,
+        pressure_mb = 1013.25,
         wind_speed = 3,
         q_solar = 500,
         Solid = 1,
@@ -867,7 +867,7 @@ def test_changed_TwaterC(
     assert isinstance(DOX, float)
     assert pytest.approx(DOX, tolerance) == 10.39
     
-def test_changed_pressure_atm(
+def test_changed_pressure_mb(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -888,7 +888,7 @@ def test_changed_pressure_atm(
     """Test the model with default parameters."""
     # alter parameters as necessary
     default_gvars_dict = default_gvars_params
-    default_gvars_dict['pressure_atm'] = 930
+    default_gvars_dict['pressure_mb'] = 930
     
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(

@@ -473,10 +473,10 @@ Variable(
 )
 
 Variable(
-    name='pressure_atm',
-    long_name='pressure_atm',
-    units='TODO',
-    description='atmospheric pressure in atm',
+    name='pressure_mb',
+    long_name='pressure_mb',
+    units='mb',
+    description='atmospheric pressure in mb',
     use='static',
 )
 
@@ -915,6 +915,14 @@ Variable(
     long_name='POM dissolution rate at 20C',
     units='1/d',
     description='POM dissolution rate at 20C',
+    use='static'
+)
+
+Variable(
+    name='h2',
+    long_name='active sediment layer thickness',
+    units='m',
+    description='active sediment layer thickness',
     use='static'
 )
 

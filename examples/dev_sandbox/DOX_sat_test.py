@@ -25,7 +25,7 @@ def DOs_atm_alpha(
 
 def DOX_sat(
     TwaterK: xr.DataArray,
-    pressure_atm: xr.DataArray,
+    pressure_mb: xr.DataArray,
     pwv: xr.DataArray,
     DOs_atm_alpha: xr.DataArray
 ) -> xr.DataArray:
@@ -33,7 +33,7 @@ def DOX_sat(
 
     Args:
         TwaterK: Water temperature kelvin
-        pressure_atm: Atmospheric pressure (atm)
+        pressure_mb: Atmospheric pressure (mb)
         pwv: Patrial pressure of water vapor (atm)
         DOs_atm_alpha: DO saturation atmospheric correction coefficient
     """
@@ -44,8 +44,8 @@ def DOX_sat(
 
     DOX_sat_uncorrected = -139.34410 + ( 1.575701E05 / TwaterK ) - ( 6.642308E07 / (TwaterK**2.0) ) + ( 1.243800E10 / (TwaterK**3.0) ) - ( 8.621949E11 / (TwaterK**4.0) )
 
-    DOX_sat_corrected = DOX_sat_uncorrected * pressure_atm * \
-        (1 - pwv / pressure_atm) * (1 - DOs_atm_alpha * pressure_atm) / \
+    DOX_sat_corrected = DOX_sat_uncorrected * pressure_mb * \
+        (1 - pwv / pressure_mb) * (1 - DOs_atm_alpha * pressure_mb) / \
         ((1 - pwv) * (1 - DOs_atm_alpha))
     
     print(no_exp)

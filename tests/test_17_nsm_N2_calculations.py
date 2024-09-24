@@ -27,15 +27,15 @@ def initial_nsm1_state() -> dict[str, float]:
     """Return initial state values for the model."""
     return {
 
-        'Ap': 40,
+        'Ap': 36.77,
         'Ab': 24,
-        'NH4': 0.05,
-        'NO3': 5,
+        'NH4': 0.063,
+        'NO3': 5.54,
         'OrgN': 1.726,
         'N2': 1, 
-        'TIP': 0.07,
-        'OrgP': 0.24,
-        'POC': 4,
+        'TIP': 0.071,
+        'OrgP': 0.25,
+        'POC': 4.356,
         'DOC': 1,
         'DIC': 1,
         'POM': 10, 
@@ -148,10 +148,10 @@ def default_nitrogen_params() -> NitrogenStaticVariables:
         PN=0.5,
         PNb=0.5,
         knit_theta= 1.083,
-        kon_theta= 1.074,
-        kdnit_theta= 1.08,
-        rnh4_theta= 1.047,
-        vno3_theta= 1.045,
+        kon_theta= 1.047,
+        kdnit_theta= 1.045,
+        rnh4_theta= 1.074,
+        vno3_theta= 1.08,
     )
 
 @pytest.fixture(scope='function')
@@ -265,7 +265,7 @@ def default_phosphorus_params() -> PhosphorusStaticVariables:
         rpo4_20 =0,
         kdpo4 = 0.0,
         kop_theta = 1.047,
-        rpo4_theta = 1.047,
+        rpo4_theta = 1.074,
     )
 
 @pytest.fixture(scope='function')
@@ -278,22 +278,22 @@ def default_gp_params() -> GlobalParameters:
     Returns a typed dictionary, with string keys and float values.
     """
     return GlobalParameters(
-        use_NH4= True,
-        use_NO3= True, 
-        use_OrgN= True,
-        use_OrgP = True,
-        use_TIP= True,  
+        use_NH4= False,
+        use_NO3= False, 
+        use_OrgN= False,
+        use_OrgP = False,
+        use_TIP= False,  
         use_SedFlux= False,
-        use_POC = True,
-        use_DOC = True,
+        use_POC = False,
+        use_DOC = False,
         use_DOX= True,
-        use_DIC= True,
-        use_Algae= True,
-        use_Balgae= True,
+        use_DIC= False,
+        use_Algae= False,
+        use_Balgae= False,
         use_N2 = True,
-        use_Pathogen = True,
-        use_Alk = True,
-        use_POM = True 
+        use_Pathogen = False,
+        use_Alk = False,
+        use_POM = False 
     )
 
 @pytest.fixture(scope='function')
@@ -312,7 +312,6 @@ def default_gvars_params() -> GlobalVars:
         vs = 1,
         SOD_20 = 999,
         SOD_theta = 999,
-        theta=1.047,
         vb = 0.01,
         fcom = 0.4,
         kaw_20_user = 0,
@@ -423,15 +422,34 @@ def test_defaults(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(nsm1_time_step=-1).Ap.values.item()
+    
+    
+    ka_tc = nsm1.dataset.isel(nsm1_time_step=-1).ka_tc.item()
+    assert isinstance(ka_tc, float)
+    print("ka_tc",ka_tc)
 
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 52.668069
 
-def test_changed_Ap(
+    pwv = nsm1.dataset.isel(nsm1_time_step=-1).pwv.item()
+    assert isinstance(pwv, float)
+    print("pwv",pwv)
+
+    DOX_sat = nsm1.dataset.isel(nsm1_time_step=-1).DOX_sat.item()
+    assert isinstance(DOX_sat, float)
+    print("DOX_sat",DOX_sat)
+
+    DOX = nsm1.dataset.isel(nsm1_time_step=-1).DOX.item()
+    assert isinstance(DOX, float)
+    print("DOX",DOX)
+
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 16.0511281
+
+def test_N2(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -452,7 +470,7 @@ def test_changed_Ap(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    initial_state_dict['Ap'] = 60.0
+    initial_state_dict['N2'] = 2
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -472,15 +490,17 @@ def test_changed_Ap(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 74.849998
+    
 
-def test_changed_NH4(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 15.8869475476111
+
+def test_DOX(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -501,7 +521,7 @@ def test_changed_NH4(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    initial_state_dict['NH4'] = 0.3
+    initial_state_dict['DOX'] = 8
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -521,15 +541,17 @@ def test_changed_NH4(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 52.680781
+    
 
-def test_changed_KL(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 16.0511280512864
+
+def test_use_DOX(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -550,7 +572,7 @@ def test_changed_KL(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['KL'] = 15
+    default_gp_params['use_DOX'] = False
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -570,15 +592,17 @@ def test_changed_KL(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 49.229049
+    
 
-def test_changed_KsN(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 16.0511280512864
+
+def test_pressure_atm(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -599,7 +623,7 @@ def test_changed_KsN(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['KsN'] = 0.02
+    default_gvars_params['pressure_mb'] = 2026.5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -619,15 +643,18 @@ def test_changed_KsN(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 52.803304
+    
 
-def test_changed_KsP(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 32.7897153331295
+
+
+def test_TwaterC(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -648,7 +675,7 @@ def test_changed_KsP(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['KsP'] = 0.005
+    default_gvars_params['TwaterC'] = 30
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -668,15 +695,17 @@ def test_changed_KsP(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 50.931103
+    
 
-def test_changed_mu_max(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 16.4930672056418
+
+def test_Salinity(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -697,7 +726,7 @@ def test_changed_mu_max(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['mu_max_20'] = 1.5
+    default_gvars_params['Salinity'] = 5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -717,15 +746,17 @@ def test_changed_mu_max(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 69.809173
+    
 
-def test_changed_kdp(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 16.0511280512864
+
+def test_kah(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -746,7 +777,7 @@ def test_changed_kdp(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['kdp_20'] = 0.09
+    default_gvars_params['kah_20_user'] = 2
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -766,15 +797,17 @@ def test_changed_kdp(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 55.687635
+    
 
-def test_changed_krp(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 31.1022561025728
+
+def test_kaw(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -795,7 +828,7 @@ def test_changed_krp(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['krp_20'] = 0.09
+    default_gvars_params['kaw_20_user'] = 0.5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -815,15 +848,17 @@ def test_changed_krp(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 58.203941
+    
 
-def test_changed_vsap(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 21.0681707350485
+
+def test_wr_2_hr_2(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -844,7 +879,8 @@ def test_changed_vsap(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['vsap'] = 0.2
+    default_gvars_params['hydraulic_reaeration_option'] = 2
+    default_gvars_params['wind_reaeration_option'] = 2
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -864,15 +900,17 @@ def test_changed_vsap(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 51.334735
+    
 
-def test_changed_NO3(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 65.9366965785228
+
+def test_wr_3_hr_3(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -893,7 +931,8 @@ def test_changed_NO3(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    initial_state_dict['NO3'] = 10
+    default_gvars_params['hydraulic_reaeration_option'] = 3
+    default_gvars_params['wind_reaeration_option'] = 3
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -913,16 +952,17 @@ def test_changed_NO3(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 52.802629    
+    
 
-def test_changed_TIP(
-        
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 46.9755965621132
+
+def test_wr_4_hr_4(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -943,7 +983,8 @@ def test_changed_TIP(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    initial_state_dict['TIP'] = 0.1
+    default_gvars_params['hydraulic_reaeration_option'] = 4
+    default_gvars_params['wind_reaeration_option'] = 4
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -963,15 +1004,17 @@ def test_changed_TIP(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 52.842286  
+    
 
-def test_changed_TwaterC(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 46.94093398065
+
+def test_wr_5_hr_5(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -992,7 +1035,8 @@ def test_changed_TwaterC(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gvars_params['TwaterC'] = 35
+    default_gvars_params['hydraulic_reaeration_option'] = 5
+    default_gvars_params['wind_reaeration_option'] = 5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1012,15 +1056,17 @@ def test_changed_TwaterC(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 62.384696  
+    
 
-def test_changed_depth(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 41.9426132334058
+
+def test_wr_6_hr_6(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1041,7 +1087,8 @@ def test_changed_depth(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gvars_params['depth'] = 2
+    default_gvars_params['hydraulic_reaeration_option'] = 6
+    default_gvars_params['wind_reaeration_option'] = 6
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1061,15 +1108,17 @@ def test_changed_depth(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 47.171170
+    
 
-def test_changed_q_solar(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 63.7322409376813
+
+def test_wr_7_hr_7(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1090,30 +1139,8 @@ def test_changed_q_solar(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gvars_params['q_solar'] = 250
-
-def test_changed_Fr_PAR(
-    time_steps,
-    initial_nsm1_state,
-    default_algae_params,
-    default_alkalinity_params,
-    default_balgae_params,
-    default_nitrogen_params,
-    default_carbon_params,
-    default_CBOD_params,
-    default_DOX_params,
-    default_N2_params,
-    default_POM_params,
-    default_pathogen_params,
-    default_phosphorus_params,
-    default_gp_params,
-    default_gvars_params,
-    tolerance,
-) -> None:
-    """Test the model with default parameters."""
-    # alter parameters as necessary
-    initial_state_dict = initial_nsm1_state
-    default_gvars_params['Fr_PAR'] = 0.2
+    default_gvars_params['hydraulic_reaeration_option'] = 7
+    default_gvars_params['wind_reaeration_option'] = 7
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1133,15 +1160,17 @@ def test_changed_Fr_PAR(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 45.185221
-  
-def test_changed_use_NH4(
+    
+
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 39.382889432894
+
+def test_wr_8_hr_8(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1162,7 +1191,8 @@ def test_changed_use_NH4(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gp_params['use_NH4'] = False
+    default_gvars_params['hydraulic_reaeration_option'] = 8
+    default_gvars_params['wind_reaeration_option'] = 8
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1182,15 +1212,17 @@ def test_changed_use_NH4(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 52.665375     
+    
 
-def test_changed_use_NO3(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 71.8185615550307
+
+def test_wr_9_hr_9(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1211,7 +1243,8 @@ def test_changed_use_NO3(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gp_params['use_NO3'] = False
+    default_gvars_params['hydraulic_reaeration_option'] = 9
+    default_gvars_params['wind_reaeration_option'] = 9
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1231,15 +1264,17 @@ def test_changed_use_NO3(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 37.582388         
+    
 
-def test_changed_use_TIP(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 13.2060831760727
+
+def test_wr_10_hr_5_depth(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1260,7 +1295,9 @@ def test_changed_use_TIP(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gp_params['use_TIP'] = False
+    default_gvars_params['hydraulic_reaeration_option'] = 5
+    default_gvars_params['wind_reaeration_option'] = 10
+    default_gvars_params['depth'] = 0.5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1280,15 +1317,17 @@ def test_changed_use_TIP(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 53.255764    
+    
 
-def test_changed_g2_l1(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 301.508013077305
+
+def test_wr_11_hr_6_depth(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1309,7 +1348,9 @@ def test_changed_g2_l1(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['growth_rate_option'] = 2
+    default_gvars_params['hydraulic_reaeration_option'] = 6
+    default_gvars_params['wind_reaeration_option'] = 11
+    default_gvars_params['depth'] = 0.5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1329,15 +1370,17 @@ def test_changed_g2_l1(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 52.939611    
+    
 
-def test_changed_g3_l1(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 70.1055933861735
+
+def test_wr_12_hr_7_depth(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1358,7 +1401,9 @@ def test_changed_g3_l1(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['growth_rate_option'] = 3
+    default_gvars_params['hydraulic_reaeration_option'] = 7
+    default_gvars_params['wind_reaeration_option'] = 12
+    default_gvars_params['depth'] = 0.5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1378,15 +1423,17 @@ def test_changed_g3_l1(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 53.096967    
+    
 
-def test_changed_g1_l2(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 101.944511624376
+
+def test_wr_13_hr_8_depth(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1407,8 +1454,9 @@ def test_changed_g1_l2(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    #default_algae_params['growth_rate_option'] = 3
-    default_algae_params['light_limitation_option'] = 2
+    default_gvars_params['hydraulic_reaeration_option'] = 8
+    default_gvars_params['wind_reaeration_option'] = 13
+    default_gvars_params['flow'] = 0.4
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1428,15 +1476,24 @@ def test_changed_g1_l2(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 59.847275    
+    
+    kah_tc = nsm1.dataset.isel(nsm1_time_step=-1).kah_tc.item()
+    assert isinstance(kah_tc, float)
+    print("kah_tc",kah_tc)
 
-def test_changed_g2_l2(
+    kaw_tc = nsm1.dataset.isel(nsm1_time_step=-1).kaw_tc.item()
+    assert isinstance(kaw_tc, float)
+    print("kaw_tc",kaw_tc)
+
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 117.0476547
+
+def test_wr_7_hr_2_wind_speed(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1457,8 +1514,9 @@ def test_changed_g2_l2(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['growth_rate_option'] = 2
-    default_algae_params['light_limitation_option'] = 2
+    default_gvars_params['hydraulic_reaeration_option'] = 2
+    default_gvars_params['wind_reaeration_option'] = 7
+    default_gvars_params['wind_speed'] = 5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1478,15 +1536,17 @@ def test_changed_g2_l2(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 60.175682   
+    
 
-def test_changed_g3_l2(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 44.208087138308
+
+def test_wr_9_hr_3_wind_speed(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1507,8 +1567,9 @@ def test_changed_g3_l2(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['growth_rate_option'] = 3
-    default_algae_params['light_limitation_option'] = 2
+    default_gvars_params['hydraulic_reaeration_option'] = 3
+    default_gvars_params['wind_reaeration_option'] = 9
+    default_gvars_params['wind_speed'] = 5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1528,15 +1589,17 @@ def test_changed_g3_l2(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 60.365992  
+    
 
-def test_changed_g1_l3(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 47.7149213700046
+
+def test_wr_13_hr_4_wind_speed(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1557,8 +1620,9 @@ def test_changed_g1_l3(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_algae_params['growth_rate_option'] = 1
-    default_algae_params['light_limitation_option'] = 3
+    default_gvars_params['hydraulic_reaeration_option'] = 4
+    default_gvars_params['wind_reaeration_option'] = 13
+    default_gvars_params['wind_speed'] = 0.5
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1578,15 +1642,17 @@ def test_changed_g1_l3(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 40.479472
+    
 
-def test_changed_lambda0(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 43.4278798307678
+
+def test_wr_2_hr_2_velocity(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1607,7 +1673,9 @@ def test_changed_lambda0(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gvars_params['lambda0'] = 5
+    default_gvars_params['hydraulic_reaeration_option'] = 2
+    default_gvars_params['wind_reaeration_option'] = 2
+    default_gvars_params['velocity'] = 2
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1627,16 +1695,17 @@ def test_changed_lambda0(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 31.938218
+    
 
-def test_changed_lambda1(
-        
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 79.2734163846862
+
+def test_wr_3_hr_6_flow(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1657,7 +1726,9 @@ def test_changed_lambda1(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gvars_params['lambda1'] = 0.03
+    default_gvars_params['hydraulic_reaeration_option'] = 6
+    default_gvars_params['wind_reaeration_option'] = 3
+    default_gvars_params['flow'] = 70
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1677,15 +1748,17 @@ def test_changed_lambda1(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 46.601473
+    
 
-def test_changed_lambda2(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 65.2387385186712
+
+def test_wr_4_hr_7_slope(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1706,7 +1779,9 @@ def test_changed_lambda2(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gvars_params['lambda2'] = 0.02
+    default_gvars_params['hydraulic_reaeration_option'] = 7
+    default_gvars_params['wind_reaeration_option'] = 4
+    default_gvars_params['slope'] = 0.001
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1726,15 +1801,24 @@ def test_changed_lambda2(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 55.635473
+    
+    kah_tc = nsm1.dataset.isel(nsm1_time_step=-1).kah_tc.item()
+    assert isinstance(kah_tc, float)
+    print("kah_tc",kah_tc)
 
-def test_changed_lambdam(
+    kaw_tc = nsm1.dataset.isel(nsm1_time_step=-1).kaw_tc.item()
+    assert isinstance(kaw_tc, float)
+    print("kaw_tc",kaw_tc)
+
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 62.0415408678264
+
+def test_wr_5_hr_7_topwidth(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1755,7 +1839,9 @@ def test_changed_lambdam(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gvars_params['lambdam'] = 0.009
+    default_gvars_params['hydraulic_reaeration_option'] = 7
+    default_gvars_params['wind_reaeration_option'] = 5
+    default_gvars_params['topwidth'] = 150
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1775,15 +1861,17 @@ def test_changed_lambdam(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 62.784764
+    
 
-def test_changed_use_POC(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 38.12999386
+
+def test_wr_6_hr_6_wind_speed(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1804,7 +1892,9 @@ def test_changed_use_POC(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    default_gp_params['use_POC'] = False
+    default_gvars_params['hydraulic_reaeration_option'] = 6
+    default_gvars_params['wind_reaeration_option'] = 6
+    default_gvars_params['wind_speed'] = 1
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1824,15 +1914,17 @@ def test_changed_use_POC(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 63.113783
+    
 
-def test_changed_POC(
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
+
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 57.3724446605991
+
+def test_wr_7_hr_9_shear_velocity(
     time_steps,
     initial_nsm1_state,
     default_algae_params,
@@ -1853,7 +1945,9 @@ def test_changed_POC(
     """Test the model with default parameters."""
     # alter parameters as necessary
     initial_state_dict = initial_nsm1_state
-    initial_state_dict['POC'] = 6
+    default_gvars_params['hydraulic_reaeration_option'] = 9
+    default_gvars_params['wind_reaeration_option'] = 7
+    default_gvars_params['shear_velocity'] = 0.01
 
     # instantiate the model
     nsm1: NutrientBudget = get_nutrient_budget_instance(
@@ -1873,59 +1967,12 @@ def test_changed_POC(
         default_gp_params=default_gp_params,
         default_gvars_params=default_gvars_params
     )
-
+    
     # Run the model
     nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 46.458270
+    
 
-def test_changed_fcom(
-    time_steps,
-    initial_nsm1_state,
-    default_algae_params,
-    default_alkalinity_params,
-    default_balgae_params,
-    default_nitrogen_params,
-    default_carbon_params,
-    default_CBOD_params,
-    default_DOX_params,
-    default_N2_params,
-    default_POM_params,
-    default_pathogen_params,
-    default_phosphorus_params,
-    default_gp_params,
-    default_gvars_params,
-    tolerance,
-) -> None:
-    """Test the model with default parameters."""
-    # alter parameters as necessary
-    initial_state_dict = initial_nsm1_state
-    default_gvars_params['fcom'] = 0.6
+    N2 = nsm1.dataset.isel(nsm1_time_step=-1).N2.values.item()
 
-    # instantiate the model
-    nsm1: NutrientBudget = get_nutrient_budget_instance(
-        time_steps=time_steps,
-        initial_nsm1_state=initial_nsm1_state,
-        default_algae_params=default_algae_params,
-        default_alkalinity_params=default_alkalinity_params,
-        default_balgae_params=default_balgae_params,
-        default_nitrogen_params=default_nitrogen_params,
-        default_carbon_params=default_carbon_params,
-        default_CBOD_params=default_CBOD_params,
-        default_DOX_params=default_DOX_params,
-        default_N2_params=default_N2_params,
-        default_POM_params=default_POM_params,
-        default_pathogen_params=default_pathogen_params,
-        default_phosphorus_params=default_phosphorus_params,
-        default_gp_params=default_gp_params,
-        default_gvars_params=default_gvars_params
-    )
-
-    # Run the model
-    nsm1.increment_timestep()
-    Ap = nsm1.dataset.isel(
-        nsm1_time_step=-1).Ap.values.item()
-    assert isinstance(Ap, float)
-    assert pytest.approx(Ap, tolerance) == 56.937679
+    assert isinstance(N2, float)
+    assert pytest.approx(N2, tolerance) == 9.66922524093679

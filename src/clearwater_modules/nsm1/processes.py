@@ -7,13 +7,7 @@ import math
 ############################################ From shared processes
 
 def celsius_to_kelvin(tempc: xr.DataArray) -> xr.DataArray:
-    return tempc + 273.16
-
-
-
-def kelvin_to_celsius(tempk: xr.DataArray) -> xr.DataArray:
-    return tempk - 273.16
-
+    return tempc + 273.15
 
 def arrhenius_correction(
     TwaterC: xr.DataArray,
@@ -1512,6 +1506,8 @@ def NH4_ApGrowth(
 def NH4_AbRespiration(
     use_Balgae: bool,
     rnb: xr.DataArray,
+    Fb: xr.DataArray,
+    depth: xr.DataArray,
     AbRespiration: xr.DataArray,
 
 ) -> xr.DataArray:
@@ -1521,10 +1517,12 @@ def NH4_AbRespiration(
         use_Balgae: true/false to use benthic algae module (unitless),
         rnb: xr.DataArray,
         AbRespiration: Benthic algal respiration rate (g/m^2/d),
+        depth: water depth (m),
+        Fb: Fraction of bottom area for benthic algae (unitless),
     """
     # TODO changed the calculation for respiration from the inital FORTRAN due to conflict with the reference guide
 
-    return xr.where(use_Balgae, rnb * AbRespiration, 0.0 )
+    return xr.where(use_Balgae, (rnb * AbRespiration*Fb)/depth, 0.0 )
 
 def NH4_AbGrowth(
     use_Balgae: bool,
@@ -2022,7 +2020,9 @@ def DIP_ApGrowth(
 def DIP_AbRespiration(
     rpb: xr.DataArray,
     AbRespiration: xr.DataArray,
-    use_Balgae: bool
+    use_Balgae: bool,
+    Fb: xr.DataArray,
+    depth: xr.DataArray
 
 ) -> xr.DataArray :
     """Calculate DIP_AbRespiration: Dissolved inorganic phosphorus released for benthic algal respiration (mg-P/L/d).
@@ -2030,9 +2030,11 @@ def DIP_AbRespiration(
     Args:
         rpb: Benthic algal P : Benthic algal dry ratio (mg-P/mg-D)
         AbRespiration: Benthic algal respiration rate (g/m^2/d)
-        use_Blgae: true/false to use benthic algae module (t/f)        
+        use_Blgae: true/false to use benthic algae module (t/f) 
+        Fb: Fraction of bottom area available for benthic algal (unitless)
+        depth: water depth (m)       
     """     
-    return xr.where(use_Balgae, rpb * AbRespiration,0)
+    return xr.where(use_Balgae, rpb * Fb * AbRespiration /depth,0)
 
 def DIP_AbGrowth(
     rpb: xr.DataArray,
@@ -2199,7 +2201,7 @@ def POM_algal_settling(
     Ap: xr.DataArray,
     vsap: xr.DataArray,
     rda: xr.DataArray,
-    depth: xr.DataArray,
+    h2: xr.DataArray,
     use_Algae: xr.DataArray
 ) -> xr.DataArray:
     """Calculates the particulate organic matter concentration change due to algal mortality
@@ -2208,10 +2210,10 @@ def POM_algal_settling(
         Ap: Algae concentration (mg/L)
         vsap: Algal settling velocity (m/d)
         rda: Ratio of algal biomass to chlorophyll-a 
-        depth: Depth of water in computation cell (m)
+        h2: active sediment layer thickness (m)
         use_Algae: Option to consider algal kinetics  
     """
-    da: xr.DataArray = xr.where(use_Algae == True, vsap * Ap * rda / depth, 0)
+    da: xr.DataArray = xr.where(use_Algae == True, vsap * Ap * rda / h2, 0)
 
     return da
 
@@ -2234,7 +2236,7 @@ def POM_dissolution(
 def POM_POC_settling(
     POC: xr.DataArray,
     vsoc: xr.DataArray,
-    depth: xr.DataArray,
+    h2: xr.DataArray,
     fcom: xr.DataArray,
     use_POC: xr.DataArray
 ) -> xr.DataArray:
@@ -2243,11 +2245,11 @@ def POM_POC_settling(
     Args:
         POC: Concentration of particulate organic carbon (mg/L)
         vsoc: POC settling velocity (m/d)
-        depth: Depth of water (m)
+        h2: active sediment layer thickness (m)
         fcom: Fraction of carbon in organic matter (mg-C/mg-D) 
         use_POC: Option to consider particulate organic carbon
     """
-    da: xr.DataArray = xr.where(use_POC == True, vsoc * POC / depth / fcom, 0)
+    da: xr.DataArray = xr.where(use_POC == True, vsoc * POC / h2 / fcom, 0)
     
     return da
 
@@ -2257,7 +2259,7 @@ def POM_benthic_algae_mortality(
     kdb_tc: xr.DataArray,
     Fb: xr.DataArray,
     Fw: xr.DataArray,
-    depth: xr.DataArray,
+    h2: xr.DataArray,
     use_Balgae: xr.DataArray
 ) -> xr.DataArray:
     """Calculates particulate organic matter concentration change due to benthic algae mortality
@@ -2267,10 +2269,10 @@ def POM_benthic_algae_mortality(
         kdb_tc: Benthic algae death rate (1/d)
         Fb: Fraction of bottom area available for benthic algae growth
         Fw: Fraction of benthic algae mortality into water column
-        depth: Depth of water in computation cell (m)
+        h2: active sediment layer thickness (m)
         use_Balgae: Option for considering benthic algae in DOC budget (boolean)
     """
-    da: xr.DataArray = xr.where(use_Balgae == True, Ab * kdb_tc * Fb * (1 - Fw) / depth, 0)
+    da: xr.DataArray = xr.where(use_Balgae == True, Ab * kdb_tc * Fb * (1 - Fw) / h2, 0)
 
     return da
 
@@ -2279,16 +2281,16 @@ def POM_benthic_algae_mortality(
 def POM_burial(
     vb: xr.DataArray,
     POM: xr.DataArray,
-    depth: xr.DataArray
+    h2: xr.DataArray
 ) -> xr.DataArray:
     """Calculates particulate organic matter concentration change due to POM burial in the sediments
     
     Args:
         vb: Velocity of burial (m/d)
         POM: POM concentration (mg/L)
-        depth: Depth of water in computation cell (m)
+        h2: active sediment layer thickness (m)
     """
-    return vb * POM / depth
+    return vb * POM / h2 #note removed 365 from FORTRAN
 
 
 
@@ -2898,7 +2900,7 @@ def DOs_atm_alpha(
 
 def DOX_sat(
     TwaterK: xr.DataArray,
-    pressure_atm: xr.DataArray,
+    pressure_mb: xr.DataArray,
     pwv: xr.DataArray,
     DOs_atm_alpha: xr.DataArray
 ) -> xr.DataArray:
@@ -2906,11 +2908,11 @@ def DOX_sat(
 
     Args:
         TwaterK: Water temperature kelvin
-        pressure_atm: Atmospheric pressure (atm)
+        pressure_mb: Atmospheric pressure (mb)
         pwv: Patrial pressure of water vapor (atm)
         DOs_atm_alpha: DO saturation atmospheric correction coefficient
     """
-    pressure_atm = pressure_atm * 0.000986923
+    pressure_atm = pressure_mb * 0.000986923
     
     DOX_sat_uncorrected = np.exp(-139.34410 + ( 1.575701E05 / TwaterK ) - ( 6.642308E07 / (TwaterK**2.0) ) + ( 1.243800E10 / (TwaterK**3.0) ) - ( 8.621949E11 / (TwaterK**4.0) ))
 
@@ -3465,36 +3467,21 @@ def KHN2_tc(
     return 0.00065 * np.exp(1300.0 * (1.0 / TwaterK - 1 / 298.15))   
         
 
-def P_wv(
-    TwaterK : xr.DataArray,
-) -> xr.DataArray :
-        
-    """Calculate partial pressure water vapor (atm)
-
-    Constant values found in documentation
-
-    Args:
-        TwaterK: water temperature kelvin (K)
-
-    """
-    return np.exp(11.8571  - (3840.70 / TwaterK) - (216961.0 / (TwaterK**2)))
-  
-
 def N2sat(
     KHN2_tc : xr.DataArray,
-    pressure_atm: xr.DataArray,
-    P_wv: xr.DataArray
+    pressure_mb: xr.DataArray,
+    pwv: xr.DataArray
 ) -> xr.DataArray:
     
     """Calculate N2 at saturation f(Twater and atm pressure) (mg-N/L)
 
     Args:
         KHN2_tc: Henry's law constant (mol/L/atm)
-        pressure_atm: atmosphric pressure in atm (atm)
-        P_wv: Partial pressure of water vapor (atm)
+        pressure_mb: atmosphric pressure in mb (mb)
+        pwv: Partial pressure of water vapor (atm)
     """
         
-    N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_atm - P_wv)  
+    N2sat = 2.8E+4 * KHN2_tc * 0.79 * (pressure_mb*0.000986923 - pwv)  
     N2sat = xr.where(N2sat < 0.0,0.000001,N2sat) #Trap saturation concentration to ensure never negative
 
     return N2sat
