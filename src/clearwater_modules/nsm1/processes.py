@@ -9,12 +9,6 @@ import math
 def celsius_to_kelvin(tempc: xr.DataArray) -> xr.DataArray:
     return tempc + 273.15
 
-
-
-def kelvin_to_celsius(tempk: xr.DataArray) -> xr.DataArray:
-    return tempk - 273.15
-
-
 def arrhenius_correction(
     TwaterC: xr.DataArray,
     rc20: xr.DataArray,
