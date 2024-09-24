@@ -75,6 +75,7 @@ def default_temp_params() -> Temperature:
         h2=0.1,
         alphas=0.0432,
         richardson_option=True,
+        dt=1/86400, # 1 second
     )
 
 

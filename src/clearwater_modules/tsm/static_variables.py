@@ -24,6 +24,7 @@ Variable(
     use='static',
 )
 
+
 Variable(
     name='cp_air',
     long_name='Specific Heat Capacity of Air',
@@ -208,5 +209,12 @@ Variable(
     long_name='Wind KH KW',
     units='m s-1',
     description='The wind KH KW.',
+    use='static',
+)
+Variable(
+    name='dt',
+    long_name='dt',
+    units='d',
+    description='calculation dt',
     use='static',
 )
