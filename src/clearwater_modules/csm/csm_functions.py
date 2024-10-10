@@ -9,8 +9,8 @@ Developed by:
 * Dr. Zhonglong Zhang (Portland State University)
 * Mr. Mark Jensen (HEC)
 
-This module computes the water quality of a single computational cell. The algorithms 
-and structure of this program were adapted from the Fortran 95 version of this module, 
+This module computes the water quality of a single computational cell. The algorithms
+and structure of this program were adapted from the Fortran 95 version of this module,
 developed by:
 * Dr. Billy E. Johnson (ERDC-EL)
 * Dr. Zhonglong Zhang (Portland State University)
@@ -83,7 +83,7 @@ def ContaminantTempCorrection(TwaterC: float, TsedC: float, nC: int, nSpecies: l
           end if
         end do
       end if
-      # 
+      #
       # decay rate - MAF method
       if (use_nOrderDecay(i)) then
         k1d_tc(id) = Arrhenius_TempCorrection(k1d(id,r),    TwaterC)
@@ -91,7 +91,7 @@ def ContaminantTempCorrection(TwaterC: float, TsedC: float, nC: int, nSpecies: l
         if (use_AlgaeSorbed(i))      k1ap_tc(id)   = Arrhenius_TempCorrection(k1ap(id,r),   TwaterC)
         if (use_POMSorbed(i))        k1pom_tc(id)  = Arrhenius_TempCorrection(k1pom(id,r),  TwaterC)
         if (use_AnySolidSorbed(i))   k1p_tc(id)    = Arrhenius_TempCorrection(k1p(id,r),    TwaterC)
-        if (use_BedSediment) then 
+        if (use_BedSediment) then
           k1d2_tc(id) = Arrhenius_TempCorrection(k1d2(id,r),   TsedC)
           if (use_DOCSorbed(i))      k1doc2_tc(id) = Arrhenius_TempCorrection(k1doc2(id,r), TsedC)
           if (use_POMSorbed(i))      k1pom2_tc(id) = Arrhenius_TempCorrection(k1pom2(id,r), TsedC)
@@ -133,7 +133,7 @@ def ContaminantTempCorrection(TwaterC: float, TsedC: float, nC: int, nSpecies: l
       # photolysis rate - MAF method
       if (use_Photolysis(i)) then
         kphtd_tc(id)   = Arrhenius_TempCorrection(kphtd(id,r),   TwaterC)
-        if (use_DOCSorbed(i)) kphtdoc_tc(id) = Arrhenius_TempCorrection(kphtdoc(id,r), TwaterC) 
+        if (use_DOCSorbed(i)) kphtdoc_tc(id) = Arrhenius_TempCorrection(kphtdoc(id,r), TwaterC)
       end if
       #
       # volatilization velocity - MAF method
@@ -157,13 +157,13 @@ def ContaminantTempCorrection(TwaterC: float, TsedC: float, nC: int, nSpecies: l
         if (use_DOCSorbed(i))      kerdoc_tc(id) = kerdoc(id,r) * Coef_tc
         if (use_AlgaeSorbed(i))    kerap_tc(id)  = kerap(id,r)  * Coef_tc
         if (use_POMSorbed(i))      kerpom_tc(id) = kerpom(id,r) * Coef_tc
-        if (use_AnySolidSorbed(i)) kerp_tc(id)   = kerp(id,r)   * Coef_tc 
+        if (use_AnySolidSorbed(i)) kerp_tc(id)   = kerp(id,r)   * Coef_tc
         if (use_BedSediment) then
           Coef_tc        = exp(Eaer(id,r) * 1000.0 * (TsedK - TRK) / (gas_constant * TsedK * TRK))
           kerd2_tc(id)   = kerd2(id,r)   * Coef_tc
           if (use_DOCSorbed(i))      kerdoc2_tc(id) = kerdoc2(id,r) * Coef_tc
           if (use_POMSorbed(i))      kerpom2_tc(id) = kerpom2(id,r) * Coef_tc
-          if (use_AnySolidSorbed(i)) kerp2_tc(id)   = kerp2(id,r)   * Coef_tc 
+          if (use_AnySolidSorbed(i)) kerp2_tc(id)   = kerp2(id,r)   * Coef_tc
         end if
       end if
     end do
@@ -171,7 +171,7 @@ def ContaminantTempCorrection(TwaterC: float, TsedC: float, nC: int, nSpecies: l
 end subroutine
 
 
-#=========================================================================================================================== 
+#===========================================================================================================================
 # Compute equilibrium partition coefficient if necessary
 subroutine ContaminantPartitionCoef()
   #
@@ -180,7 +180,7 @@ subroutine ContaminantPartitionCoef()
       do j = 1, nSpecies(i)
         id = parameter_index(i,j)
         #
-        # compute partition coefficients from Kow 
+        # compute partition coefficients from Kow
         if (kd_option(id,r) == 2) then
           if (use_DOCSorbed(i)) then
             Kdoc(id,r)  = adoc(id,r) * Kow(id,r)
@@ -208,8 +208,8 @@ subroutine ContaminantPartitionCoef()
   end if
 end subroutine
 
-#=========================================================================================================================== 
-# Compute ionization 
+#===========================================================================================================================
+# Compute ionization
 subroutine ContaminantIonization()
   real(R8) :: Coef_tc
   real(R8) :: D
@@ -218,7 +218,7 @@ subroutine ContaminantIonization()
   if (use_Ionization_One .or. use_Hydrolysis_one) then
     CHH = 10.0**(-pH)
     COH = 10.0**(pH - 14.0)
-  end if    
+  end if
   #
   do i = 1, nC
     if (nSpecies(i) == 5) then
@@ -240,7 +240,7 @@ subroutine ContaminantIonization()
       end if
       #
       # compute ionic fraction for each species
-      D = 1.0 + Kb1_tc(i) / COH + Kb1_tc(i) * Kb2_tc(i) / COH / COH   &  
+      D = 1.0 + Kb1_tc(i) / COH + Kb1_tc(i) * Kb2_tc(i) / COH / COH   &
               + Ka1_tc(i) / CHH + Ka1_tc(i) * Ka2_tc(i) / CHH / CHH
       fion(i,1) = 1.0 / D
       fion(i,2) = Kb1_tc(i) / COH / D
@@ -263,7 +263,7 @@ subroutine ContaminantIonization()
   end do
 end subroutine
 
-#=========================================================================================================================== 
+#===========================================================================================================================
 #------------------------------------------------------------------------------------------------------------------
 #$$$$$$$$        Cd2 and Cdoc2 represent dissolved concentration in pore water.
 #$$$$$$$$        Cd2_Species and Cdoc2_Species represent dissolved concentration on bed sediment total volume.
@@ -290,7 +290,7 @@ subroutine EquilibriumPartitionConc()
       else
         Cap_Species(id)  = 0.0
       end if
-      if (use_DOCSorbed(i)) then 
+      if (use_DOCSorbed(i)) then
         Cdoc_Species(id) = Kdoc(id,r) * DOC / 1.0E6 / Rd * C(i) * fion(i,j)
       else
         Cdoc_Species(id) = 0.0
@@ -343,7 +343,7 @@ subroutine EquilibriumPartitionConc()
   end if
 end subroutine
 #
-#=========================================================================================================================== 
+#===========================================================================================================================
 # compute Cd_Species, Cdoc_Species, Cap_Species, Cpom_Species, Cp_Species from Langmuire equilibrium partition
 subroutine LangmuirPartitionConc()
   #
@@ -376,7 +376,7 @@ subroutine LangmuirPartitionConc()
       end if
       do k = 1, nGS
         if (use_SolidSorbed(i,k)) then
-          Cp_Species(id,k)  = Solid(k)  / 1.0E6 * qcp(id,k,r)  * Klp(id,k,r)  * Cd_Species(id) / (1.0 + Klp(id,k,r)  * Cd_Species(id)  / 1.0E3) 
+          Cp_Species(id,k)  = Solid(k)  / 1.0E6 * qcp(id,k,r)  * Klp(id,k,r)  * Cd_Species(id) / (1.0 + Klp(id,k,r)  * Cd_Species(id)  / 1.0E3)
         else
           Cp_Species(id,k)  = 0.0
         end if
@@ -397,7 +397,7 @@ subroutine LangmuirPartitionConc()
       if (use_DOCSorbed(i)) then
         Cdoc2_Species(id) = DOC2 / 1.0E6 * Kdoc2(id,r) * Cd2_Species(id)
       else
-        Cdoc2_Species(id) = 0.0 
+        Cdoc2_Species(id) = 0.0
       end if
       if (use_POMSorbed(i)) then
         Cpom2_Species(id) = POM2 / 1.0E6 * qcpom2(id,r) * Klpom2(id,r) * Cd2_Species(id) / Por(r) / (1.0 + Klpom2(id,r) * Cd2_Species(id) / 1.0E3  / Por(r))
@@ -406,7 +406,7 @@ subroutine LangmuirPartitionConc()
       end if
       do k = 1, nGS
         if (use_SolidSorbed(i,k)) then
-          Cp2_Species(id,k) = Solid2(k) / 1.0E6 * qcp2(id,k,r) * Klp2(id,k,r) * Cd2_Species(id) / Por(r) / (1.0 + Klp2(id,k,r) * Cd2_Species(id) / 1.0E3 / Por(r))  
+          Cp2_Species(id,k) = Solid2(k) / 1.0E6 * qcp2(id,k,r) * Klp2(id,k,r) * Cd2_Species(id) / Por(r) / (1.0 + Klp2(id,k,r) * Cd2_Species(id) / 1.0E3 / Por(r))
         else
           Cp2_Species(id,k) = 0.0
         end if
@@ -416,7 +416,7 @@ subroutine LangmuirPartitionConc()
   #
 end subroutine
 
-#=========================================================================================================================== 
+#===========================================================================================================================
 # compute Cd_Species, Cdoc_Species, Cap_Species, Cpom_Species, Cp_Species from Freundlich equilibrium partition
 subroutine FreundlichPartitionConc()
   #
@@ -471,7 +471,7 @@ subroutine FreundlichPartitionConc()
       if (use_DOCSorbed(i)) then
         Cdoc2_Species(id) = DOC2 / 1.0E6 * Kdoc2(id,r) * Cd2_Species(id)
       else
-        Cdoc2_Species(id) = 0.0 
+        Cdoc2_Species(id) = 0.0
       end if
       if (use_POMSorbed(i)) then
         Cpom2_Species(id) = POM2 / 1.0E3 * Kfpom2(id,r) * (Cd2_Species(id) / Por(r))**bpom2(id,r)
@@ -480,7 +480,7 @@ subroutine FreundlichPartitionConc()
       end if
       do k = 1, nGS
         if (use_SolidSorbed(i,k)) then
-          Cp2_Species(id,k) = Solid2(k) / 1.0E3 * Kfp2(id,k,r) * (Cd2_Species(id) / Por(r))**bp2(id,k,r) 
+          Cp2_Species(id,k) = Solid2(k) / 1.0E3 * Kfp2(id,k,r) * (Cd2_Species(id) / Por(r))**bp2(id,k,r)
         else
           Cp2_Species(id,k) = 0.0
         end if
@@ -489,7 +489,7 @@ subroutine FreundlichPartitionConc()
   end if
 end subroutine
 
-#=========================================================================================================================== 
+#===========================================================================================================================
 # compute Cd_Species, Cdoc_Species, Cap_Species, Cpom_Species, Cp_Species from non-equilibrium partition
 # only conpute non-equilibrium conc at t = 0.
 subroutine NonEquilibriumPartitionConc()
@@ -512,7 +512,7 @@ subroutine NonEquilibriumPartitionConc()
       end do
       #
       Cd(i) = C(i) / Rd
-      if (use_DOCSorbed(i)) then 
+      if (use_DOCSorbed(i)) then
         Cdoc(i) = Kdoc(id,r) * DOC / 1.0E6 / Rd * C(i)
       else
         Cdoc(i) = 0.0
@@ -583,7 +583,7 @@ subroutine NonEquilibriumPartitionConc()
   end if
 end subroutine
 
-#=========================================================================================================================== 
+#===========================================================================================================================
 # the function of f(Cd)
 double precision function f(x)
   real(R8), intent(in) :: x
@@ -591,7 +591,7 @@ double precision function f(x)
   f = x
   if (IsWaterCell) then
     f = f - C(i) * fion(i,j)
-    if (use_DOCSorbed(i))         f = f + DOC      / 1.0E6 * Kdoc(id,r) * x 
+    if (use_DOCSorbed(i))         f = f + DOC      / 1.0E6 * Kdoc(id,r) * x
     #
     if (use_Langmuir(i,1)) then
       if (use_AlgaeSorbed(i))     f = f + Apd      / 1.0E3 * qcap(id,r)  * (Klap(id,r)  * x / 1.0E3) / (1.0 + Klap(id,r)  * x / 1.0E3)
@@ -603,7 +603,7 @@ double precision function f(x)
       if (use_AlgaeSorbed(i))     f = f + Apd      / 1.0E3 * Kfap(id,r)  * x**bap(id,r)
       if (use_POMSorbed(i))       f = f + POM      / 1.0E3 * Kfpom(id,r) * x**bpom(id,r)
       do k = 1, nGS
-        if (use_SolidSorbed(i,k)) f = f + Solid(k) / 1.0E3 * Kfp(id,k,r) * x**bp(id,k,r) 
+        if (use_SolidSorbed(i,k)) f = f + Solid(k) / 1.0E3 * Kfp(id,k,r) * x**bp(id,k,r)
       end do
     end if
   else
@@ -619,13 +619,13 @@ double precision function f(x)
     else if (use_Freundlich(i,2)) then
       if (use_POMSorbed(i))       f = f + POM2      / 1.0E3 * Kfpom2(id,r) * (x / Por(r))**bpom2(id,r)
       do k = 1, nGS
-        if (use_SolidSorbed(i,k)) f = f + Solid2(k) / 1.0E3 * Kfp2(id,k,r) * (x / Por(r))**bp2(id,k,r) 
+        if (use_SolidSorbed(i,k)) f = f + Solid2(k) / 1.0E3 * Kfp2(id,k,r) * (x / Por(r))**bp2(id,k,r)
       end do
     end if
   end if
 end function
 
-#=========================================================================================================================== 
+#===========================================================================================================================
 # the function of df(Cd)
 double precision function df(x)
   real(R8), intent(in) :: x
@@ -661,10 +661,10 @@ double precision function df(x)
         if (use_SolidSorbed(i,k)) df = df + Solid2(k) / 1.0E3 * Kfp2(id,k,r) * bp2(id,k,r) * (x / Por(r))**(bp2(id,k,r) - 1.0) / Por(r)
       end do
     end if
-  end if    
+  end if
 end function
 
-#=========================================================================================================================== 
+#===========================================================================================================================
 # compute Cd_Species, Cdoc_Species, Cap_Species, Cpom_Species, Cp_Species
 #         Cd2_Species, Cdoc2_Species, Cpom2_Species, Cp2_Species
 subroutine ContaminantPartitions()
@@ -691,7 +691,7 @@ subroutine ContaminantPartitions()
         if (ParticleSorbed) then
           call LangmuirPartitionConc()
         else
-          # if only DOCSorbed is selected, use linear Equilibrium 
+          # if only DOCSorbed is selected, use linear Equilibrium
           call EquilibriumPartitionConc()
         end if
       else if (use_Freundlich(i,l)) then
@@ -709,8 +709,8 @@ subroutine ContaminantPartitions()
   #
 end subroutine
 
-#=========================================================================================================================== 
-# Compute pathways 
+#===========================================================================================================================
+# Compute pathways
 subroutine ContaminantPathways()
   real(R8) :: lambdamax
   real(R8) :: kviscosity
@@ -722,7 +722,7 @@ subroutine ContaminantPathways()
   # prepare for pathway computation #
   #----------------------------------
   # get lambdamax
-  if (use_Photolysis_one) then 
+  if (use_Photolysis_one) then
     lambdamax = alpha(r) * lambda
     Icpht     = 1.33 * q_solar * (1.0 - exp(- lambdamax * depth)) / (lambdamax * depth) * (1.0 - 0.56 * cloudiness)
   end if
@@ -771,7 +771,7 @@ subroutine ContaminantPathways()
           if (use_BedSediment) then
             C2_Settling(id)       = C2_Settling(id)       + Cp_Species(id,k)  * vsp(k) / h2(r)
             C_C2_Resuspension(id) = C_C2_Resuspension(id) + Cp2_Species(id,k) * vrp(k) / depth
-            C2_C_Resuspension(id) = C2_C_Resuspension(id) + Cp2_Species(id,k) * vrp(k) / h2(r) 
+            C2_C_Resuspension(id) = C2_C_Resuspension(id) + Cp2_Species(id,k) * vrp(k) / h2(r)
             C2_Burial(id)         = C2_Burial(id)         + Cp2_Species(id,k) * vb / h2(r)
           end if
         end if
@@ -804,13 +804,13 @@ subroutine ContaminantPathways()
         else if (vm_option(id,r) == 3) then
           # formula given by Boyer et al.(1994)
           vm(id,r)  = Por(r)**3.0 * Dm(id,r) / 0.01
-          # z': characteristic length over which gradient exists at sediment-water interface, 0.01m. 
+          # z': characteristic length over which gradient exists at sediment-water interface, 0.01m.
         else if (vm_option(id,r) == 4) then
           # formula given by Di torio et al.(1981)
           vm(id,r)  = 0.19 * Por(r) / MW(id,r)**(2.0 / 3.0)
         else if (vm_option(id,r) == 5) then
           # formula given by Schink and Guinasso (1977)
-          # TwaterC is used here, TsedC may be more accurate. 
+          # TwaterC is used here, TsedC may be more accurate.
           kviscosity = 1.79E-6 / (1.0 + 0.03368 * TwaterC + 0.000221 * TwaterC**2.0)
           vm(id,r)  = shear_velocity * (Dm(id,r) / 86400.0 / kviscosity)**(2.0 / 3.0) / 24.0 * 86400.0
         end if
@@ -830,7 +830,7 @@ subroutine ContaminantPathways()
         C_Decay(id)  = Cd_Species(id)**nOrder(id,r)  * k1d_tc(id)
         if (use_BedSediment)      C2_Decay(id) = Cd2_Species(id)**nOrder(id,r) * k1d2_tc(id)
         if (use_DOCSorbed(i)) then
-          C_Decay(id)  = C_Decay(id)  + Cdoc_Species(id)**nOrder(id,r)  * k1doc_tc(id) 
+          C_Decay(id)  = C_Decay(id)  + Cdoc_Species(id)**nOrder(id,r)  * k1doc_tc(id)
           if (use_BedSediment)    C2_Decay(id) = C2_Decay(id) + Cdoc2_Species(id)**nOrder(id,r) * k1doc2_tc(id)
         end if
         if (use_AlgaeSorbed(i))   C_Decay(id)  = C_Decay(id)  + Cap_Species(id)**nOrder(id,r)   * k1ap_tc(id)
@@ -840,7 +840,7 @@ subroutine ContaminantPathways()
         end if
         #
         do k = 1, nGS
-          if (use_SolidSorbed(i,k)) then  
+          if (use_SolidSorbed(i,k)) then
             C_Decay(id)  = C_Decay(id)  + Cp_Species(id,k)**nOrder(id,r)  * k1p_tc(id)
             if (use_BedSediment)  C2_Decay(id) = C2_Decay(id) + Cp2_Species(id,k)**nOrder(id,r) * k1p2_tc(id)
           end if
@@ -857,7 +857,7 @@ subroutine ContaminantPathways()
         C_Acid_Hydrolysis    = Cd_Species(id) * khad_tc(id) * CHH
         C_Neutral_Hydrolysis = Cd_Species(id) * khnd_tc(id)
         C_Base_Hydrolysis    = Cd_Species(id) * khbd_tc(id) * COH
-        if (use_DOCSorbed(i)) then 
+        if (use_DOCSorbed(i)) then
           C_Acid_Hydrolysis    = C_Acid_Hydrolysis    + Cdoc_Species(id) * khadoc_tc(id) * CHH
           C_Neutral_Hydrolysis = C_Neutral_Hydrolysis + Cdoc_Species(id) * khndoc_tc(id)
           C_Base_Hydrolysis    = C_Base_Hydrolysis    + Cdoc_Species(id) * khbdoc_tc(id) * COH
@@ -888,7 +888,7 @@ subroutine ContaminantPathways()
           C_Photolysis(id)  = Icpht / I0pht(id,r) * (Cd_Species(id) * kphtd_tc(id) + Cdoc_Species(id) * kphtdoc_tc(id))
         else
           C_Photolysis(id)  = Icpht / I0pht(id,r) * Cd_Species(id)  * kphtd_tc(id)
-        end if      
+        end if
       else
         C_Photolysis(id)    = 0.0
       end if
@@ -905,7 +905,7 @@ subroutine ContaminantPathways()
       #-----------------
       # 2nd reaction #
       #-----------------
-      if (use_2ndReaction(i)) then 
+      if (use_2ndReaction(i)) then
         C_2ndReaction(id)  = Cd_Species(id)  * Cenv(i)  * kerd_tc(id)
         if (use_BedSediment)    C2_2ndReaction(id) = Cd2_Species(id) * Cenv2(i) * kerd2_tc(id)
         if (use_DOCSorbed(i)) then
@@ -969,13 +969,13 @@ subroutine ContaminantPathways()
   # end of pathway for each contaminant
 end subroutine
 
-#=========================================================================================================================== 
-# Compute kinetic rate changes 
+#===========================================================================================================================
+# Compute kinetic rate changes
 subroutine ContaminantKinetics()
   real(R8) :: kad_tmp, Adsorption_Desorption
   integer  :: iTransformTo
   #
-  # initialize change in contaminants 
+  # initialize change in contaminants
   dCdt    = 0.0
   dCddt   = 0.0
   dCdocdt = 0.0
@@ -998,10 +998,10 @@ subroutine ContaminantKinetics()
     do j = 1, nSpecies(i)
       id = parameter_index(i,j)
       #
-      # compute kinetic rate equations 
+      # compute kinetic rate equations
       #
       #-------------------------------------------------------------------------------------------------------------
-      # equilibrium: kinetic rate equations of dCdt, dC2dt 
+      # equilibrium: kinetic rate equations of dCdt, dC2dt
       #-------------------------------------------------------------------------------------------------------------
       if (.not. use_NonEquilibrium(i,1)) then
         dCdt(i) = dCdt(i) - C_C2_Settling(id) - C_Decay(id) - C_Hydrolysis(id) - C_Photolysis(id) - C_Volatilization(id) - C_2ndReaction(id)
@@ -1017,7 +1017,7 @@ subroutine ContaminantKinetics()
       if (use_NonEquilibrium(i,1) .or. use_NonEquilibrium(i,2)) then
         #
         #-----------------
-        # air deposition # allocated based on Equilibrium partition. 
+        # air deposition # allocated based on Equilibrium partition.
         #-----------------
         if (use_NonEquilibrium(i,1)) then
           if (C(i) == 0.0) then
@@ -1035,7 +1035,7 @@ subroutine ContaminantKinetics()
           end if
         end if
         #
-        #------------------------------------ 
+        #------------------------------------
         # settling, resuspension and burial #
         #------------------------------------
         if (use_AlgaeSorbed(i)) then
@@ -1054,7 +1054,7 @@ subroutine ContaminantKinetics()
               if (use_BedSediment)       dCpdt(i,k)  = dCpdt(i,k) + Cp2_Species(id,k) * vrp(k) / depth
             end if
             if (use_NonEquilibrium(i,2)) dCp2dt(i,k) = dCp2dt(i,k) + (Cp_Species(id,k) * vsp(k) - Cp2_Species(id,k) * (vrp(k) + vb)) / h2(r)
-          end if 
+          end if
         end do
         #
         #----------------
@@ -1092,7 +1092,7 @@ subroutine ContaminantKinetics()
             do k = 1, nGS
               if (use_SolidSorbed(i,k)) dCp2dt(i,k) = dCp2dt(i,k) - Cp2_Species(id,k)**nOrder(id,r) * k1p2_tc(id)
             end do
-          end if 
+          end if
         end if
         #
         #-------------
@@ -1142,7 +1142,7 @@ subroutine ContaminantKinetics()
             do k = 1, nGS
               if (use_SolidSorbed(i,k)) dCp2dt(i,k) = dCp2dt(i,k) - Cp2_Species(id,k) * Cenv2(i) * kerp2_tc(id)
             end do
-          end if 
+          end if
         end if
         #
         #--------------------------------------------------------------------
@@ -1166,13 +1166,13 @@ subroutine ContaminantKinetics()
           if (use_POMSorbed(i)) then
             kad_tmp = kadpom_tc(id) * (POM / 1.0E3 * qcpom(id,r) - Cpom_Species(id))
             if (kad_tmp > 0.0 .and. kad_tmp * dt < 1.0) then
-              Adsorption_DeSorption = - kdepom_tc(id) * Cpom_Species(id) + kad_tmp * Cd_Species(id) 
+              Adsorption_DeSorption = - kdepom_tc(id) * Cpom_Species(id) + kad_tmp * Cd_Species(id)
             else if (kad_tmp <= 0.0) then
               # no available adsorption
               Adsorption_DeSorption = - kdepom_tc(id) * Cpom_Species(id)
             else if (kad_tmp * dt >= 1.0) then
               # maximum adsorptable contaminants is Cd_Species(id)
-              Adsorption_DeSorption = - kdepom_tc(id) * Cpom_Species(id) + Cd_Species(id) / dt 
+              Adsorption_DeSorption = - kdepom_tc(id) * Cpom_Species(id) + Cd_Species(id) / dt
             end if
             dCpomdt(i)    = dCpomdt(i) + Adsorption_DeSorption
             dCddt(i)      = dCddt(i)   - Adsorption_DeSorption
@@ -1197,7 +1197,7 @@ subroutine ContaminantKinetics()
         if (use_NonEquilibrium(i,2)) then
           if (use_POMSorbed(i)) then
             kad_tmp = kadpom2_tc(id) / Por(r) * (POM2 / 1.0E3 * qcpom2(id,r) - Cpom2_Species(id))
-            if (kad_tmp > 0.0 .and. kad_tmp * dt < 1.0) then 
+            if (kad_tmp > 0.0 .and. kad_tmp * dt < 1.0) then
               Adsorption_DeSorption = - kdepom2_tc(id) * Cpom2_Species(id) + kad_tmp * Cd2_Species(id)
             else if (kad_tmp <= 0.0) then
               Adsorption_DeSorption = - kdepom2_tc(id) * Cpom2_Species(id)
@@ -1205,7 +1205,7 @@ subroutine ContaminantKinetics()
               Adsorption_DeSorption = - kdepom2_tc(id) * Cpom2_Species(id) + Cd2_Species(id) / dt
             end if
             dCpom2dt(i) = dCpom2dt(i) + Adsorption_DeSorption
-            dCd2dt(i)   = dCd2dt(i)   - Adsorption_DeSorption 
+            dCd2dt(i)   = dCd2dt(i)   - Adsorption_DeSorption
           end if
           #
           do k = 1, nGS
@@ -1225,7 +1225,7 @@ subroutine ContaminantKinetics()
         end if
         #
       end if
-      # 
+      #
       #----------------------------------------------
       # add transformations to kinetic rate equation #
       #----------------------------------------------
@@ -1306,20 +1306,20 @@ subroutine ContaminantKinetics()
         Cd2(i) = max(Cd2(i)   + dCd2dt(i)   * dt / Por(r), 0.0)
         if (use_DOCSorbed(i))       Cdoc2(i) = max(Cdoc2(i) + dCdoc2dt(i) * dt / Por(r), 0.0)
         if (use_POMSorbed(i))       Cpom2(i) = max(Cpom2(i) + dCpom2dt(i) * dt, 0.0)
-        do k = 1, nGS 
+        do k = 1, nGS
           if (use_SolidSorbed(i,k)) Cp2(i,k) = max(Cp2(i,k) + dCp2dt(i,k) * dt, 0.0)
         end do  
       else
         C2(i) = max(C2(i) + dC2dt(i) * dt, 0.0)
       end if
-    end do  
+    end do
   end if
   #
-end subroutine 
+end subroutine
 
-#=========================================================================================================================== 
-# Call subroutines 
-# if ComputeContaminantKinetics() is called right after ComputeContaminantDerivedVariables() for the same WQ cell, 
+#===========================================================================================================================
+# Call subroutines
+# if ComputeContaminantKinetics() is called right after ComputeContaminantDerivedVariables() for the same WQ cell,
 # no need to call ContaminantPartitions() here.
 # ContaminantPartitions() only needs to be called once.
 subroutine ComputeContaminantKinetics()
@@ -1327,7 +1327,7 @@ subroutine ComputeContaminantKinetics()
   call ContaminantTempCorrection()
   call ContaminantPathways()
   call ContaminantKinetics()
-end subroutine 
+end subroutine
 
 #===========================================================================================================================
 # Output pathway
@@ -1351,7 +1351,7 @@ subroutine ContaminantPathwayOutput(na, a)
       if (C_Transform_Reaction_index(i,j) > 0)     a(C_Transform_Reaction_index(i,j))    = C_Transform_Reaction(id,j)
     end do
     #
-    if (use_BedSediment) then 
+    if (use_BedSediment) then
       if (C_C2_Resuspension_index(i) > 0)            a(C_C2_Resuspension_index(i))         = C_C2_Resuspension(id)
       if (C_C2_Transfer_index(i) > 0)                a(C_C2_Transfer_index(i))             = C_C2_Transfer(id)
       #
@@ -1401,7 +1401,7 @@ subroutine ContaminantPathwayOutput(na, a)
             if (C2_Transform_Reaction_index(i,k) > 0)    a(C2_Transform_Reaction_index(i,k))   = a(C2_Transform_Reaction_index(i,k))   + C2_Transform_Reaction(id,k)
           end do
         end if
-      end do 
+      end do
     end if
   end do
 end subroutine
@@ -1422,7 +1422,7 @@ subroutine ComputeContaminantDerivedVariables
       if (t > 1.0E-10) then
         C(i) = Cd(i)
         if (use_DOCSorbed(i))         C(i) = C(i) + Cdoc(i)
-        if (use_AlgaeSorbed(i))       C(i) = C(i) + Cap(i)  
+        if (use_AlgaeSorbed(i))       C(i) = C(i) + Cap(i)
         if (use_POMSorbed(i))         C(i) = C(i) + Cpom(i)
         do k = 1, nGS
           if (use_SolidSorbed(i,k))   C(i) = C(i) + Cp(i,k)
@@ -1436,7 +1436,7 @@ subroutine ComputeContaminantDerivedVariables
       Cdoc(i)   = Cdoc_Species(id)
       Cap(i)    = Cap_Species(id)
       Cpom(i)   = Cpom_Species(id)
-      do k = 1, nGS 
+      do k = 1, nGS
         Cp(i,k) = Cp_Species(id,k)
       end do
       do j = 2, nSpecies(i)
@@ -1499,7 +1499,7 @@ subroutine ComputeContaminantDerivedVariables
         # compute Cd2, Cdoc2, Cpom2, Cp2
         id = parameter_index(i,1)
         Cd2(i)     = Cd2_Species(id)   / Por(r)
-        Cdoc2(i)   = Cdoc2_Species(id) / Por(r) 
+        Cdoc2(i)   = Cdoc2_Species(id) / Por(r)
         Cpom2(i)   = Cpom2_Species(id)
         do k = 1, nGS
           Cp2(i,k) = Cp2_Species(id,k)
@@ -1544,16 +1544,16 @@ subroutine ComputeContaminantDerivedVariables
   end do
 end subroutine
 
-#=========================================================================================================================== 
+#===========================================================================================================================
 # Newton-Raphson solution
 subroutine NewtonRaphson(Cd_cmp)
   real(R8) :: Cd_cmp, Cd_new
   real(R8) :: ea
   integer  :: iteration
-  # 
+  #
   # Theory of this method
   # xn+1 = xn - f(xn)/f(xn)'
-  # 
+  #
   # deal with two exceptional conditions
   Cd_cmp = 0.0
   if (f(Cd_cmp) == 0.0) return
@@ -1580,14 +1580,14 @@ subroutine NewtonRaphson(Cd_cmp)
   end if
   #
   iteration = 0
-  do 
+  do
     iteration = iteration + 1
     Cd_new    = Cd_cmp - f(Cd_cmp) / df(Cd_cmp)
     if (Cd_new .ne. 0.0) ea = abs(Cd_new - Cd_cmp) / Cd_new
     Cd_cmp    = Cd_new
     #
     if (iteration >= imax .or. Cd_cmp < 0.0) then
-      # It will be determined by RAS GUI??? 
+      # It will be determined by RAS GUI???
       write(*,*) 'Newton-Raphson method does not converge when computing dissolved contaminant concentration. Try Bisection method or reduce time step'
       stop
     end if
@@ -1615,7 +1615,7 @@ subroutine Bisection(Cd_cmp)
     xup = C(i) * fion(i,j)
   else
     xup = C2(i) * fion2(i,j)
-  end if 
+  end if
   fup  = f(xup)
   if (fup == 0.0) then
     Cd_cmp = xup
@@ -1626,7 +1626,7 @@ subroutine Bisection(Cd_cmp)
     write(*,*) 'Bad dissolved contaminant concentration guess & Try a smaller time step'
     stop
   end if
-  
+
   do iteration = 1, imax
     xr = (xlow + xup) / 2.0
     fr = f(xr)
@@ -1643,11 +1643,11 @@ subroutine Bisection(Cd_cmp)
       exit
     end if
   end do
-  
+
   if (iteration > imax) then
     write(*,*) 'Bisection method does not converge when computing dissolved contaminant concentration.'
     stop
-  end if 
+  end if
 end subroutine
 
 """
