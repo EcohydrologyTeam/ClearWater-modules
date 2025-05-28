@@ -147,3 +147,4 @@ dmypy.json
 .DS_Store
 *alias
 *.webloc
+/examples/dev_sandbox/data_temp
