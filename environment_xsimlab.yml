@@ -30,6 +30,8 @@ dependencies:
   - pytest
   - pytest-cov
   - pyright
+  # Examples (optional)
+  - pooch # for xarray tutorial dataset
 
   # Performance profiling
   - snakeviz
