@@ -20,13 +20,13 @@ class Riverine:
         description="Datetime range for the simulation",
     )
     water_temperature = xs.variable(
-        dims=("time", "nface"),
-        intent="inout",
+        dims=("nface"),
+        intent="out",
         global_name="water_temperature",
         description="Water temperature of the grid",
     )
     volume = xs.variable(
-        dims=("time", "nface"),
+        dims=("nface"),
         intent="out",
         description="Volume of the cell",
     )
@@ -64,6 +64,6 @@ class Riverine:
     @xs.runtime(args="step_delta")
     def run_step(self, dt):
         self._transport.update()
-        self.temperature = self._transport.mesh.temperature.values
+        self.water_temperature = self._transport.mesh.temperature.values
         self.volume = self._transport.mesh.volume.values
         self.wetted_surface_area = self._transport.mesh.faces_surface_area.values

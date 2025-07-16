@@ -148,3 +148,5 @@ dmypy.json
 *alias
 *.webloc
 /examples/dev_sandbox/data_temp
+*.plk
+/data_temp

@@ -41,7 +41,7 @@ class Temperature:
     #    description="Temperature of the riverine mesh at each time step and face",
     #)
     air_temperature = xs.variable(
-        dims=("time","air_temperature"),
+        dims=("time"),
         intent="in",
     )
 
@@ -54,7 +54,7 @@ class Temperature:
     #    intent="in",
     #)
     solar_radiation = xs.variable(
-        dims=("time","solar_radiation"),
+        dims=("time"),
         intent="in",
     )
 
