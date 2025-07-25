@@ -150,3 +150,4 @@ dmypy.json
 /examples/dev_sandbox/data_temp
 *.plk
 /data_temp
+/src/clearwater_modules_v2/.vscode
