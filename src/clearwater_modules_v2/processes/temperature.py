@@ -92,11 +92,6 @@ class Temperature(Process):
         # TODO: Ask Anthony/Sarah if there is a better way to update an array in place
         # water_temperature += updated_water_temperature.fillna(0)
 
-    # TODO: implement
-    def flux_solar(self):
-        return 0
-        raise NotImplementedError()
-
     def flux_atmospheric_longwave(self, water_temperature: ArrayLike) -> xr.DataArray:
         """
         Compute the atmospheric longwave flux in of the grid in (W/m^2)
