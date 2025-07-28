@@ -2,8 +2,8 @@ GRAVITY = -9.806  # units of m/s
 STEFAN_BOLTZMANN = 5.67037442e-8  # units of W m^-2 K^-4
 EMISSIVITY_WATER = 0.97  # dimensionless
 
-#SPECIFIC HEAT CAPACITY
-SPECIFIC_HEAT_AIR = 1005.0  # units of J kg^-1 K^-1
+# SPECIFIC HEAT CAPACITY
+AIR_SPECIFIC_HEAT = 1005.0  # units of J kg^-1 K^-1
 
 # Vapor pressure fitting parameters
 # Defined in Brutsaert (1982) Evaporation into the Atmosphere, p42
