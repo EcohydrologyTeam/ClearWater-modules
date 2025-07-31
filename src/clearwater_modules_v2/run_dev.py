@@ -136,7 +136,7 @@ variables.register("cloudiness", inputs["cloudiness"])
 variables.register("wind_speed", inputs["wind_speed"])
 variables.register("atmospheric_pressure", inputs["atmospheric_pressure"])
 variables.register("atmospheric_vapor_pressure", inputs["atmospheric_vapor_pressure"])
-variables.register("sediment_temperature", 15.0)  # degrees celsius
+variables.register("sediment_temperature", 20.0)  # degrees celsius
 variables.register("sediment_thickness", 0.1)  # meters
 
 ## define our model
@@ -148,7 +148,7 @@ model = Model(
     variables=variables,
     start_time=datetime(2022, 5, 14),
     end_time=datetime(2022, 5, 15),
-    time_step=timedelta(minutes=5),
+    time_step=timedelta(seconds=30),
 )
 
 model.run()

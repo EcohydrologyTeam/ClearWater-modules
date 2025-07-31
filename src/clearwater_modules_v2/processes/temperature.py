@@ -1,6 +1,6 @@
 import functools
 from processes.base import Process
-from datetime import datetime
+from datetime import datetime, timedelta
 from variables import VariableRegistry
 import xarray as xr
 import numpy as np
@@ -35,6 +35,7 @@ class Temperature(Process):
         sediment_specific_heat: float = 1000.0,
         air_diffusivity_ratio: float = 1.0,
         sediment_diffusivity: float = 0.0061,
+        time_step_frequency: timedelta = timedelta(minutes=5),
     ) -> None:
         self.wind_a = wind_a
         self.wind_b = wind_b
@@ -43,6 +44,7 @@ class Temperature(Process):
         self.sediment_specific_heat = sediment_specific_heat
         self.air_diffusivity_ratio = air_diffusivity_ratio
         self.sediment_diffusivity = sediment_diffusivity
+        Process.__init__(self, time_step_frequency)
 
     def run(self, time_step: datetime, variables: VariableRegistry) -> None:
         """
@@ -68,9 +70,6 @@ class Temperature(Process):
         sediment_temperature = variables.get("sediment_temperature")
         sediment_thickness = variables.get("sediment_thickness")
 
-        # we do not want to perform temperature calculations on dry cells
-        # water_temperature = water_temperature.where(volume > 0)
-
         # compute the new water temperature
         updated_water_temperature = self.temperature_change(
             water_temperature=water_temperature,
@@ -86,11 +85,13 @@ class Temperature(Process):
             atmospheric_vapor_pressure=atmospheric_vapor_pressure,
         )
 
+        # we only want to update the temperature in cells that have water
+        updated_water_temperature = updated_water_temperature.where(volume > 0)
+
         # change the temperature in the registry
-        # TODO: remove temporary increase to testing
-        water_temperature *= 1.01
+        water_temperature *= 0 + updated_water_temperature
         # TODO: Ask Anthony/Sarah if there is a better way to update an array in place
-        # water_temperature += updated_water_temperature.fillna(0)
+        prt = 1
 
     def flux_atmospheric_longwave(self, water_temperature: ArrayLike) -> xr.DataArray:
         """
@@ -198,7 +199,7 @@ class Temperature(Process):
             / 0.5  # TODO: determine why we need this 0.5
             / sediment_thickness
             * (sediment_temperature - water_temperature)
-            / 86400.0  # seconds to day
+            / 86400.0  # convert days to seconds
         )
         return flux
 
@@ -217,6 +218,7 @@ class Temperature(Process):
         """
         Compute the net heatflux in of the grid in (W/m^2)
         """
+
         flux = (
             self.flux_sensible(water_temperature, air_temperature, wind_speed)
             + solar_flux  # provided as direct input
@@ -226,9 +228,8 @@ class Temperature(Process):
             + self.flux_atmospheric_longwave(
                 water_temperature
             )  # shouldn't the value handle the need for the negative?
-            + self.flux_upwelling_longwave(
-                cloudiness, air_temperature
-            )  # upwelling flux is typically a loss of energy back to atmosphere
+            # upwelling flux is typically a loss of energy back to atmosphere
+            + self.flux_upwelling_longwave(cloudiness, air_temperature)
             - self.flux_latent_heat(
                 water_temperature=water_temperature,
                 atmospheric_pressure=atmospheric_pressure,
@@ -304,6 +305,7 @@ class Temperature(Process):
                 atmospheric_vapor_pressure=atmospheric_vapor_pressure,
             )
             * surface_area
+            * self.time_step_seconds
             / (
                 volume
                 * self.density_water(water_temperature)
