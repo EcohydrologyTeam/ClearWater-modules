@@ -46,29 +46,29 @@ class Temperature(Process):
         self.sediment_diffusivity = sediment_diffusivity
         Process.__init__(self, time_step_frequency)
 
-    def run(self, time_step: datetime, variables: VariableRegistry) -> None:
+    def run(self, time_step: datetime, registry: VariableRegistry) -> None:
         """
         Run the temperature process.
         """
 
         # pull out variables from the registry
-        water_temperature = variables.get("water_temperature").sel(time=time_step)
-        surface_area = variables.get("surface_area")
-        volume = variables.get("volume").sel(time=time_step)
+        water_temperature = registry.get_at_time("water_temperature", time_step)
+        surface_area = registry.get_at_time("surface_area", time_step)
+        volume = registry.get_at_time("volume", time_step)
 
-        cloudiness = variables.get("cloudiness").sel(time=time_step)
-        air_temperature = variables.get("air_temperature").sel(time=time_step)
-        solar_flux = variables.get("solar_radiation").sel(time=time_step)
-        wind_speed = variables.get("wind_speed").sel(time=time_step)
-        atmospheric_pressure = variables.get("atmospheric_pressure").sel(time=time_step)
-        atmospheric_vapor_pressure = variables.get("atmospheric_vapor_pressure").sel(
-            time=time_step
+        cloudiness = registry.get_at_time("cloudiness", time_step)
+        air_temperature = registry.get_at_time("air_temperature", time_step)
+        solar_flux = registry.get_at_time("solar_radiation", time_step)
+        wind_speed = registry.get_at_time("wind_speed", time_step)
+        atmospheric_pressure = registry.get_at_time("atmospheric_pressure", time_step)
+        atmospheric_vapor_pressure = registry.get_at_time(
+            "atmospheric_vapor_pressure", time_step
         )
 
         # TODO: We should make the get method handle time selected
         # time independent .... for now
-        sediment_temperature = variables.get("sediment_temperature")
-        sediment_thickness = variables.get("sediment_thickness")
+        sediment_temperature = registry.get_at_time("sediment_temperature", time_step)
+        sediment_thickness = registry.get_at_time("sediment_thickness", time_step)
 
         # compute the new water temperature
         updated_water_temperature = self.temperature_change(
@@ -88,10 +88,8 @@ class Temperature(Process):
         # we only want to update the temperature in cells that have water
         updated_water_temperature = updated_water_temperature.where(volume > 0)
 
-        # change the temperature in the registry
+        # save the updated temperature
         water_temperature *= 0 + updated_water_temperature
-        # TODO: Ask Anthony/Sarah if there is a better way to update an array in place
-        prt = 1
 
     def flux_atmospheric_longwave(self, water_temperature: ArrayLike) -> xr.DataArray:
         """

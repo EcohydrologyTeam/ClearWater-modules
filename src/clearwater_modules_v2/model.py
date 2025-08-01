@@ -7,13 +7,13 @@ class Model:
     def __init__(
         self,
         processes: tuple[Process],
-        variables: VariableRegistry,
+        variable_registry: VariableRegistry,
         start_time: datetime,
         end_time: datetime,
         time_step: timedelta,
     ) -> None:
         self.__processes = processes
-        self.__variables = variables
+        self.__variables = variable_registry
         self.__start_time = start_time
         self.__end_time = end_time
         self.__time_step = time_step

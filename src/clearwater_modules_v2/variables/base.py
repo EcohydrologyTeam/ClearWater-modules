@@ -1,15 +1,26 @@
 from abc import ABC, abstractmethod
-from enum import Enum
+
+from custom_types import ArrayLike
+from datetime import datetime
 
 
 class Variable(ABC):
     """
-    Base class for variables. Defines a class-level variable registry and a run method to be implemented by subclasses.
+    Base class for variables.
     """
 
-    pass
+    def get(self) -> object:
+        """
+        Get a reference to the variable's value
+        """
+        raise NotImplementedError
 
+    def get_at_time(self, time: datetime) -> object:
+        """
+        Get a reference to the variable's value at a specific time
+        """
+        raise NotImplementedError
 
-# TODO: Consider the notion of units
-# look at metpy
-# look at pint
+    # TODO: Consider the notion of units
+    # look at metpy
+    # look at pint
