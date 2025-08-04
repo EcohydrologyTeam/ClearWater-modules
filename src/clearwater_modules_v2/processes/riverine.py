@@ -39,7 +39,7 @@ class Riverine(Process):
             ),
         )
 
-    def run(self, time_step: datetime, variables: VariableRegistry) -> None:
+    def run(self, time_step: datetime, registry: VariableRegistry) -> None:
         """
         Run the riverine process.
         """

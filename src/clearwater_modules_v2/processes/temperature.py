@@ -91,6 +91,8 @@ class Temperature(Process):
         # save the updated temperature
         water_temperature *= 0 + updated_water_temperature
 
+    #### Energy balance calculations ####
+
     def flux_atmospheric_longwave(self, water_temperature: ArrayLike) -> xr.DataArray:
         """
         Compute the atmospheric longwave flux in of the grid in (W/m^2)

@@ -13,15 +13,16 @@ class Process(ABC):
     time_step_seconds: int
 
     def __init__(self, time_step_frequency: timedelta) -> None:
+        self.time_step_frequency = time_step_frequency
         self.time_step_seconds = time_step_frequency.total_seconds()
 
-    def init_process(self, variables: VariableRegistry) -> None:
+    def init_process(self, registry: VariableRegistry) -> None:
         """
         Initialize of the process.
         """
 
     @abstractmethod
-    def run(self, time_step: datetime, variables: VariableRegistry) -> None:
+    def run(self, time_step: datetime, registry: VariableRegistry) -> None:
         """
         Run the process. To be implemented by subclasses.
         """
