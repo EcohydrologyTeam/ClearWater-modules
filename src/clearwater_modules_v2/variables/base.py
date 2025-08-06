@@ -9,13 +9,13 @@ class Variable(ABC):
     Base class for variables.
     """
 
-    def get(self) -> object:
+    def get(self) -> ArrayLike:
         """
         Get a reference to the variable's value
         """
         raise NotImplementedError
 
-    def get_at_time(self, time: datetime) -> object:
+    def get_at_time(self, time: datetime) -> ArrayLike:
         """
         Get a reference to the variable's value at a specific time
         """

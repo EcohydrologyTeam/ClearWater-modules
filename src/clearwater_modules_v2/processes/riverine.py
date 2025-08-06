@@ -2,6 +2,7 @@ from processes.base import Process
 from datetime import datetime, timedelta
 from variables import VariableRegistry, DataArrayVariable
 import clearwater_riverine as cwr
+import clearwater_riverine.utilities as cwr_utils
 
 
 class Riverine(Process):
@@ -32,10 +33,16 @@ class Riverine(Process):
             "volume",
             DataArrayVariable(self.riverine_instance.mesh.volume.copy(deep=False)),
         )
+
+        # 'wetted_surface_area' is not calculated by default
+        # We may need to specifically call the calculate_wetted_surface_area function
+        if "wetted_surface_area" not in self.riverine_instance.mesh:
+            cwr_utils.calculate_wetted_surface_area(self.riverine_instance.mesh)
+
         registry.register(
             "surface_area",
             DataArrayVariable(
-                self.riverine_instance.mesh.faces_surface_area.copy(deep=False)
+                self.riverine_instance.mesh.wetted_surface_area.copy(deep=False)
             ),
         )
 
