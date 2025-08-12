@@ -7,6 +7,8 @@ class FloatVariable(Variable):
     A variable that stores a single float value.
     """
 
+    time_dimension = None
+
     def __init__(self, value: float):
         self.value = value
 

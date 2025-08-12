@@ -4,47 +4,52 @@ from datetime import datetime
 
 class VariableRegistry:
     """
-    A simple registry for storing variables by name.
+    A simple registry for storing variables by key.
     """
 
     def __init__(self):
         self._registry = {}
 
-    def register(self, name: str, value: Variable, overwrite: bool = False):
+    def register(self, key: str, value: Variable, overwrite: bool = False):
         """
-        Register a variable with a given name.
+        Register a variable with a given key.
         """
-        if name in self._registry and not overwrite:
-            raise ValueError(f"Variable {name} already registered.")
-        self._registry[name] = value
+        if key in self._registry and not overwrite:
+            raise ValueError(f"Variable {key} already registered.")
+        self._registry[key] = value
 
-    def unregister(self, name: str):
+    def unregister(self, key: str):
         """
         Remove a variable from the registry.
         """
-        if name in self._registry:
-            del self._registry[name]
+        if key in self._registry:
+            del self._registry[key]
 
-    def get(self, name: str) -> object:
+    def get(self, key: str) -> object:
         """
-        Retrieve a variable by name.
+        Retrieve a variable by key.
         """
         variable: Variable | None = None
         try:
-            variable = self._registry[name]
+            variable = self._registry[key]
         except KeyError:
-            raise ValueError(f"Variable {name} not found.")
+            raise ValueError(f"Variable {key} not found.")
 
         return variable.get()
 
-    def get_at_time(self, name: str, time: datetime) -> object:
+    def get_at_time(self, key: str, time: datetime) -> object:
         """
-        Retrieve a variable by name and time.
+        Retrieve a variable by key and time.
         """
         variable: Variable | None = None
         try:
-            variable = self._registry[name]
+            variable = self._registry[key]
         except KeyError:
-            raise ValueError(f"Variable {name} not found.")
+            raise ValueError(
+                f"Variable {key} not found in registry. Did you forget to register a variable?"
+            )
 
         return variable.get_at_time(time)
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._registry

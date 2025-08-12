@@ -9,6 +9,14 @@ class Variable(ABC):
     Base class for variables.
     """
 
+    @property
+    @abstractmethod
+    def time_dimension(self) -> str | None:
+        """
+        Get the time dimension of the variable.
+        """
+        raise NotImplementedError
+
     def get(self) -> ArrayLike:
         """
         Get a reference to the variable's value

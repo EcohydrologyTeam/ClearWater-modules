@@ -21,6 +21,16 @@ class Process(ABC):
         Initialize of the process.
         """
 
+    def validate(self, registry: VariableRegistry) -> None:
+        """
+        Validate the process.
+        """
+        for variable in self.variables:
+            if variable not in registry:
+                raise ValueError(
+                    f"Variable {variable} not found. Are you sure you provided a valid configuration for {variable}?"
+                )
+
     @abstractmethod
     def run(self, time_step: datetime, registry: VariableRegistry) -> None:
         """

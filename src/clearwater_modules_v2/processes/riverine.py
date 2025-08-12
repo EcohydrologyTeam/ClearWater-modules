@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from variables import VariableRegistry, DataArrayVariable
 import clearwater_riverine as cwr
 import clearwater_riverine.utilities as cwr_utils
+from pathlib import Path
 
 
 class Riverine(Process):
@@ -19,6 +20,20 @@ class Riverine(Process):
     ) -> None:
         self.riverine_instance = riverine_instance
         Process.__init__(self, time_step_frequency)
+
+    def from_file_path(
+        configuration_path: str | Path,
+        start_datetime: str,
+        end_datetime: str,
+        time_step_frequency: timedelta = timedelta(seconds=30),
+    ) -> "Riverine":
+        return Riverine(
+            cwr.ClearwaterRiverine(
+                config_filepath=configuration_path,
+                datetime_range=(start_datetime, end_datetime),
+            ),
+            time_step_frequency,
+        )
 
     def init_process(self, registry: VariableRegistry) -> None:
         """

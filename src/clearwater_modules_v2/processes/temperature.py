@@ -24,7 +24,19 @@ class Temperature(Process):
     __A5 = -8.023923082e-8
     __A6 = 6.136820929e-11
 
-    variables = []
+    variables = [
+        "water_temperature",
+        "surface_area",
+        "volume",
+        "cloudiness",
+        "air_temperature",
+        "solar_radiation",
+        "wind_speed",
+        "atmospheric_pressure",
+        "atmospheric_vapor_pressure",
+        "sediment_temperature",
+        "sediment_thickness",
+    ]
 
     def __init__(
         self,
