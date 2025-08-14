@@ -151,3 +151,4 @@ dmypy.json
 *.plk
 /data_temp
 /src/clearwater_modules_v2/.vscode
+/src/clearwater_modules_v2/met.zarr
