@@ -2,6 +2,7 @@ from processes.base import Process
 from variables import VariableRegistry, Variable
 from datetime import datetime, timedelta
 from typing import Iterable
+from data_io.base import DataSource, ChunkedDataSource
 
 
 class Model:
@@ -9,17 +10,21 @@ class Model:
         self,
         processes: tuple[Process],
         variable_registry: VariableRegistry,
+        variable_data_sources: dict[str, DataSource | ChunkedDataSource],
         start_time: datetime,
         end_time: datetime,
         time_step: timedelta,
-        output_variables: Iterable[str | Variable],
+        output_variables: Iterable[str],
+        chunk_size: timedelta | None = None,
     ) -> None:
         self.__processes = processes
-        self.__variables = variable_registry
+        self.__registry = variable_registry
+        self.__variable_data_sources = variable_data_sources
         self.__start_time = start_time
         self.__end_time = end_time
         self.__time_step = time_step
         self.__output_variables = output_variables
+        self.__chunk_size = chunk_size
 
     def validate(self) -> None:
         if self.__start_time >= self.__end_time:
@@ -31,8 +36,22 @@ class Model:
         self.__finalize_model()
 
     def __init_model(self) -> None:
+        # load model or first chunk
+        for variable_name, data_source in self.__variable_data_sources.items():
+            if isinstance(data_source, ChunkedDataSource):
+                data = data_source.read_chunk(
+                    self.__start_time, self.__start_time + self.__chunk_size
+                )
+            else:
+                data = data_source.read(variable_name)
+
+            self.__registry.register(
+                variable_name,
+                data,
+            )
+
         for process in self.__processes:
-            process.init_process(self.__variables)
+            process.init_process(self.__registry)
 
     def __process_loop(self) -> None:
         current_time = self.__start_time
@@ -41,11 +60,10 @@ class Model:
             for process in self.__processes:
                 # check if this process should be updated at this timestamp
                 if current_time_seconds % process.time_step_seconds == 0:
-                    process.run(current_time, self.__variables)
+                    process.run(current_time, self.__registry)
             current_time += self.__time_step
 
     def __finalize_model(self) -> None:
         for var in self.__output_variables:
-            if isinstance(var, str):
-                var = self.__variables.get(var)
+            var = self.__registry.get(var)
             var.save()

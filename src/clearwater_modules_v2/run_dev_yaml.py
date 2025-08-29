@@ -1,6 +1,6 @@
 from config import init_from_file
 
-config = "dev.yml"
+config = "./clearwater_modules_v2/dev.yml"
 
 ### Define the model
 model = init_from_file(config)

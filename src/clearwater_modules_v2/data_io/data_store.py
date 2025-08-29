@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 from dask import array as da
 
+ZARR_NAME = "model_data.zarr"
+
 
 def init_data_store(
     root_directory: Path,
@@ -25,8 +27,6 @@ def init_data_store(
     )
 
     # write the template out to generate zarr
-    template_dataset.to_zarr(
-        root_directory / "model_data.zarr", mode="w", compute=False
-    )
+    template_dataset.to_zarr(root_directory / ZARR_NAME, mode="w", compute=False)
 
-    return Path(root_directory / "model_data.zarr")
+    return Path(root_directory / ZARR_NAME)
