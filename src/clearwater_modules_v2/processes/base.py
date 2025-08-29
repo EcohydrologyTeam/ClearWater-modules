@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from variables import VariableRegistry
+from clearwater_data.variables import VariableRegistry
 
 
 class Process(ABC):

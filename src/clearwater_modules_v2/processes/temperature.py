@@ -1,12 +1,11 @@
-import functools
 from processes.base import Process
 from datetime import datetime, timedelta
-from variables import VariableRegistry
+from clearwater_data.variables import VariableRegistry
 import xarray as xr
 import numpy as np
 from utils import constants, conversions
 
-from custom_types import ArrayLike
+from clearwater_data.custom_types import ArrayLike
 
 
 class Temperature(Process):
@@ -103,7 +102,7 @@ class Temperature(Process):
         # save the updated temperature
         water_temperature *= 0 + updated_water_temperature
 
-    #### Energy balance calculations ####
+        #### Energy balance calculations ####
 
     def flux_atmospheric_longwave(self, water_temperature: ArrayLike) -> xr.DataArray:
         """

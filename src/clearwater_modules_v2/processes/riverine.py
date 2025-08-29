@@ -1,6 +1,6 @@
 from processes.base import Process
 from datetime import datetime, timedelta
-from variables import VariableRegistry, DataArrayVariable
+from clearwater_data.variables import VariableRegistry, DataArrayVariable
 import clearwater_riverine as cwr
 import clearwater_riverine.utilities as cwr_utils
 from pathlib import Path

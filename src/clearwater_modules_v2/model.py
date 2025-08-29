@@ -1,8 +1,8 @@
 from processes.base import Process
-from variables import VariableRegistry, Variable
+from clearwater_data.variables import VariableRegistry
 from datetime import datetime, timedelta
 from typing import Iterable
-from data_io.base import DataSource, ChunkedDataSource
+from clearwater_data.io.base import DataSource, ChunkedDataSource
 
 
 class Model:

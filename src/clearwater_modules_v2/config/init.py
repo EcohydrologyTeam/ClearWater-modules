@@ -4,14 +4,15 @@ from processes.base import Process
 from pathlib import Path
 from .read import read_config
 from datetime import timedelta, datetime
-from variables import VariableRegistry
-import data_io
-from data_io.zarr import ZarrDataStore, ZarrDataSource
-from data_io.base import DataSource, ChunkedDataSource
+from clearwater_data.variables import VariableRegistry
+from clearwater_data.io.zarr import ZarrDataStore, ZarrDataSource
+from clearwater_data.io.csv import CSVDataSource
+from clearwater_data.io.base import DataSource, ChunkedDataSource
+from clearwater_data.io.float import FloatDataSource
 import pandas as pd
 import xarray as xr
 
-from utils._typing import ArrayLike
+from clearwater_data.custom_types import ArrayLike
 
 import warnings
 
@@ -108,7 +109,7 @@ def __init_model_data(
         # float data can be provided directly to the model
         source = sources[source_name]
         # TODO we need to come back for float data sources
-        if isinstance(source, data_io.float.FloatDataSource):
+        if isinstance(source, FloatDataSource):
             variable_data_sources[source_name] = source
             continue
 
@@ -179,8 +180,8 @@ def __parse_variable_map(
 
 def __init_data_sources(
     config: dict,
-) -> dict[str, data_io.DataSource]:
-    data_source: dict[str, data_io.DataSource] = {}
+) -> dict[str, DataSource]:
+    data_source: dict[str, DataSource] = {}
     for source_name, source_config in config["data_sources"].items():
         provider_name = source_config["provider"]
         if "|" in source_name:
@@ -188,9 +189,9 @@ def __init_data_sources(
                 f"Invalid source name: {source_name}. Source names cannot contain the '|' character."
             )
         if provider_name.lower() == "csv":
-            data_source[source_name] = data_io.CSVDataSource(**source_config["data"])
+            data_source[source_name] = CSVDataSource(**source_config["data"])
         elif provider_name.lower() == "float":
-            data_source[source_name] = data_io.FloatDataSource(**source_config["data"])
+            data_source[source_name] = FloatDataSource(**source_config["data"])
         else:
             raise ValueError(
                 f"Unknown data or unsupported data provider type: `{provider_name}` for data_source {source_name}"
@@ -295,7 +296,6 @@ def __check_dimensions(
     data: ArrayLike,
 ) -> None:
     # add scalar dimension to align with zarr input template
-    data = data.expand_dims({"scalar": 1})
     return data
 
 

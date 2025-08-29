@@ -1,7 +1,4 @@
-import functools
-
-from custom_types import ArrayLike
-# TODO: type hints
+from clearwater_data import ArrayLike
 
 
 # @functools.lru_cache(maxsize=2)
