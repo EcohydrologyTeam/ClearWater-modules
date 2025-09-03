@@ -58,6 +58,14 @@ def init_from_config(config: dict) -> Model:
 
     model_data_source = ZarrDataSource(store_path=root_directory / "model_inputs.zarr")
 
+    output_data_store = ZarrDataStore(
+        store_path=root_directory / "model_outputs.zarr",
+        start_date=start_time,
+        end_date=end_time,
+        time_step=time_step,
+        variables=config["model"].get("output_variables", []),
+    )
+
     # TODO: read data sources from conf
     return Model(
         processes=processes,
@@ -67,6 +75,7 @@ def init_from_config(config: dict) -> Model:
         end_time=end_time,
         time_step=time_step,
         output_variables=config["model"].get("output_variables", []),
+        output_store=output_data_store,
     )
 
 

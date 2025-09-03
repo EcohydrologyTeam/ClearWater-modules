@@ -3,6 +3,7 @@ model:
   end_datetime: '2022-05-15 00:00:00'
   time_step: '30s'
   root_directory: C:\Users\ptomasula\Repositories\ClearWater-modules\data_temp\dev
+  output_variables: ["water_temperature"]
 processes:
 - riverine:
     configuration_path: C:\Users\ptomasula\Repositories\ClearWater-modules\data_temp\sumwere_creek_coarse_p48\demo_config.yml
