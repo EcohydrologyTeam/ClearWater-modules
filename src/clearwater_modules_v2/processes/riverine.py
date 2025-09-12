@@ -61,11 +61,23 @@ class Riverine(Process):
             ),
         )
 
+        # The riverine model use current time_step as the start point and
+        # updates the model at the time_step + delta time.
+        # The rest of modules uses a definition of time_step as the time
+        # to be updated. This boolean allows us to skip the first time_step
+        self.__skip_first_time_step = True
+
     def run(self, time_step: datetime, registry: VariableRegistry) -> None:
         """
         Run the riverine process.
         """
-        # run next riverine time step
+        if self.__skip_first_time_step:
+            self.__skip_first_time_step = False
+            return
+
+        # run the next time step
         self.riverine_instance.update()
-        # temperature updates are handled by other modules
-        # which access the Riverine data directly (via the registry).
+
+        # previous couplings with riverine model required passing data arrays
+        # to the model. Now we are using the registry to access the data.
+        # ClearWater-Modules update the memory directly through the registry.

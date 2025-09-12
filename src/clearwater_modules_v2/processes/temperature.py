@@ -7,10 +7,17 @@ from utils import constants, conversions
 
 from clearwater_data.custom_types import ArrayLike
 
+# References:
+# https://erdc-library.erdc.dren.mil/server/api/core/bitstreams/81b728f8-87a7-4ef8-e053-411ac80adeb3/content
+
 
 class Temperature(Process):
     """
-    Temperature process.
+    The temperature process simulates an energy balance to update water temperature.
+
+    This is an implementation of the methodology outlined in Water Temperature Simulation Module
+    developed by the U.S. Army Engineer Research and Development Center (ERDC) and presented in the
+    Aquatic Nutrient Simulation Modules (NSMs) Developed for Hydrologic and Hydraulic Models report.
     """
 
     # Vapor pressure fitting parameters
@@ -48,6 +55,20 @@ class Temperature(Process):
         sediment_diffusivity: float = 0.0061,
         time_step_frequency: timedelta = timedelta(minutes=5),
     ) -> None:
+        """
+        Initialize the temperature process.
+
+        Parameters:
+            wind_a (float): Wind function parameter
+            wind_b (float): Wind function parameter
+            wind_c (float): Wind function parameter
+            sediment_density (ArrayLike): Sediment density in units of g/cm^3
+            sediment_specific_heat (float): Sediment specific heat in units of J/kg/C
+            air_diffusivity_ratio (float): Air diffusivity ratio
+            sediment_diffusivity (float): Sediment diffusivity in units of m^2/s
+            time_step_frequency (timedelta): Time step frequency
+        """
+        # TODO: We should get Billy to both explain and provide guidance on wind parameters
         self.wind_a = wind_a
         self.wind_b = wind_b
         self.wind_c = wind_c
@@ -100,7 +121,7 @@ class Temperature(Process):
         updated_water_temperature = updated_water_temperature.where(volume > 0)
 
         # save the updated temperature
-        water_temperature *= 0 + updated_water_temperature
+        water_temperature *= 0 + updated_water_temperature.fillna(0)
 
         #### Energy balance calculations ####
 
@@ -126,10 +147,10 @@ class Temperature(Process):
         cloudiness: ArrayLike,
     ) -> ArrayLike:
         """
-        Compute the upwelling longwave flux in of the grid in (W/m^2)
+        Compute the upwelling longwave flux in of the grid in units of (W/m^2)
 
         Parameters:
-            air_temperature [xr.DataArray]: Air temperature in units of celsius
+            air_temperature [xr.DataArray]: Air temperature in units of celsius (C)
         Returns:
             flux_upwelling_longwave [xr.DataArray]: Upwelling longwave flux in units of W/m^2
         """
@@ -139,7 +160,10 @@ class Temperature(Process):
             * (1 + 0.17 * cloudiness**2)
             * constants.STEFAN_BOLTZMANN
             # This equation is for air temperature in Kelvin
-            * conversions.celsius_to_kelvin(air_temperature) ** 6
+            # note the original equation air_temperature raised to the 6th power
+            # but the STEFAN_BOLTZMANN constant is only to the 4th power.
+            # So I believe this is a typo in the original equation as the deminsions don't work out otherwise.
+            * conversions.celsius_to_kelvin(air_temperature) ** 4
         )
         return flux
 
@@ -151,21 +175,22 @@ class Temperature(Process):
         atmospheric_vapor_pressure: ArrayLike,
     ) -> xr.DataArray:
         """
+        Returns latent heat flux in of the grid in units of (W/m^2)
 
         Parameters:
             atmospheric_pressure (ArrayLike): atmospheric pressure scaled or grid rectified in units of millibars
-            water_temperature (ArrayLike): _description_
-            wind_speed (ArrayLike): _description_
-            wind_function (ArrayLike): _description_
+            water_temperature (ArrayLike): water temperature in units of celsius
+            wind_speed (ArrayLike): wind speed in units of m/s
+            atmospheric_vapor_pressure (ArrayLike): atmospheric vapor pressure in units of millibars
 
         Returns:
-            xr.DataArray: _description_
+            xr.DataArray: latent heat flux in units of W/m^2
         """
         flux = (
             0.622
             / atmospheric_pressure
             * self.latent_heat_vaporization(water_temperature)
-            * self.density_water(water_temperature)
+            * self.water_density(water_temperature)
             * self.wind_function(wind_speed)
             * (
                 self.saturation_vapor_pressure(water_temperature)
@@ -191,7 +216,7 @@ class Temperature(Process):
         flux = (
             self.air_diffusivity_ratio
             * constants.AIR_SPECIFIC_HEAT
-            * self.density_water(water_temperature)
+            * self.water_density(water_temperature)
             * self.wind_function(wind_speed)
             * (air_temperature_kelvin - water_temperature_kelvin)
         )
@@ -230,23 +255,26 @@ class Temperature(Process):
         Compute the net heatflux in of the grid in (W/m^2)
         """
 
+        sensible = self.flux_sensible(water_temperature, air_temperature, wind_speed)
+        latent = self.flux_latent_heat(
+            water_temperature=water_temperature,
+            atmospheric_pressure=atmospheric_pressure,
+            wind_speed=wind_speed,
+            atmospheric_vapor_pressure=atmospheric_vapor_pressure,
+        )
+        sediment = self.flux_sediment(
+            water_temperature, sediment_temperature, sediment_thickness
+        )
+        longwave = self.flux_atmospheric_longwave(water_temperature)
+        upwelling = self.flux_upwelling_longwave(cloudiness, air_temperature)
+
         flux = (
-            self.flux_sensible(water_temperature, air_temperature, wind_speed)
+            sensible
             + solar_flux  # provided as direct input
-            + self.flux_sediment(
-                water_temperature, sediment_temperature, sediment_thickness
-            )
-            + self.flux_atmospheric_longwave(
-                water_temperature
-            )  # shouldn't the value handle the need for the negative?
-            # upwelling flux is typically a loss of energy back to atmosphere
-            + self.flux_upwelling_longwave(cloudiness, air_temperature)
-            - self.flux_latent_heat(
-                water_temperature=water_temperature,
-                atmospheric_pressure=atmospheric_pressure,
-                wind_speed=wind_speed,
-                atmospheric_vapor_pressure=atmospheric_vapor_pressure,
-            )
+            + sediment
+            + longwave
+            - upwelling
+            - latent
         )
         return flux
 
@@ -319,13 +347,13 @@ class Temperature(Process):
             * self.time_step_seconds
             / (
                 volume
-                * self.density_water(water_temperature)
+                * self.water_density(water_temperature)
                 * self.water_specific_heat(water_temperature)
             )
         )
 
     # @functools.lru_cache(maxsize=1)
-    def density_water(self, temperature: ArrayLike) -> ArrayLike:
+    def water_density(self, temperature: ArrayLike) -> ArrayLike:
         """Compute the density of water (kg/m3) as a function of water temperature (Celsius)
         Parameters:
             temperature - Water temperature in units of Celsius
@@ -354,14 +382,14 @@ class Temperature(Process):
     # @functools.lru_cache(maxsize=1)
     def saturation_vapor_pressure(self, water_temperature: ArrayLike) -> ArrayLike:
         """
-        Compute the saturation vapor pressure (mb) as a function of water temperature (Kelvin)
+        Compute the saturation vapor pressure (mb) as a function of water temperature (celsius)
         Parameters:
-            temperature - Water temperature in units of Celsius
+            water_temperature - Water temperature in units of Celsius
         Returns:
             DataArray/Float with value for the saturation vapor pressure in units of mb
         """
         water_temperature_kelvin = conversions.celsius_to_kelvin(water_temperature)
-        return self.__A0 + water_temperature_kelvin * (
+        saturation_vapor_pressure = self.__A0 + water_temperature_kelvin * (
             self.__A1
             + water_temperature_kelvin
             * (
@@ -378,6 +406,7 @@ class Temperature(Process):
                 )
             )
         )
+        return saturation_vapor_pressure
 
     # TODO: this needs the richardson function
     # @functools.lru_cache(maxsize=1)
