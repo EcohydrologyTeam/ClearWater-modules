@@ -1,0 +1,17 @@
+# Sphinx build artifacts
+_build/
+_static/
+_templates/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
