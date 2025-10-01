@@ -4,7 +4,7 @@ from processes.base import Process
 from pathlib import Path
 from .read import read_config
 from datetime import timedelta, datetime
-from clearwater_data.variables import VariableRegistry
+from clearwater_data.variables import DataArrayVariable, Variable, VariableRegistry
 from clearwater_data.io.zarr import ZarrDataStore, ZarrDataSource
 from clearwater_data.io.csv import CSVDataSource
 from clearwater_data.io.base import DataSource, ChunkedDataSource
@@ -135,24 +135,18 @@ def __init_model_data(
             # read the data from the original data source
             data = source.read(parameter_name)
 
-            # resample the data to the model time step
-            data = __resample_data(
-                data=data,
-                start_time=start_time,
-                end_time=end_time,
-                time_step=time_step,
-                # TODO: consider support for different interpolation methods
-            )
+            # To store all input data in a common zarr store, we need to align the raw data
+            # to the time dimensions of the model input data store
+            data.subset_time(start_time, end_time)
+            data.resample(
+                new_time_frequency=time_step,
+            )  # TODO: consider support for different interpolation methods
 
             # validate and transform the data
-            data = __validate_and_transform(
-                data=data,
+            data = __rename_parameter(
+                variable=data,
                 parameter_name=parameter_name,
                 variable_name=variable_name,
-                start_time=start_time,
-                end_time=end_time,
-                time_step=time_step,
-                interpolation_method="linear",
             )
 
             # write the data to the intermediate data store
@@ -211,7 +205,12 @@ def __init_data_sources(
 def __init_processes(config: dict, default_time_step: timedelta) -> list[Process]:
     process_instances = []
     for process in config["processes"]:
+        # TODO: this does not seem scalable to me
+        # Maybe we should set up factory pattern or something
         process_name, process_config = *process.keys(), *process.values()
+
+        process_config = process_config if process_config is not None else {}
+
         if process_name.lower() == "riverine":
             process_instances.append(
                 __init_riverine(
@@ -223,6 +222,10 @@ def __init_processes(config: dict, default_time_step: timedelta) -> list[Process
         elif process_name.lower() == "temperature":
             process_instances.append(
                 __init_temperature(process_config, default_time_step)
+            )
+        elif process_name.lower() == "floating_algae":
+            process_instances.append(
+                __init_floating_algae(process_config, default_time_step)
             )
         else:
             raise ValueError(f"Unknown process type: {process_name}")
@@ -261,60 +264,26 @@ def __init_temperature(
     )
 
 
-def __validate_and_transform(
-    data: ArrayLike,
-    parameter_name: str,
-    variable_name: str,
-    start_time: datetime,
-    end_time: datetime,
-    time_step: timedelta,
-    interpolation_method: str = "linear",
-) -> ArrayLike:
-    data = __resample_data(data, start_time, end_time, time_step, interpolation_method)
-    data = __check_dimensions(data)
-    data = __rename(data, parameter_name, variable_name)
-    return data
-
-
-# TODO: this should maybe get moved to a util module?
-def __resample_data(
-    data: ArrayLike,
-    start_time: datetime,
-    end_time: datetime,
-    time_step: timedelta,
-    interpolation_method: str = "linear",
-) -> ArrayLike:
-    data = data.sel(time=slice(start_time, end_time))
-    return data.resample(time=time_step).interpolate(interpolation_method)
-
-
-def __rename(
-    data: ArrayLike,
-    parameter_name: str,
-    variable_name: str,
-) -> ArrayLike:
-    if isinstance(data, xr.Dataset):
-        return data.rename({parameter_name: variable_name})
-    elif isinstance(data, xr.DataArray):
-        return data.rename(variable_name)
+def __init_floating_algae(
+    process_config: dict,
+    default_time_step: timedelta,
+) -> processes.nutrients.FloatingAlgae:
+    if "time_step" in process_config:
+        time_step_frequency = pd.Timedelta(process_config["time_step"])
+        process_config.pop("time_step")
     else:
-        raise ValueError("Data must be an xarray Dataset or DataArray")
+        time_step_frequency = default_time_step
+    return processes.nutrients.FloatingAlgae(
+        **process_config, time_step_frequency=time_step_frequency
+    )
 
 
-def __check_dimensions(
-    data: ArrayLike,
-) -> None:
-    # add scalar dimension to align with zarr input template
-    return data
-
-
-"""
-    init_model_data -> generate a zarr store which I can write data to
-    loop for provider in sources:
-        provider -> data from source -> source_dataset
-        write source_dataset to zarr store at mapped_variable_name
-
-    we also need a method to read data from the zarr into the registry 
-    but figure that out next
-
-"""
+def __rename_parameter(
+    variable: Variable,
+    parameter_name: str,
+    variable_name: str,
+) -> ArrayLike:
+    if isinstance(variable.get(), xr.Dataset):
+        return variable.get().rename({parameter_name: variable_name})
+    elif isinstance(variable.get(), xr.DataArray):
+        return variable.get().rename(variable_name)

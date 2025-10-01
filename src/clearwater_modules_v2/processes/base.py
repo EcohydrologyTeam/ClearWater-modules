@@ -2,6 +2,11 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from clearwater_data.variables import VariableRegistry
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from model import Model
+
 
 class Process(ABC):
     """
@@ -16,10 +21,12 @@ class Process(ABC):
         self.time_step_frequency = time_step_frequency
         self.time_step_seconds = time_step_frequency.total_seconds()
 
-    def init_process(self, registry: VariableRegistry) -> None:
+    def init_process(self, model: "Model", registry: VariableRegistry) -> None:
         """
         Initialize of the process.
         """
+        # base method assumes no initialization is needed
+        pass
 
     def validate(self, registry: VariableRegistry) -> None:
         """

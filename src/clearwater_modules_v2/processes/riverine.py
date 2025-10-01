@@ -1,9 +1,14 @@
 from processes.base import Process
 from datetime import datetime, timedelta
-from clearwater_data.variables import VariableRegistry, DataArrayVariable
+from clearwater_data.variables import VariableRegistry, DataArrayVariable, FloatVariable
 import clearwater_riverine as cwr
 import clearwater_riverine.utilities as cwr_utils
 from pathlib import Path
+from processes.nutrients.floating_algae import FloatingAlgae
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from model import Model
 
 
 class Riverine(Process):
@@ -35,10 +40,12 @@ class Riverine(Process):
             time_step_frequency,
         )
 
-    def init_process(self, registry: VariableRegistry) -> None:
+    def init_process(self, model: "Model", registry: VariableRegistry) -> None:
         """
         Initialize the riverine process.
         """
+        # TODO: Ideally Riverine will register these to the registry as part of it's initialization
+
         # register the water temperature, volume, and surface area to the registry
         registry.register(
             "water_temperature",
@@ -60,6 +67,30 @@ class Riverine(Process):
                 self.riverine_instance.mesh.wetted_surface_area.copy(deep=False)
             ),
         )
+
+        # TODO: update once Riverine can register variables to the registry
+        if model.has_process(FloatingAlgae):
+            registry.register(
+                "algae_floating",
+                DataArrayVariable(self.riverine_instance.mesh.Ap.copy(deep=False)),
+            )
+            registry.register(
+                "ammonium",
+                DataArrayVariable(self.riverine_instance.mesh.NH4.copy(deep=False)),
+            )
+            registry.register(
+                "nitrate",
+                DataArrayVariable(self.riverine_instance.mesh.NO3.copy(deep=False)),
+            )
+            registry.register(
+                "phosphorus_total_inorganic",
+                DataArrayVariable(self.riverine_instance.mesh.TIP.copy(deep=False)),
+            )
+            # TODO: Follow-up with Sarah about having riverine compute depth
+            registry.register(
+                "depth",
+                FloatVariable(1.5),
+            )
 
         # The riverine model use current time_step as the start point and
         # updates the model at the time_step + delta time.

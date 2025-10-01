@@ -1,3 +1,4 @@
+from clearwater_riverine import mesh
 from processes.base import Process
 from clearwater_data.variables import VariableRegistry
 from datetime import datetime, timedelta
@@ -56,6 +57,9 @@ class Model:
         else:
             self.__process_loop_full()
 
+    def has_process(self, process_type: type[Process]) -> bool:
+        return any(isinstance(p, process_type) for p in self.__processes)
+
     def __init_model(self) -> None:
         # load model or first chunk
         for variable_name, data_source in self.__variable_data_sources.items():
@@ -72,7 +76,7 @@ class Model:
             )
 
         for process in self.__processes:
-            process.init_process(self.__registry)
+            process.init_process(self, self.__registry)
 
     def __process_loop_chunked(self) -> None:
         # TODO: this need actual chunking logic
@@ -88,10 +92,12 @@ class Model:
 
     def __process_loop_full(self) -> None:
         current_time = self.__start_time
+
         while current_time < self.__end_time:
             current_time_seconds = current_time.timestamp()
             for process in self.__processes:
                 # check if this process should be updated at this timestamp
+                # Process should be calculated is current_time + process.time_step_frequency
                 if current_time_seconds % process.time_step_seconds == 0:
                     process.run(current_time, self.__registry)
             current_time += self.__time_step
