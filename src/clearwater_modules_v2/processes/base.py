@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
+import functools
+from typing import Callable
+
 from clearwater_data.variables import VariableRegistry
 
 from typing import TYPE_CHECKING
@@ -17,9 +20,13 @@ class Process(ABC):
     variables = []
     time_step_seconds: int
 
-    def __init__(self, time_step_frequency: timedelta) -> None:
-        self.time_step_frequency = time_step_frequency
-        self.time_step_seconds = time_step_frequency.total_seconds()
+    def __init__(self, time_step: timedelta) -> None:
+        self.time_step = time_step
+        self.time_step_seconds = self.time_step.total_seconds()
+
+    @classmethod
+    def from_config(cls, config: dict) -> "Process":
+        return cls(**config)
 
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
         """
@@ -44,3 +51,28 @@ class Process(ABC):
         Run the process. To be implemented by subclasses.
         """
         raise NotImplementedError
+
+
+class ProcessFactory:
+    processes: dict[str, callable] = {}
+
+    @classmethod
+    def from_config(cls, process_name: str, config: dict) -> "Process":
+        if process_name not in cls.processes:
+            raise ValueError(
+                f"Process type {process_name} not registered. Did you register the process at the {__name__}"
+            )
+        return cls.processes[process_name](config)
+
+    @classmethod
+    def register(cls, process_name: str):
+        def init_method(from_config_method: Callable) -> Callable:
+            cls.processes[process_name] = from_config_method
+
+            @functools.wraps(from_config_method)
+            def from_config_method(config: dict) -> "Process":
+                return from_config_method(config)
+
+            return from_config_method
+
+        return init_method

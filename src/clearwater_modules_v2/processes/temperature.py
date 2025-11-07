@@ -1,4 +1,4 @@
-from processes.base import Process
+from processes.base import Process, ProcessFactory
 from datetime import datetime, timedelta
 from clearwater_data.variables import VariableRegistry
 import xarray as xr
@@ -53,7 +53,7 @@ class Temperature(Process):
         sediment_specific_heat: float = 1000.0,
         air_diffusivity_ratio: float = 1.0,
         sediment_diffusivity: float = 0.0061,
-        time_step_frequency: timedelta = timedelta(minutes=5),
+        time_step: timedelta = timedelta(minutes=5),
     ) -> None:
         """
         Initialize the temperature process.
@@ -76,7 +76,12 @@ class Temperature(Process):
         self.sediment_specific_heat = sediment_specific_heat
         self.air_diffusivity_ratio = air_diffusivity_ratio
         self.sediment_diffusivity = sediment_diffusivity
-        Process.__init__(self, time_step_frequency)
+        Process.__init__(self, time_step)
+
+    @ProcessFactory.register("temperature")
+    @staticmethod
+    def from_config(config: dict) -> "Temperature":
+        return Temperature(**config)
 
     def run(self, time_step: datetime, registry: VariableRegistry) -> None:
         """

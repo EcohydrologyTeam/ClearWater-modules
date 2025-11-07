@@ -57,8 +57,17 @@ class Model:
         else:
             self.__process_loop_full()
 
-    def has_process(self, process_type: type[Process]) -> bool:
+    def has_process(self, process_type: type[Process] | str) -> bool:
+        if isinstance(process_type, str):
+            return any(p.name == process_type for p in self.__processes)
         return any(isinstance(p, process_type) for p in self.__processes)
+
+    def get_process(self, process_type: type[Process] | str) -> Process:
+        if not self.has_process(process_type):
+            raise ValueError(f"Process {process_type} not found in model.")
+        if isinstance(process_type, str):
+            return next(p for p in self.__processes if p.name == process_type)
+        return next(p for p in self.__processes if isinstance(p, process_type))
 
     def __init_model(self) -> None:
         # load model or first chunk
@@ -83,6 +92,7 @@ class Model:
         current_time = self.__start_time
         while current_time < self.__end_time:
             current_time_seconds = current_time.timestamp()
+            print(f"Running timestep: {current_time}")
             for process in self.__processes:
                 # check if this process should be updated at this timestamp
                 if current_time_seconds % process.time_step_seconds == 0:

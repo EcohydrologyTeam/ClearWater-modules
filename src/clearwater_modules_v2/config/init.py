@@ -1,6 +1,6 @@
 from model import Model
 import processes
-from processes.base import Process
+from processes.base import Process, ProcessFactory
 from pathlib import Path
 from .read import read_config
 from datetime import timedelta, datetime
@@ -204,78 +204,26 @@ def __init_data_sources(
 
 def __init_processes(config: dict, default_time_step: timedelta) -> list[Process]:
     process_instances = []
-    for process in config["processes"]:
+    for process_spec in config["processes"]:
         # TODO: this does not seem scalable to me
         # Maybe we should set up factory pattern or something
-        process_name, process_config = *process.keys(), *process.values()
+        process_name, process_config = *process_spec.keys(), *process_spec.values()
 
         process_config = process_config if process_config is not None else {}
+        if "time_step" not in process_config:
+            process_config["time_step"] = default_time_step
+        if not isinstance(process_config["time_step"], timedelta):
+            process_config["time_step"] = pd.to_timedelta(process_config["time_step"])
 
+        # riverine is a standalone model and needs the datetime range from the model config
         if process_name.lower() == "riverine":
-            process_instances.append(
-                __init_riverine(
-                    process_config,
-                    default_time_step,
-                    config,
-                )
-            )
-        elif process_name.lower() == "temperature":
-            process_instances.append(
-                __init_temperature(process_config, default_time_step)
-            )
-        elif process_name.lower() == "floating_algae":
-            process_instances.append(
-                __init_floating_algae(process_config, default_time_step)
-            )
-        else:
-            raise ValueError(f"Unknown process type: {process_name}")
+            process_config["start_datetime"] = config["model"]["start_datetime"]
+            process_config["end_datetime"] = config["model"]["end_datetime"]
+
+        process_instance = ProcessFactory.from_config(process_name, process_config)
+        process_instances.append(process_instance)
+
     return process_instances
-
-
-def __init_riverine(
-    process_config: dict,
-    default_time_step: timedelta,
-    config: dict,
-) -> processes.Riverine:
-    configuration_path = process_config["configuration_path"]
-    if "time_step" in process_config:
-        time_step_frequency = pd.Timedelta(process_config["time_step"])
-    else:
-        time_step_frequency = default_time_step
-    return processes.Riverine.from_file_path(
-        configuration_path,
-        start_datetime=config["model"]["start_datetime"],
-        end_datetime=config["model"]["end_datetime"],
-        time_step_frequency=time_step_frequency,
-    )
-
-
-def __init_temperature(
-    process_config: dict,
-    default_time_step: timedelta,
-) -> processes.Temperature:
-    if "time_step" in process_config:
-        time_step_frequency = pd.Timedelta(process_config["time_step"])
-        process_config.pop("time_step")
-    else:
-        time_step_frequency = default_time_step
-    return processes.Temperature(
-        **process_config, time_step_frequency=time_step_frequency
-    )
-
-
-def __init_floating_algae(
-    process_config: dict,
-    default_time_step: timedelta,
-) -> processes.nutrients.FloatingAlgae:
-    if "time_step" in process_config:
-        time_step_frequency = pd.Timedelta(process_config["time_step"])
-        process_config.pop("time_step")
-    else:
-        time_step_frequency = default_time_step
-    return processes.nutrients.FloatingAlgae(
-        **process_config, time_step_frequency=time_step_frequency
-    )
 
 
 def __rename_parameter(

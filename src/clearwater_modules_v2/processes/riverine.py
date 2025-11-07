@@ -1,4 +1,4 @@
-from processes.base import Process
+from processes.base import Process, ProcessFactory
 from datetime import datetime, timedelta
 from clearwater_data.variables import VariableRegistry, DataArrayVariable, FloatVariable
 import clearwater_riverine as cwr
@@ -21,24 +21,30 @@ class Riverine(Process):
     def __init__(
         self,
         riverine_instance: cwr.ClearwaterRiverine,
-        time_step_frequency: timedelta = timedelta(seconds=30),
+        time_step: timedelta = timedelta(seconds=30),
     ) -> None:
         self.riverine_instance = riverine_instance
-        Process.__init__(self, time_step_frequency)
+        Process.__init__(self, time_step)
 
+    @staticmethod
     def from_file_path(
         configuration_path: str | Path,
         start_datetime: str,
         end_datetime: str,
-        time_step_frequency: timedelta = timedelta(seconds=30),
+        time_step: timedelta = timedelta(seconds=30),
     ) -> "Riverine":
         return Riverine(
             cwr.ClearwaterRiverine(
                 config_filepath=configuration_path,
                 datetime_range=(start_datetime, end_datetime),
             ),
-            time_step_frequency,
+            time_step,
         )
+
+    @ProcessFactory.register("riverine")
+    @staticmethod
+    def from_config(config: dict) -> "Riverine":
+        return Riverine.from_file_path(**config)
 
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
         """
