@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import xarray as xr
 
-from processes.base import Process
+from processes.base import Process, ProcessFactory
 from clearwater_data.variables import VariableRegistry
 from clearwater_data.custom_types import ArrayLike
 
@@ -16,11 +16,16 @@ if TYPE_CHECKING:
 
 
 class FloatingAlgae(Process):
-    variables = ["floating_algae", "solar_radiation"]
+    variables = [
+        "floating_algae",
+        "solar_radiation",
+        "depth",
+        "water_temperature",
+    ]
 
     def __init__(
         self,
-        time_step_frequency: timedelta = timedelta(minutes=5),
+        time_step: timedelta = timedelta(minutes=5),
         settling_velocity: float = 0.0,
         repiration_rate: float = 0.0,
         repiration_rate_correction_factor: float = 1.0,
@@ -28,8 +33,9 @@ class FloatingAlgae(Process):
         death_rate_correction_factor: float = 1.0,
         growth_rate_option: int = 1,
         growth_rate_max: float = 1.0,
-        phosphorus_michaelis_menton_constant: float = 1.0,
-        nitrogen_michaelis_menton_constant: float = 1.0,
+        growth_rate_correction: float = 1.0,
+        phosphorus_michaelis_menton_constant: float = 0.0012,
+        nitrogen_michaelis_menton_constant: float = 0.04,
         light_limitation_option: int = 1,
         light_limitation_constant: float = 1.0,
         light_attenuation_coefficient: float = 1.0,
@@ -56,12 +62,18 @@ class FloatingAlgae(Process):
         self.death_rate_correction_factor = death_rate_correction_factor
         self.growth_rate_option = growth_rate_option
         self.growth_rate_max = growth_rate_max
+        self.growth_rate_correction = growth_rate_correction
         self.phosphorus_michaelis_menton_constant = phosphorus_michaelis_menton_constant
         self.nitrogen_michaelis_menton_constant = nitrogen_michaelis_menton_constant
         self.light_limitation_option = light_limitation_option
         self.light_limitation_constant = light_limitation_constant
         self.light_attenuation_coefficient = light_attenuation_coefficient
-        Process.__init__(self, time_step_frequency)
+        Process.__init__(self, time_step)
+
+    @ProcessFactory.register("floating_algae")
+    @staticmethod
+    def from_config(config: dict) -> "FloatingAlgae":
+        return FloatingAlgae(**config)
 
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
         # check if there is nitrogen process and set flags according
@@ -100,9 +112,12 @@ class FloatingAlgae(Process):
         )
 
         # update algae
-        # rate is in ug-Chla/L/d
-        # 86400 converts rate to seconds
-        algae = 0 + algae * rate * self.time_step_frequency.total_seconds() * 86400
+        # rate is in ug-Chla/L/d (days)
+        # 86400 converts rate from days to seconds
+        algae = 0 + algae * rate * self.time_step.total_seconds() * 86400
+
+        # if change would have pushed it negative, correct the concentration
+        algae = xr.where(algae < 0, 0, algae)
 
     def rate(
         self,
@@ -119,16 +134,25 @@ class FloatingAlgae(Process):
         Compute the rate of change of floating algae.
         """
         # growth limiting factors
-        # TODO: confirm arguments are correct
         limit_phosphorus = self.limit_phosphorus(
             concentration=phosphorus_total_inorganic,
             fraction_dissolved=phosphate_fraction_dissolved,
         )
         limit_nitrogen = self.limit_nitrogen(ammonium=ammonium, nitrate=nitrate)
-        limit_light = self.limit_light(depth=depth, surface_light_intensity=solar)
+        limit_light = self.limit_light(
+            algae=algae,
+            depth=depth,
+            surface_light_intensity=solar,
+        )
 
         return (
-            self.rate_growth(algae, limit_phosphorus, limit_nitrogen, limit_light)
+            self.rate_growth(
+                algae,
+                water_temperature,
+                limit_phosphorus,
+                limit_nitrogen,
+                limit_light,
+            )
             - self.rate_death(algae, water_temperature)
             - self.rate_respiration(algae, water_temperature)
             - self.rate_settling(algae, depth)
@@ -137,6 +161,7 @@ class FloatingAlgae(Process):
     def rate_growth(
         self,
         algae: ArrayLike,
+        water_temperature: ArrayLike,
         limit_phosphorus: ArrayLike,
         limit_nitrogen: ArrayLike,
         limit_light: ArrayLike,
@@ -145,27 +170,39 @@ class FloatingAlgae(Process):
         Compute the rate of growth of floating algae.
         """
 
+        growth_rate = utils.conversions.arrhenius_correction(
+            water_temperature,
+            self.growth_rate_max,
+            self.growth_rate_correction,
+        )
+
         # Multiplicative
         if self.growth_rate_option == 1:
-            rate = (
-                self.growth_rate_max * limit_phosphorus * limit_nitrogen * limit_light
-            )
+            rate = growth_rate * limit_phosphorus * limit_nitrogen * limit_light
         # Limiting Nutrient
         elif self.growth_rate_option == 2:
             rate = xr.where(
                 limit_phosphorus > limit_nitrogen,
-                self.growth_rate_max * limit_nitrogen * limit_light,
-                self.growth_rate_max * limit_phosphorus * limit_light,
+                growth_rate * limit_nitrogen * limit_light,
+                growth_rate * limit_phosphorus * limit_light,
             )
         # Harmonic Mean
         elif self.growth_rate_option == 3:
-            rate = xr.where(
-                limit_nitrogen == 0.0 or limit_phosphorus == 0.0,
-                0,
-                self.growth_rate_max
+            rate_raw = (
+                growth_rate
                 * limit_light
                 * 2.0
-                / (1.0 / limit_nitrogen + 1.0 / limit_phosphorus),
+                / (1.0 / limit_nitrogen + 1.0 / limit_phosphorus)
+            )
+            rate = xr.where(
+                limit_nitrogen == 0.0,
+                0,
+                rate_raw,
+            )
+            rate = xr.where(
+                limit_phosphorus == 1.0,  # TODO: confirm this 1
+                0,
+                rate,
             )
         else:
             raise ValueError("Invalid growth rate option")
@@ -260,6 +297,7 @@ class FloatingAlgae(Process):
 
     def limit_light(
         self,
+        algae: ArrayLike,
         depth: ArrayLike,
         surface_light_intensity: ArrayLike,
     ) -> ArrayLike:
@@ -344,6 +382,15 @@ class FloatingAlgae(Process):
         else:
             raise ValueError("Invalid light limitation option")
 
-        rate = xr.where(raw_rate > 1, 1.0, raw_rate)
-        rate = xr.where(rate < 0, 0.0, rate)
+        # conditions where growth is limited to zero
+        # no algae present
+        rate = xr.where(algae <= 0, 0, raw_rate)
+        # light cannot penetrate deep enough
+        rate = xr.where(self.light_attenuation_coefficient * depth <= 0, 0, rate)
+        rate = xr.where(raw_rate > 1, 1.0, rate)
         return rate
+
+    def ammonium_respiration(self) -> ArrayLike:
+        # RNA is the chreturn rna * self.rate_respiration()
+        # TODO: implement ammonium respiration
+        pass

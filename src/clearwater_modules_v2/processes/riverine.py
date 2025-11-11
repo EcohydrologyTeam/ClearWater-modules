@@ -4,7 +4,6 @@ from clearwater_data.variables import VariableRegistry, DataArrayVariable, Float
 import clearwater_riverine as cwr
 import clearwater_riverine.utilities as cwr_utils
 from pathlib import Path
-from processes.nutrients.floating_algae import FloatingAlgae
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -29,10 +28,17 @@ class Riverine(Process):
     @staticmethod
     def from_file_path(
         configuration_path: str | Path,
-        start_datetime: str,
-        end_datetime: str,
+        start_datetime: str | datetime,
+        end_datetime: str | datetime,
         time_step: timedelta = timedelta(seconds=30),
     ) -> "Riverine":
+        # TODO: This will be removed once Riverine is updated to use datetime objects
+        # or the pandas.to_datetime function is used to convert the start and end datetimes
+        if isinstance(start_datetime, datetime):
+            start_datetime = start_datetime.strftime("%m-%d-%y %H:%M:%S")
+        if isinstance(end_datetime, datetime):
+            end_datetime = end_datetime.strftime("%m-%d-%y %H:%M:%S")
+
         return Riverine(
             cwr.ClearwaterRiverine(
                 config_filepath=configuration_path,
@@ -75,7 +81,7 @@ class Riverine(Process):
         )
 
         # TODO: update once Riverine can register variables to the registry
-        if model.has_process(FloatingAlgae):
+        if model.has_process("FloatingAlgae"):
             registry.register(
                 "algae_floating",
                 DataArrayVariable(self.riverine_instance.mesh.Ap.copy(deep=False)),
@@ -92,10 +98,13 @@ class Riverine(Process):
                 "phosphorus_total_inorganic",
                 DataArrayVariable(self.riverine_instance.mesh.TIP.copy(deep=False)),
             )
-            # TODO: Follow-up with Sarah about having riverine compute depth
+            registry.register(
+                "oxygen_dissolved",
+                DataArrayVariable(self.riverine_instance.mesh.DOX.copy(deep=False)),
+            )
             registry.register(
                 "depth",
-                FloatVariable(1.5),
+                DataArrayVariable(self.riverine_instance.mesh.depth.copy(deep=False)),
             )
 
         # The riverine model use current time_step as the start point and

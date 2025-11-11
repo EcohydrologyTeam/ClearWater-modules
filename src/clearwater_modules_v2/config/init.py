@@ -1,14 +1,15 @@
 from model import Model
-import processes
 from processes.base import Process, ProcessFactory
 from pathlib import Path
-from .read import read_config
+from config.read import read_config
 from datetime import timedelta, datetime
+
 from clearwater_data.variables import DataArrayVariable, Variable, VariableRegistry
 from clearwater_data.io.zarr import ZarrDataStore, ZarrDataSource
 from clearwater_data.io.csv import CSVDataSource
 from clearwater_data.io.base import DataSource, ChunkedDataSource
 from clearwater_data.io.float import FloatDataSource
+
 import pandas as pd
 import xarray as xr
 
@@ -217,8 +218,12 @@ def __init_processes(config: dict, default_time_step: timedelta) -> list[Process
 
         # riverine is a standalone model and needs the datetime range from the model config
         if process_name.lower() == "riverine":
-            process_config["start_datetime"] = config["model"]["start_datetime"]
-            process_config["end_datetime"] = config["model"]["end_datetime"]
+            process_config["start_datetime"] = pd.to_datetime(
+                config["model"]["start_datetime"]
+            )
+            process_config["end_datetime"] = pd.to_datetime(
+                config["model"]["end_datetime"]
+            )
 
         process_instance = ProcessFactory.from_config(process_name, process_config)
         process_instances.append(process_instance)

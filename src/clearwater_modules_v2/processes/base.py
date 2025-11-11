@@ -52,6 +52,9 @@ class Process(ABC):
         """
         raise NotImplementedError
 
+    def process_name(self) -> str:
+        return self.__class__.__name__
+
 
 class ProcessFactory:
     processes: dict[str, callable] = {}
