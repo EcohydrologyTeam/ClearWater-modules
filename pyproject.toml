@@ -1,36 +1,38 @@
-[build-system]
-requires = ["setuptools>=61", "wheel>=0.31.0", "setuptools_scm[toml]>=3.4"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "clearwater_modules"
-dynamic = ["version", "readme"]
-
-description = "Clearwater Python module."
-authors = [
-    {name = "Todd Steissberg", email = "Todd.E.Steissberg@erdc.dren.mil"},
+authors = [{name = "Paul Tomasula", email = "ptomasula@gmail.com"}]
+name = "ClearWater-modules"
+requires-python = ">= 3.11"
+version = "0.1.0"
+dependencies=[
+    "dask",
+    "jupyterlab",
+    "numpy",
+    "xarray",
 ]
 
-requires-python = ">=3.11"
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
 
-classifiers = [
-    "Intended Audience :: Science/Research",
-    "Operating System :: OS Independent",
-    "License :: OSI Approved :: BSD License",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Topic :: Scientific/Engineering",
-]
+[tool.hatch.metadata]
+allow-direct-references = true
 
-dependencies = [
-    'numba',
-]
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["win-64"]
 
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["clearwater_modules*"]
+#[tool.pixi.pypi-dependencies]
+#ClearWater-modules = { path = ".", editable = true }
 
-[tool.setuptools.dynamic]
-version = {attr = "clearwater_modules.__version__"}
-readme = {file = "README.md"}
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+
+[tool.pixi.feature.dev.pypi-dependencies]
+pytest = "*"
+clearwater_modules = { path = ".", editable = true}
+clearwater_data = { path = "../clearwater-data", editable = true}
+clearwater_riverine = {path = "../clearwater-riverine", editable=true}
+
+[tool.pixi.tasks]
+verify-install = {cmd = "python -c \"import clearwater_data; import clearwater_riverine; import clearwater_modules;\""}

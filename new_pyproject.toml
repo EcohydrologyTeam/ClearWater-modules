@@ -1,0 +1,68 @@
+#####################
+### Metadata
+#####################
+[project]
+authors = [{name = "Paul Tomasula", email = "ptomasula@gmail.com"}]
+name = "ClearWater-modules"
+requires-python = ">= 3.11"
+version = "0.1.0"
+
+#####################
+### Build and Packaging
+######################
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+##################### 
+### Dependencies
+#####################
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["win-64"]
+
+#TODO: Review these and pair down
+#many are carryovers from version 1 and riverine dependencies
+[dependencies]
+python = "3.12.*"
+attrs = "*"
+#numpy = "*"
+zarr = "<3"
+pyarrow = "*"
+dask = "*"
+numcodecs = "*"
+bottleneck = "*"
+cftime = "*"
+cf_xarray = "*"
+scipy = "*"
+geopandas = "*"
+rioxarray = "*"
+pytest = "*"
+pytest-cov = "*"
+pyright = "*"
+pooch = "*"
+snakeviz = "*"
+hvplot = "*"
+geoviews = "*"
+#jupyterlab = "*"
+nodejs = "*"
+ipympl = "*"
+ipywidgets = "*"
+jupyter_bokeh = "*"
+pyviz_comms = "*"
+h5py = "*"
+ruff = "*"
+git = "*"
+pip = "*"
+
+[pypi-dependencies]
+graphviz = "*"
+
+[feature.dev.pypi-dependencies]
+clearwater_data = {path = "../clearwater_data", editable = true}
+clearwater_riverine = {path = "../clearwater_riverine", editable = true}
+clearwater_modules = { path = ".", editable = true }
+
+[environments]
+dev = ["dev"]

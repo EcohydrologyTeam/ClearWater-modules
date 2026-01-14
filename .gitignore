@@ -153,3 +153,7 @@ dmypy.json
 /src/clearwater_modules_v2/.vscode
 /src/clearwater_modules_v2/met.zarr
 /src/.vscode
+
+# pixi environments
+.pixi
+*.egg-info

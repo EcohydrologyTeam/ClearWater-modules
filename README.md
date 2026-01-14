@@ -34,72 +34,43 @@ Clearwater-modules was developed with **Python 3.11**.
 
 Follow these steps to install.
 
-#### 1. Install Miniconda or Anaconda Distribution
+#### Production 
+Pardon our mess! Production instructions coming soon. For now you can install using the [Developer](#developer) instructions. 
 
-We recommend installing the light-weight [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/) that includes Python, the [conda](https://conda.io/docs/) environment and package management system, and their dependencies.
+#### Developer
 
-NOTE: Follow conda defaults to install in your local user director. DO NOT install for all users, to avoid substantial headaches with permissions.
+##### 1. Install Pixi
 
-If you have already installed the [**Anaconda Distribution**](https://www.anaconda.com/download), you can use it to complete the next steps, but you may need to [update to the latest version](https://docs.anaconda.com/free/anaconda/install/update-version/).
+We recommend installing [pixi](https://pixi.prefix.dev/latest/), a fast, modern, and reproducible package management tool. 
 
-#### 2. Clone or Download this `ClearWater-modules` repository
+##### 2. Clone or Download this the ClearWater family of repositories
+
+There are three repositories which house the dependencies for this project. Navigate to each of the repositories listed below and follow the instructions to clone them to your local machine.
+[clearwater-modules](https://github.com/EcohydrologyTeam/ClearWater-modules)
+[clearwater-riverine](https://github.com/EcohydrologyTeam/ClearWater-riverine)
+[clearwater-data](https://github.com/EcohydrologyTeam/ClearWater-data)
 
 From this Github site, click on the green "Code" dropdown button near the upper right. Select to either Open in GitHub Desktop (i.e. git clone) or "Download ZIP". We recommend using GitHub Desktop, to most easily receive updates.
 
 Place your copy of this repo folder in any convenient location on your computer.
 
-#### 3. Create a Conda Environment for this Repository (optional) 
+#### 3. Create the python environment using pixi. 
 
-We recommend creating a custom virtual environment with the [Conda](https://conda.io/docs/) package, dependency, and environment management for any language (i.e. easily install C++ packages such as GDAL).
+Navigate to the directory of the clearwater-modules repository you just cloned. To installed the development environment, execute the following command:
+`pixi install -e dev`
 
-We provide an [`environment.yml`](environment.yml) file that specifies for [Conda](https://conda.io/docs/) how to create a virtual environment that contains the same software dependencies that we've used in development and testing.
-
-Create a `ClearWater-modules` environment using this [conda](https://conda.io/docs/) command in your terminal or Anaconda Prompt console. If necessary, replace `environment.yml` with the full file pathway to the `environment.yml` file in the local cloned repository.
-
-```shell
-conda env create --file environment.yml
-```
-
-Alternatively, use the faster [`libmamba` solver](https://conda.github.io/conda-libmamba-solver/getting-started/) with:
-
-```shell
-conda env create -f environment.yml --solver=libmamba
-```
-
-Activate the environment using the instructions printed by conda after the environment is created successfully.
-
-To update your environment to the latest versions of dependencies and/or add additional dependencies to your environment (by first editting [`environment.yml`](environment.yml)), run the following command:
-
-```shell
-conda env update -f environment.yml --solver=libmamba --prune
-```
-
-or to recreate from scratch:
-
-```shell
-conda env create -f environment.yml --solver=libmamba --force
-```
-
-For additional information on managing conda environments, see [Conda's User Guide on Managing Environments](https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-environments.html).
-
-#### 4. Add your `ClearWater-modules` Path to Miniconda/Anaconda sites-packages
-
-To have access to the `clearwater_riverine` module in your Python environments, it is necessary to have a path to your copy of Clearwater Riverine in Anaconda's `sites-packages` directory (i.e. something like `$HOME/path/to/anaconda/lib/pythonX.X/site-packages` or `$HOME/path/to/anaconda/lib/site-packages` similar).
-
-The easiest way to do this is to use the [conda develop](https://docs.conda.io/projects/conda-build/en/latest/resources/commands/conda-develop.html) command in the console or terminal like this, replacing `/path/to/module/` with the full file pathway to the local cloned Clearwater-riverine repository:
-
-```console
-conda develop /path/to/module/
-```
+To activate the newly created environment, execute the following command:
+`pixi shell -e dev`
 
 You should now be able to run the examples and create your own Jupyter Notebooks!
 
+## Examples
 
-### Examples
-
+Coming soon...
 
 ## Contributing
 
+We welcome your pull request.
 
 ## Acknowlgements
 
