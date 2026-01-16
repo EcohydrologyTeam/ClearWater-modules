@@ -557,11 +557,12 @@ packages:
 - pypi: .
   name: clearwater-modules
   version: 0.1.0
-  sha256: b0926346bfbd62000c20d7c419fa3e482b55b9f8ea49ba17dd1bc450a2d24ee9
+  sha256: e23bc0b784fd539ac94774681403e97f729c499f64e918705d0d8a9776d7cbfa
   requires_dist:
   - dask
   - jupyterlab
   - numpy
+  - pyyaml
   - xarray
   requires_python: '>=3.11'
   editable: true
