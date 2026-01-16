@@ -123,10 +123,9 @@ class Temperature(Process):
         )
 
         # we only want to update the temperature in cells that have water
-        updated_water_temperature = updated_water_temperature.where(volume > 0)
-
-        # save the updated temperature
-        water_temperature *= 0 + updated_water_temperature.fillna(0)
+        updated_water_temperature = xr.where(volume > 0, updated_water_temperature, 0) 
+        water_temperature *= 0 + updated_water_temperature
+        
 
         #### Energy balance calculations ####
 
