@@ -83,29 +83,29 @@ class Temperature(Process):
     def from_config(config: dict) -> "Temperature":
         return Temperature(**config)
 
-    def run(self, time_step: datetime, registry: VariableRegistry) -> None:
+    def run(self, time: datetime, registry: VariableRegistry) -> None:
         """
         Run the temperature process.
         """
 
         # pull out variables from the registry
-        water_temperature = registry.get_at_time("water_temperature", time_step)
-        surface_area = registry.get_at_time("surface_area", time_step)
-        volume = registry.get_at_time("volume", time_step)
+        water_temperature = registry.get_at_time("water_temperature", time)
+        surface_area = registry.get_at_time("wetted_surface_area", time)
+        volume = registry.get_at_time("volume", time)
 
-        cloudiness = registry.get_at_time("cloudiness", time_step)
-        air_temperature = registry.get_at_time("air_temperature", time_step)
-        solar_flux = registry.get_at_time("solar_radiation", time_step)
-        wind_speed = registry.get_at_time("wind_speed", time_step)
-        atmospheric_pressure = registry.get_at_time("atmospheric_pressure", time_step)
+        cloudiness = registry.get_at_time("cloudiness", time)
+        air_temperature = registry.get_at_time("air_temperature", time)
+        solar_flux = registry.get_at_time("solar_radiation", time)
+        wind_speed = registry.get_at_time("wind_speed", time)
+        atmospheric_pressure = registry.get_at_time("atmospheric_pressure", time)
         atmospheric_vapor_pressure = registry.get_at_time(
-            "atmospheric_vapor_pressure", time_step
+            "atmospheric_vapor_pressure", time
         )
 
         # TODO: We should make the get method handle time selected
         # time independent .... for now
-        sediment_temperature = registry.get_at_time("sediment_temperature", time_step)
-        sediment_thickness = registry.get_at_time("sediment_thickness", time_step)
+        sediment_temperature = registry.get_at_time("sediment_temperature", time)
+        sediment_thickness = registry.get_at_time("sediment_thickness", time)
 
         # compute the new water temperature
         updated_water_temperature = self.temperature_change(
@@ -123,10 +123,9 @@ class Temperature(Process):
         )
 
         # we only want to update the temperature in cells that have water
-        updated_water_temperature = updated_water_temperature.where(volume > 0)
-
-        # save the updated temperature
-        water_temperature *= 0 + updated_water_temperature.fillna(0)
+        updated_water_temperature = xr.where(volume > 0, updated_water_temperature, 0) 
+        water_temperature *= 0 + updated_water_temperature
+        
 
         #### Energy balance calculations ####
 

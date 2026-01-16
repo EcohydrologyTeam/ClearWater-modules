@@ -113,7 +113,7 @@ class Riverine(Process):
         # to be updated. This boolean allows us to skip the first time_step
         self.__skip_first_time_step = True
 
-    def run(self, time_step: datetime, registry: VariableRegistry) -> None:
+    def run(self, time: datetime, registry: VariableRegistry) -> None:
         """
         Run the riverine process.
         """

@@ -68,13 +68,13 @@ class Nitrogen(Process):
             self.use_benthic_algae = True
             self.benthic_algae_process = model.get_process("BenthicAlgae")
 
-    def run(self, time_step: datetime, registry: VariableRegistry) -> None:
+    def run(self, time: datetime, registry: VariableRegistry) -> None:
         # pull data from regsitry
-        nitrate = registry.get_at_time("nitrate", time_step)
-        ammonium = registry.get_at_time("ammonium", time_step)
-        temperature = registry.get_at_time("water_temperature", time_step)
-        depth = registry.get_at_time("depth", time_step)
-        dissolved_oxygen = registry.get_at_time("oxygen_dissolved", time_step)
+        nitrate = registry.get_at_time("nitrate", time)
+        ammonium = registry.get_at_time("ammonium", time)
+        temperature = registry.get_at_time("water_temperature", time)
+        depth = registry.get_at_time("depth", time)
+        oxygen_dissolved = registry.get_at_time("oxygen_dissolved", time)
 
         # update ammonium
         ammonium_rate = self.change_ammonium(
