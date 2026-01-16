@@ -3,7 +3,7 @@ from datetime import timedelta, datetime
 import numpy as np
 import xarray as xr
 
-from processes.base import Process, ProcessFactory
+from .base import Process, ProcessFactory
 from clearwater_data.variables import VariableRegistry
 from clearwater_data.custom_types import ArrayLike
 from clearwater_modules_v2.utils import conversions

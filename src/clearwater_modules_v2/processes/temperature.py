@@ -1,9 +1,9 @@
-from processes.base import Process, ProcessFactory
+from .base import Process, ProcessFactory
 from datetime import datetime, timedelta
 from clearwater_data.variables import VariableRegistry
 import xarray as xr
 import numpy as np
-from utils import constants, conversions
+from ..utils import constants, conversions
 
 from clearwater_data.custom_types import ArrayLike
 
