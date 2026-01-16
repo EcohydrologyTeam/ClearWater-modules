@@ -25,7 +25,9 @@ class Process(ABC):
         self.time_step_seconds = self.time_step.total_seconds()
 
     @classmethod
-    def from_config(cls, config: dict) -> "Process":
+    def from_config(
+        cls, config: dict, variable_registry: VariableRegistry
+    ) -> "Process":
         return cls(**config)
 
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
@@ -46,7 +48,7 @@ class Process(ABC):
                 )
 
     @abstractmethod
-    def run(self, time_step: datetime, registry: VariableRegistry) -> None:
+    def run(self, time: datetime, registry: VariableRegistry) -> None:
         """
         Run the process. To be implemented by subclasses.
         """
@@ -60,12 +62,14 @@ class ProcessFactory:
     processes: dict[str, callable] = {}
 
     @classmethod
-    def from_config(cls, process_name: str, config: dict) -> "Process":
+    def from_config(
+        cls, process_name: str, config: dict, variable_registry: VariableRegistry
+    ) -> "Process":
         if process_name not in cls.processes:
             raise ValueError(
                 f"Process type {process_name} not registered. Did you register the process at the {__name__}"
             )
-        return cls.processes[process_name](config)
+        return cls.processes[process_name](config, variable_registry)
 
     @classmethod
     def register(cls, process_name: str):

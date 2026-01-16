@@ -72,7 +72,9 @@ class FloatingAlgae(Process):
 
     @ProcessFactory.register("floating_algae")
     @staticmethod
-    def from_config(config: dict) -> "FloatingAlgae":
+    def from_config(
+        config: dict, variable_registry: VariableRegistry
+    ) -> "FloatingAlgae":
         return FloatingAlgae(**config)
 
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
@@ -84,20 +86,20 @@ class FloatingAlgae(Process):
         # TODO: implement
         self.use_phosphate = True
 
-    def run(self, time_step: datetime, registry: VariableRegistry) -> None:
+    def run(self, time: datetime, registry: VariableRegistry) -> None:
         """
         Run the floating algae process.
         """
 
-        algae = registry.get_at_time("algae_floating", time_step)
-        ammonium = registry.get_at_time("ammonium", time_step)
-        nitrate = registry.get_at_time("nitrate", time_step)
+        algae = registry.get_at_time("algae_floating", time)
+        ammonium = registry.get_at_time("ammonium", time)
+        nitrate = registry.get_at_time("nitrate", time)
         phosphorus_total_inorganic = registry.get_at_time(
-            "phosphorus_total_inorganic", time_step
+            "phosphorus_total_inorganic", time
         )
-        depth = registry.get_at_time("depth", time_step)
-        water_temperature = registry.get_at_time("water_temperature", time_step)
-        solar = registry.get_at_time("solar_radiation", time_step)
+        depth = registry.get_at_time("depth", time)
+        water_temperature = registry.get_at_time("water_temperature", time)
+        solar = registry.get_at_time("solar_radiation", time)
 
         # get rate of change
         rate = self.rate(
