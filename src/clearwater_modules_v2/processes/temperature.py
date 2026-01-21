@@ -280,6 +280,13 @@ class Temperature(Process):
             - upwelling
             - latent
         )
+        print(f'    sensible: {float(sensible)}')
+        print(f'    solar: {float(solar_flux)}')
+        print(f'    sediment: {float(sediment)}')
+        print(f'    longwave: {float(longwave)}')
+        print(f'    upwelling: {float(upwelling * -1)}')
+        print(f'    latent: {float(latent * -1)}')
+        print(f'    net flux: {float(flux)}')
         return flux
 
     def water_specific_heat(self, temperature: ArrayLike) -> ArrayLike:
