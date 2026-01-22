@@ -123,13 +123,15 @@ class Temperature(Process):
         )
 
         # we only want to update the temperature in cells that have water
-        updated_water_temperature = xr.where(volume > 0, updated_water_temperature, 0) 
+        updated_water_temperature = xr.where(volume > 0, updated_water_temperature, 0)
         water_temperature *= 0 + updated_water_temperature
         
 
         #### Energy balance calculations ####
 
-    def flux_atmospheric_longwave(self, water_temperature: ArrayLike) -> xr.DataArray:
+    #### Energy balance calculations ####
+
+    def flux_upwelling_longwave(self, water_temperature: ArrayLike) -> xr.DataArray:
         """
         Compute the atmospheric longwave flux in of the grid in (W/m^2)
 
@@ -145,7 +147,7 @@ class Temperature(Process):
         )
         return flux
 
-    def flux_upwelling_longwave(
+    def flux_atmospheric_longwave(
         self,
         air_temperature: ArrayLike,
         cloudiness: ArrayLike,
@@ -160,7 +162,12 @@ class Temperature(Process):
         """
 
         flux = (
-            9.37e-6  # note this was 0.937E-5 in original equation
+            # TODO: Should this change as a function of temperature?
+            # This is emissivity of air, which in our simply model is
+            # a function of air temperature
+            (
+                9.37e-6 * conversions.celsius_to_kelvin(air_temperature) ** 2
+            )  # note this was 0.937E-5 in original equation
             * (1 + 0.17 * cloudiness**2)
             * constants.STEFAN_BOLTZMANN
             # This equation is for air temperature in Kelvin
@@ -191,7 +198,7 @@ class Temperature(Process):
             xr.DataArray: latent heat flux in units of W/m^2
         """
         flux = (
-            0.622
+            -0.622
             / atmospheric_pressure
             * self.latent_heat_vaporization(water_temperature)
             * self.water_density(water_temperature)
@@ -269,16 +276,16 @@ class Temperature(Process):
         sediment = self.flux_sediment(
             water_temperature, sediment_temperature, sediment_thickness
         )
-        longwave = self.flux_atmospheric_longwave(water_temperature)
-        upwelling = self.flux_upwelling_longwave(cloudiness, air_temperature)
+        longwave = self.flux_atmospheric_longwave(cloudiness, air_temperature)
+        upwelling = self.flux_upwelling_longwave(water_temperature)
 
         flux = (
             sensible
             + solar_flux  # provided as direct input
             + sediment
             + longwave
-            - upwelling
-            - latent
+            + upwelling
+            + latent
         )
         return flux
 
