@@ -1,3 +1,3 @@
-from config.read import read_config
-import config.init
-from config.example import main as export_example
+from .read import read_config
+from .init import init_from_file
+from .example import main as export_example
