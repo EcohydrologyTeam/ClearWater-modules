@@ -285,10 +285,14 @@ class Temperature(Process):
         """
         Compute the net heatflux in of the grid in (W/m^2)
         """
+        mixing_ratio_air = self.mixing_ratio_air(atmospheric_vapor_pressure, atmospheric_pressure)
+        density_air = self.density_air(atmospheric_pressure, air_temperature, mixing_ratio_air)
+        density_air_sat = self.density_air_sat(water_temperature, atmospheric_pressure)
+
         _, richardson_function = self.richardson_number(
             wind_speed,
-            density_air_sat=1.0,
-            density_air=1.0
+            density_air_sat=density_air_sat,
+            density_air=density_air,
         )
         sensible = self.flux_sensible(water_temperature, air_temperature, wind_speed, richardson_function)
         latent = self.flux_latent_heat(
@@ -403,6 +407,7 @@ class Temperature(Process):
         Returns:
             DataArray/Float with value for the density of water in units of kg/m3
         """
+        #TODO: verify if this equation is correct for both fresh and salt water
         return 999.973 * (
             1.0
             - (
@@ -469,6 +474,57 @@ class Temperature(Process):
                 )
         )
 
+
+
+    def mixing_ratio_air(self, atmospheric_vapor_pressure: ArrayLike, atmospheric_pressure: ArrayLike
+    ) -> ArrayLike:
+        """Calculate air mixing ratio (unitless).
+
+        Args:
+            atmospheric_vapor_pressure: Atmospheric vapour pressure of air (mb)
+            atmospheric_pressure: Atmospheric pressure (mb)
+        """
+        return 0.622 * atmospheric_vapor_pressure / (atmospheric_pressure - atmospheric_vapor_pressure)
+
+
+    def density_air(
+        self, atmospheric_pressure: ArrayLike, air_temperature: ArrayLike, mixing_ratio_air: ArrayLike,
+    ) -> ArrayLike:
+        """Calculate air density (kg/m^3).
+
+        Args:
+            atmospheric_pressure: Atmospheric pressure (mb)
+            air_temperature: Air temperature (Celsius)
+            mixing_ratio_air: Air mixing ratio (unitless)
+        """
+        air_temperature_kelvin = conversions.celsius_to_kelvin(air_temperature)
+        return (
+            0.348 *
+            (atmospheric_pressure / air_temperature_kelvin) *
+            (1.0 + mixing_ratio_air) / (1.0 + 1.61 * mixing_ratio_air)
+        )
+
+
+    def density_air_sat(self, water_temperature: ArrayLike, atmospheric_pressure: ArrayLike
+    ) -> ArrayLike:
+        """
+        Compute the density of saturated air at water surface temperature.
+
+        Parameters:
+            water_temperature (float): Water temperature (Celsius)            
+            atmospheric_pressure (float): Atmospheric pressure (millibars)
+
+        Returns:
+            Density of saturated air at water surface temperature (kg/m3, float)
+        """
+        water_temperature_kelvin = conversions.celsius_to_kelvin(water_temperature)
+        saturation_vapor_pressure = self.saturation_vapor_pressure(water_temperature)
+        mixing_ratio_sat = 0.622 * saturation_vapor_pressure / (atmospheric_pressure - saturation_vapor_pressure)
+
+        return 0.348 * (atmospheric_pressure / water_temperature_kelvin) * (1.0 + mixing_ratio_sat) / (1.0 + 1.61 * mixing_ratio_sat)
+
+
+
     def richardson_number(
         self, wind_speed: ArrayLike, density_air_sat: ArrayLike, density_air: ArrayLike 
     ) -> tuple[float, float]:
@@ -504,6 +560,11 @@ class Temperature(Process):
             * 2.0
             / (density_air * (wind_speed**2.0))
         )
+        print(f'    Richardson Number: {float(richardson_number)}')
+        print(f'      gravity: {float(constants.GRAVITY)}')
+        print(f'      density_air: {float(density_air)}')
+        print(f'      density_air_sat: {float(density_air_sat)}')
+        print(f'      wind_speed: {float(wind_speed)}')
 
         # Set bounds
         if richardson_number > 2.0:

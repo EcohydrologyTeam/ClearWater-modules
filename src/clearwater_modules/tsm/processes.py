@@ -161,10 +161,18 @@ def ri_number(
         density_air_sat: Saturation density of air (kg/m3)
         wind_speed: Wind speed (m/s)
     """
+    print(f'    Richardson Number: {float(gravity *
+        (density_air - density_air_sat) *
+        2.0 / (density_air * (wind_speed**2.0)))}')
+    print(f'      gravity: {float(gravity)}')
+    print(f'      density_air: {float(density_air)}')
+    print(f'      density_air_sat: {float(density_air_sat)}')
+    print(f'      wind_speed: {float(wind_speed)}')
+
     return (
         gravity *
         (density_air - density_air_sat) *
-        2.0 / (density_air * (wind_speed**2.0))
+        2.0 / (density_air * (wind_speed**2.0))        
     )
 
 
