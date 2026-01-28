@@ -554,8 +554,8 @@ class Temperature(Process):
 
         richardson_function: float = 0.0
         richardson_number: float = (
-            -1
-            * constants.GRAVITY
+            #-1 #TODO: check original equation to see if this multiplication by negative one is needed (not in v1 of code)
+            constants.GRAVITY
             * (density_air - density_air_sat)
             * 2.0
             / (density_air * (wind_speed**2.0))
