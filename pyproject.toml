@@ -37,3 +37,6 @@ clearwater_riverine = {path = "../clearwater-riverine", editable=true}
 
 [tool.pixi.tasks]
 verify-install = {cmd = "python -c \"import clearwater_data; import clearwater_riverine; import clearwater_modules;\""}
+
+[tool.pixi.dependencies]
+pytest = ">=9.0.2,<10"
