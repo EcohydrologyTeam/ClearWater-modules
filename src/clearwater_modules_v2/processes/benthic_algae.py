@@ -8,7 +8,7 @@ from clearwater_data.custom_types import ArrayLike
 
 from .floating_algae import FloatingAlgae
 
-import utils.conversions
+from ..utils.conversions import arrhenius_correction
 
 from typing import TYPE_CHECKING
 
@@ -100,7 +100,7 @@ class BenthicAlgae(FloatingAlgae):
         Compute the rate of growth of floating algae.
         """
 
-        growth_rate = utils.conversions.arrhenius_correction(
+        growth_rate = arrhenius_correction(
             water_temperature,
             self.growth_rate_max,
             self.growth_rate_correction,

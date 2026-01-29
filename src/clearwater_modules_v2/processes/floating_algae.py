@@ -3,11 +3,11 @@ from datetime import datetime, timedelta
 import numpy as np
 import xarray as xr
 
-from processes.base import Process, ProcessFactory
+from .base import Process, ProcessFactory
 from clearwater_data.variables import VariableRegistry
 from clearwater_data.custom_types import ArrayLike
 
-import utils.conversions
+from ..utils.conversions import arrhenius_correction
 
 from typing import TYPE_CHECKING
 
@@ -172,7 +172,7 @@ class FloatingAlgae(Process):
         Compute the rate of growth of floating algae.
         """
 
-        growth_rate = utils.conversions.arrhenius_correction(
+        growth_rate = arrhenius_correction(
             water_temperature,
             self.growth_rate_max,
             self.growth_rate_correction,
@@ -215,7 +215,7 @@ class FloatingAlgae(Process):
         """
         Compute the rate of death of floating algae.
         """
-        corrected_death_rate = utils.conversions.arrhenius_correction(
+        corrected_death_rate = arrhenius_correction(
             water_temperature,
             self.death_rate,
             self.death_rate_correction_factor,
@@ -228,7 +228,7 @@ class FloatingAlgae(Process):
         """
         Compute the rate of respiration of floating algae.
         """
-        corrected_respiration_rate = utils.conversions.arrhenius_correction(
+        corrected_respiration_rate = arrhenius_correction(
             water_temperature,
             self.repiration_rate,
             self.repiration_rate_correction_factor,

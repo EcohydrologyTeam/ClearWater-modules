@@ -1,4 +1,4 @@
-from processes.base import Process, ProcessFactory
+from .base import Process, ProcessFactory
 from datetime import datetime, timedelta
 from clearwater_data.variables import VariableRegistry, DataArrayVariable, FloatVariable
 import clearwater_riverine as cwr

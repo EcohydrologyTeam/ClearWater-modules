@@ -1,9 +1,10 @@
-from processes.base import Process, ProcessFactory
+from clearwater_modules.tsm.processes import emissivity_air
+from .base import Process, ProcessFactory
 from datetime import datetime, timedelta
 from clearwater_data.variables import VariableRegistry
 import xarray as xr
 import numpy as np
-from utils import constants, conversions
+from ..utils import constants, conversions
 
 from clearwater_data.custom_types import ArrayLike
 
@@ -49,7 +50,7 @@ class Temperature(Process):
         wind_a: float,
         wind_b: float,
         wind_c: float,
-        sediment_density: ArrayLike = 1.67,
+        sediment_density: ArrayLike = 1600.0,
         sediment_specific_heat: float = 1000.0,
         air_diffusivity_ratio: float = 1.0,
         sediment_diffusivity: float = 0.0061,
@@ -108,7 +109,7 @@ class Temperature(Process):
         sediment_thickness = registry.get_at_time("sediment_thickness", time)
 
         # compute the new water temperature
-        updated_water_temperature = self.temperature_change(
+        delta_water_temperature = self.temperature_change(
             water_temperature=water_temperature,
             surface_area=surface_area,
             volume=volume,
@@ -123,7 +124,8 @@ class Temperature(Process):
         )
 
         # we only want to update the temperature in cells that have water
-        updated_water_temperature = xr.where(volume > 0, updated_water_temperature, 0)
+        delta_water_temperature = xr.where(volume > 0, delta_water_temperature, 0)
+        updated_water_temperature = water_temperature + delta_water_temperature
 
         # write changes back to registry
         registry.set_at_time("water_temperature", time, updated_water_temperature)
@@ -137,7 +139,7 @@ class Temperature(Process):
         Parameters:
             water_temperature [xr.DataArray]: Water temperature in units of celsius
         Returns:
-            flux_atmospheric_longwave [xr.DataArray]: Atmospheric longwave flux in units of W/m^2
+            flux_upwelling_longwave [xr.DataArray]: Upwelling longwave flux in units of W/m^2
         """
         flux = (
             -0.97  # upwelling is a negative flow from the water to the atmosphere
@@ -152,13 +154,27 @@ class Temperature(Process):
         cloudiness: ArrayLike,
     ) -> ArrayLike:
         """
-        Compute the upwelling longwave flux in of the grid in units of (W/m^2)
+        Compute the atmospheric longwave flux in of the grid in (W/m^2)
 
         Parameters:
             air_temperature [xr.DataArray]: Air temperature in units of celsius (C)
         Returns:
-            flux_upwelling_longwave [xr.DataArray]: Upwelling longwave flux in units of W/m^2
+            flux_atmospheric_longwave [xr.DataArray]: Atmospheric longwave flux in units of W/m^2
         """
+
+        print(f"    Longwave down terms:")
+        print(f"      cloudiness_term: {float(1.0 + 0.17 * cloudiness**2)}")
+        print(f"        cloudiness_frac: {float(cloudiness)}")
+        print(
+            f"      emissivity_air: {float(9.37e-6 * conversions.celsius_to_kelvin(air_temperature) ** 2)}"
+        )
+        print(f"      stefan_boltzmann: {float(constants.STEFAN_BOLTZMANN)}")
+        print(
+            f"      air_temp_term: {float(conversions.celsius_to_kelvin(air_temperature) ** 4)}"
+        )
+        print(
+            f"        air_temp_k: {float(conversions.celsius_to_kelvin(air_temperature))}"
+        )
 
         flux = (
             # TODO: Should this change as a function of temperature?
@@ -183,6 +199,7 @@ class Temperature(Process):
         water_temperature: ArrayLike,
         wind_speed: ArrayLike,
         atmospheric_vapor_pressure: ArrayLike,
+        richardson_function: ArrayLike,
     ) -> xr.DataArray:
         """
         Returns latent heat flux in of the grid in units of (W/m^2)
@@ -196,12 +213,28 @@ class Temperature(Process):
         Returns:
             xr.DataArray: latent heat flux in units of W/m^2
         """
+        print(f"    Latent heat terms:")
+        print(f"      atmospheric pressure: {float(atmospheric_pressure)}")
+        print(
+            f"      latent_heat_vaporization: {float(self.latent_heat_vaporization(water_temperature))}"
+        )
+        print(f"        water_temperature: {float(water_temperature)}")
+        print(f"      water_density: {float(self.water_density(water_temperature))}")
+        print(
+            f"      wind_function: {float(self.wind_function(wind_speed, richardson_function))}"
+        )
+        print(f"        wind_speed: {float(wind_speed)}")
+        print(
+            f"      saturation_vapor_pressure: {float(self.saturation_vapor_pressure(water_temperature))}"
+        )
+        print(f"      atmospheric_vapor_pressure: {float(atmospheric_vapor_pressure)}")
+
         flux = (
             -0.622
             / atmospheric_pressure
             * self.latent_heat_vaporization(water_temperature)
             * self.water_density(water_temperature)
-            * self.wind_function(wind_speed)
+            * self.wind_function(wind_speed, richardson_function)
             * (
                 self.saturation_vapor_pressure(water_temperature)
                 - atmospheric_vapor_pressure
@@ -214,6 +247,7 @@ class Temperature(Process):
         water_temperature: ArrayLike,
         air_temperature: ArrayLike,
         wind_speed: ArrayLike,
+        richardson_function: ArrayLike,
     ) -> ArrayLike:
         """Compute the sensible heat flux in of the grid in (W/m^2)
 
@@ -227,7 +261,7 @@ class Temperature(Process):
             self.air_diffusivity_ratio
             * constants.AIR_SPECIFIC_HEAT
             * self.water_density(water_temperature)
-            * self.wind_function(wind_speed)
+            * self.wind_function(wind_speed, richardson_function)
             * (air_temperature_kelvin - water_temperature_kelvin)
         )
         return flux
@@ -264,17 +298,33 @@ class Temperature(Process):
         """
         Compute the net heatflux in of the grid in (W/m^2)
         """
-        sensible = self.flux_sensible(water_temperature, air_temperature, wind_speed)
+        mixing_ratio_air = self.mixing_ratio_air(
+            atmospheric_vapor_pressure, atmospheric_pressure
+        )
+        density_air = self.density_air(
+            atmospheric_pressure, air_temperature, mixing_ratio_air
+        )
+        density_air_sat = self.density_air_sat(water_temperature, atmospheric_pressure)
+
+        _, richardson_function = self.richardson_number(
+            wind_speed,
+            density_air_sat=density_air_sat,
+            density_air=density_air,
+        )
+        sensible = self.flux_sensible(
+            water_temperature, air_temperature, wind_speed, richardson_function
+        )
         latent = self.flux_latent_heat(
             water_temperature=water_temperature,
             atmospheric_pressure=atmospheric_pressure,
             wind_speed=wind_speed,
             atmospheric_vapor_pressure=atmospheric_vapor_pressure,
+            richardson_function=richardson_function,
         )
         sediment = self.flux_sediment(
             water_temperature, sediment_temperature, sediment_thickness
         )
-        atmospheric = self.flux_atmospheric_longwave(cloudiness, air_temperature)
+        atmospheric = self.flux_atmospheric_longwave(air_temperature, cloudiness)
         upwelling = self.flux_upwelling_longwave(water_temperature)
 
         flux = (
@@ -285,6 +335,13 @@ class Temperature(Process):
             + upwelling
             + latent
         )
+        print(f"    sensible: {float(sensible)}")
+        print(f"    solar: {float(solar_flux)}")
+        print(f"    sediment: {float(sediment)}")
+        print(f"    longwave: {float(longwave)}")
+        print(f"    upwelling: {float(upwelling)}")
+        print(f"    latent: {float(latent)}")
+        print(f"    net flux: {float(flux)}")
         return flux
 
     def water_specific_heat(self, temperature: ArrayLike) -> ArrayLike:
@@ -369,6 +426,7 @@ class Temperature(Process):
         Returns:
             DataArray/Float with value for the density of water in units of kg/m3
         """
+        # TODO: verify if this equation is correct for both fresh and salt water
         return 999.973 * (
             1.0
             - (
@@ -419,9 +477,83 @@ class Temperature(Process):
 
     # TODO: this needs the richardson function
     # @functools.lru_cache(maxsize=1)
-    def wind_function(self, wind_speed: ArrayLike) -> ArrayLike:
+    def wind_function(
+        self, wind_speed: ArrayLike, richardson_function: ArrayLike
+    ) -> ArrayLike:
+        print(f"    Wind Function terms:")
+        print(f"      richardson_function: {float(richardson_function)}")
+        print(f"      wind_a: {float(self.wind_a)}")
+        print(f"      wind_b: {float(self.wind_b)}")
+        print(f"      wind_c: {float(self.wind_c)}")
+        print(f"      wind_speed: {float(wind_speed)}")
+
+        return richardson_function * (
+            (self.wind_a / 1_000_000)
+            + (self.wind_b / 1_000_000) * (wind_speed**self.wind_c)
+        )
+
+    def mixing_ratio_air(
+        self, atmospheric_vapor_pressure: ArrayLike, atmospheric_pressure: ArrayLike
+    ) -> ArrayLike:
+        """Calculate air mixing ratio (unitless).
+
+        Args:
+            atmospheric_vapor_pressure: Atmospheric vapour pressure of air (mb)
+            atmospheric_pressure: Atmospheric pressure (mb)
+        """
         return (
-            self.wind_a / 1_000_000 + self.wind_b / 1_000_000 * wind_speed**self.wind_c
+            0.622
+            * atmospheric_vapor_pressure
+            / (atmospheric_pressure - atmospheric_vapor_pressure)
+        )
+
+    def density_air(
+        self,
+        atmospheric_pressure: ArrayLike,
+        air_temperature: ArrayLike,
+        mixing_ratio_air: ArrayLike,
+    ) -> ArrayLike:
+        """Calculate air density (kg/m^3).
+
+        Args:
+            atmospheric_pressure: Atmospheric pressure (mb)
+            air_temperature: Air temperature (Celsius)
+            mixing_ratio_air: Air mixing ratio (unitless)
+        """
+        air_temperature_kelvin = conversions.celsius_to_kelvin(air_temperature)
+        return (
+            0.348
+            * (atmospheric_pressure / air_temperature_kelvin)
+            * (1.0 + mixing_ratio_air)
+            / (1.0 + 1.61 * mixing_ratio_air)
+        )
+
+    def density_air_sat(
+        self, water_temperature: ArrayLike, atmospheric_pressure: ArrayLike
+    ) -> ArrayLike:
+        """
+        Compute the density of saturated air at water surface temperature.
+
+        Parameters:
+            water_temperature (float): Water temperature (Celsius)
+            atmospheric_pressure (float): Atmospheric pressure (millibars)
+
+        Returns:
+            Density of saturated air at water surface temperature (kg/m3, float)
+        """
+        water_temperature_kelvin = conversions.celsius_to_kelvin(water_temperature)
+        saturation_vapor_pressure = self.saturation_vapor_pressure(water_temperature)
+        mixing_ratio_sat = (
+            0.622
+            * saturation_vapor_pressure
+            / (atmospheric_pressure - saturation_vapor_pressure)
+        )
+
+        return (
+            0.348
+            * (atmospheric_pressure / water_temperature_kelvin)
+            * (1.0 + mixing_ratio_sat)
+            / (1.0 + 1.61 * mixing_ratio_sat)
         )
 
     def richardson_number(
@@ -453,12 +585,17 @@ class Temperature(Process):
 
         richardson_function: float = 0.0
         richardson_number: float = (
-            -1
-            * constants.GRAVITY
+            # -1 #TODO: check original equation to see if this multiplication by negative one is needed (not in v1 of code)
+            constants.GRAVITY
             * (density_air - density_air_sat)
             * 2.0
             / (density_air * (wind_speed**2.0))
         )
+        print(f"    Richardson Number: {float(richardson_number)}")
+        print(f"      gravity: {float(constants.GRAVITY)}")
+        print(f"      density_air: {float(density_air)}")
+        print(f"      density_air_sat: {float(density_air_sat)}")
+        print(f"      wind_speed: {float(wind_speed)}")
 
         # Set bounds
         if richardson_number > 2.0:
