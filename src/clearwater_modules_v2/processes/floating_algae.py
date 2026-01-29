@@ -7,7 +7,7 @@ from .base import Process, ProcessFactory
 from clearwater_data.variables import VariableRegistry
 from clearwater_data.custom_types import ArrayLike
 
-from ..utils.conversions import arrhenius_correction
+from clearwater_modules_v2.utils.conversions import arrhenius_correction
 
 from typing import TYPE_CHECKING
 
@@ -39,6 +39,9 @@ class FloatingAlgae(Process):
         light_limitation_option: int = 1,
         light_limitation_constant: float = 1.0,
         light_attenuation_coefficient: float = 1.0,
+        ratio_chla_carbon: float = 40.0,
+        ratio_chla_nitrogen: float = 7.2,
+        ratio_chla_phosphorus: float = 1.0,
     ) -> None:
         """
         Initialize the floating algae process.
@@ -395,4 +398,8 @@ class FloatingAlgae(Process):
     def ammonium_respiration(self) -> ArrayLike:
         # RNA is the chreturn rna * self.rate_respiration()
         # TODO: implement ammonium respiration
-        pass
+        return 0
+
+    def ammonium_growth(self) -> ArrayLike:
+        # TODO: implement ammonium growth
+        return 0

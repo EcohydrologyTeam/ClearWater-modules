@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from clearwater_data.variables import VariableRegistry
 import xarray as xr
 import numpy as np
-from ..utils import constants, conversions
+from clearwater_modules_v2.utils import constants, conversions
 
 from clearwater_data.custom_types import ArrayLike
 
@@ -480,12 +480,12 @@ class Temperature(Process):
     def wind_function(
         self, wind_speed: ArrayLike, richardson_function: ArrayLike
     ) -> ArrayLike:
-        print(f"    Wind Function terms:")
-        print(f"      richardson_function: {float(richardson_function)}")
-        print(f"      wind_a: {float(self.wind_a)}")
-        print(f"      wind_b: {float(self.wind_b)}")
-        print(f"      wind_c: {float(self.wind_c)}")
-        print(f"      wind_speed: {float(wind_speed)}")
+        # print(f"    Wind Function terms:")
+        # print(f"      richardson_function: {float(richardson_function)}")
+        # print(f"      wind_a: {float(self.wind_a)}")
+        # print(f"      wind_b: {float(self.wind_b)}")
+        # print(f"      wind_c: {float(self.wind_c)}")
+        # print(f"      wind_speed: {float(wind_speed)}")
 
         return richardson_function * (
             (self.wind_a / 1_000_000)
@@ -501,7 +501,10 @@ class Temperature(Process):
             atmospheric_vapor_pressure: Atmospheric vapour pressure of air (mb)
             atmospheric_pressure: Atmospheric pressure (mb)
         """
-        return (
+        # TODO: what if atmospheric_pressure == atmospheric_vapor_pressure?
+        if atmospheric_vapor_pressure == atmospheric_vapor_pressure:
+            return 0.0
+        mixing_ratio = (
             0.622
             * atmospheric_vapor_pressure
             / (atmospheric_pressure - atmospheric_vapor_pressure)
@@ -594,27 +597,47 @@ class Temperature(Process):
         print(f"    Richardson Number: {float(richardson_number)}")
         print(f"      gravity: {float(constants.GRAVITY)}")
         print(f"      density_air: {float(density_air)}")
-        print(f"      density_air_sat: {float(density_air_sat)}")
-        print(f"      wind_speed: {float(wind_speed)}")
-
-        # Set bounds
-        if richardson_number > 2.0:
-            richardson_number = 2.0
-        if richardson_number < -1.0:
             richardson_number = -1.0
 
-        if richardson_number < 0.0:
-            if richardson_number >= -0.01:
-                # neutral
-                richardson_function = 1.0
-            else:
-                # unstable
-                richardson_function = (1.0 - 22.0 * richardson_number) ** 0.80
-        else:
-            if richardson_number <= 0.01:
-                # neutral
-                richardson_function = 1.0
-            else:
-                # stable
-                richardson_function = (1.0 + 34.0 * richardson_number) ** (-0.80)
+        # print(f"    Richardson Number: {float(richardson_number)}")
+        # print(f"      gravity: {float(constants.GRAVITY)}")
+        # print(f"      density_air: {float(density_air)}")
+        # print(f"      density_air_sat: {float(density_air_sat)}")
+        # print(f"      wind_speed: {float(wind_speed)}")
+
+        # TODO: this needs to be reworked to support array inputs
+
+        # Set bounds for richardson number
+        richardson_number = xr.where(richardson_number > 2.0, 2.0, richardson_number)
+        richardson_number = xr.where(richardson_number < -1.0, -1.0, richardson_number)
+
+        # Calculate richardson function
+        # TODO: can we find a more efficient way to calculate this?
+        # four where clauses is a little rough
+        richardson_function: ArrayLike = 1.0
+
+        # neutral rn < 0
+        richardson_function = xr.where(
+            (richardson_number < 0.0) & (richardson_number >= -0.01),
+            1.0,
+            richardson_function,
+        )
+        # unstable
+        richardson_function = xr.where(
+            (richardson_number < 0.0) & (richardson_number < -0.01),
+            (1.0 - 22.0 * richardson_number) ** 0.80,
+            richardson_function,
+        )
+        # neutral rn > 0
+        richardson_function = xr.where(
+            (richardson_number >= 0.0) & (richardson_number <= 0.01),
+            1.0,
+            richardson_function,
+        )
+        # stable
+        richardson_function = xr.where(
+            (richardson_number >= 0.0) & (richardson_number > 0.01),
+            (1.0 + 34.0 * richardson_number) ** (-0.80),
+            richardson_function,
+        )
         return (richardson_number, richardson_function)

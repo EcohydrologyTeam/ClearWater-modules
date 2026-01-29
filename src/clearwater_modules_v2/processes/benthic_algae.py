@@ -8,7 +8,7 @@ from clearwater_data.custom_types import ArrayLike
 
 from .floating_algae import FloatingAlgae
 
-from ..utils.conversions import arrhenius_correction
+from clearwater_modules_v2.utils.conversions import arrhenius_correction
 
 from typing import TYPE_CHECKING
 
