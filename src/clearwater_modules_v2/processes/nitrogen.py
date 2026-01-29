@@ -17,7 +17,13 @@ if TYPE_CHECKING:
 
 
 class Nitrogen(Process):
-    variables = ["nitrate", "ammonium"]
+    variables = [
+        "nitrate",
+        "ammonium",
+        "oxygen_dissolved",
+        "water_temperature",
+        "depth",
+    ]
 
     def __init__(
         self,
@@ -30,10 +36,13 @@ class Nitrogen(Process):
         sediment_denitrification_theta: ArrayLike = 1.0,
         sediment_ammonium_release_rate: ArrayLike = 1.0,
         sediment_ammonium_release_theta: ArrayLike = 1.0,
+        ammonium_decay_rate: ArrayLike = 1.0,
+        ammonium_decay_theta: ArrayLike = 1.0,
         floating_algae_preference_factor: ArrayLike = 0.5,
         settling_velocity: ArrayLike = 1.0,
         death_rate: ArrayLike = 1.0,
         float_algea_faction_uptake_from_nitrate: ArrayLike = 1.0,
+        nitrification_oxygen_inhibition_factor: ArrayLike = 1.0,
     ) -> None:
         Process.__init__(self, time_step)
         self.denitrification_rate = denitrification_rate
@@ -44,6 +53,8 @@ class Nitrogen(Process):
         self.sediment_denitrification_theta = sediment_denitrification_theta
         self.sediment_ammonium_release_rate = sediment_ammonium_release_rate
         self.sediment_ammonium_release_theta = sediment_ammonium_release_theta
+        self.ammonium_decay_rate = ammonium_decay_rate
+        self.ammonium_decay_theta = ammonium_decay_theta
         self.floating_algae_preference_factor = floating_algae_preference_factor
         self.settling_velocity = settling_velocity
         # TODO: this should come from floating algae process
@@ -51,21 +62,24 @@ class Nitrogen(Process):
         self.float_algea_faction_uptake_from_nitrate = (
             float_algea_faction_uptake_from_nitrate
         )
+        self.nitrification_oxygen_inhibition_factor = (
+            nitrification_oxygen_inhibition_factor
+        )
 
     @ProcessFactory.register("nitrogen")
     @staticmethod
-    def from_config(config: dict) -> "Nitrogen":
+    def from_config(config: dict, variable_registry: VariableRegistry) -> "Nitrogen":
         return Nitrogen(**config)
 
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
         self.use_nitrate = True
         self.use_ammonium = True
+        self.use_floating_algae = model.has_process("FloatingAlgae")
+        self.use_benthic_algae = model.has_process("BenthicAlgae")
 
-        if model.has_process("FloatingAlgae"):
-            self.use_floating_algae = True
+        if self.use_floating_algae:
             self.floating_algae_process = model.get_process("FloatingAlgae")
-        if model.has_process("BenthicAlgae"):
-            self.use_benthic_algae = True
+        if self.use_benthic_algae:
             self.benthic_algae_process = model.get_process("BenthicAlgae")
 
     def run(self, time: datetime, registry: VariableRegistry) -> None:
@@ -82,7 +96,7 @@ class Nitrogen(Process):
             ammonium,
             temperature,
             depth,
-            dissolved_oxygen,
+            oxygen_dissolved,
         )
         ammonium = 0 + ammonium * ammonium_rate * self.time_step.total_seconds()
         ammonium = xr.where(ammonium < 0, 0, ammonium)
@@ -93,7 +107,7 @@ class Nitrogen(Process):
             ammonium,
             temperature,
             depth,
-            dissolved_oxygen,
+            oxygen_dissolved,
         )
         nitrate = 0 + nitrate * nitrate_rate * self.time_step_frequency.total_seconds()
         nitrate = xr.where(nitrate < 0, 0, nitrate)
@@ -104,21 +118,20 @@ class Nitrogen(Process):
         ammonium: ArrayLike,
         temperature: ArrayLike,
         depth: ArrayLike,
-        dissolved_oxygen: ArrayLike,
+        oxygen_dissolved: ArrayLike,
     ) -> None:
         if not self.use_ammonium:
             return 0
 
         rate = (
-            self.ammonium_decay(
+            self.ammonium_decay_nitrate(
                 ammonium,
                 temperature,
             )
             - self.ammonium_nitrification(
                 ammonium,
                 temperature,
-                # TODO
-                # nitrification_inhibition,
+                oxygen_dissolved,
             )
             + self.ammonium_from_bed(
                 depth=depth,
@@ -134,10 +147,25 @@ class Nitrogen(Process):
         rate = xr.where(rate == np.nan, 0, rate)
         return rate
 
-    def ammonium_floating_respiration(self, rna) -> ArrayLike:
+    def ammonium_floating_respiration(self) -> ArrayLike:
         if not self.use_floating_algae:
             return 0
         return self.floating_algae_process.ammonium_respiration()
+
+    def ammonium_benthic_respiration(self) -> ArrayLike:
+        if not self.use_benthic_algae:
+            return 0
+        return self.benthic_algae_process.ammonium_respiration()
+
+    def ammonium_floating_growth(self) -> ArrayLike:
+        if not self.use_floating_algae:
+            return 0
+        return self.floating_algae_process.ammonium_growth()
+
+    def ammonium_benthic_growth(self) -> ArrayLike:
+        if not self.use_benthic_algae:
+            return 0
+        return self.benthic_algae_process.ammonium_growth()
 
     def change_nitrate(
         self,
@@ -145,7 +173,7 @@ class Nitrogen(Process):
         ammonium: ArrayLike,
         temperature: ArrayLike,
         depth: ArrayLike,
-        dissolved_oxygen: ArrayLike,
+        oxygen_dissolved: ArrayLike,
     ) -> None:
         if not self.use_nitrate:
             return 0
@@ -154,13 +182,13 @@ class Nitrogen(Process):
             self.ammonium_nitrification(
                 ammonium,
                 temperature,
-                # TODO
-                # nitrification_inhibition,
+                oxygen_dissolved,
             )
             - self.nitrate_denitrification(
-                dissolved_oxygen,
+                oxygen_dissolved,
                 # TODO: need argument
                 # half_saturation_oxygen,
+                1,
                 nitrate,
                 temperature,
             )
@@ -174,12 +202,14 @@ class Nitrogen(Process):
                 ammonium,
                 # TODO: need argument
                 # algea_growth_rate,
+                0,
             )
             - self.nitrate_uptake_benthic_algae(
                 nitrate,
                 ammonium,
                 # TODO: need argument
                 # algea_growth_rate,
+                0,
                 depth,
             )
         )
@@ -231,7 +261,7 @@ class Nitrogen(Process):
         self,
         ammonium: ArrayLike,
         temperature: ArrayLike,
-        nitrification_inhibition: ArrayLike,
+        oxygen_dissolved: ArrayLike,
     ) -> ArrayLike:
         if not self.use_ammonium:
             return 0.0
@@ -241,7 +271,22 @@ class Nitrogen(Process):
             temperature, self.nitrification_rate, self.nitrification_theta
         )
 
-        return ammonium * rate_corrected * nitrification_inhibition
+        return (
+            ammonium * rate_corrected * self.nitrification_inhibition(oxygen_dissolved)
+        )
+
+    def ammonium_decay_nitrate(
+        self, ammonium: ArrayLike, temperature: ArrayLike
+    ) -> ArrayLike:
+        if not self.use_ammonium:
+            return 0.0
+
+        # temperature adjust rate
+        rate_corrected = arrhenius_correction(
+            temperature, self.ammonium_decay_rate, self.ammonium_decay_theta
+        )
+
+        return ammonium * rate_corrected
 
     def nitrate_denitrification(
         self,
@@ -311,4 +356,12 @@ class Nitrogen(Process):
             * algea_growth_rate
             * self.benthic_algea_faction_uptake_from_nitrate
             * self.fraction_bottom_area
+        )
+
+    def nitrification_inhibition(self, oxygen_dissolved: ArrayLike) -> ArrayLike:
+        if not self.use_nitrate:
+            return 1.0
+
+        return 1.0 - np.exp(
+            -self.nitrification_oxygen_inhibition_factor * oxygen_dissolved
         )

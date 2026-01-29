@@ -32,7 +32,7 @@ class Temperature(Process):
 
     variables = [
         "water_temperature",
-        "surface_area",
+        "wetted_surface_area",
         "volume",
         "cloudiness",
         "air_temperature",
@@ -62,7 +62,7 @@ class Temperature(Process):
             wind_a (float): Wind function parameter
             wind_b (float): Wind function parameter
             wind_c (float): Wind function parameter
-            sediment_density (ArrayLike): Sediment density in units of g/cm^3
+            sediment_density (ArrayLike): Sediment density in units of kg/m^3
             sediment_specific_heat (float): Sediment specific heat in units of J/kg/C
             air_diffusivity_ratio (float): Air diffusivity ratio
             sediment_diffusivity (float): Sediment diffusivity in units of m^2/s
@@ -80,7 +80,7 @@ class Temperature(Process):
 
     @ProcessFactory.register("temperature")
     @staticmethod
-    def from_config(config: dict) -> "Temperature":
+    def from_config(config: dict, variable_registry: VariableRegistry) -> "Temperature":
         return Temperature(**config)
 
     def run(self, time: datetime, registry: VariableRegistry) -> None:
@@ -124,10 +124,9 @@ class Temperature(Process):
 
         # we only want to update the temperature in cells that have water
         updated_water_temperature = xr.where(volume > 0, updated_water_temperature, 0)
-        water_temperature *= 0 + updated_water_temperature
-        
 
-        #### Energy balance calculations ####
+        # write changes back to registry
+        registry.set_at_time("water_temperature", time, updated_water_temperature)
 
     #### Energy balance calculations ####
 
@@ -265,7 +264,6 @@ class Temperature(Process):
         """
         Compute the net heatflux in of the grid in (W/m^2)
         """
-
         sensible = self.flux_sensible(water_temperature, air_temperature, wind_speed)
         latent = self.flux_latent_heat(
             water_temperature=water_temperature,
@@ -276,14 +274,14 @@ class Temperature(Process):
         sediment = self.flux_sediment(
             water_temperature, sediment_temperature, sediment_thickness
         )
-        longwave = self.flux_atmospheric_longwave(cloudiness, air_temperature)
+        atmospheric = self.flux_atmospheric_longwave(cloudiness, air_temperature)
         upwelling = self.flux_upwelling_longwave(water_temperature)
 
         flux = (
             sensible
             + solar_flux  # provided as direct input
             + sediment
-            + longwave
+            + atmospheric
             + upwelling
             + latent
         )
