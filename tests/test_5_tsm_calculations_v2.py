@@ -32,31 +32,29 @@ def default_temperature_dict() -> dict[str, float]:
         }
 
 
-CASES = [
-    (
-        {"water_temperature": 20.0}, #001
+CASES_DICT = {
+    "default-temp": (
+        {"water_temperature": 20.0},
         19.9999461,
     ),
-    (
-        {"water_temperature": 40.0}, #002
+    "high-initial-temp": (
+        {"water_temperature": 40.0},
         39.99939598,
     ),
-]
+}
 
-CASE_IDS = [
-    "default-temp", #001
-    "high-initial-temp", #002
-]
+CASES = list(CASES_DICT.values())
+CASE_IDS = list(CASES_DICT.keys())
 
 
 @pytest.mark.parametrize(
-    "overrides, expected_temp",
-    CASES,
+    "overrides, expected_temperature",
+    CASES, #CASES is a list of tuples (overrides dict, expected temperature)
     ids=CASE_IDS,
 )
 def test_temperature_process(
     overrides,
-    expected_temp,
+    expected_temperature,
     default_temperature_dict,
 ):
     data = copy.deepcopy(default_temperature_dict)
@@ -64,7 +62,7 @@ def test_temperature_process(
 
     #slice the updated dict into registry variables and process parameters
     items = list(data.items())
-    split_index = 11 #note: adjusted to match number of registry variables in Temperature process
+    split_index = 11 #note: adjusted to match number of registry variables in the process
     data_registry = dict(items[:split_index])
     data_process = dict(items[split_index:])
 
@@ -85,4 +83,4 @@ def test_temperature_process(
     date_time = datetime(2026, 1, 1, 0, 0, 0)
     process.run(date_time, variable_registry)
     result = variable_registry.get("water_temperature")
-    assert pytest.approx(result, rel=1e-7) == expected_temp
+    assert pytest.approx(result, rel=1e-7) == expected_temperature
