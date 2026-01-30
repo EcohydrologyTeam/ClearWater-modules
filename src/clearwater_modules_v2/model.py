@@ -122,7 +122,9 @@ class Model:
     def __save_output_model(self) -> None:
         for var in self.__output_variables:
             var = self.__registry.get(var)
-            self.__output_store.write(
-                data=var,
-                parameter_name=var.name,
-            )
+
+            # TODO: fix the write method
+            # self.__output_store.write(
+            #    data=var,
+            #    parameter_name=var.name,
+            # )

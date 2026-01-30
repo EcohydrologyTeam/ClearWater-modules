@@ -72,9 +72,9 @@ Coming soon...
 
 We welcome your pull request.
 
-## Acknowlgements
+## Acknowledgements
 
-The vision for modernizing this library, including the initial port to Python from Fortran, was develped by:
+The vision for modernizing this library, including the initial port to Python from Fortran, was developed by:
 
 - Dr. Todd E. Steissberg (ERDC-EL)
 

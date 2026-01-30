@@ -28,6 +28,7 @@ class Riverine(Process):
     @staticmethod
     def from_file_path(
         configuration_path: str | Path,
+        variable_registry: VariableRegistry,
         start_datetime: str | datetime,
         end_datetime: str | datetime,
         time_step: timedelta = timedelta(seconds=30),
@@ -42,43 +43,37 @@ class Riverine(Process):
         return Riverine(
             cwr.ClearwaterRiverine(
                 config_filepath=configuration_path,
-                datetime_range=(start_datetime, end_datetime),
+                start_datetime=start_datetime,
+                end_datetime=end_datetime,
+                variable_registry=variable_registry,
             ),
             time_step,
         )
 
     @ProcessFactory.register("riverine")
     @staticmethod
-    def from_config(config: dict) -> "Riverine":
-        return Riverine.from_file_path(**config)
+    def from_config(config: dict, variable_registry: VariableRegistry) -> "Riverine":
+        return Riverine.from_file_path(**config, variable_registry=variable_registry)
 
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
         """
         Initialize the riverine process.
         """
-        # TODO: Ideally Riverine will register these to the registry as part of it's initialization
+
+        def check_variable_in_registry(variable_name: str) -> None:
+            if variable_name not in registry:
+                raise KeyError(
+                    f"Variable '{variable_name}' not found in registry. Did models initialize correctly."
+                )
 
         # register the water temperature, volume, and surface area to the registry
-        registry.register(
-            "water_temperature",
-            DataArrayVariable(self.riverine_instance.mesh.temperature.copy(deep=False)),
-        )
-        registry.register(
-            "volume",
-            DataArrayVariable(self.riverine_instance.mesh.volume.copy(deep=False)),
-        )
-
-        # 'wetted_surface_area' is not calculated by default
-        # We may need to specifically call the calculate_wetted_surface_area function
-        if "wetted_surface_area" not in self.riverine_instance.mesh:
-            cwr_utils.calculate_wetted_surface_area(self.riverine_instance.mesh)
-
-        registry.register(
-            "surface_area",
-            DataArrayVariable(
-                self.riverine_instance.mesh.wetted_surface_area.copy(deep=False)
-            ),
-        )
+        # verify required varables have initialized correctly
+        check_variable_in_registry("water_temperature")
+        check_variable_in_registry("volume")
+        try:
+            check_variable_in_registry("wetted_surface_area")
+        except KeyError:
+            cwr_utils.calculate_wetted_surface_area(self.riverine_instance)
 
         # TODO: update once Riverine can register variables to the registry
         if model.has_process("FloatingAlgae"):
@@ -102,9 +97,13 @@ class Riverine(Process):
                 "oxygen_dissolved",
                 DataArrayVariable(self.riverine_instance.mesh.DOX.copy(deep=False)),
             )
+
+            # TODO: replace this with depth calculation
             registry.register(
                 "depth",
-                DataArrayVariable(self.riverine_instance.mesh.depth.copy(deep=False)),
+                DataArrayVariable(
+                    self.riverine_instance.mesh.wetted_surface_area.copy(deep=False)
+                ),
             )
 
         # The riverine model use current time_step as the start point and

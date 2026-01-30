@@ -33,8 +33,11 @@ def init_from_config(config: dict) -> Model:
     except KeyError as e:
         raise ValueError(f"Missing key in config: {e}")
 
+    # some of the processes need access to the variable registry for initialization
+    variable_registry = VariableRegistry()
+
     # initialize the model process instances based on the configuration
-    processes = __init_processes(config, default_time_step=time_step)
+    processes = __init_processes(config, variable_registry, default_time_step=time_step)
 
     # initialize the data store from data
     variables = {v for p in processes for v in p.variables}
@@ -70,7 +73,7 @@ def init_from_config(config: dict) -> Model:
     # TODO: read data sources from conf
     return Model(
         processes=processes,
-        variable_registry=VariableRegistry(),
+        variable_registry=variable_registry,
         variable_data_sources=variable_data_sources,
         start_time=start_time,
         end_time=end_time,
@@ -203,7 +206,9 @@ def __init_data_sources(
     return data_source
 
 
-def __init_processes(config: dict, default_time_step: timedelta) -> list[Process]:
+def __init_processes(
+    config: dict, variable_registry: VariableRegistry, default_time_step: timedelta
+) -> list[Process]:
     process_instances = []
     for process_spec in config["processes"]:
         # TODO: this does not seem scalable to me
@@ -225,7 +230,9 @@ def __init_processes(config: dict, default_time_step: timedelta) -> list[Process
                 config["model"]["end_datetime"]
             )
 
-        process_instance = ProcessFactory.from_config(process_name, process_config)
+        process_instance = ProcessFactory.from_config(
+            process_name, process_config, variable_registry
+        )
         process_instances.append(process_instance)
 
     return process_instances
