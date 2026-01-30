@@ -33,14 +33,66 @@ def default_temperature_dict() -> dict[str, float]:
 
 
 CASES_DICT = {
-    "default-temp": (
+    "test_defaults": (
         {"water_temperature": 20.0},
         19.9999461,
     ),
-    "high-initial-temp": (
+    "test_changed_water_temp_c": (
         {"water_temperature": 40.0},
         39.99939598,
     ),
+    "def test_changed_surface_area": (
+        {"wetted_surface_area": 2.0},
+        19.9998921,
+    ),
+    "test_changed_volume": (
+        {"volume": 2.0},
+        19.99997303,
+    ),
+    "test_changed_air_temp_c": (
+        {"air_temperature": 30.0},
+        19.99999407,
+    ),
+    "test_changed_sed_temp_c": (
+        {"sediment_temperature": 10.0},
+        19.99997811,
+    ),
+    "test_changed_q_solar": (
+        {"solar_radiation": 450.0},
+        19.99995803,
+    ),
+    "test_changed_wind_kh_kw": (
+        {"air_diffusivity_ratio": 0.5},
+        19.99994605,
+    ),
+    "test_changed_eair_mb": (
+        {"atmospheric_vapor_pressure": 2.0},
+        19.99994772,
+    ),
+    "test_changed_pressure_mb": (
+        {"atmospheric_pressure": 970.0},
+        19.99994401,
+    ),
+    "test_changed_cloudiness": (
+        {"cloudiness": 0.0},
+        19.99994592,
+    ),
+    "test_changed_wind_a": (
+        {"wind_a": 1.0e-7},
+        19.9999476,
+    ),
+    "test_changed_wind_b": (
+        {"wind_b": 1.0},
+        19.99995768,
+    ),
+    "test_changed_wind_c": (
+        {"wind_c": 0.5},
+        19.99996079,
+    ),
+    #"test_use_sed_temp": ( #TODO: need to implement use_sed_temp parameter in Temperature process
+    #    {"use_sed_temp": False},
+    #    20.0000422364348,
+    #),
 }
 
 CASES = list(CASES_DICT.values())
