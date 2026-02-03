@@ -617,28 +617,58 @@ class Temperature(Process):
         # four where clauses is a little rough
         richardson_function: ArrayLike = 1.0
 
+
+        ### CASE 1 ###
         # neutral rn < 0
         richardson_function = xr.where(
             (richardson_number < 0.0) & (richardson_number >= -0.01),
             1.0,
             richardson_function,
         )
+        #if (richardson_number < 0.0) & (richardson_number >= -0.01):
+        #    print('Case 1 == True')
+        #else:
+        #    print('Case 1 == False')
+        
+
+        ### CASE 2 ###
         # unstable
         richardson_function = xr.where(
             (richardson_number < 0.0) & (richardson_number < -0.01),
             (1.0 - 22.0 * richardson_number) ** 0.80,
             richardson_function,
         )
+        #if (richardson_number < 0.0) & (richardson_number < -0.01):
+        #    print('Case 2 == True')
+        #else:
+        #    print('Case 2 == False')        
+        
+
+        ### CASE 3 ###
         # neutral rn > 0
         richardson_function = xr.where(
             (richardson_number >= 0.0) & (richardson_number <= 0.01),
             1.0,
             richardson_function,
         )
+        #if (richardson_number >= 0.0) & (richardson_number <= 0.01):
+        #    print('Case 3 == True')
+        #else:
+        #    print('Case 3 == False')
+
+        
+        ### CASE 4 ###
         # stable
         richardson_function = xr.where(
             (richardson_number >= 0.0) & (richardson_number > 0.01),
             (1.0 + 34.0 * richardson_number) ** (-0.80),
             richardson_function,
         )
+        #if (richardson_number >= 0.0) & (richardson_number > 0.01):
+        #    print('Case 4 == True')
+        #else:
+        #    print('Case 4 == False')        
+                
+        
+        #print(f"    Richardson Function: {float(richardson_function)}")
         return (richardson_number, richardson_function)
