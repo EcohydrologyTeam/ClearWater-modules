@@ -29,6 +29,7 @@ def default_temperature_dict() -> dict[str, float]:
         'air_diffusivity_ratio': 1.0,
         'sediment_diffusivity': 0.0432,
         'time_step': 1.0,
+        'use_sediment_temperature': True,
         }
 
 
@@ -89,10 +90,10 @@ CASES_DICT = {
         {"wind_c": 0.5},
         19.99996079,
     ),
-    #"test_use_sed_temp": ( #TODO: need to implement use_sed_temp parameter in Temperature process
-    #    {"use_sed_temp": False},
-    #    20.0000422364348,
-    #),
+    "test_use_sed_temp": (
+        {"use_sediment_temperature": False},
+        20.0000422364348,
+    ),
 }
 
 CASES = list(CASES_DICT.values())
@@ -129,7 +130,8 @@ def test_temperature_process(
         sediment_density=data_process["sediment_density"],
         sediment_specific_heat=data_process["sediment_specific_heat"],
         sediment_diffusivity=data_process["sediment_diffusivity"],
-        time_step=timedelta(seconds=data_process["time_step"])
+        time_step=timedelta(seconds=data_process["time_step"]),
+        use_sediment_temperature=data_process["use_sediment_temperature"],
     )
 
     date_time = datetime(2026, 1, 1, 0, 0, 0)
