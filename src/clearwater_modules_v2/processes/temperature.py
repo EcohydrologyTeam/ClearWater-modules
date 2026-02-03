@@ -55,6 +55,7 @@ class Temperature(Process):
         air_diffusivity_ratio: float = 1.0,
         sediment_diffusivity: float = 0.0061,
         time_step: timedelta = timedelta(minutes=5),
+        use_sediment_temperature: bool = True,
     ) -> None:
         """
         Initialize the temperature process.
@@ -77,6 +78,7 @@ class Temperature(Process):
         self.sediment_specific_heat = sediment_specific_heat
         self.air_diffusivity_ratio = air_diffusivity_ratio
         self.sediment_diffusivity = sediment_diffusivity
+        self.use_sediment_temperature = use_sediment_temperature
         Process.__init__(self, time_step)
 
     @ProcessFactory.register("temperature")
@@ -271,7 +273,11 @@ class Temperature(Process):
         water_temperature: ArrayLike,
         sediment_temperature: ArrayLike,
         sediment_thickness: ArrayLike,
-    ):
+    ) -> ArrayLike:
+        # optional flag to disable sediment temperature
+        if not self.use_sediment_temperature:
+            return 0.0
+
         flux = (
             self.sediment_density
             * self.sediment_specific_heat
@@ -335,13 +341,13 @@ class Temperature(Process):
             + upwelling
             + latent
         )
-        print(f"    sensible: {float(sensible)}")
-        print(f"    solar: {float(solar_flux)}")
-        print(f"    sediment: {float(sediment)}")
-        print(f"    longwave: {float(longwave)}")
-        print(f"    upwelling: {float(upwelling)}")
-        print(f"    latent: {float(latent)}")
-        print(f"    net flux: {float(flux)}")
+        # print(f"    sensible: {float(sensible)}")
+        # print(f"    solar: {float(solar_flux)}")
+        # print(f"    sediment: {float(sediment)}")
+        # print(f"    longwave: {float(longwave)}")
+        # print(f"    upwelling: {float(upwelling)}")
+        # print(f"    latent: {float(latent)}")
+        # print(f"    net flux: {float(flux)}")
         return flux
 
     def water_specific_heat(self, temperature: ArrayLike) -> ArrayLike:
@@ -509,6 +515,7 @@ class Temperature(Process):
             * atmospheric_vapor_pressure
             / (atmospheric_pressure - atmospheric_vapor_pressure)
         )
+        return mixing_ratio
 
     def density_air(
         self,
@@ -561,7 +568,7 @@ class Temperature(Process):
 
     def richardson_number(
         self, wind_speed: ArrayLike, density_air_sat: ArrayLike, density_air: ArrayLike
-    ) -> tuple[float, float]:
+    ) -> tuple[ArrayLike, ArrayLike]:
         """
         Compute the Richardson Number. This is used in latent and sensible heat flux
         computations to correct for atmospheric stability.
@@ -586,19 +593,13 @@ class Temperature(Process):
             Richardson Number and Richardson Function
         """
 
-        richardson_function: float = 0.0
-        richardson_number: float = (
+        richardson_number: ArrayLike = (
             # -1 #TODO: check original equation to see if this multiplication by negative one is needed (not in v1 of code)
             constants.GRAVITY
             * (density_air - density_air_sat)
             * 2.0
             / (density_air * (wind_speed**2.0))
         )
-        print(f"    Richardson Number: {float(richardson_number)}")
-        print(f"      gravity: {float(constants.GRAVITY)}")
-        print(f"      density_air: {float(density_air)}")
-            richardson_number = -1.0
-
         # print(f"    Richardson Number: {float(richardson_number)}")
         # print(f"      gravity: {float(constants.GRAVITY)}")
         # print(f"      density_air: {float(density_air)}")
