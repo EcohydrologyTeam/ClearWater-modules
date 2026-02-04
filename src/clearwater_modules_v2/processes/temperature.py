@@ -508,7 +508,7 @@ class Temperature(Process):
             atmospheric_pressure: Atmospheric pressure (mb)
         """
         # TODO: what if atmospheric_pressure == atmospheric_vapor_pressure?
-        if atmospheric_vapor_pressure == atmospheric_vapor_pressure:
+        if atmospheric_pressure == atmospheric_vapor_pressure:
             return 0.0
         mixing_ratio = (
             0.622
