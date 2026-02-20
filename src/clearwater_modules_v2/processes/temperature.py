@@ -164,19 +164,20 @@ class Temperature(Process):
             flux_atmospheric_longwave [xr.DataArray]: Atmospheric longwave flux in units of W/m^2
         """
 
-        print(f"    Longwave down terms:")
-        print(f"      cloudiness_term: {float(1.0 + 0.17 * cloudiness**2)}")
-        print(f"        cloudiness_frac: {float(cloudiness)}")
-        print(
-            f"      emissivity_air: {float(9.37e-6 * conversions.celsius_to_kelvin(air_temperature) ** 2)}"
-        )
-        print(f"      stefan_boltzmann: {float(constants.STEFAN_BOLTZMANN)}")
-        print(
-            f"      air_temp_term: {float(conversions.celsius_to_kelvin(air_temperature) ** 4)}"
-        )
-        print(
-            f"        air_temp_k: {float(conversions.celsius_to_kelvin(air_temperature))}"
-        )
+        # TODO: convert this to log statements, but we cannot assume these will be float convertible
+        # print(f"    Longwave down terms:")
+        # print(f"      cloudiness_term: {float(1.0 + 0.17 * cloudiness**2)}")
+        ##print(f"        cloudiness_frac: {float(cloudiness)}")
+        # print(
+        #    f"      emissivity_air: {float(9.37e-6 * conversions.celsius_to_kelvin(air_temperature) ** 2)}"
+        # )
+        # print(f"      stefan_boltzmann: {float(constants.STEFAN_BOLTZMANN)}")
+        # print(
+        #    f"      air_temp_term: {float(conversions.celsius_to_kelvin(air_temperature) ** 4)}"
+        # )
+        # print(
+        #    f"        air_temp_k: {float(conversions.celsius_to_kelvin(air_temperature))}"
+        # )
 
         flux = (
             # TODO: Should this change as a function of temperature?
@@ -215,21 +216,22 @@ class Temperature(Process):
         Returns:
             xr.DataArray: latent heat flux in units of W/m^2
         """
-        print(f"    Latent heat terms:")
-        print(f"      atmospheric pressure: {float(atmospheric_pressure)}")
-        print(
-            f"      latent_heat_vaporization: {float(self.latent_heat_vaporization(water_temperature))}"
-        )
-        print(f"        water_temperature: {float(water_temperature)}")
-        print(f"      water_density: {float(self.water_density(water_temperature))}")
-        print(
-            f"      wind_function: {float(self.wind_function(wind_speed, richardson_function))}"
-        )
-        print(f"        wind_speed: {float(wind_speed)}")
-        print(
-            f"      saturation_vapor_pressure: {float(self.saturation_vapor_pressure(water_temperature))}"
-        )
-        print(f"      atmospheric_vapor_pressure: {float(atmospheric_vapor_pressure)}")
+        # TODO: we could consider keeping this for log statements, but we cannot assume they will be float convertible
+        # print(f"    Latent heat terms:")
+        # print(f"      atmospheric pressure: {float(atmospheric_pressure)}")
+        # print(
+        #    f"      latent_heat_vaporization: {float(self.latent_heat_vaporization(water_temperature))}"
+        # )
+        # print(f"        water_temperature: {float(water_temperature)}")
+        # print(f"      water_density: {float(self.water_density(water_temperature))}")
+        # print(
+        #    f"      wind_function: {float(self.wind_function(wind_speed, richardson_function))}"
+        # )
+        # print(f"        wind_speed: {float(wind_speed)}")
+        # print(
+        #    f"      saturation_vapor_pressure: {float(self.saturation_vapor_pressure(water_temperature))}"
+        # )
+        # print(f"      atmospheric_vapor_pressure: {float(atmospheric_vapor_pressure)}")
 
         flux = (
             -0.622
@@ -606,9 +608,9 @@ class Temperature(Process):
         # print(f"      density_air_sat: {float(density_air_sat)}")
         # print(f"      wind_speed: {float(wind_speed)}")
 
-        # TODO: this needs to be reworked to support array inputs
-
         # Set bounds for richardson number
+        # print(f"    Richardson Number before bounds: {richardson_number}")
+
         richardson_number = xr.where(richardson_number > 2.0, 2.0, richardson_number)
         richardson_number = xr.where(richardson_number < -1.0, -1.0, richardson_number)
 
@@ -641,4 +643,5 @@ class Temperature(Process):
             (1.0 + 34.0 * richardson_number) ** (-0.80),
             richardson_function,
         )
+
         return (richardson_number, richardson_function)
