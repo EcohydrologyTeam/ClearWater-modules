@@ -40,3 +40,12 @@ verify-install = {cmd = "python -c \"import clearwater_data; import clearwater_r
 
 [tool.pixi.dependencies]
 pytest = ">=9.0.2,<10"
+pytest-cov = ">=7.0.0,<8"
+
+[tool.pytest.ini_options]
+addopts = """
+    --cov=clearwater_modules_v2
+    --cov-report=term-missing
+    --cov-report=html
+"""
+testpaths = ["tests"]
