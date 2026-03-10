@@ -1,5 +1,7 @@
+import os
+
 from processes.base import Process
-from clearwater_data.variables import VariableRegistry
+from clearwater_data.variables import DataArrayVariable, VariableRegistry
 from datetime import datetime, timedelta
 from typing import Iterable
 from clearwater_data.io.base import (
@@ -8,6 +10,7 @@ from clearwater_data.io.base import (
     DataStore,
     ChunkedDataStore,
 )
+from clearwater_data.io.zarr import ZarrDataStore
 
 
 class Model:
@@ -20,7 +23,8 @@ class Model:
         end_time: datetime,
         time_step: timedelta,
         output_variables: Iterable[str],
-        output_store: DataStore | ChunkedDataStore,
+        root_directory: os.Pathlike,
+        # output_store: DataStore | ChunkedDataStore,
         chunk_size: timedelta | None = None,
     ) -> None:
         self.__processes: tuple[Process] = processes
@@ -32,7 +36,8 @@ class Model:
         self.__end_time: datetime = end_time
         self.__time_step: timedelta = time_step
         self.__output_variables: Iterable[str] = output_variables
-        self.__output_store: DataStore | ChunkedDataStore = output_store
+        self.__root_directory: os.Pathlike = root_directory
+        # self.__output_store: DataStore | ChunkedDataStore = output_store
 
         # check if we are running chunked
         self.__chunked_mode: bool = chunk_size is not None
@@ -90,13 +95,65 @@ class Model:
                 data,
             )
 
+        # initialize any processes that require initialization
         for process in self.__processes:
             process.init_process(self, self.__registry)
+
+        # set up the output data store
+        self.__init_output_source()
+
+    def __init_output_source(self) -> None:
+        # we need to have the output variables match the signature of the variable themselves,
+        # which means we need to have the dimensions of the variable and provide that
+        # to the output store initialization method.
+
+        # TODO: generalize this
+        # this is very much a hack to get something working
+        space_dimensions = {}
+
+        for variable_name in self.__output_variables:
+            variable = self.__registry.get_variable(variable_name)
+
+            # We need the dimensions of the output store to match the dimensions of the variables we are writing out.
+            # If there are any spatial dimensions associated with the variable, we need to pass that information to the output store.
+            if (
+                variable.space_dimension is not None
+                and variable.space_dimension not in space_dimensions
+            ):
+                space_dimensions[variable.space_dimension] = (
+                    variable.space_dimension_values
+                )
+
+            # TODO: This is a manual override to set spatial dimension until we have
+            # fully implemented variable space dimension in riverine
+            if variable_name == "water_temperature":
+                data = variable.get()
+                space_dimensions["nface"] = data["nface"].values
+
+        self.__output_data_store = ZarrDataStore(
+            store_path=self.__root_directory / "model_outputs.zarr",
+            start_date=self.__start_time,
+            end_date=self.__end_time,
+            time_step=self.__time_step,
+            variables=self.__output_variables,
+            spatial_field=(
+                list(space_dimensions.keys()) if len(space_dimensions) > 0 else None
+            ),
+            spatial_field_values=(
+                list(space_dimensions.values()) if len(space_dimensions) > 0 else None
+            ),
+        )
 
     def __process_loop_chunked(self) -> None:
         # TODO: this need actual chunking logic
         current_time = self.__start_time
         while current_time < self.__end_time:
+            # TODO: look at riverine's code and mirror where applicable.
+            # TODO: align with riverine
+
+            # read data within chunk
+
+            # run all of chunk
             current_time_seconds = current_time.timestamp()
             print(f"Running timestep: {current_time}")
             for process in self.__processes:
@@ -104,6 +161,11 @@ class Model:
                 if current_time_seconds % process.time_step_seconds == 0:
                     process.run(current_time, self.__registry)
             current_time += self.__time_step
+
+            # write out chunk's data
+
+            # load next chunk's data
+
         self.__save_output_model()
 
     def __process_loop_full(self) -> None:
@@ -123,8 +185,7 @@ class Model:
         for var in self.__output_variables:
             var = self.__registry.get(var)
 
-            # TODO: fix the write method
-            # self.__output_store.write(
-            #    data=var,
-            #    parameter_name=var.name,
-            # )
+            self.__output_data_store.write(
+                data=var,
+                parameter_name=var.name,
+            )

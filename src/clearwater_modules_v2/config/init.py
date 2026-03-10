@@ -62,6 +62,8 @@ def init_from_config(config: dict) -> Model:
 
     model_data_source = ZarrDataSource(store_path=root_directory / "model_inputs.zarr")
 
+    # TODO: I don't think we can initalize the output data store until we have the variable registry in place
+    # The grided nature of some of the variables is not apparently until we read it from
     output_data_store = ZarrDataStore(
         store_path=root_directory / "model_outputs.zarr",
         start_date=start_time,
@@ -79,7 +81,8 @@ def init_from_config(config: dict) -> Model:
         end_time=end_time,
         time_step=time_step,
         output_variables=config["model"].get("output_variables", []),
-        output_store=output_data_store,
+        root_directory=root_directory,
+        # output_store=output_data_store,
     )
 
 
