@@ -17,6 +17,10 @@ from clearwater_data.custom_types import ArrayLike
 
 import warnings
 
+# This will enable deprecation warnings to be shown by default,
+# which is important for our users to see when they are using deprecated features
+warnings.filterwarnings("default")
+
 
 def init_from_file(file_path: Path | str) -> Model:
     config = read_config(file_path)
@@ -34,7 +38,16 @@ def init_from_config(config: dict) -> Model:
         raise ValueError(f"Missing key in config: {e}")
 
     # pull out chunking information if it exists
-    chunk_size = config["model"].get("chunk_time_step", None)
+    chunk_size = config["model"].get("chunk_size", None)
+
+    # we previously named this chunk_time_step, so we should check for that and issue a deprecation warning if it is used
+    if chunk_size is None:
+        chunk_size = config["model"].get("chunk_time_step", None)
+        if chunk_size is not None:
+            warnings.warn(
+                "The `chunk_time_step` configuration option is deprecated and will be removed in a future release. Please use `chunk_size` instead.",
+                DeprecationWarning,
+            )
     if chunk_size is not None:
         chunk_size = pd.Timedelta(chunk_size)
 
