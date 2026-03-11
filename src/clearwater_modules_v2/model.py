@@ -1,16 +1,27 @@
+import logging
 import os
 
 from processes.base import Process
-from clearwater_data.variables import DataArrayVariable, VariableRegistry
+from clearwater_data.variables import VariableRegistry
 from datetime import datetime, timedelta
 from typing import Iterable
 from clearwater_data.io.base import (
     DataSource,
     ChunkedDataSource,
-    DataStore,
-    ChunkedDataStore,
 )
-from clearwater_data.io.zarr import ZarrDataStore
+from clearwater_data.io.zarr import ChunkedZarrDataStore
+
+from logging import getLogger, basicConfig
+
+LOGGER = getLogger(__name__)
+
+
+def set_logging_config(log_level: str = "DEBUG") -> None:
+    basicConfig(
+        level=log_level,
+        format="[%(asctime)s] %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 
 class Model:
@@ -42,13 +53,9 @@ class Model:
         # check if we are running chunked
         self.__chunked_mode: bool = chunk_size is not None
         self.__chunk_size: timedelta | None = chunk_size
-        # if chunked mode, we also want to make sure the output is chunked
-        if self.__chunked_mode:
-            if not isinstance(self.__output_store, ChunkedDataStore):
-                raise ValueError(
-                    "Output store must be chunked when running the model in chunked mode. "
-                    + "Either set chunk_size to None or provide ChunkedDataStore for model output."
-                )
+
+        # TODO have the configuration provided from the configuration file
+        set_logging_config()
 
     def validate(self) -> None:
         if self.__start_time >= self.__end_time:
@@ -130,7 +137,7 @@ class Model:
                 data = variable.get()
                 space_dimensions["nface"] = data["nface"].values
 
-        self.__output_data_store = ZarrDataStore(
+        self.__output_data_store = ChunkedZarrDataStore(
             store_path=self.__root_directory / "model_outputs.zarr",
             start_date=self.__start_time,
             end_date=self.__end_time,
@@ -142,50 +149,80 @@ class Model:
             spatial_field_values=(
                 list(space_dimensions.values()) if len(space_dimensions) > 0 else None
             ),
+            chunk_size=self.__chunk_size,
         )
+
+    def __load_chunk_data(self, chunk_start: datetime, chunk_end: datetime) -> None:
+        for variable_name, data_source in self.__variable_data_sources.items():
+            # Non-chunked data sources should already be loaded in the registry as part of model initialization.
+            # we should only need to loaded chunked data sources here.
+            if not isinstance(data_source, ChunkedDataSource):
+                continue
+
+            data = data_source.read_chunk(chunk_start, chunk_end)
+            self.__registry.register(
+                variable_name,
+                data,
+            )
 
     def __process_loop_chunked(self) -> None:
         # TODO: this need actual chunking logic
         current_time = self.__start_time
-        while current_time < self.__end_time:
+        chunk_end_time = self.__start_time + self.__chunk_size
+
+        while current_time <= self.__end_time and chunk_end_time <= self.__end_time:
             # TODO: look at riverine's code and mirror where applicable.
             # TODO: align with riverine
 
-            # read data within chunk
+            # load next chunk's data
+            # the minus timestep ensures that previous timestep data is available for process logic
+            self.__load_chunk_data(current_time - self.__time_step, chunk_end_time)
 
-            # run all of chunk
-            current_time_seconds = current_time.timestamp()
-            print(f"Running timestep: {current_time}")
-            for process in self.__processes:
-                # check if this process should be updated at this timestamp
-                if current_time_seconds % process.time_step_seconds == 0:
-                    process.run(current_time, self.__registry)
-            current_time += self.__time_step
+            while current_time <= chunk_end_time and current_time < self.__end_time:
+                current_time_seconds = current_time.timestamp()
+                LOGGER.info(f"Running timestep: {current_time}")
+                for process in self.__processes:
+                    # check if this process should be updated at this timestamp
+                    if current_time_seconds % process.time_step_seconds == 0:
+                        process.run(current_time, self.__registry)
+                current_time += self.__time_step
 
             # write out chunk's data
+            self.__save_output_model(
+                start_time=chunk_end_time - self.__chunk_size,  # start of the chunk
+                end_time=chunk_end_time,
+            )
 
-            # load next chunk's data
+            # iterate to next chunk
+            chunk_end_time += self.__chunk_size
 
-        self.__save_output_model()
+        # TODO: confirm if this is necesary to write out the last chunk or if it will be handled in the loop above.
+        # output last chunk
+        self.__save_output_model(
+            start_time=self.__end_time - self.__chunk_size, end_time=self.__end_time
+        )
 
     def __process_loop_full(self) -> None:
         current_time = self.__start_time
 
         while current_time < self.__end_time:
             current_time_seconds = current_time.timestamp()
+            LOGGER.info(f"Running timestep: {current_time}")
             for process in self.__processes:
                 # check if this process should be updated at this timestamp
                 # Process should be calculated is current_time + process.time_step_frequency
                 if current_time_seconds % process.time_step_seconds == 0:
                     process.run(current_time, self.__registry)
             current_time += self.__time_step
-        self.__save_output_model()
+        self.__save_output_model(self.__start_time, self.__end_time)
 
-    def __save_output_model(self) -> None:
+    def __save_output_model(self, start_time: datetime, end_time: datetime) -> None:
         for var in self.__output_variables:
             var = self.__registry.get(var)
 
-            self.__output_data_store.write(
+            self.__output_data_store.write_chunk(
                 data=var,
                 parameter_name=var.name,
+                start_time=start_time,
+                end_time=end_time,
             )

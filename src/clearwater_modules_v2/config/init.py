@@ -33,6 +33,11 @@ def init_from_config(config: dict) -> Model:
     except KeyError as e:
         raise ValueError(f"Missing key in config: {e}")
 
+    # pull out chunking information if it exists
+    chunk_size = config["model"].get("chunk_time_step", None)
+    if chunk_size is not None:
+        chunk_size = pd.Timedelta(chunk_size)
+
     # some of the processes need access to the variable registry for initialization
     variable_registry = VariableRegistry()
 
@@ -82,7 +87,9 @@ def init_from_config(config: dict) -> Model:
         time_step=time_step,
         output_variables=config["model"].get("output_variables", []),
         root_directory=root_directory,
+        chunk_size=chunk_size,
         # output_store=output_data_store,
+        # TODO past along chunk size!!!!
     )
 
 
