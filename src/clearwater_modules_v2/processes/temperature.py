@@ -1,4 +1,3 @@
-from clearwater_modules.tsm.processes import emissivity_air
 from .base import Process, ProcessFactory
 from datetime import datetime, timedelta
 from clearwater_data.variables import VariableRegistry

@@ -8,7 +8,7 @@ from clearwater_data.variables import VariableRegistry
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from model import Model
+    from clearwater_modules_v2.model import Model
 
 
 class Process(ABC):
@@ -46,6 +46,9 @@ class Process(ABC):
                 raise ValueError(
                     f"Variable {variable} not found. Are you sure you provided a valid configuration for {variable}?"
                 )
+
+    def finalize_process(self, model: "Model", registry: VariableRegistry) -> None:
+        return None
 
     @abstractmethod
     def run(self, time: datetime, registry: VariableRegistry) -> None:

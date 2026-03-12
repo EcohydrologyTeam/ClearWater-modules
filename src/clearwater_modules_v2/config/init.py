@@ -1,10 +1,10 @@
-from model import Model
-from processes.base import Process, ProcessFactory
+from clearwater_modules_v2.model import Model
+from clearwater_modules_v2.processes.base import Process, ProcessFactory
 from pathlib import Path
-from config.read import read_config
+from clearwater_modules_v2.config.read import read_config
 from datetime import timedelta, datetime
 
-from clearwater_data.variables import DataArrayVariable, Variable, VariableRegistry
+from clearwater_data.variables import Variable, VariableRegistry
 from clearwater_data.io.zarr import ZarrDataStore, ZarrDataSource
 from clearwater_data.io.csv import CSVDataSource
 from clearwater_data.io.base import DataSource, ChunkedDataSource
@@ -19,7 +19,7 @@ import warnings
 
 # This will enable deprecation warnings to be shown by default,
 # which is important for our users to see when they are using deprecated features
-warnings.filterwarnings("default")
+# warnings.filterwarnings("default")
 
 
 def init_from_file(file_path: Path | str) -> Model:
@@ -60,15 +60,6 @@ def init_from_config(config: dict) -> Model:
     # initialize the data store from data
     variables = {v for p in processes for v in p.variables}
 
-    # TODO: this needs to be replaced by ZarrDataSource
-    # store_path = data.init_data_store(
-    #    root_directory=root_directory,
-    #    start_time=start_time,
-    #    end_time=end_time,
-    #    time_step=time_step,
-    #    variables=variables,
-    # )
-
     # read data from original sources and map to an input zarr store
     variable_data_sources = __init_model_data(
         config=config,
@@ -79,16 +70,6 @@ def init_from_config(config: dict) -> Model:
     )
 
     model_data_source = ZarrDataSource(store_path=root_directory / "model_inputs.zarr")
-
-    # TODO: I don't think we can initalize the output data store until we have the variable registry in place
-    # The grided nature of some of the variables is not apparently until we read it from
-    output_data_store = ZarrDataStore(
-        store_path=root_directory / "model_outputs.zarr",
-        start_date=start_time,
-        end_date=end_time,
-        time_step=time_step,
-        variables=config["model"].get("output_variables", []),
-    )
 
     # TODO: read data sources from conf
     return Model(

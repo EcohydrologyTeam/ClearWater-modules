@@ -1,7 +1,7 @@
 import logging
 import os
 
-from processes.base import Process
+from clearwater_modules_v2.processes.base import Process
 from clearwater_data.variables import VariableRegistry
 from datetime import datetime, timedelta
 from typing import Iterable
@@ -34,7 +34,7 @@ class Model:
         end_time: datetime,
         time_step: timedelta,
         output_variables: Iterable[str],
-        root_directory: os.Pathlike,
+        root_directory: os.Pathlike | None = None,
         # output_store: DataStore | ChunkedDataStore,
         chunk_size: timedelta | None = None,
     ) -> None:
@@ -47,12 +47,16 @@ class Model:
         self.__end_time: datetime = end_time
         self.__time_step: timedelta = time_step
         self.__output_variables: Iterable[str] = output_variables
-        self.__root_directory: os.Pathlike = root_directory
+        self.__root_directory: os.Pathlike = root_directory if root_directory else "."
         # self.__output_store: DataStore | ChunkedDataStore = output_store
 
         # check if we are running chunked
         self.__chunked_mode: bool = chunk_size is not None
         self.__chunk_size: timedelta | None = chunk_size
+
+        # TODO: if no output warning and don't set up __output_file
+
+        self.__init_complete: bool = False
 
         # TODO have the configuration provided from the configuration file
         set_logging_config()
@@ -61,8 +65,13 @@ class Model:
         if self.__start_time >= self.__end_time:
             raise ValueError("Start time must be before end time.")
 
-    def run(self) -> None:
+    def init_model(self) -> None:
         self.__init_model()
+        self.__init_complete = True
+
+    def run(self) -> None:
+        if not self.__init_complete:
+            self.__init_model()
         if self.__chunked_mode:
             self.__process_loop_chunked()
         else:
@@ -109,15 +118,20 @@ class Model:
         # set up the output data store
         self.__init_output_source()
 
+    def __finalize_model(self) -> None:
+        for process in self.__processes:
+            process.finalize_process(self, self.__registry)
+
     def __init_output_source(self) -> None:
         # we need to have the output variables match the signature of the variable themselves,
         # which means we need to have the dimensions of the variable and provide that
         # to the output store initialization method.
 
-        # TODO: generalize this
-        # this is very much a hack to get something working
-        space_dimensions = {}
+        if self.__output_variables is None or len(self.__output_variables) == 0:
+            # TODO: warning
+            return
 
+        space_dimensions = {}
         for variable_name in self.__output_variables:
             variable = self.__registry.get_variable(variable_name)
 
@@ -193,10 +207,12 @@ class Model:
                 end_time=chunk_end_time,
             )
 
+            self.__finalize_model()
+
             # iterate to next chunk
             chunk_end_time += self.__chunk_size
 
-        # TODO: confirm if this is necesary to write out the last chunk or if it will be handled in the loop above.
+        # TODO: confirm if this is necessary to write out the last chunk or if it will be handled in the loop above.
         # output last chunk
         self.__save_output_model(
             start_time=self.__end_time - self.__chunk_size, end_time=self.__end_time
