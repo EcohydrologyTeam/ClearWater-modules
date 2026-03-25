@@ -157,3 +157,7 @@ dmypy.json
 # pixi environments
 .pixi
 *.egg-info
+
+
+# Temporary files created by examples
+examples/data_temp/
