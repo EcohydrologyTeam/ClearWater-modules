@@ -161,13 +161,13 @@ def ri_number(
         density_air_sat: Saturation density of air (kg/m3)
         wind_speed: Wind speed (m/s)
     """
-    print(f'    Richardson Number: {float(gravity *
-        (density_air - density_air_sat) *
-        2.0 / (density_air * (wind_speed**2.0)))}')
-    print(f'      gravity: {float(gravity)}')
-    print(f'      density_air: {float(density_air)}')
-    print(f'      density_air_sat: {float(density_air_sat)}')
-    print(f'      wind_speed: {float(wind_speed)}')
+    #print(f'    Richardson Number: {float(gravity *
+    #    (density_air - density_air_sat) *
+    #    2.0 / (density_air * (wind_speed**2.0)))}')
+    #print(f'      gravity: {float(gravity)}')
+    #print(f'      density_air: {float(density_air)}')
+    #print(f'      density_air_sat: {float(density_air_sat)}')
+    #print(f'      wind_speed: {float(wind_speed)}')
 
     return (
         gravity *
@@ -292,12 +292,12 @@ def wind_function(
         wind_c: Wind function coefficient (unitless)
         wind_speed: Wind speed (m/s)
     """
-    print(f'    Wind Function terms:')
-    print(f'      richardson_function: {float(ri_function)}')
-    print(f'      wind_a: {float(wind_a)}')
-    print(f'      wind_b: {float(wind_b)}')
-    print(f'      wind_c: {float(wind_c)}')
-    print(f'      wind_speed: {float(wind_speed)}')
+    #print(f'    Wind Function terms:')
+    #print(f'      richardson_function: {float(ri_function)}')
+    #print(f'      wind_a: {float(wind_a)}')
+    #print(f'      wind_b: {float(wind_b)}')
+    #print(f'      wind_c: {float(wind_c)}')
+    #print(f'      wind_speed: {float(wind_speed)}')
 
     return (
         ri_function * (
@@ -325,13 +325,13 @@ def mf_q_longwave_down(
     Returns:
         Downwelling longwave radiation (W/m2, float)
     """
-    print(f'    Longwave down terms:')
-    print(f'      cloudiness_term: {float(1.0 + 0.17 * cloudiness**2)}')
-    print(f'        cloudiness_frac: {float(cloudiness)}')
-    print(f'      emissivity_air: {float(emissivity_air)}')
-    print(f'      stefan_boltzmann: {float(stefan_boltzmann)}')
-    print(f'      air_temp_term: {float(air_temp_k**4.0)}')
-    print(f'        air_temp_k: {float(air_temp_k)}')
+    #print(f'    Longwave down terms:')
+    #print(f'      cloudiness_term: {float(1.0 + 0.17 * cloudiness**2)}')
+    #print(f'        cloudiness_frac: {float(cloudiness)}')
+    #print(f'      emissivity_air: {float(emissivity_air)}')
+    #print(f'      stefan_boltzmann: {float(stefan_boltzmann)}')
+    #print(f'      air_temp_term: {float(air_temp_k**4.0)}')
+    #print(f'        air_temp_k: {float(air_temp_k)}')
 
     return (1.0 + 0.17 * cloudiness**2) * emissivity_air * stefan_boltzmann * air_temp_k**4.0
 
@@ -368,15 +368,15 @@ def q_latent(
         esat_mb: Saturation vapour pressure (mb)
         eair_mb: Vapour pressure of air (mb)
     """
-    print(f'    Latent heat terms:')
-    print(f'      atmospheric pressure: {float(pressure_mb)}')
-    print(f'      latent_heat_vaporization: {float(lv)}')
-    print(f'        water_temperature: Not Readily Available')
-    print(f'      water_density: {float(density_water)}')
-    print(f'      wind_function: {float(wind_function)}')
-    print(f'        wind_speed: Not Readily Available')
-    print(f'      saturation_vapor_pressure: {float(esat_mb)}')
-    print(f'      atmospheric_vapor_pressure: {float(eair_mb)}')
+    #print(f'    Latent heat terms:')
+    #print(f'      atmospheric pressure: {float(pressure_mb)}')
+    #print(f'      latent_heat_vaporization: {float(lv)}')
+    #print(f'        water_temperature: Not Readily Available')
+    #print(f'      water_density: {float(density_water)}')
+    #print(f'      wind_function: {float(wind_function)}')
+    #print(f'        wind_speed: Not Readily Available')
+    #print(f'      saturation_vapor_pressure: {float(esat_mb)}')
+    #print(f'      atmospheric_vapor_pressure: {float(eair_mb)}')
 
     return (
         (0.622 / pressure_mb) *
@@ -468,13 +468,13 @@ def q_net(
         dt: Change in time (days)
     """
 
-    print(f'    sensible: {float(q_sensible)}')
-    print(f'    solar: {float(q_solar)}')
-    print(f'    sediment: {float(q_sediment)}')
-    print(f'    longwave: {float(q_longwave_down)}')
-    print(f'    upwelling: {float(q_longwave_up * -1)}')
-    print(f'    latent: {float(q_latent * -1)}')
-    print(f'    net flux: {float((q_sensible + q_solar + q_sediment + q_longwave_down - q_longwave_up - q_latent) * 86400 * dt)}')
+    #print(f'    sensible: {float(q_sensible)}')
+    #print(f'    solar: {float(q_solar)}')
+    #print(f'    sediment: {float(q_sediment)}')
+    #print(f'    longwave: {float(q_longwave_down)}')
+    #print(f'    upwelling: {float(q_longwave_up * -1)}')
+    #print(f'    latent: {float(q_latent * -1)}')
+    #print(f'    net flux: {float((q_sensible + q_solar + q_sediment + q_longwave_down - q_longwave_up - q_latent) * 86400 * dt)}')
 
     return (
         q_sensible +
