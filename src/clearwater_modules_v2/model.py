@@ -34,7 +34,7 @@ class Model:
         end_time: datetime,
         time_step: timedelta,
         output_variables: Iterable[str],
-        root_directory: os.Pathlike | None = None,
+        root_directory: os.PathLike | None = None,
         # output_store: DataStore | ChunkedDataStore,
         chunk_size: timedelta | None = None,
     ) -> None:

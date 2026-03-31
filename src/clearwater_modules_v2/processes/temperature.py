@@ -78,6 +78,11 @@ class Temperature(Process):
         self.air_diffusivity_ratio = air_diffusivity_ratio
         self.sediment_diffusivity = sediment_diffusivity
         self.use_sediment_temperature = use_sediment_temperature
+
+        #V1 of the coupling had timestep 1 be skipped and started processing on timestep 2.
+        self.__skip_first_time_step = True
+
+
         Process.__init__(self, time_step)
 
     @ProcessFactory.register("temperature")
@@ -89,6 +94,10 @@ class Temperature(Process):
         """
         Run the temperature process.
         """
+
+        if self.__skip_first_time_step:
+            self.__skip_first_time_step = False
+            return
 
         # pull out variables from the registry
         water_temperature = registry.get_at_time("water_temperature", time)
