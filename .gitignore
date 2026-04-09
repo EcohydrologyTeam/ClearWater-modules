@@ -161,3 +161,5 @@ dmypy.json
 
 # Temporary files created by examples
 examples/data_temp/
+examples/data/sumwere_creek_coarse/model_inputs.zarr/
+examples/data/sumwere_creek_coarse/model_outputs.zarr/

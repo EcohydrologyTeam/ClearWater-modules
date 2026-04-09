@@ -1,0 +1,61 @@
+model:
+  start_datetime: '2022-05-13 08:00:00'
+  end_datetime: '2022-05-14 16:00:00'
+  time_step: '30s'
+  #chunk_time_step: '36hr'
+  root_directory: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse
+  output_variables: ["water_temperature"]
+processes:
+- riverine:
+    configuration_path: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse\riverine.yml
+    time_step: '30s'
+- temperature:
+    wind_a: 0.3
+    wind_b: 1.5
+    wind_c: 3.0
+    time_step: '30s'
+    use_sediment_temperature: False
+data_sources:
+  air_temp:
+    provider: csv
+    data:
+      file_path: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse\cwr_boundary_conditions_TairC_p28.csv
+      time_field: Datetime
+  solar:
+    provider: csv
+    data:
+      file_path: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse\cwr_boundary_conditions_q_Solar_p28.csv
+      time_field: Datetime
+  cloudiness:
+    provider: float
+    data:
+      value: 0.1
+  wind_speed:
+    provider: float
+    data:
+      value: 3.0
+  atmospheric_pressure:
+    provider: float
+    data:
+      value: 1013.0
+  atmospheric_vapor_pressure:
+    provider: float
+    data:
+      value: 1.0
+  sediment_temperature:
+    provider: float
+    data:
+      value: 20.0
+  sediment_thickness:
+    provider: float
+    data:
+      value: 0.1
+variable_map:
+  air_temperature: air_temp|TairC
+  solar_radiation: solar|q_Solar
+  cloudiness: cloudiness
+  wind_speed: wind_speed
+  atmospheric_pressure: atmospheric_pressure
+  atmospheric_vapor_pressure: atmospheric_vapor_pressure
+  sediment_temperature: sediment_temperature
+  sediment_thickness: sediment_thickness

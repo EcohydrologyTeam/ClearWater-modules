@@ -1,0 +1,48 @@
+model:
+  root_directory: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse
+  hydrodynamic_input: clearWaterTestCases.p48.hdf
+  crs: EPSG:26916
+  start_datetime: 2022-05-13 08:00:00 
+  end_datetime: 2022-05-14 16:00:00
+  #chunk_size: 36h
+  diffusion_coefficient: 0.1
+  calculated_variables:
+    wetted_surface_area: true
+    average_depth: true
+    maximum_depth: false
+constituents:
+  water_temperature:
+    initial_conditions:
+      provider: csv
+      data: 
+        file_path: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse\cwr_initial_conditions_temp.csv
+        spatial_field: Cell_Index
+    boundary_conditions:
+      provider: csv
+      data: 
+        file_path: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse\cwr_boundary_conditions_temp.csv
+        time_field: Datetime
+        spatial_field: RAS2D_TS_Name
+    units: degC
+  water_temperature_transport:
+    initial_conditions:
+      provider: csv
+      data: 
+        file_path: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse\cwr_initial_conditions_temp.csv
+        spatial_field: Cell_Index
+    boundary_conditions:
+      provider: csv
+      data: 
+        file_path: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse\cwr_boundary_conditions_temp.csv
+        time_field: Datetime
+        spatial_field: RAS2D_TS_Name
+    units: degC
+  tracer:
+    initial_conditions:
+      provider: float
+      data:
+        value: 100
+    boundary_conditions:
+      provider: float
+      data:
+        value: 100
