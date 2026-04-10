@@ -3,11 +3,11 @@ model:
   end_datetime: '2022-05-14 20:00:00'
   time_step: '30s'
   chunk_time_step: '36hr'
-  root_directory: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse
+  root_directory: examples\data\sumwere_creek_coarse
   output_variables: ["water_temperature"]
 processes:
 - riverine:
-    configuration_path: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse\riverine.yml
+    configuration_path: riverine.yml
     time_step: '30s'
 - temperature:
     wind_a: 0.3
@@ -19,12 +19,12 @@ data_sources:
   air_temp:
     provider: csv
     data:
-      file_path: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse\cwr_boundary_conditions_TairC_p28.csv
+      file_path: cwr_boundary_conditions_TairC_p28.csv
       time_field: Datetime
   solar:
     provider: csv
     data:
-      file_path: D:\Clearwater\ClearWater-modules\examples\data\sumwere_creek_coarse\cwr_boundary_conditions_q_Solar_p28.csv
+      file_path: cwr_boundary_conditions_q_Solar_p28.csv
       time_field: Datetime
   cloudiness:
     provider: float
