@@ -3,8 +3,8 @@ model:
   hydrodynamic_input: clearWaterTestCases.p48.hdf
   crs: EPSG:26916
   start_datetime: 2022-05-13 08:00:00 
-  end_datetime: 2022-05-13 16:00:00
-  chunk_size: 8h
+  end_datetime: 2022-05-14 20:00:00
+  chunk_size: 36h
   diffusion_coefficient: 0.1
   calculated_variables:
     wetted_surface_area: true
