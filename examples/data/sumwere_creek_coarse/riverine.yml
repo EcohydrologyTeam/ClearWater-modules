@@ -1,5 +1,5 @@
 model:
-  root_directory: examples\data\sumwere_creek_coarse
+  root_directory: data/sumwere_creek_coarse/
   hydrodynamic_input: clearWaterTestCases.p48.hdf
   crs: EPSG:26916
   start_datetime: 2022-05-13 08:00:00 

@@ -1,9 +1,9 @@
 from pathlib import Path, PureWindowsPath
 from typing import Optional
 
-# TODO: move to ClearWater-data, because this is shared with riverine
+# TODO: move to ClearWater-data, because this is shared with modules
 
-def resolve_path(path: str|Path, repo_path: Optional[str|Path] = None):
+def resolve_path(path: str|Path, project_path: Optional[str|Path] = None):
     """Resolves filepath from configuration file"""
     # convert windows path string, if supplied
     path = Path(PureWindowsPath(path))
@@ -11,11 +11,12 @@ def resolve_path(path: str|Path, repo_path: Optional[str|Path] = None):
     if path.is_absolute():
         absolute_path = path
     else:
-        if repo_path is None:
-            # Repo path, relative to this module
-            repo_path = Path(__file__).parent.parent.parent.parent
-        absolute_path = repo_path / path
-
+        if project_path is None:
+            # current working directory of the running process:
+            # from wherever the user launched Python
+            project_path = Path.cwd()
+        absolute_path = project_path / path
+    
     validate_path(absolute_path)
     return absolute_path
     

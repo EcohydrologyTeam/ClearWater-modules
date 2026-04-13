@@ -121,7 +121,7 @@ def __init_model_data(
     # init model data store
     # this is an intermediate data storage solution for model inputs
     data_store = ZarrDataStore(
-        store_path=root_directory_path/"model_inputs.zarr",
+        store_path=config["model"]["root_directory"]/"model_inputs.zarr",
         start_date=start_time,
         end_date=end_time,
         time_step=time_step,
