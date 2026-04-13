@@ -1,20 +1,18 @@
+from pathlib import Path
+from datetime import timedelta, datetime
+import pandas as pd
+import xarray as xr
+
 from clearwater_modules_v2.model import Model
 from clearwater_modules_v2.processes.base import Process, ProcessFactory
-from pathlib import Path
 from clearwater_modules_v2.config.read import read_config
-from clearwater_modules_v2.config.pathing import resolve_path, validate_path
-
-from datetime import timedelta, datetime
 
 from clearwater_data.variables import Variable, VariableRegistry
 from clearwater_data.io.zarr import ZarrDataStore, ZarrDataSource
 from clearwater_data.io.csv import CSVDataSource
 from clearwater_data.io.base import DataSource, ChunkedDataSource
 from clearwater_data.io.float import FloatDataSource
-
-import pandas as pd
-import xarray as xr
-
+from clearwater_data.io.pathing import resolve_path
 from clearwater_data.custom_types import ArrayLike
 
 import warnings
@@ -37,19 +35,19 @@ def init_from_config(config: dict) -> Model:
         time_step = pd.Timedelta(config["model"]["time_step"])
 
         # Resolve paths relative to the repo, if not absolute
-        root_directory_path = resolve_path(Path(config["model"]["root_directory"]))
-        config["model"]["root_directory"] = root_directory_path
+        simulation_directory_path = resolve_path(Path(config["model"]["simulation_directory"]))
+        config["model"]["simulation_directory"] = simulation_directory_path
         
         for index, process_dict in enumerate(config['processes']):
             process = list(process_dict.keys())[0]
             file_path = config['processes'][index][process].get("configuration_path")
             if file_path != None:
-                absolute_file_path = resolve_path(root_directory_path / file_path)
+                absolute_file_path = resolve_path(simulation_directory_path / file_path)
                 config['processes'][index][process]["configuration_path"] = absolute_file_path
         for variable in config['data_sources'].keys():
             file_path = config['data_sources'][variable]["data"].get('file_path')
             if file_path != None:
-                absolute_file_path = resolve_path(root_directory_path / file_path)
+                absolute_file_path = resolve_path(simulation_directory_path / file_path)
                 config['data_sources'][variable]["data"]['file_path'] = absolute_file_path
     except KeyError as e:
         raise ValueError(f"Missing key in config: {e}")
@@ -86,7 +84,7 @@ def init_from_config(config: dict) -> Model:
         time_step=time_step,
     )
 
-    model_data_source = ZarrDataSource(store_path=root_directory_path / "model_inputs.zarr")
+    model_data_source = ZarrDataSource(store_path=simulation_directory_path / "model_inputs.zarr")
 
     # TODO: read data sources from conf
     return Model(
@@ -97,7 +95,7 @@ def init_from_config(config: dict) -> Model:
         end_time=end_time,
         time_step=time_step,
         output_variables=config["model"].get("output_variables", []),
-        root_directory=root_directory_path,
+        simulation_directory=simulation_directory_path,
         chunk_size=chunk_size,
         # output_store=output_data_store,
         # TODO past along chunk size!!!!
@@ -121,7 +119,7 @@ def __init_model_data(
     # init model data store
     # this is an intermediate data storage solution for model inputs
     data_store = ZarrDataStore(
-        store_path=config["model"]["root_directory"]/"model_inputs.zarr",
+        store_path=config["model"]["simulation_directory"]/"model_inputs.zarr",
         start_date=start_time,
         end_date=end_time,
         time_step=time_step,

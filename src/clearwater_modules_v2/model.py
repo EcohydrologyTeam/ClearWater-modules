@@ -34,7 +34,7 @@ class Model:
         end_time: datetime,
         time_step: timedelta,
         output_variables: Iterable[str],
-        root_directory: os.PathLike | None = None,
+        simulation_directory: os.PathLike | None = None,
         # output_store: DataStore | ChunkedDataStore,
         chunk_size: timedelta | None = None,
     ) -> None:
@@ -47,7 +47,7 @@ class Model:
         self.__end_time: datetime = end_time
         self.__time_step: timedelta = time_step
         self.__output_variables: Iterable[str] = output_variables
-        self.__root_directory: os.Pathlike = root_directory if root_directory else "."
+        self.__simulation_directory: os.Pathlike = simulation_directory if simulation_directory else "."
         # self.__output_store: DataStore | ChunkedDataStore = output_store
 
         # check if we are running chunked
@@ -152,7 +152,7 @@ class Model:
                 space_dimensions["nface"] = data["nface"].values
 
         self.__output_data_store = ChunkedZarrDataStore(
-            store_path=self.__root_directory / "model_outputs.zarr",
+            store_path=self.__simulation_directory / "model_outputs.zarr",
             start_date=self.__start_time,
             end_date=self.__end_time,
             time_step=self.__time_step,

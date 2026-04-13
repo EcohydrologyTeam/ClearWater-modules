@@ -3,7 +3,7 @@ model:
   end_datetime: '2022-05-14 20:00:00'
   time_step: '30s'
   chunk_time_step: '36hr'
-  root_directory: data/sumwere_creek_coarse/
+  simulation_directory: data/sumwere_creek_coarse/
   output_variables: ["water_temperature", "water_temperature_transport", "tracer"]
 processes:
 - riverine:

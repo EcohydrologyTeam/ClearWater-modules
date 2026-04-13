@@ -12,8 +12,8 @@ model:
   #match the pandas.Timedelta formatting requirements
   # https://pandas.pydata.org/docs/reference/api/pandas.Timedelta.html
   time_step: '30s'
-  #This is the root directory for the model to create input, output and temporary files
-  root_path: 'temp'
+  #This is the simulation directory for the model to create input, output and temporary files
+  simulation_directory: 'temp'
   #This is a list of variable names (as string) to output to the model's output file
   output_variables: ["air_temperature", "solar_radiation"]
   #This is an optional parameter to run the modeling in chunked mode. This should be specified as a string and match the pandas.Timedelta formatting requirements
@@ -66,12 +66,12 @@ data_sources:
       #OPTIONAL PARAMETERS
       time_field: time #Default 'Datetime'. This is the string name of the time_field for the CSV file. 
     
-    #example_float:
-    example_float_source:
-      provider: float
-      data:
-        #REQUIRED PARAMETER
-        value: 1.0 #Floating point value
+  #example_float:
+  example_float_source:
+    provider: float
+    data:
+      #REQUIRED PARAMETER
+      value: 1.0 #Floating point value
 
 # The `variable_map` section crosswalks the various data sources to the variables in the model.
 # The mapping uses a key:value pair, where: 

@@ -114,7 +114,7 @@ def init_model(grid_x: int, grid_y: int) -> Model:
         processes=(temperature,),
         output_variables=[],
         variable_data_sources={},
-        root_directory=None,
+        simulation_directory=None,
         variable_registry=init_variable_registry(
             (grid_x, grid_y), START_TIME, END_TIME, TIME_STEP
         ),
