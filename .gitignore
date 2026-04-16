@@ -147,19 +147,22 @@ dmypy.json
 .DS_Store
 *alias
 *.webloc
+
+# pixi environments
+.pixi
+*.egg-info
+
+# Project Specific
 /examples/dev_sandbox/data_temp
 *.plk
 /data_temp
 /src/clearwater_modules_v2/.vscode
 /src/clearwater_modules_v2/met.zarr
 /src/.vscode
-
-# pixi environments
-.pixi
-*.egg-info
-
+CLAUDE.md
 
 # Temporary files created by examples
 examples/data_temp/
 examples/data/sumwere_creek_coarse/model_inputs.zarr/
 examples/data/sumwere_creek_coarse/model_outputs.zarr/
+
