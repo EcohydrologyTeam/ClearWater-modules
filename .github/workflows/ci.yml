@@ -49,8 +49,11 @@ jobs:
         run: python -m pip install -e .
 
       # Test-only deps not declared in pyproject.toml.
+      # numba is imported transitively via clearwater_modules.utils;
+      # tests/conftest.py loads clearwater_modules.shared.types which
+      # pulls in the numba-using modules.
       - name: Install test dependencies
-        run: python -m pip install pytest pytest-cov pandas
+        run: python -m pip install pytest pytest-cov pandas numba
 
       - name: Show installed packages
         run: python -m pip list
