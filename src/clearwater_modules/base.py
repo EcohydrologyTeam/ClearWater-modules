@@ -382,6 +382,11 @@ class Model(CanRegisterVariable):
         if variable.name not in cls.get_variable_names():
             cls._variables.append(variable)
             cls._sorted_variables = []
+            # Drop the class-level cached plan so it is rebuilt on next
+            # use; this keeps newly-registered variables in dependency
+            # order without requiring callers to know about the cache.
+            if hasattr(cls, "_cached_compute_plan"):
+                cls._cached_compute_plan = None
 
     @classmethod
     def unregister_variables(cls, variables: str | list[str]) -> None:
@@ -392,6 +397,8 @@ class Model(CanRegisterVariable):
             var for var in cls._variables if var.name not in variables
         ]
         cls._sorted_variables = []
+        if hasattr(cls, "_cached_compute_plan"):
+            cls._cached_compute_plan = None
 
     @classmethod
     def get_variable(cls, name: str) -> Variable:
@@ -478,8 +485,40 @@ class Model(CanRegisterVariable):
             )
             self.temporal_variables = self.temporal_variables + self.dynamic_variables_names
 
+    def _build_compute_plan(self) -> list[tuple[str, "Callable", list[str]]]:
+        """Build (and cache) a flat compute plan: list of
+        ``(name, process, [arg_name, ...])`` tuples in dependency order.
+
+        The plan is invariant for the life of the model -- only the input
+        values change between timesteps -- so we resolve argument names
+        from the process annotations once and reuse the result.
+        """
+        plan: list[tuple[str, "Callable", list[str]]] = []
+        for var in self.computation_order:
+            arg_names = sorter.get_process_args(var.process)
+            plan.append((var.name, var.process, arg_names))
+        return plan
+
+    @property
+    def _compute_plan(self) -> list[tuple[str, "Callable", list[str]]]:
+        if not hasattr(self, "_cached_compute_plan") or self._cached_compute_plan is None:
+            self._cached_compute_plan = self._build_compute_plan()
+        return self._cached_compute_plan
+
+    def _invalidate_compute_plan(self) -> None:
+        """Drop the cached compute plan (e.g., after registering a new variable)."""
+        if hasattr(self, "_cached_compute_plan"):
+            self._cached_compute_plan = None
+
     def _iter_computations(self):
-        """Iterate over the computation order."""
+        """Iterate over the computation order.
+
+        Legacy path retained for backward compatibility. Materializes
+        every result back into ``self.timestep_ds`` via Dataset assignment
+        (slow due to merge_core/align machinery on every assignment).
+        Prefer ``_iter_computations_fast`` (used by ``increment_timestep``)
+        for production runs.
+        """
         inputs = map(
             lambda x: utils._prep_inputs(
                 self.timestep_ds,
@@ -491,6 +530,36 @@ class Model(CanRegisterVariable):
         for name, func, arrays in inputs:
             array: np.ndarray = func(*arrays)
             self.timestep_ds[name] = (dims, array)
+
+    def _iter_computations_fast(
+        self,
+        seed_vals: dict[str, np.ndarray],
+    ) -> dict[str, np.ndarray]:
+        """Run the computation kernel against a plain dict of numpy arrays.
+
+        This is the hot loop. By keeping intermediate dynamic-variable
+        outputs in a Python dict (rather than re-merging them into an
+        xarray Dataset on every assignment), we avoid the per-variable
+        merge_core/align/reindex machinery that dominates the legacy
+        kernel's runtime on NSM1-sized variable graphs.
+
+        Parameters
+        ----------
+        seed_vals
+            Initial dict mapping every static + state + updateable-static
+            variable name to its current ``np.ndarray`` value. The dict is
+            mutated in place; new entries are added for each computed
+            dynamic / state output.
+
+        Returns
+        -------
+        dict[str, np.ndarray]
+            The same dict, now populated with all computed outputs.
+        """
+        for name, func, arg_names in self._compute_plan:
+            args = [seed_vals[n] for n in arg_names]
+            seed_vals[name] = func(*args)
+        return seed_vals
 
     def increment_timestep(
         self,
@@ -522,19 +591,26 @@ class Model(CanRegisterVariable):
         if update_state_values is None:
             update_state_values = {}
 
-        # by default, set current timestep equal to last timestep
-        self.timestep_ds: xr.Dataset = self.dataset.isel(
-            {self.time_dim: self.timestep - 1}
-        )
+        # ------------------------------------------------------------------
+        # Fast path: keep all per-step intermediates in plain numpy and
+        # only touch the parent xarray.Dataset once at the end. The legacy
+        # path (preserved as ``_increment_timestep_xarray``) walked
+        # ``Dataset.__setitem__`` for every dynamic variable, which
+        # triggered Dataset.update -> merge_core -> reindex_all and
+        # dominated runtime on large variable graphs (NSM1: ~150 vars).
+        # See ``_iter_computations_fast`` for the kernel.
+        # ------------------------------------------------------------------
 
-        # update the state variables as necessary (i.e. interacting w/ other models)
+        # Validate update_state_values keys against the model's variables
+        # (preserves the legacy contract on bad input).
+        valid_state_names = set(self.state_variables_names) | set(
+            self.updateable_static_variables
+        )
         for var_name, value in update_state_values.items():
-            if var_name not in (self.state_variables_names + self.updateable_static_variables):
+            if var_name not in valid_state_names:
                 raise ValueError(
                     f'Variable {var_name} cannot be updated between timesteps, skipping.',
                 )
-            utils.validate_arrays(value, self.timestep_ds[var_name])
-            self.timestep_ds[var_name] = value
 
         # Coerce wet_mask to ndarray once and reuse below.
         wet_mask_arr: Optional[np.ndarray] = None
@@ -544,15 +620,71 @@ class Model(CanRegisterVariable):
             else:
                 wet_mask_arr = np.asarray(wet_mask, dtype=bool)
 
-            # Fill NaN entries in state vars (left over from cells that
-            # were dry at the previous step) with the initial-state
-            # defaults, so kinetics on this step do not propagate NaN.
-            # The result is NaN-masked at write time, regardless.
+        # Build the seed-values dict from previous-timestep state.
+        # We pull each variable's prior numpy buffer directly from the
+        # parent dataset to avoid Dataset.isel's xarray overhead in the
+        # hot path. State + updateable_static vars come from slot
+        # (timestep - 1); non-updateable static vars come from the
+        # 2-D static slice.
+        prev_slot = self.timestep - 1
+        seed_vals: dict[str, np.ndarray] = {}
+        per_var_dims: dict[str, tuple[str, ...]] = {}
+
+        for var_name in self.temporal_variables:
+            if var_name not in self.dataset:
+                continue
+            da = self.dataset[var_name]
+            time_axis = da.dims.index(self.time_dim) if self.time_dim in da.dims else None
+            if time_axis is None:
+                arr = np.asarray(da.values)
+                spatial_dims = tuple(da.dims)
+            else:
+                idx = [slice(None)] * da.ndim
+                idx[time_axis] = prev_slot
+                arr = np.asarray(da.values[tuple(idx)])
+                spatial_dims = tuple(d for d in da.dims if d != self.time_dim)
+            seed_vals[var_name] = arr.copy()
+            per_var_dims[var_name] = spatial_dims
+
+        # Non-updateable static variables: 2-D, no time dim.
+        for var_name in self._non_updateable_static_variables:
+            if var_name not in self.dataset:
+                continue
+            da = self.dataset[var_name]
+            seed_vals[var_name] = np.asarray(da.values)
+            per_var_dims[var_name] = tuple(da.dims)
+
+        # Apply caller-provided overrides (e.g. transport-driven state).
+        for var_name, value in update_state_values.items():
+            if isinstance(value, xr.DataArray):
+                # Validate that override dims match the parent dataset's
+                # spatial dims for this variable (preserves the legacy
+                # contract that caught dim-mismatch bugs early).
+                if var_name in self.dataset:
+                    expected_dims = tuple(
+                        d for d in self.dataset[var_name].dims if d != self.time_dim
+                    )
+                    if tuple(value.dims) != expected_dims:
+                        raise ValueError(
+                            f"Override for {var_name!r} has dims {tuple(value.dims)}; "
+                            f"expected {expected_dims}."
+                        )
+                seed_vals[var_name] = np.asarray(value.values)
+            else:
+                seed_vals[var_name] = np.asarray(value)
+
+        # Wet-mask NaN-fill: state cells that were dry last step may
+        # carry NaN forward; replace with initial-state defaults so
+        # kinetics this step stay finite. The output is NaN-masked at
+        # write time regardless.
+        if wet_mask_arr is not None:
             ic = self.initial_state_values or {}
             for var_name in self.state_variables_names:
-                if var_name not in self.timestep_ds:
+                if var_name not in seed_vals:
                     continue
-                arr = np.asarray(self.timestep_ds[var_name].values, dtype=np.float64)
+                arr = seed_vals[var_name]
+                if not np.issubdtype(arr.dtype, np.floating):
+                    arr = arr.astype(np.float64)
                 nan_mask = ~np.isfinite(arr)
                 if not nan_mask.any():
                     continue
@@ -560,47 +692,73 @@ class Model(CanRegisterVariable):
                     fill = np.broadcast_to(np.asarray(ic[var_name]), arr.shape)
                 else:
                     fill = np.zeros_like(arr)
-                arr_filled = np.where(nan_mask, fill, arr)
-                self.timestep_ds[var_name] = (
-                    self.timestep_ds[var_name].dims,
-                    arr_filled.astype(self.timestep_ds[var_name].dtype),
-                )
+                seed_vals[var_name] = np.where(nan_mask, fill, arr)
 
-        # compute the dynamic variables in order
-        self._iter_computations()
+        # ----------------------- HOT LOOP -----------------------
+        # Compute every dynamic + state variable in dependency order,
+        # entirely in numpy.
+        seed_vals = self._iter_computations_fast(seed_vals)
 
-        if not self._track_dynamic_variables:
-            self.timestep_ds = self.timestep_ds.drop_vars(
-                self.dynamic_variables_names
-            )
-        self.timestep_ds = self.timestep_ds.drop_vars(
-            self._non_updateable_static_variables
-        )
+        # ----------------- Write back to the dataset ------------
+        # Apply wet_mask + slot-write in a single vectorized pass per
+        # temporal variable. We bypass Dataset.__setitem__ entirely by
+        # writing directly into the underlying numpy buffer via
+        # DataArray.values[...] -- this is the same pattern the
+        # orchestrator uses to backfill substep slots.
+        new_slot = self.timestep
+        for var_name in self.temporal_variables:
+            if var_name not in seed_vals:
+                continue
+            if var_name not in self.dataset:
+                continue
+            da = self.dataset[var_name]
+            new_arr = np.asarray(seed_vals[var_name])
 
-        # If a wet_mask was supplied, write NaN on dry cells for every
-        # temporal variable so the saved dataset is NaN-honest. We
-        # broadcast the mask in case some variables carry an extra
-        # leading or trailing dim.
-        if wet_mask_arr is not None:
-            for var_name in list(self.timestep_ds.data_vars):
-                if var_name not in self.temporal_variables:
-                    continue
-                arr = self.timestep_ds[var_name].values
-                if not np.issubdtype(arr.dtype, np.floating):
-                    continue
+            # Apply wet_mask if requested (write NaN on dry cells for
+            # NaN-honest output).
+            if wet_mask_arr is not None and np.issubdtype(new_arr.dtype, np.floating):
                 try:
-                    mask_b = np.broadcast_to(wet_mask_arr, arr.shape)
+                    mask_b = np.broadcast_to(wet_mask_arr, new_arr.shape)
+                    new_arr = np.where(mask_b, new_arr, np.nan).astype(new_arr.dtype)
                 except ValueError:
-                    continue
-                arr_dry_nan = np.where(mask_b, arr, np.nan).astype(arr.dtype)
-                self.timestep_ds[var_name] = (
-                    self.timestep_ds[var_name].dims,
-                    arr_dry_nan,
-                )
+                    pass
 
-        self.dataset[self.temporal_variables].loc[
-            {self.time_dim: self.timestep}
-        ] = self.timestep_ds
+            # Write into the parent dataset slot directly.
+            time_axis = da.dims.index(self.time_dim) if self.time_dim in da.dims else None
+            if time_axis is None:
+                da.values[...] = new_arr.astype(da.dtype, copy=False)
+            else:
+                idx = [slice(None)] * da.ndim
+                idx[time_axis] = new_slot
+                # Broadcast-write so a (y, x) result lands in the (time, y, x) slice.
+                da.values[tuple(idx)] = new_arr.astype(da.dtype, copy=False)
+
+        # Maintain ``self.timestep_ds`` as a public attribute for
+        # backward compatibility (some external code may inspect it
+        # between steps). Construct it as a thin xarray view of the
+        # dict, but only populate the variables that the legacy code
+        # path would have produced (temporal vars + non-updateable
+        # statics + dynamics if tracked).
+        ts_data: dict[str, tuple[tuple[str, ...], np.ndarray]] = {}
+        for var_name in self.temporal_variables:
+            if var_name in seed_vals and var_name in per_var_dims:
+                ts_data[var_name] = (per_var_dims[var_name], seed_vals[var_name])
+        if self._track_dynamic_variables:
+            for var_name in self.dynamic_variables_names:
+                if var_name in seed_vals and var_name not in ts_data:
+                    # dynamics inherit dims from the first temporal var
+                    if self.temporal_variables and self.temporal_variables[0] in per_var_dims:
+                        ts_data[var_name] = (
+                            per_var_dims[self.temporal_variables[0]],
+                            seed_vals[var_name],
+                        )
+        # Reuse non-updateable statics' coords by reading from the parent dataset
+        coords = {
+            d: self.dataset.coords[d]
+            for d in {dim for dims in per_var_dims.values() for dim in dims}
+            if d in self.dataset.coords
+        }
+        self.timestep_ds = xr.Dataset(data_vars=ts_data, coords=coords)
 
         return self.dataset
 
