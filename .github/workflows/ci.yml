@@ -1,0 +1,62 @@
+name: CI
+
+# Architectural principles (see ClearWater design docs):
+#   #4 Windows is the primary deployment platform
+#   #5 HPC/Linux is first-class
+# macOS is included because it is the project author's primary dev platform.
+
+on:
+  push:
+    branches: [streaming]
+  pull_request:
+    branches: [streaming, main]
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.13"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/Library/Caches/pip
+            ~\AppData\Local\pip\Cache
+          key: pip-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            pip-${{ runner.os }}-py${{ matrix.python-version }}-
+            pip-${{ runner.os }}-
+
+      - name: Upgrade pip toolchain
+        run: python -m pip install --upgrade pip setuptools wheel
+
+      - name: Install package in editable mode
+        run: python -m pip install -e .
+
+      # Test-only deps not declared in pyproject.toml.
+      - name: Install test dependencies
+        run: python -m pip install pytest pytest-cov pandas
+
+      - name: Show installed packages
+        run: python -m pip list
+
+      # tests/unit/ targets the unreleased clearwater_modules_v2 namespace
+      # (vendored from a sibling repo) and is not part of CI.
+      # test_5_tsm_calculations_v2.py is an unfinished stub missing its imports.
+      - name: Run unit tests
+        run: pytest tests/ -v --ignore=tests/unit --ignore=tests/test_5_tsm_calculations_v2.py
