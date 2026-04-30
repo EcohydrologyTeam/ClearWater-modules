@@ -495,8 +495,28 @@ class Model(CanRegisterVariable):
     def increment_timestep(
         self,
         update_state_values: Optional[dict[str, xr.DataArray]] = None,
+        wet_mask: Optional["xr.DataArray | np.ndarray"] = None,
     ) -> xr.Dataset:
-        """Run the process."""
+        """Run the process.
+
+        Parameters
+        ----------
+        update_state_values
+            Optional dict mapping state-variable names to new values
+            that override the previous-timestep state before kinetics.
+            Used when an external coupler (e.g. CW-Riverine transport)
+            provides a more authoritative value than the model's own
+            integration.
+        wet_mask
+            Optional per-cell Boolean array. Cells where True run
+            kinetics normally; cells where False are treated as dry --
+            the kernel still iterates over them numerically (with any
+            previous-step NaNs filled from the initial-state defaults so
+            downstream kinetics stay finite), but the new-timestep slot
+            is written as NaN for every temporal variable so saved
+            output is NaN-honest about dryness. If None (default), all
+            cells are treated as wet (legacy behavior preserved).
+        """
         self.timestep += 1
 
         if update_state_values is None:
@@ -516,6 +536,36 @@ class Model(CanRegisterVariable):
             utils.validate_arrays(value, self.timestep_ds[var_name])
             self.timestep_ds[var_name] = value
 
+        # Coerce wet_mask to ndarray once and reuse below.
+        wet_mask_arr: Optional[np.ndarray] = None
+        if wet_mask is not None:
+            if isinstance(wet_mask, xr.DataArray):
+                wet_mask_arr = np.asarray(wet_mask.values, dtype=bool)
+            else:
+                wet_mask_arr = np.asarray(wet_mask, dtype=bool)
+
+            # Fill NaN entries in state vars (left over from cells that
+            # were dry at the previous step) with the initial-state
+            # defaults, so kinetics on this step do not propagate NaN.
+            # The result is NaN-masked at write time, regardless.
+            ic = self.initial_state_values or {}
+            for var_name in self.state_variables_names:
+                if var_name not in self.timestep_ds:
+                    continue
+                arr = np.asarray(self.timestep_ds[var_name].values, dtype=np.float64)
+                nan_mask = ~np.isfinite(arr)
+                if not nan_mask.any():
+                    continue
+                if var_name in ic:
+                    fill = np.broadcast_to(np.asarray(ic[var_name]), arr.shape)
+                else:
+                    fill = np.zeros_like(arr)
+                arr_filled = np.where(nan_mask, fill, arr)
+                self.timestep_ds[var_name] = (
+                    self.timestep_ds[var_name].dims,
+                    arr_filled.astype(self.timestep_ds[var_name].dtype),
+                )
+
         # compute the dynamic variables in order
         self._iter_computations()
 
@@ -527,10 +577,31 @@ class Model(CanRegisterVariable):
             self._non_updateable_static_variables
         )
 
+        # If a wet_mask was supplied, write NaN on dry cells for every
+        # temporal variable so the saved dataset is NaN-honest. We
+        # broadcast the mask in case some variables carry an extra
+        # leading or trailing dim.
+        if wet_mask_arr is not None:
+            for var_name in list(self.timestep_ds.data_vars):
+                if var_name not in self.temporal_variables:
+                    continue
+                arr = self.timestep_ds[var_name].values
+                if not np.issubdtype(arr.dtype, np.floating):
+                    continue
+                try:
+                    mask_b = np.broadcast_to(wet_mask_arr, arr.shape)
+                except ValueError:
+                    continue
+                arr_dry_nan = np.where(mask_b, arr, np.nan).astype(arr.dtype)
+                self.timestep_ds[var_name] = (
+                    self.timestep_ds[var_name].dims,
+                    arr_dry_nan,
+                )
+
         self.dataset[self.temporal_variables].loc[
             {self.time_dim: self.timestep}
         ] = self.timestep_ds
-    
+
         return self.dataset
 
 
