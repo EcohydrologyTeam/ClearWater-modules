@@ -101,6 +101,9 @@ class Nitrogen(Process):
         ammonium = 0 + ammonium * ammonium_rate * self.time_step.total_seconds()
         ammonium = xr.where(ammonium < 0, 0, ammonium)
 
+        # persist updated ammonium back to the registry
+        registry.set_at_time("ammonium", time, ammonium)
+
         # update nitrate
         nitrate_rate = self.change_nitrate(
             nitrate,
@@ -109,8 +112,11 @@ class Nitrogen(Process):
             depth,
             oxygen_dissolved,
         )
-        nitrate = 0 + nitrate * nitrate_rate * self.time_step_frequency.total_seconds()
+        nitrate = 0 + nitrate * nitrate_rate * self.time_step.total_seconds()
         nitrate = xr.where(nitrate < 0, 0, nitrate)
+
+        # persist updated nitrate back to the registry
+        registry.set_at_time("nitrate", time, nitrate)
 
     def change_ammonium(
         self,
@@ -143,8 +149,8 @@ class Nitrogen(Process):
             - self.ammonium_benthic_growth()
         )
 
-        # Replace nan's with 0's
-        rate = xr.where(rate == np.nan, 0, rate)
+        # Replace nan's with 0's (use isnull because x == np.nan is always False in IEEE 754)
+        rate = xr.where(rate.isnull(), 0, rate)
         return rate
 
     def ammonium_floating_respiration(self) -> ArrayLike:
@@ -214,8 +220,8 @@ class Nitrogen(Process):
             )
         )
 
-        # Replace nan's with 0's
-        rate = xr.where(rate == np.nan, 0, rate)
+        # Replace nan's with 0's (use isnull because x == np.nan is always False in IEEE 754)
+        rate = xr.where(rate.isnull(), 0, rate)
         return rate
 
     def ammonium_from_bed(self, depth: ArrayLike, temperature: ArrayLike) -> ArrayLike:
