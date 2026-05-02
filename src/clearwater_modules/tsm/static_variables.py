@@ -218,3 +218,29 @@ Variable(
     description='calculation dt',
     use='static',
 )
+
+Variable(
+    name='q_net_depth_ramp_ref',
+    long_name='Depth-ramp reference for q_net attenuation',
+    units='m',
+    description=(
+        'Smooth-ramp reference depth. q_net is multiplied by '
+        'min(1.0, depth / q_net_depth_ramp_ref) inside dTdt_water_c, where '
+        'depth = volume / surface_area. Set to 0.0 to disable the ramp '
+        '(legacy behavior; bit-exact prior results).'
+    ),
+    use='static',
+)
+
+Variable(
+    name='dTdt_max_per_hour',
+    long_name='Maximum |dTdt_water_c| per hour',
+    units='K hr-1',
+    description=(
+        'Cadence-invariant rate cap on the magnitude of dTdt_water_c. '
+        'The per-substep cap applied is dTdt_max_per_hour * dt_hours. '
+        'Belt-and-suspenders for the depth ramp; should not activate in '
+        'normal operation. Set to +inf to disable.'
+    ),
+    use='static',
+)

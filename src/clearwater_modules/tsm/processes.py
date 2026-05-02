@@ -214,10 +214,18 @@ def mf_latent_heat_vaporization(
     water_temp_k: xr.DataArray
 ) -> xr.DataArray:
     """
-    Compute the latent heat of vaporization (J/kg) as a function of water temperature (Kelvin)
-    """
+    Compute the latent heat of vaporization (J/kg) as a function of water temperature (Kelvin).
 
-    return 2499999 - 2385.74 * water_temp_k
+    The polynomial coefficients (2.5e6 J/kg intercept; -2385.74 J/kg/K slope) are
+    calibrated for water temperature in degrees CELSIUS (Lv ≈ 2.50 MJ/kg at 0 °C,
+    2.45 MJ/kg at 20 °C). The input is in Kelvin per the kernel's dynamic-variable
+    registration, so we convert before applying the formula. The previous version
+    omitted this conversion, producing Lv ~26-27% too low across the typical
+    surface-water range, which underestimated evaporative cooling and biased
+    simulated water temperatures warm.
+    """
+    water_temp_c = water_temp_k - 273.15
+    return 2499999 - 2385.74 * water_temp_c
 
 
 def mf_cp_water(
@@ -451,21 +459,68 @@ def dTdt_water_c(
     volume: xr.DataArray,
     density_water: xr.DataArray,
     cp_water: xr.DataArray,
+    q_net_depth_ramp_ref: xr.DataArray,
+    dTdt_max_per_hour: xr.DataArray,
+    dt: xr.DataArray,
 ) -> xr.DataArray:
-    """Water temperature change (C).
+    """Water temperature change (C), with thin-water flux ramp + rate cap.
+
+    The base form is q_net * surface_area / (volume * rho * cp), which is
+    equivalent to q_net / (depth * rho * cp). At small depth this expression
+    is numerically stiff: an explicit-Euler substep delivers the full surface
+    flux through a column with vanishing thermal mass, producing per-substep
+    delta T that exceeds physical bounds. Two regularisations:
+
+    1. Depth ramp: multiply q_net by min(1.0, depth / q_net_depth_ramp_ref),
+       where depth = volume / surface_area. Set q_net_depth_ramp_ref = 0.0
+       to disable (legacy behavior).
+    2. Rate cap: clip dTdt to +/- (dTdt_max_per_hour * dt_hours). Set
+       dTdt_max_per_hour = +inf to disable.
 
     Args:
-        q_net: Net heat flux (W/m^2)
+        q_net: Net heat flux (W/m^2 * s, i.e. energy-per-substep per the
+            existing q_net process which already multiplies by 86400 * dt)
         surface_area: Surface area (m^2)
         volume: Volume (m^3)
         density_water: Water density (kg/m^3)
         cp_water: Water specific heat (J/kg/K)
+        q_net_depth_ramp_ref: Depth-ramp reference (m); 0.0 disables ramp
+        dTdt_max_per_hour: Max |dTdt| rate (K/hr); +inf disables cap
+        dt: Substep size (days); used to derive dt_hours for the cap
     """
-    return (
-        q_net *
-        surface_area /
-        (volume * density_water * cp_water)
+    # Derive depth defensively. The orchestrator guarantees surface_area > 0
+    # for active TSM cells, but guard against zero/negative anyway so the
+    # kernel is safe under any caller.
+    depth = xr.where(
+        surface_area > 0.0,
+        volume / surface_area,
+        0.0,
     )
+    # Numerical noise can produce slightly negative depths; clamp.
+    depth = xr.where(depth > 0.0, depth, 0.0)
+
+    # Depth ramp. q_net_depth_ramp_ref == 0.0 disables (ramp = 1.0 everywhere).
+    ramp = xr.where(
+        q_net_depth_ramp_ref > 0.0,
+        xr.ufuncs.minimum(
+            1.0,
+            depth / xr.ufuncs.maximum(q_net_depth_ramp_ref, 1e-30),
+        ),
+        1.0,
+    )
+
+    # Base energy balance with ramped flux.
+    dTdt = (q_net * ramp * surface_area) / (volume * density_water * cp_water)
+
+    # Rate cap. dTdt is the per-substep delta T (K). The cap is a rate
+    # (K/hr) multiplied by the substep length in hours. dt is in days.
+    dt_hours = dt * 24.0
+    cap = dTdt_max_per_hour * dt_hours
+    # +inf cap is a no-op for finite dTdt: minimum(+inf, x) == x and
+    # maximum(-inf, x) == x.
+    dTdt = xr.ufuncs.maximum(-cap, xr.ufuncs.minimum(cap, dTdt))
+
+    return dTdt
 
 
 def t_water_c(

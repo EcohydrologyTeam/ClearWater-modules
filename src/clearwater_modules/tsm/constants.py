@@ -22,6 +22,8 @@ class Temperature(TypedDict):
     alphas: float
     richardson_option: bool
     dt: float
+    q_net_depth_ramp_ref: float
+    dTdt_max_per_hour: float
 
 
 class Meteorological(TypedDict):
@@ -70,4 +72,6 @@ DEFAULT_TEMPERATURE = Temperature(
     alphas=0.0432,
     richardson_option=True,
     dt=1,
+    q_net_depth_ramp_ref=0.3,
+    dTdt_max_per_hour=5.0,
 )
