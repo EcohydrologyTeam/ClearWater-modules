@@ -26,8 +26,39 @@ class EnergyBudget(base.Model):
         use_sed_temp: bool = True,
         track_dynamic_variables: bool = True,
         hotstart_dataset: Optional[xr.Dataset] = None,
+        hotstart_timestep: int = 0,
         time_dim: Optional[str] = None,
     ) -> None:
+        # ------------------------------------------------------------------
+        # Hotstart fast path: when caller provides a pre-built dataset (e.g.
+        # loaded from a checkpoint), skip the from-dicts dataset construction
+        # entirely and hand the dataset + starting timestep directly to the
+        # base class.
+        # ------------------------------------------------------------------
+        if hotstart_dataset is not None:
+            self.__meteo_parameters = dict(constants.DEFAULT_METEOROLOGICAL)
+            self.__temp_parameters = dict(constants.DEFAULT_TEMPERATURE)
+            if isinstance(meteo_parameters, dict):
+                for k, v in meteo_parameters.items():
+                    if k in self.__meteo_parameters:
+                        self.__meteo_parameters[k] = v
+            if isinstance(temp_parameters, dict):
+                for k, v in temp_parameters.items():
+                    if k in self.__temp_parameters:
+                        self.__temp_parameters[k] = v
+
+            super().__init__(
+                time_steps=time_steps,
+                initial_state_values=None,
+                static_variable_values=None,
+                updateable_static_variables=updateable_static_variables,
+                track_dynamic_variables=track_dynamic_variables,
+                hotstart_dataset=hotstart_dataset,
+                time_dim=time_dim,
+                timestep=hotstart_timestep,
+            )
+            return
+
         self.__meteo_parameters: constants.Meteorological = constants.DEFAULT_METEOROLOGICAL
         self.__temp_parameters: constants.Temperature = constants.DEFAULT_TEMPERATURE
 

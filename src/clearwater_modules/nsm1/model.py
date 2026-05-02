@@ -36,8 +36,66 @@ class NutrientBudget(base.Model):
         global_vars: Optional[dict[str, float]] = None,             
         track_dynamic_variables: bool = True,
         hotstart_dataset: Optional[xr.Dataset] = None,
+        hotstart_timestep: int = 0,
         time_dim: Optional[str] = None,
     ) -> None:
+        # ------------------------------------------------------------------
+        # Hotstart fast path: when caller provides a pre-built dataset (e.g.
+        # loaded from a checkpoint), skip the from-dicts dataset construction
+        # entirely and hand the dataset + starting timestep directly to the
+        # base class. Static parameter dicts are still populated from defaults
+        # below the from-dicts path is bypassed.
+        # ------------------------------------------------------------------
+        if hotstart_dataset is not None:
+            # Still populate the parameter property dicts so callers that
+            # introspect them (e.g. for sanity checks across chunks) get
+            # sensible values. They aren't used to build the dataset.
+            self.__algae_parameters = constants.DEFAULT_ALGAE.copy() if hasattr(constants.DEFAULT_ALGAE, 'copy') else dict(constants.DEFAULT_ALGAE)
+            self.__alkalinity_parameters = dict(constants.DEFAULT_ALKALINITY)
+            self.__balgae_parameters = dict(constants.DEFAULT_BALGAE)
+            self.__carbon_parameters = dict(constants.DEFAULT_CARBON)
+            self.__CBOD_parameters = dict(constants.DEFAULT_CBOD)
+            self.__DOX_parameters = dict(constants.DEFAULT_DOX)
+            self.__nitrogen_parameters = dict(constants.DEFAULT_NITROGEN)
+            self.__POM_parameters = dict(constants.DEFAULT_POM)
+            self.__N2_parameters = dict(constants.DEFAULT_N2)
+            self.__phosphorus_parameters = dict(constants.DEFAULT_PHOSPHORUS)
+            self.__pathogen_parameters = dict(constants.DEFAULT_PATHOGEN)
+            self.__global_parameters = dict(constants.DEFAULT_GLOBALPARAMETERS)
+            self.__global_vars = dict(constants.DEFAULT_GLOBALVARS)
+            # Apply any user-provided overrides on top of defaults.
+            for src, tgt in (
+                (algae_parameters, self.__algae_parameters),
+                (alkalinity_parameters, self.__alkalinity_parameters),
+                (balgae_parameters, self.__balgae_parameters),
+                (carbon_parameters, self.__carbon_parameters),
+                (CBOD_parameters, self.__CBOD_parameters),
+                (DOX_parameters, self.__DOX_parameters),
+                (nitrogen_parameters, self.__nitrogen_parameters),
+                (POM_parameters, self.__POM_parameters),
+                (N2_parameters, self.__N2_parameters),
+                (phosphorus_parameters, self.__phosphorus_parameters),
+                (pathogen_parameters, self.__pathogen_parameters),
+                (global_parameters, self.__global_parameters),
+                (global_vars, self.__global_vars),
+            ):
+                if isinstance(src, dict):
+                    for k, v in src.items():
+                        if k in tgt:
+                            tgt[k] = v
+
+            super().__init__(
+                time_steps=time_steps,
+                initial_state_values=None,
+                static_variable_values=None,
+                updateable_static_variables=updateable_static_variables,
+                track_dynamic_variables=track_dynamic_variables,
+                hotstart_dataset=hotstart_dataset,
+                time_dim=time_dim,
+                timestep=hotstart_timestep,
+            )
+            return
+
         self.__algae_parameters: constants.AlgaeStaticVariables = constants.DEFAULT_ALGAE
         self.__alkalinity_parameters: constants.AlkalinityStaticVariables = constants.DEFAULT_ALKALINITY
         self.__balgae_parameters: constants.BalgaeStaticVariables = constants.DEFAULT_BALGAE
