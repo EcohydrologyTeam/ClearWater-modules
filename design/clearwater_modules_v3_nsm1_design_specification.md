@@ -3,8 +3,9 @@
 **Status:** Draft for review
 **Author:** Todd Steissberg (ERDC), with Claude
 **Date:** 2026-05-04
-**Companion document:** `clearwater_modules_v3_design_specification.md` (TSM and overall v3 architecture)
-**Scope:** NSM1 module within `clearwater_modules_v3`. Builds on the v3 architectural foundation established by TSM v3.
+**Read this with the umbrella spec.** Quick start, env setup, branch conventions, package architecture, integrator-pattern contract, retirement plan, and umbrella risks are documented in `clearwater_modules_v3_architecture_specification.md`. TSM-specific design lives in `clearwater_modules_v3_tsm_design_specification.md`. This document covers NSM1-specific design only.
+
+**Scope:** NSM1 module within `clearwater_modules_v3`.
 
 ---
 
@@ -84,7 +85,7 @@ Unlike TSM v3, which was a merge of two divergent full implementations, NSM1 v3 
 
 ## 3. Architectural Approach
 
-NSM1 v3 sits inside the v3 package alongside TSM v3, using the same thin-overlay strategy and the same v3 `Model` orchestration. This section covers only NSM1-specific architectural decisions; for general v3 architecture see the TSM v3 specification.
+NSM1 v3 sits inside the v3 package alongside TSM v3, using the same thin-overlay strategy and the same v3 `Model` orchestration. This section covers only NSM1-specific architectural decisions; for general v3 architecture see the architecture spec (`clearwater_modules_v3_architecture_specification.md`).
 
 ### Process organization
 
