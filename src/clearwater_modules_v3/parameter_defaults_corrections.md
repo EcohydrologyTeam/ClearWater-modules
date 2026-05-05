@@ -177,3 +177,153 @@ Disposition for each is described below.
   in `global_vars.py`. Phase 1.3 light/extinction utility implementation
   should decide whether to re-enable the term (and document the choice
   here).
+
+---
+
+## Section 3: Phase 7 v1↔v3 runtime numerical deviations
+
+The items in Sections 1 and 2 are parameter default corrections. The items
+in this section are **runtime numerical differences** between v1 NSM1 and
+v3 NSM1 that are not strictly parameter corrections but are worth recording
+alongside them. Each is documented in detail in the docstring of the
+corresponding `tests/test_5_*_calculations_v2.py` parity test, and v3
+behavior is pinned by that test against the v1 reference under matched
+inputs.
+
+The list is intentionally small: v3 NSM1 reproduces v1 NSM1 kinetics within
+floating-point tolerance for the overwhelming majority of sub-rate terms.
+
+### 3.1 Carbon POC hydrolysis — DOX-Monod attenuation added in v3
+
+- **Module:** `processes/carbon.py` (POC hydrolysis sub-rate)
+- **v1 form:** `kpoc_tc * POC` (no DOX coupling)
+- **v3 form:** `kpoc_tc * POC * DOX_attenuation`, where `DOX_attenuation =
+  DOX / (KsOxmc + DOX)` follows the standard Monod oxygen-inhibition
+  pattern.
+- **Rationale:** POC hydrolysis is mediated by aerobic microbial activity;
+  treating it as DOX-independent (v1) overestimates hydrolysis under
+  hypoxic conditions. v3 follows the same architectural pattern v1 already
+  applies to DOC oxidation. The Phase 7 test
+  `tests/test_5_carbon_calculations_v2.py::test_poc_hydrolysis_rate_matches_v1`
+  forces `DOX_attenuation == 1` (saturated DOX) to verify v3 collapses to
+  v1's form when oxygen is non-limiting; the deviation appears only when
+  DOX is depleted.
+- **Reference test:** `tests/test_5_carbon_calculations_v2.py` lines
+  130–180 (parity test plus deviation note in the module docstring).
+
+### 3.2 DOX SOD — pure-Arrhenius `SOD_tc` in v3 vs Monod-inline in v1
+
+- **Module:** `processes/dox.py` (SOD sink)
+- **v1 form:** `SOD_tc` includes a DOX-Monod factor inline when
+  `use_DOX=True` is passed.
+- **v3 form:** `clearwater_modules_v3.utils.sediment.SOD_tc` is a pure
+  Arrhenius temperature correction; DOX-Monod attenuation, when desired,
+  is applied at the call site rather than baked into the utility.
+- **Rationale:** Architectural separation. The Process owns its
+  oxygen-inhibition contract; the utility owns only the temperature
+  correction. v3's design supports a future Process opt-in to a
+  semi-implicit DOX treatment without requiring two parallel SOD
+  utilities.
+- **Reference test:** `tests/test_5_dox_calculations_v2.py::test_dox_sod_rate_matches_v1`
+  passes `use_DOX=False` to v1's `SOD_tc` so v3 and v1 forms match
+  exactly under the test fixture.
+
+### 3.3 Alkalinity DOX-attenuation flow — pre-attenuated rates in v3
+
+- **Module:** `processes/alkalinity.py` (nitrification and denitrification
+  Alk coupling)
+- **v1 form:** `Alk_nitrification` / `Alk_denitrification` apply the
+  DOX-Monod / oxygen-inhibition factor locally inside each function.
+- **v3 form:** `Alkalinity` consumes the pre-cached
+  `nitrification_flux_rate` / `denitrification_flux_rate` from
+  `Nitrogen.run`, which has already applied the Monod / inhibition factor
+  upstream. v3 multiplies through by the stoichiometric `r_alkn` /
+  `r_alkden` and 50000 mg-CaCO3-equivalent factor only.
+- **Rationale:** Single-source-of-truth for the attenuation factor — by
+  routing through Nitrogen's rate cache, v3 guarantees Alkalinity's coupling
+  is consistent with the actual NH4/NO3 transformation rate. v1's
+  duplicate-attenuation pattern works correctly only because both call
+  sites use the same parameter values.
+- **Reference test:** `tests/test_5_alkalinity_calculations_v2.py` module
+  docstring (lines 21–30) documents the equivalence and the test fixture
+  passes a Nitrogen mock whose `*_flux_rate` already includes the Monod
+  factor, matching what v1 computes locally.
+
+### 3.4 Pathogen light decay — `PAR = q_solar * Fr_PAR` in v3
+
+- **Module:** `processes/pathogen.py` (light-driven decay sub-rate)
+- **v1 form:** `PathogenDecay` uses raw `q_solar` (W/m² incident).
+- **v3 form:** `_rate_light_decay` uses `PAR(q_solar, Fr_PAR) =
+  q_solar * Fr_PAR`, scaling effective surface irradiance by `Fr_PAR`
+  (default 0.47, the photosynthetically active fraction).
+- **Rationale:** Pathogen UV-driven decay is properly a function of UV
+  flux, not total shortwave; PAR is a closer proxy than raw `q_solar`.
+  The calibration target `apx` absorbs the difference for any historical
+  v1 calibration. The Phase 3.1 docstring documents this as an
+  intentional deviation.
+- **Reference test:** `tests/test_5_pathogen_calculations_v2.py::test_pathogen_light_decay_matches_v1`
+  pins `Fr_PAR=1.0` to make v3 and v1 forms exactly equivalent under the
+  fixture.
+
+### 3.5 CBOD sedimentation — `ksbod_tc / depth` in v3 (m/d → 1/d)
+
+- **Module:** `processes/cbod.py` (sedimentation sink)
+- **v1 form:** `CBOD_sedimentation = CBOD * ksbod_tc`, treating `ksbod_tc`
+  directly as a 1/d first-order rate.
+- **v3 form:** `CBOD * ksbod_tc / depth`, treating `ksbod_tc` as a
+  settling velocity (m/d) divided by water-column depth to yield a 1/d
+  first-order rate.
+- **Rationale:** Dimensional consistency — settling-driven sedimentation
+  scales with `velocity / depth`, not with velocity alone. The v1
+  formulation requires re-interpreting `ksbod_tc` as 1/d and reconciling
+  with the velocity-style defaults documented in `parameters/cbod.py`.
+- **Reference test:** `tests/test_5_cbod_calculations_v2.py` module
+  docstring (line 11) and the parity test at lines 173–200 document the
+  units mismatch and pin the v3 result against the v1 form scaled
+  through the `1/depth` factor.
+
+### 3.6 Celsius-to-Kelvin offset — 273.15 in v3 vs 273.16 in v1
+
+- **Module:** `utils/conversions.py` (`celsius_to_kelvin`)
+- **v1 form:** `T_K = T_C + 273.16` (the historical SI triple-point
+  definition of the Kelvin offset, kept in v1 for backward compatibility).
+- **v3 form:** `T_K = T_C + 273.15` (the modern definition, consistent
+  with all other v3 utilities and with the `T_K - 273.15` round-trip).
+- **Rationale:** Modern SI convention. The 0.01 K offset propagates
+  weakly into Henry's-law saturation calculations (`O2sat`, `N2sat`,
+  `Henrys_k`) but is well below the ~1% tolerance of typical aquatic
+  measurements.
+- **Reference test:** `tests/test_5_n2_calculations_v2.py` lines 13–18
+  (module docstring) document the convention difference; tests use the
+  v1 +273.16 convention internally to isolate kinetics-formula
+  parity from the offset.
+
+### 3.7 Pressure mb→atm conversion — `1.0 / 1013.25` in v3 vs `0.000986923` in v1
+
+- **Module:** `utils/conversions.py` (mb-to-atm scaling factor used in
+  Henry's-law saturation calculations)
+- **v1 form:** literal `0.000986923` (truncated decimal).
+- **v3 form:** `1.0 / 1013.25` (computed exactly from the standard
+  sea-level pressure in hPa).
+- **Rationale:** Eliminate the truncation. The two forms agree to ~7
+  significant figures. Affects `N2sat`, `O2sat`, atmospheric reaeration
+  partial-pressure terms.
+- **Reference test:** `tests/test_5_n2_calculations_v2.py` lines 19–21
+  (module docstring) document the convention difference; the parity
+  tests use `rtol=1e-6` to absorb the truncation and the 0.01 K Kelvin
+  offset together.
+
+---
+
+For per-deviation empirical verification, see the module docstrings of:
+
+- `tests/test_5_carbon_calculations_v2.py`
+- `tests/test_5_dox_calculations_v2.py`
+- `tests/test_5_alkalinity_calculations_v2.py`
+- `tests/test_5_pathogen_calculations_v2.py`
+- `tests/test_5_cbod_calculations_v2.py`
+- `tests/test_5_n2_calculations_v2.py`
+
+Each docstring states the deviation explicitly, identifies the test
+fixture's strategy for isolating the deviation from kinetics-formula
+parity, and pins the expected v1 reference value.

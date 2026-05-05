@@ -262,9 +262,16 @@ class FloatingAlgae(Process):
         algae = registry.get_at_time("algae_floating", time)
         ammonium = registry.get_at_time("ammonium", time)
         nitrate = registry.get_at_time("nitrate", time)
-        phosphorus_total_inorganic = registry.get_at_time(
-            "phosphorus_total_inorganic", time
-        )
+        # Phase 8.A: read the canonical v3 inorganic-P state name "tip".
+        # The legacy v2 name "phosphorus_total_inorganic" (still used by
+        # v2 Riverine and a handful of v2-era YAML configs) is supported
+        # as a fallback so older configs continue to run unchanged.
+        if "tip" in registry:
+            phosphorus_total_inorganic = registry.get_at_time("tip", time)
+        else:
+            phosphorus_total_inorganic = registry.get_at_time(
+                "phosphorus_total_inorganic", time
+            )
         depth = registry.get_at_time("depth", time)
         water_temperature = registry.get_at_time("water_temperature", time)
         solar = registry.get_at_time("solar_radiation", time)

@@ -136,6 +136,29 @@ class Nitrogen(Process):
             nitrification_oxygen_inhibition_factor
         )
 
+        # Phase 8.A: legacy v2 algal-uptake attributes that are read by
+        # ``nitrate_uptake_floating_algae`` / ``nitrate_uptake_benthic_algae``
+        # / ``ammonium_*`` paths but were previously injected out-of-band by
+        # the ``init_from_file`` YAML config path. Without that path,
+        # ``Nitrogen()`` instantiates fine but ``Nitrogen.run()`` raised
+        # ``AttributeError`` on the first algal-coupled step. Provide
+        # sensible defaults sourced from the v3 algae stoichiometric ratios
+        # (``ALGAE_DEFAULTS`` / ``BALGAE_DEFAULTS``) so a bare
+        # ``Nitrogen()`` is fully runnable. Callers can still override any
+        # of these by setting them on the instance after construction
+        # (which is what the YAML config path does).
+        #
+        # NOTE: ``benthic_algea_faction_uptake_from_nitrate`` retains the
+        # legacy "algea" typo for back-compat with existing YAML configs
+        # and tests; do NOT rename it. A future v3.x can deprecate it.
+        from clearwater_modules_v3.parameters.algae import DEFAULTS as ALGAE_DEFAULTS
+        from clearwater_modules_v3.parameters.balgae import DEFAULTS as BALGAE_DEFAULTS
+        self.floating_algae_nitrogen_weight = ALGAE_DEFAULTS["AWn"]      # mg-N/ug-Chla
+        self.benthic_algae_nitrogen_weight = BALGAE_DEFAULTS["BWn"]      # mg-N/g-D
+        self.algal_chlorophyll = ALGAE_DEFAULTS["AWa"]                   # ug-Chla/ug-Chla
+        self.benthic_algea_faction_uptake_from_nitrate = 0.5             # legacy "algea" typo (preserved)
+        self.fraction_bottom_area = 1.0                                  # unitless
+
         # Phase 2.B: diagnostics handle for clip-with-log. ``init_process``
         # will replace this with the model's run-level Diagnostics if a
         # v3 Model is wired up; tests that drive ``run`` directly without

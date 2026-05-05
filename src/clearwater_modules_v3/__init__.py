@@ -15,8 +15,10 @@ its v2 counterpart unchanged. v3-native code lands in subsequent phases per
 
 from clearwater_modules_v3 import parameters
 from clearwater_modules_v3 import utils
+from clearwater_modules_v3 import examples
 from clearwater_modules_v3.model import Model
 from clearwater_modules_v3.config import init_from_file
+from clearwater_modules_v3.examples import build_nsm1_demo
 from clearwater_modules_v3.processes import (
     Riverine,
     Temperature,
@@ -36,6 +38,8 @@ from clearwater_modules_v3.processes import (
 __all__ = [
     "Model",
     "init_from_file",
+    "build_nsm1_demo",
+    "examples",
     "Riverine",
     "Temperature",
     "BenthicAlgae",
