@@ -12,8 +12,19 @@ Source: v1 ``clearwater_modules/nsm1/constants.py`` ``GlobalVars`` /
   -> ``dox``
 * ``pressure_mb`` -> ``global_parameters``
 
-Corrections applied: none (the seven critical corrections live in the modules
-the affected parameters were migrated to).
+Corrections applied:
+
+* ``lambdam`` corrected from ``0.0174`` to ``0.174`` L/(mg*m) (Phase 9.C audit
+  fix). Fortran ``modGlobalParam.f90:68`` initializes ``lambdam = 0.174``; v1
+  GlobalVars used ``0.0174`` (likely typo, 10x lower than canonical) and v3
+  inherited the v1 typo. The 0.174 value matches QUAL2K Table 6 and is used
+  throughout the legacy v1 NSM test suite (e.g., ``test_7_nsm_algae_calculations``,
+  ``test_10_nsm_carbon_calculations``, ``test_17_nsm_N2_calculations``).
+  See ``parameter_defaults_corrections.md`` Section 1.9.
+
+The seven other critical sentinel-999 corrections live in the modules the
+affected parameters were migrated to (``dox``, ``phosphorus``,
+``global_parameters``).
 
 Many runtime scalars (``dt``, ``depth``, ``TwaterC``, ``velocity``, ``flow``,
 ``topwidth``, ``slope``, ``shear_velocity``, ``wind_speed``, ``Solid``) are
@@ -46,7 +57,7 @@ DEFAULTS: dict[str, float | int | bool] = {
     'lambda0': 0.02,                    # 1/m; background light extinction (clear water)
     'lambda1': 0.0088,                  # (1/m)/(ug-Chla/L); linear self-shading by chlorophyll
     'lambda2': 0.054,                   # unitless; non-linear chlorophyll extinction coefficient
-    'lambdas': 0.052,                   # FIXME(phase1-audit): L/(mg*m); ISS extinction parameter currently disabled in code path
-    'lambdam': 0.0174,                  # L/(mg*m); POM extinction coefficient
+    'lambdas': 0.052,                   # L/(mg*m); ISS (suspended-solids) extinction parameter; applied unconditionally in utils/light.py (matches v1 shared/processes.py:232 and Fortran modGlobalParam.f90 LightExtCoefficient). Multi-solid-class generalization out of scope for 1.0.0; see corrections doc Section 2.8.
+    'lambdam': 0.174,                   # L/(mg*m); POM extinction coefficient (matches Fortran modGlobalParam.f90:68 and QUAL2K Table 6; corrected from v1 typo 0.0174 in Phase 9.C, see corrections doc Section 1.9)
     'Fr_PAR': 0.47,                     # unitless; PAR fraction of total solar radiation
 }

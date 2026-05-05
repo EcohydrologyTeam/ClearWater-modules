@@ -190,7 +190,7 @@ For per-test docstring detail: `tests/test_5_carbon_calculations_v2.py`,
 
 ---
 
-## 7. DOX reaeration default note (Phase 7.C Item 3)
+## 7. DOX reaeration default note (Phase 7.C Item 3 / Phase 9.C audit)
 
 DOX reaeration is **disabled by default** in v3:
 
@@ -209,6 +209,35 @@ user must set `kah_20_user` and `kaw_20_user` explicitly in YAML or via the
 `parameters={...}` constructor argument, or select one of the menu-driven
 reaeration options (`hydraulic_reaeration_option`, `wind_reaeration_option`)
 that do not consult these overrides.
+
+### 7.1 v3 vs Fortran NSM1 default-DOX-recovery divergence (important)
+
+The Phase 9.C three-way audit
+(`design/clearwater_modules_v3_nsm1_audit_utilities_params.md`) found that
+v3's `kah_20_user=0.0` disagrees with **Fortran NSM1**'s default of
+`kah_20_user=1.0` (`modGlobalParam.f90:113`):
+
+* At default `hydraulic_reaeration_option=1` (the user-override branch),
+  v3 produces **zero** atmospheric hydraulic reaeration.
+* At the same setting, Fortran NSM1 produces **1.0 1/d** hydraulic
+  reaeration.
+* Side-by-side runs of v3 vs Fortran NSM1 with all-default settings will
+  therefore show DOX recovery in Fortran but not in v3.
+
+Users who want non-zero default reaeration matching Fortran's behavior
+should either:
+
+  * (a) explicitly set `kah_20_user > 0` (e.g., `kah_20_user=1.0` to mimic
+    Fortran's default), **or**
+  * (b) select a different `hydraulic_reaeration_option` from the menu
+    (options 2-9 use empirical formulas based on velocity, depth, flow,
+    topwidth, slope, or shear velocity, and **do not consult**
+    `kah_20_user`).
+
+Author attributions for the 9 hydraulic and 13 wind reaeration options
+were reconciled in Phase 9.C against the Fortran source comments
+(`modGlobalParam.f90:268-414`); see `src/clearwater_modules_v3/utils/reaeration.py`
+docstrings for the canonical attributions.
 
 See `src/clearwater_modules_v3/parameter_defaults_corrections.md` Sections
 1.5 and 1.6 for the rationale and audit trail.

@@ -51,16 +51,25 @@ def kah_20(
         1/d | hydraulic reaeration coefficient at 20 deg C.
 
     Notes:
-        Selector options:
+        Selector options (author attributions match Fortran
+        ``modGlobalParam.f90:268-339`` inline comments):
             1. User-defined (``kah_20_user``).
-            2. Covar (1976): O'Connor-Dobbins regime.
-            3. Owens-Gibbs (1964).
-            4. Churchill (1962).
-            5. Tsivoglou-Wallace (1972): depth-piecewise blend of options 2-4.
-            6. Padden-Gloyna (1971): flow-piecewise.
-            7. USGS pool/riffle (Melching-Flores 1999): flow-piecewise.
-            8. Thackston-Krenkel (1969): flow-piecewise.
-            9. Langbien-Durum (1967): Froude-corrected shear-velocity form.
+            2. O'Connor and Dobbins (1958): for depths 0.3-9.1 m and velocities
+               0.15-0.49 m/s.
+            3. Owens et al. (1964): for depths 0.12-0.73 m and velocities
+               0.03-0.55 m/s.
+            4. Churchill et al. (1962): for depths 0.61-3.36 m and velocities
+               0.55-1.5 m/s.
+            5. Cover (1976): depth-piecewise blend of options 2-4
+               (Owens for depth<0.61, O'Connor for depth>0.61, Churchill at
+               depth=0.61).
+            6. Melching and Flores (1999) - pool-and-riffle streams:
+               flow-piecewise.
+            7. Melching and Flores (1999) - channel-controlled streams:
+               flow-piecewise.
+            8. Tsivoglou and Neal (1976): flow-piecewise on velocity * slope.
+            9. Thackston and Dawson (2001): Froude-corrected shear-velocity
+               form.
     """
     Uw_x_S = velocity * slope
     sqrt_g_h = (9.81 * depth) ** 0.5
@@ -139,20 +148,21 @@ def kaw_20(
         m/d | wind-driven reaeration velocity at 20 deg C.
 
     Notes:
-        Selector options:
+        Selector options (author attributions match Fortran
+        ``modGlobalParam.f90:341-414`` inline comments):
             1.  User-defined (``kaw_20_user``).
-            2.  Banks (1975).
-            3.  Banks-Herrera (1977): piecewise at ``Uw10 = 3.5 m/s``.
-            4.  Wanninkhof et al. (1991).
-            5.  Chen-Kanwisher (1980).
-            6.  Cole-Buchak (1995).
-            7.  Banks-Herrera-Banks blend: piecewise at ``Uw10 = 5.5 m/s``.
-            8.  Liss (1973).
-            9.  Downing-Truesdale (1955): piecewise at ``Uw10 = 4.1 m/s``.
-            10. Kanwisher (1963).
-            11. Yu et al. (1977).
-            12. Weiler (1974).
-            13. Atkinson (1995): piecewise at ``Uw10 = 1.6 m/s``.
+            2.  Broecker et al. (1978).
+            3.  Gelda et al. (1996): piecewise at ``Uw10 = 3.5 m/s``.
+            4.  Banks and Herrera (1977).
+            5.  Wanninkhof (1991).
+            6.  Cole and Buchak (1993).
+            7.  Banks (1975): piecewise at ``Uw10 = 5.5 m/s``.
+            8.  Smith (1978).
+            9.  Liss (1973): piecewise at ``Uw10 = 4.1 m/s``.
+            10. Downing and Truesdale (1955).
+            11. Kanwisher (1963).
+            12. Yu et al. (1977).
+            13. Weiler (1974): piecewise at ``Uw10 = 1.6 m/s``.
     """
     Uw10 = wind_speed * (10.0 / 2.0) ** 0.143
     # See ``kah_20`` for the same ``np.select`` dim-stripping fix; reattach

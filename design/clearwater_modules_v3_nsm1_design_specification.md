@@ -204,7 +204,7 @@ Example YAML block:
       KNR: 0.6
       kon_20: 0.1
       kon_theta: 1.074
-      vson_20: 0.1
+      vson_20: 0.01      # m/d; matches Fortran/v1 vson=0.01 (Phase 9.C fix)
       vson_theta: 1.024
       PN: 0.5
       NH4fromBed: 0.0

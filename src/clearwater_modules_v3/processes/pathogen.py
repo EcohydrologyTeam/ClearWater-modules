@@ -78,7 +78,7 @@ _LIGHT_DEFAULTS: dict[str, float | bool] = {
     "lambda1": 0.0088,      # 1/m / (ug-Chla/L); linear chlorophyll self-shading
     "lambda2": 0.054,       # unitless; non-linear chlorophyll self-shading
     "lambdas": 0.052,       # L/mg/m; ISS extinction parameter
-    "lambdam": 0.0174,      # L/mg/m; POM extinction parameter
+    "lambdam": 0.174,       # L/mg/m; POM extinction parameter (matches v3 global_vars and Fortran/QUAL2K; corrected from 0.0174 in Phase 9.C)
     "fcom": 0.4,            # unitless; carbon-to-organic-matter mass ratio
     "Fr_PAR": 0.47,         # unitless; PAR fraction of total solar radiation
     "use_Algae": True,      # bool; floating-algae module switch

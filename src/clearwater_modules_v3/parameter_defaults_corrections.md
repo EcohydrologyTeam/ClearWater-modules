@@ -13,73 +13,128 @@ broader Phase 0 inventory and rationale live in
 
 ---
 
-## Section 1: Critical default-value corrections (7 items, applied at port)
+## Section 1: Critical default-value corrections (9 items, applied at port)
 
 These are applied directly in the v3 `DEFAULTS` dicts. Each inline comment in
-the relevant `parameters/<group>.py` module records the v1 original.
+the relevant `parameters/<group>.py` module records the v1 original. Items 1.1
+through 1.7 are the original 7 sentinel-999 / 2026.5 corrections applied at the
+v1->v3 port. Items 1.8 and 1.9 were added in Phase 9.C after the three-way
+v1/v3/Fortran audit (`design/clearwater_modules_v3_nsm1_audit_utilities_params.md`)
+identified them as additional v1 flaws or internal inconsistencies.
+
+**Three-way verification summary (v1 / Fortran modGlobalParam.f90 / v3):**
+
+| Section | Parameter | v1 default | Fortran default | v3 default | Verdict |
+|---|---|---|---|---|---|
+| 1.1 | `vsop` | 999 (sentinel) | 0.01 | 0.1 | v3 chose mid-range over Fortran's lower bound |
+| 1.2 | `vs` | 999 (sentinel) | 0.1 | 0.1 | v3 matches Fortran |
+| 1.3 | `SOD_20` | 999 (sentinel) | 0.2 | 1.0 | v3 chose conservative midpoint over Fortran's lower bound |
+| 1.4 | `SOD_theta` | 999 (sentinel) | 1.06 | 1.060 | v3 matches Fortran (Chapra 1997) |
+| 1.5 | `kaw_20_user` | 999 (sentinel) | 0.0 | 0.0 | v3 matches Fortran |
+| 1.6 | `kah_20_user` | 999 (sentinel) | 1.0 | 0.0 | v3 disables user-override branch by default; behavioral note below |
+| 1.7 | `pressure_mb` | 2026.5 (2x error) | n/a (Fortran uses pressure_atm) | 1013.25 | v3 ISO 2533 standard |
+| 1.8 | `vson_20` | 0.01 (in v1 GlobalVars as `vson`) | 0.01 | 0.01 (was 0.1, Phase 9.C fix) | v3 corrected to match Fortran/v1 |
+| 1.9 | `lambdam` | 0.0174 (likely v1 typo) | 0.174 | 0.174 (was 0.0174, Phase 9.C fix) | v3 corrected to match Fortran/QUAL2K Table 6 |
+
+For 4 of the original 7 (`vs`, `SOD_theta`, `kaw_20_user`, `pressure_mb`) v3
+chose values matching or equivalent to Fortran. For 3 of 7 (`vsop`, `SOD_20`,
+`kah_20_user`) v3 chose values differing from Fortran by O(1)-O(10) but
+defensible from literature; rationale recorded per-item below. The Phase 9.C
+additions (1.8, 1.9) bring v3 into closer Fortran/QUAL2K alignment.
 
 ### 1.1 `vsop` — organic-P settling velocity
 - **Module:** `parameters/phosphorus.py`
-- **v1 default:** `999` m/d
+- **v1 default:** `999` m/d (sentinel)
+- **Fortran default:** `0.01` m/d (`modGlobalParam.f90:98`)
 - **v3 default:** `0.1` m/d
 - **Rationale:** `vsop` is multiplied directly into the OrgP loss rate
   (`vsop * OrgP / depth`). At 999 m/d the water column would be entirely
   evacuated of organic phosphorus on every timestep. Typical values for
-  organic-P settling sit in the 0.01-1.0 m/d range; 0.1 m/d is a defensible
-  midpoint consistent with literature values for medium-sized organic
-  particles.
+  organic-P settling sit in the 0.01-1.0 m/d range; v3 chose 0.1 m/d as a
+  defensible midpoint consistent with literature values for medium-sized
+  organic particles. v3's 0.1 m/d is 10x Fortran's 0.01 m/d (lower bound of
+  the literature range). Either value is defensible; the choice is flagged
+  for LimnoTech reconciliation. Users with site-specific data should override.
 
 ### 1.2 `vs` — TIP settling velocity
 - **Module:** `parameters/phosphorus.py`
-- **v1 default:** `999` m/d
+- **v1 default:** `999` m/d (sentinel)
+- **Fortran default:** `0.1` m/d (`modGlobalParam.f90:87`)
 - **v3 default:** `0.1` m/d
-- **Rationale:** Same magnitude error as `vsop`. `vs` controls the settling
-  loss of total inorganic phosphorus adsorbed onto suspended solids; physically
-  reasonable values fall in the 0.01-1.0 m/d range. 0.1 m/d is the same
-  midpoint chosen for `vsop` and is consistent with Chapra (1997) recommended
-  ranges for inorganic-P partitioning onto fine sediments.
+- **Rationale:** Same magnitude sentinel error as `vsop` in v1. `vs` controls
+  the settling loss of total inorganic phosphorus adsorbed onto suspended
+  solids. v3's 0.1 m/d matches Fortran exactly and falls within the typical
+  literature range (Chapra 1997).
 
 ### 1.3 `SOD_20` — sediment oxygen demand at 20 C
 - **Module:** `parameters/dox.py`
-- **v1 default:** `999` g-O2/m^2/d
+- **v1 default:** `999` g-O2/m^2/d (sentinel)
+- **Fortran default:** `0.2` g-O2/m^2/d (`modGlobalParam.f90:122`)
 - **v3 default:** `1.0` g-O2/m^2/d
 - **Rationale:** Realistic SOD values for moderate organic loading sit in the
-  0.5-3.0 g-O2/m^2/d range (Chapra 1997, Table 25.2). 1.0 g-O2/m^2/d is a
-  defensible default for an unspecified moderate-loading site; users with
-  field measurements should override per simulation. The v1 value of 999
-  drives DOX immediately negative on any wet-bed timestep.
+  0.5-3.0 g-O2/m^2/d range (Chapra 1997, Table 25.2). v3 chose 1.0 g-O2/m^2/d
+  as a defensible midpoint for an unspecified moderate-loading site; this is
+  5x Fortran's 0.2 (which sits at the low end of clean-substrate values).
+  Users with field measurements should override per simulation. The v1
+  sentinel of 999 drives DOX immediately negative on any wet-bed timestep.
+  The v3 vs Fortran difference is flagged for LimnoTech reconciliation; both
+  values are defensible from literature.
 
 ### 1.4 `SOD_theta` — Arrhenius coefficient for SOD
 - **Module:** `parameters/dox.py`
-- **v1 default:** `999` (unitless)
-- **v3 default:** `1.060` (unitless)
+- **v1 default:** `999` (sentinel)
+- **Fortran default:** `1.06` (`modGlobalParam.f90:122`)
+- **v3 default:** `1.060`
 - **Rationale:** Arrhenius-style temperature corrections take the form
   `theta^(T-20)`. With `theta=999` and any temperature above 20 C, the
   corrected SOD blows up by orders of magnitude per degree (catastrophic).
   Chapra (1997) recommends `theta=1.060` for SOD as the standard literature
-  value, equivalent to a Q10 of approximately 1.79. This was Phase 0's most
-  severe finding.
+  value, equivalent to a Q10 of approximately 1.79. v3 matches Fortran
+  exactly. This was Phase 0's most severe finding.
 
 ### 1.5 `kaw_20_user` — user-override wind reaeration coefficient at 20 C
 - **Module:** `parameters/dox.py`
-- **v1 default:** `999` m/d
+- **v1 default:** `999` m/d (sentinel)
+- **Fortran default:** `0.0` m/d (`modGlobalParam.f90:117`)
 - **v3 default:** `0.0` m/d
 - **Rationale:** This parameter is consulted only when `wind_reaeration_option`
   selects the user-override branch (option 1). Setting the default to zero
   means the user-override branch is *off* by default; if a user opts into the
   override path without supplying their own value they will see no reaeration
-  rather than a runaway 999 m/d.
+  rather than a runaway 999 m/d. v3 matches Fortran exactly.
 
 ### 1.6 `kah_20_user` — user-override hydraulic reaeration coefficient at 20 C
 - **Module:** `parameters/dox.py`
-- **v1 default:** `999` 1/d
+- **v1 default:** `999` 1/d (sentinel)
+- **Fortran default:** `1.0` 1/d (`modGlobalParam.f90:113`)
 - **v3 default:** `0.0` 1/d
-- **Rationale:** Same as `kaw_20_user`. Defaulting to zero makes the override
-  branch a no-op when not configured, instead of a numerical disaster.
+- **Rationale:** v3 chose 0.0 (disabled-by-default) over Fortran's 1.0 to make
+  the user-override branch a no-op when not configured, mirroring the
+  `kaw_20_user=0` choice. v1's sentinel of 999 was clearly a flaw; the
+  subsequent v3 vs Fortran disagreement is a deliberate v3 design choice.
+
+  **Behavioral note (important for v3 vs Fortran side-by-side runs):** at the
+  default `hydraulic_reaeration_option=1` (user-defined path), v3's
+  `kah_20_user=0.0` produces zero atmospheric hydraulic reaeration. Fortran's
+  default of `kah_20_user=1.0` produces 1.0 1/d hydraulic reaeration at the
+  same option setting. This means side-by-side runs of v3 vs Fortran NSM1 with
+  all-default settings will show DOX recovery in Fortran but not in v3. Users
+  who want non-zero default reaeration should either:
+
+  * (a) explicitly set ``kah_20_user > 0`` (e.g., 1.0 to mimic Fortran's
+    default), or
+  * (b) select a different ``hydraulic_reaeration_option`` from the menu
+    (options 2-9 use empirical formulas based on velocity, depth, flow,
+    topwidth, slope, or shear velocity, and do not depend on
+    ``kah_20_user``).
+
+  This behavioral divergence is mirrored in
+  `design/clearwater_modules_v3_nsm1_README.md` Section 7.
 
 ### 1.7 `pressure_mb` — atmospheric pressure
 - **Module:** `parameters/global_parameters.py`
-- **v1 default:** `2026.5` hPa
+- **v1 default:** `2026.5` hPa (2x error; possibly intended as Pa-> mb conversion error)
+- **Fortran default:** n/a (Fortran NSM1 uses `pressure_atm` in atm, not mb)
 - **v3 default:** `1013.25` hPa
 - **Rationale:** Standard sea-level atmospheric pressure is `1013.25` hPa
   (ISO 2533). The v1 value is approximately 2x correct; this biases every
@@ -87,6 +142,47 @@ the relevant `parameters/<group>.py` module records the v1 original.
   via Henry's law) and `N2sat` (N2 saturation), as well as any atmospheric
   reaeration formula that uses partial pressure. This was identified as a
   Phase 0 finding (2026-05-04) and added to the canonical correction list.
+
+### 1.8 `vson_20` — organic-N settling velocity at 20 C (Phase 9.C fix)
+- **Module:** `parameters/nitrogen.py`
+- **v1 default:** `0.01` m/d (in `GlobalVars` as `vson`, not in nitrogen group)
+- **Fortran default:** `0.01` m/d (`modGlobalParam.f90:92`, `vson` not `vson_20`)
+- **v3 default:** `0.01` m/d (corrected in Phase 9.C; was `0.1`)
+- **Rationale:** Phase 9.C three-way audit found an internal v3 inconsistency:
+  the v3 nitrogen group's `vson_20` was 0.1 m/d while v3 `global_vars.vson`,
+  v1 `GlobalVars.vson`, and Fortran `vson` were all 0.01 m/d. The 0.1 in
+  the nitrogen group was 10x v1, 10x Fortran, and 10x v3's own `global_vars`
+  value, with no documented basis. Phase 9.C corrected v3 to `0.01` m/d to
+  match Fortran/v1. Note: `vson` was migrated from `global_vars` to the
+  nitrogen group in v3 because it is a nitrogen-specific settling velocity,
+  and renamed to `vson_20` for consistency with the other Arrhenius
+  rate-base parameters (`knit_20`, `kon_20`, etc.) since v3 added an
+  Arrhenius temperature correction (see also `vson_theta` below).
+
+  **v3 addition (`vson_theta=1.024`):** v1 uses `vson` raw (no Arrhenius
+  correction); Fortran also has no `vson_theta`. Phase 2.B added the
+  Arrhenius correction `vson_tc = arrhenius_correction(T, vson_20,
+  vson_theta)` for consistency with the other settling-velocity parameters.
+  At T=20 C this collapses exactly to the v1/Fortran behavior. The
+  `theta=1.024` value follows the convention used for `kah_theta`,
+  `kaw_theta` (other reaeration/settling parameters with mild temperature
+  dependence). Documented as a v3 enhancement; flagged for LimnoTech review.
+
+### 1.9 `lambdam` — POM contribution to Beer-Lambert light extinction (Phase 9.C fix)
+- **Module:** `parameters/global_vars.py`
+- **v1 default:** `0.0174` L/(mg*m) (likely typo)
+- **Fortran default:** `0.174` L/(mg*m) (`modGlobalParam.f90:68`)
+- **v3 default:** `0.174` L/(mg*m) (corrected in Phase 9.C; was `0.0174`)
+- **Rationale:** Phase 9.C three-way audit found a 10x discrepancy: v1
+  `GlobalVars` used `0.0174` (10x lower than canonical) and v3 inherited
+  the v1 value. Fortran's `0.174` matches QUAL2K Table 6 for the POM
+  contribution to Beer-Lambert light extinction and is used throughout the
+  legacy v1 NSM test suite (`test_7_nsm_algae_calculations.py:340`,
+  `test_10_nsm_carbon_calculations.py:335`, `test_17_nsm_N2_calculations.py:339`,
+  etc. all override the v1 default with `lambdam = 0.174` confirming the
+  test authors recognized the v1 default as wrong). Phase 9.C corrected v3
+  to `0.174` to match Fortran and QUAL2K. The same value is mirrored in
+  the inline `_LIGHT_DEFAULTS` dict in `processes/pathogen.py`.
 
 ---
 
@@ -165,18 +261,25 @@ Disposition for each is described below.
   `global_vars.py` documents the correct units (W/m^2). Docstring will be
   corrected in the Process docstring during Phase 1.3.
 
-### 2.8 `lambdas` — light extinction parameter defined but not used
+### 2.8 `lambdas` — light extinction parameter (suspended-solids contribution)
 - **Module:** `parameters/global_vars.py`
-- **Issue:** `lambdas=0.052` represents the suspended-solids contribution to
-  Beer-Lambert light extinction. v1's code path computing the effective
-  extinction coefficient comments out this term: `lambdas * Solid` is
-  defined but not added to the sum. Either the term should be enabled or
-  the parameter should be removed.
-- **Disposition (v3 1.0.0):** Parameter retained for backward compatibility
-  with any user YAML that already sets it; flagged with `FIXME(phase1-audit):`
-  in `global_vars.py`. Phase 1.3 light/extinction utility implementation
-  should decide whether to re-enable the term (and document the choice
-  here).
+- **Issue (corrected in Phase 9.C audit):** `lambdas=0.052` represents the
+  suspended-solids contribution to Beer-Lambert light extinction. **Earlier
+  versions of this section incorrectly claimed v1's `lambdas * Solid` term
+  was "commented out / defined but not used."** The Phase 9.C three-way audit
+  (`design/clearwater_modules_v3_nsm1_audit_utilities_params.md`) verified
+  that v1's `shared/processes.py:232` applies `lambdas * Solid` unconditionally
+  in the Beer-Lambert sum, matching Fortran `modGlobalParam.f90:LightExtCoefficient`
+  (which loops over `nGS` solid groups summing `lambdas(i) * Solid(i)`). v3's
+  `utils/light.py:13-53` also applies the term unconditionally, matching v1
+  and Fortran for the single-solid-class case. The previous "commented out"
+  claim was a documentation defect.
+- **Disposition (v3 1.0.0):** Parameter is fully active in the v3 light
+  utility; default value 0.052 matches v1, Fortran, and QUAL2K Table 6. The
+  legacy `FIXME(phase1-audit):` inline comment in `global_vars.py` is now
+  obsolete and refers to the documentation defect that has been corrected
+  here. Multi-solid-class generalization (Fortran's `nGS > 1` loop form) is
+  out of scope for v3 NSM1 1.0.0 and would require utility extension.
 
 ---
 
@@ -282,17 +385,34 @@ floating-point tolerance for the overwhelming majority of sub-rate terms.
   units mismatch and pin the v3 result against the v1 form scaled
   through the `1/depth` factor.
 
-### 3.6 Celsius-to-Kelvin offset — 273.15 in v3 vs 273.16 in v1
+### 3.6 Celsius-to-Kelvin offset — 273.16 in v3 (re-export from v2) vs 273.15 in Fortran
 
-- **Module:** `utils/conversions.py` (`celsius_to_kelvin`)
-- **v1 form:** `T_K = T_C + 273.16` (the historical SI triple-point
-  definition of the Kelvin offset, kept in v1 for backward compatibility).
-- **v3 form:** `T_K = T_C + 273.15` (the modern definition, consistent
-  with all other v3 utilities and with the `T_K - 273.15` round-trip).
-- **Rationale:** Modern SI convention. The 0.01 K offset propagates
-  weakly into Henry's-law saturation calculations (`O2sat`, `N2sat`,
-  `Henrys_k`) but is well below the ~1% tolerance of typical aquatic
-  measurements.
+- **Module:** `utils/conversions.py` (re-exports `celsius_to_kelvin` from v2)
+- **Fortran form:** `T_K = T_C + 273.15` (modern SI definition; matches v1
+  NSM1's `nsm1/processes.py:9-10`).
+- **v1 form (in two places):** `T_K = T_C + 273.15` in `nsm1/processes.py:9-10`
+  (matching Fortran), but historical v1 utility code elsewhere uses
+  `T_C + 273.16`. v2 chose +273.16 for v1-utility-parity.
+- **v3 form:** v3's `utils/conversions.py` re-exports `celsius_to_kelvin`
+  from v2's `utils/conversions.py`, which uses `T_K = T_C + 273.16` with the
+  inline comment "for testing consistency with v1". The +0.01 K offset is
+  the historical SI triple-point definition of the Kelvin offset, retained
+  to keep v2-parity tests numerically stable.
+- **Rationale:** Modern SI convention is `+273.15`, used by Fortran NSM1 and
+  v1 NSM1's `nsm1/processes.py`. v3 inherits v2's `+273.16` convention for
+  v2-parity test stability; changing v2's `celsius_to_kelvin` to `+273.15`
+  would break the existing v2 parity test fixtures. The `+0.01` K offset
+  propagates weakly into Henry's-law saturation calculations (`O2sat`,
+  `N2sat`, `Henrys_k`) but is well below the ~1% tolerance of typical
+  aquatic measurements. v3's standalone N2 saturation and similar
+  recently-added utilities use `+273.15` directly (matching Fortran/v1
+  NSM1).
+- **Disposition:** Documented as a known convention divergence between
+  the v3 `utils/conversions.py` re-export (273.16) and the canonical
+  reference value (273.15). Production usage should prefer the canonical
+  273.15 in any new code; legacy v2 parity tests rely on 273.16. This is
+  the proper documentation of actual v3 behavior; an earlier draft of
+  this section incorrectly claimed v3 used +273.15.
 - **Reference test:** `tests/test_5_n2_calculations_v2.py` lines 13–18
   (module docstring) document the convention difference; tests use the
   v1 +273.16 convention internally to isolate kinetics-formula
@@ -327,3 +447,71 @@ For per-deviation empirical verification, see the module docstrings of:
 Each docstring states the deviation explicitly, identifies the test
 fixture's strategy for isolating the deviation from kinetics-formula
 parity, and pins the expected v1 reference value.
+
+---
+
+## Section 4: Items flagged for LimnoTech reconciliation
+
+These items were identified by the Phase 9.C three-way audit
+(`design/clearwater_modules_v3_nsm1_audit_utilities_params.md`) as
+discrepancies between v1 and Fortran that v3 inherited from v1. They were
+not corrected in Phase 9.C because the literature basis for the canonical
+value is not unambiguous from the codebase alone, or because the change
+would alter long-standing v1 behavior that downstream applications may
+depend on.
+
+### 4.1 Nitrogen Arrhenius theta values — possible v1 swap with Fortran
+
+| Parameter | v1 / v3 | Fortran (`modNitrogen.f90`) | Comment |
+|---|---|---|---|
+| `kon_theta` | 1.074 | 1.047 (line 89) | v3/v1 differ from Fortran |
+| `kdnit_theta` | 1.08 | 1.045 (line 95) | v3/v1 differ from Fortran |
+| `rnh4_theta` | 1.047 | 1.074 (line 82) | v3/v1 swap with Fortran's `kon_theta` value |
+| `vno3_theta` | 1.045 | 1.08 (line 100) | v3/v1 swap with Fortran's `kdnit_theta` value |
+
+The pattern (v3/v1 having `1.074, 1.08, 1.047, 1.045` vs Fortran's
+`1.047, 1.045, 1.074, 1.08`) suggests a possible 4-way swap during the v1
+port from Fortran. v3 inherits the v1 values pinned by inline
+`FIXME(phase9c-audit):` comments in `parameters/nitrogen.py`. Recommend
+LimnoTech reconciliation before changing values to preserve v1 simulation
+results until the literature/Fortran preference is confirmed.
+
+### 4.2 `BWa` benthic-algae chlorophyll-a stoichiometry (5000 vs 3500)
+
+- **Fortran default:** `5000.0` g-D / mg-Chla (`modBenthicAlgae.f90:87`)
+- **v1 / v3 default:** `3500.0` (`parameters/balgae.py`)
+- **Comment:** v3 inherits v1's 3500. Fortran's 5000 differs by ~43%; both
+  are within the literature range for benthic algal chlorophyll
+  stoichiometry but the canonical QUAL2K value should be confirmed.
+  Flagged for LimnoTech review.
+
+### 4.3 `vsop` value (Fortran 0.01 vs v3 0.1)
+
+See Section 1.1 above. v3 chose mid-range (0.1 m/d) over Fortran's
+lower-bound (0.01 m/d). Both defensible from literature; flagged for
+LimnoTech review.
+
+### 4.4 `SOD_20` value (Fortran 0.2 vs v3 1.0)
+
+See Section 1.3 above. v3 chose conservative midpoint (1.0 g-O2/m^2/d)
+over Fortran's lower-bound (0.2). Both defensible from Chapra (1997)
+Table 25.2; flagged for LimnoTech review.
+
+### 4.5 `kah_20_user` value (Fortran 1.0 vs v3 0.0)
+
+See Section 1.6 above. v3 chose 0.0 (disabled-by-default) over Fortran's
+1.0 to make the user-override branch a no-op when not configured. This is
+a deliberate v3 design choice; the resulting behavioral divergence is
+documented in detail and mirrored in
+`design/clearwater_modules_v3_nsm1_README.md` Section 7.
+
+### 4.6 `vson_theta=1.024` is a v3 addition
+
+See Section 1.8 above. v3 added an Arrhenius temperature correction to
+the OrgN settling velocity (`vson_tc = arrhenius_correction(T, vson_20,
+vson_theta)`); v1 and Fortran apply `vson` raw with no temperature
+correction. At T=20 C v3 collapses exactly to v1/Fortran behavior; for
+other temperatures v3 differs by `theta^(T-20)`. Flagged for LimnoTech
+review; `theta=1.024` is consistent with the values used for related
+reaeration/settling parameters but is not directly traceable to a
+literature reference for OrgN settling specifically.
