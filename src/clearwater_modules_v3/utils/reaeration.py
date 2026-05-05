@@ -13,6 +13,16 @@ import xarray as xr
 from clearwater_modules_v3.utils.conversions import arrhenius_correction
 
 
+def _first_dataarray(*args) -> xr.DataArray | None:
+    """Return the first ``xr.DataArray`` argument, or ``None`` if all are
+    scalars/ndarrays. Used to recover dim/coord metadata after a
+    ``np.select`` call, which strips xarray attributes from its inputs."""
+    for arg in args:
+        if isinstance(arg, xr.DataArray):
+            return arg
+    return None
+
+
 def kah_20(
     kah_20_user: xr.DataArray,
     hydraulic_reaeration_option: xr.DataArray,
@@ -54,43 +64,59 @@ def kah_20(
     """
     Uw_x_S = velocity * slope
     sqrt_g_h = (9.81 * depth) ** 0.5
-    return xr.DataArray(
-        np.select(
-            condlist=[
-                hydraulic_reaeration_option == 1,
-                hydraulic_reaeration_option == 2,
-                hydraulic_reaeration_option == 3,
-                hydraulic_reaeration_option == 4,
-                (hydraulic_reaeration_option == 5) & (depth < 0.61),
-                (hydraulic_reaeration_option == 5) & (depth > 0.61),
-                (hydraulic_reaeration_option == 5) & (depth == 0.61),
-                (hydraulic_reaeration_option == 6) & (flow < 0.556),
-                (hydraulic_reaeration_option == 6) & (flow >= 0.556),
-                (hydraulic_reaeration_option == 7) & (flow < 0.556),
-                (hydraulic_reaeration_option == 7) & (flow >= 0.556),
-                (hydraulic_reaeration_option == 8) & (flow < 0.425),
-                (hydraulic_reaeration_option == 8) & (flow >= 0.425),
-                hydraulic_reaeration_option == 9,
-            ],
-            choicelist=[
-                kah_20_user,
-                (3.93 * velocity ** 0.5) / (depth ** 1.5),
-                (5.32 * velocity ** 0.67) / (depth ** 1.85),
-                (5.026 * velocity) / (depth ** 1.67),
-                (5.32 * velocity ** 0.67) / (depth ** 1.85),
-                (3.93 * velocity ** 0.5) / (depth ** 1.5),
-                (5.026 * velocity) / (depth ** 1.67),
-                517 * Uw_x_S ** 0.524 * flow ** -0.242,
-                596 * Uw_x_S ** 0.528 * flow ** -0.136,
-                88 * Uw_x_S ** 0.313 * depth ** -0.353,
-                142 * Uw_x_S ** 0.333 * depth ** -0.66 * topwidth ** -0.243,
-                31183 * velocity * slope,
-                15308 * velocity * slope,
-                2.16 * (1 + 9 * (velocity / sqrt_g_h) ** 0.25) * shear_velocity / depth,
-            ],
-            default=kah_20_user,
-        )
+    # ``np.select`` returns a bare ndarray whose dim labels are lost when
+    # wrapped via ``xr.DataArray(arr)`` (xarray invents anonymous ``dim_0``).
+    # Reattach the per-cell dims/coords from ``depth`` so downstream
+    # broadcasting against ``oxygen_dissolved`` etc. operates per cell
+    # rather than producing a spurious ``cell × dim_0`` result.
+    result = np.select(
+        condlist=[
+            hydraulic_reaeration_option == 1,
+            hydraulic_reaeration_option == 2,
+            hydraulic_reaeration_option == 3,
+            hydraulic_reaeration_option == 4,
+            (hydraulic_reaeration_option == 5) & (depth < 0.61),
+            (hydraulic_reaeration_option == 5) & (depth > 0.61),
+            (hydraulic_reaeration_option == 5) & (depth == 0.61),
+            (hydraulic_reaeration_option == 6) & (flow < 0.556),
+            (hydraulic_reaeration_option == 6) & (flow >= 0.556),
+            (hydraulic_reaeration_option == 7) & (flow < 0.556),
+            (hydraulic_reaeration_option == 7) & (flow >= 0.556),
+            (hydraulic_reaeration_option == 8) & (flow < 0.425),
+            (hydraulic_reaeration_option == 8) & (flow >= 0.425),
+            hydraulic_reaeration_option == 9,
+        ],
+        choicelist=[
+            kah_20_user,
+            (3.93 * velocity ** 0.5) / (depth ** 1.5),
+            (5.32 * velocity ** 0.67) / (depth ** 1.85),
+            (5.026 * velocity) / (depth ** 1.67),
+            (5.32 * velocity ** 0.67) / (depth ** 1.85),
+            (3.93 * velocity ** 0.5) / (depth ** 1.5),
+            (5.026 * velocity) / (depth ** 1.67),
+            517 * Uw_x_S ** 0.524 * flow ** -0.242,
+            596 * Uw_x_S ** 0.528 * flow ** -0.136,
+            88 * Uw_x_S ** 0.313 * depth ** -0.353,
+            142 * Uw_x_S ** 0.333 * depth ** -0.66 * topwidth ** -0.243,
+            31183 * velocity * slope,
+            15308 * velocity * slope,
+            2.16 * (1 + 9 * (velocity / sqrt_g_h) ** 0.25) * shear_velocity / depth,
+        ],
+        default=kah_20_user,
     )
+    template = _first_dataarray(
+        depth,
+        velocity,
+        flow,
+        topwidth,
+        slope,
+        shear_velocity,
+        kah_20_user,
+        hydraulic_reaeration_option,
+    )
+    if template is None:
+        return xr.DataArray(result)
+    return xr.DataArray(result, coords=template.coords, dims=template.dims)
 
 
 def kaw_20(
@@ -129,49 +155,53 @@ def kaw_20(
             13. Atkinson (1995): piecewise at ``Uw10 = 1.6 m/s``.
     """
     Uw10 = wind_speed * (10.0 / 2.0) ** 0.143
-    return xr.DataArray(
-        np.select(
-            condlist=[
-                wind_reaeration_option == 1,
-                wind_reaeration_option == 2,
-                (wind_reaeration_option == 3) & (Uw10 <= 3.5),
-                (wind_reaeration_option == 3) & (Uw10 > 3.5),
-                wind_reaeration_option == 4,
-                wind_reaeration_option == 5,
-                wind_reaeration_option == 6,
-                (wind_reaeration_option == 7) & (Uw10 <= 5.5),
-                (wind_reaeration_option == 7) & (Uw10 > 5.5),
-                wind_reaeration_option == 8,
-                (wind_reaeration_option == 9) & (Uw10 <= 4.1),
-                (wind_reaeration_option == 9) & (Uw10 > 4.1),
-                wind_reaeration_option == 10,
-                wind_reaeration_option == 11,
-                wind_reaeration_option == 12,
-                (wind_reaeration_option == 13) & (Uw10 < 1.6),
-                (wind_reaeration_option == 13) & (Uw10 >= 1.6),
-            ],
-            choicelist=[
-                kaw_20_user,
-                0.864 * Uw10,
-                0.2 * Uw10,
-                0.057 * Uw10 ** 2,
-                0.728 * Uw10 ** 0.5 - 0.317 * Uw10 + 0.0372 * Uw10 ** 2,
-                0.0986 * Uw10 ** 1.64,
-                0.5 + 0.05 * Uw10 ** 2,
-                0.362 * Uw10 ** 0.5,
-                0.0277 * Uw10 ** 2,
-                0.64 + 0.128 * Uw10 ** 2,
-                0.156 * Uw10 ** 0.63,
-                0.0269 * Uw10 ** 1.9,
-                0.0276 * Uw10 ** 2,
-                0.0432 * Uw10 ** 2,
-                0.319 * Uw10,
-                0.398,
-                0.155 * Uw10 ** 2,
-            ],
-            default=kaw_20_user,
-        )
+    # See ``kah_20`` for the same ``np.select`` dim-stripping fix; reattach
+    # ``wind_speed`` dims/coords to the result.
+    result = np.select(
+        condlist=[
+            wind_reaeration_option == 1,
+            wind_reaeration_option == 2,
+            (wind_reaeration_option == 3) & (Uw10 <= 3.5),
+            (wind_reaeration_option == 3) & (Uw10 > 3.5),
+            wind_reaeration_option == 4,
+            wind_reaeration_option == 5,
+            wind_reaeration_option == 6,
+            (wind_reaeration_option == 7) & (Uw10 <= 5.5),
+            (wind_reaeration_option == 7) & (Uw10 > 5.5),
+            wind_reaeration_option == 8,
+            (wind_reaeration_option == 9) & (Uw10 <= 4.1),
+            (wind_reaeration_option == 9) & (Uw10 > 4.1),
+            wind_reaeration_option == 10,
+            wind_reaeration_option == 11,
+            wind_reaeration_option == 12,
+            (wind_reaeration_option == 13) & (Uw10 < 1.6),
+            (wind_reaeration_option == 13) & (Uw10 >= 1.6),
+        ],
+        choicelist=[
+            kaw_20_user,
+            0.864 * Uw10,
+            0.2 * Uw10,
+            0.057 * Uw10 ** 2,
+            0.728 * Uw10 ** 0.5 - 0.317 * Uw10 + 0.0372 * Uw10 ** 2,
+            0.0986 * Uw10 ** 1.64,
+            0.5 + 0.05 * Uw10 ** 2,
+            0.362 * Uw10 ** 0.5,
+            0.0277 * Uw10 ** 2,
+            0.64 + 0.128 * Uw10 ** 2,
+            0.156 * Uw10 ** 0.63,
+            0.0269 * Uw10 ** 1.9,
+            0.0276 * Uw10 ** 2,
+            0.0432 * Uw10 ** 2,
+            0.319 * Uw10,
+            0.398,
+            0.155 * Uw10 ** 2,
+        ],
+        default=kaw_20_user,
     )
+    template = _first_dataarray(wind_speed, kaw_20_user, wind_reaeration_option)
+    if template is None:
+        return xr.DataArray(result)
+    return xr.DataArray(result, coords=template.coords, dims=template.dims)
 
 
 def ka_tc(

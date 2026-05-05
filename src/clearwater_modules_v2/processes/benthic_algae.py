@@ -84,10 +84,20 @@ class BenthicAlgae(FloatingAlgae):
         # BenthicAlgae has its own DEFAULTS (BALGAE_DEFAULTS) that
         # override ALGAE_DEFAULTS for benthic-specific parameters.
         # Lazy-load BALGAE_DEFAULTS to break the v2 <-> v3 circular
-        # import.
+        # import. Phase 3.5 inter-process coupling: compose ``h2``
+        # (active sediment layer thickness) from POM_DEFAULTS so
+        # ``balgae_pom_from_mortality_rate`` can be cached without
+        # requiring ``h2`` to be passed explicitly. Mirrors the
+        # Phase 5.B DOX multi-group composition pattern.
         if not type(self).DEFAULTS:
             from clearwater_modules_v3.parameters.balgae import DEFAULTS as BALGAE_DEFAULTS
-            type(self).DEFAULTS = BALGAE_DEFAULTS
+            from clearwater_modules_v3.parameters.pom import DEFAULTS as POM_DEFAULTS
+            composed: dict[str, float | int | bool] = {}
+            composed.update(BALGAE_DEFAULTS)
+            # h2: active sediment layer thickness (m). Lives in POM_DEFAULTS
+            # but is needed by the POM<-BenthicAlgae mortality coupling.
+            composed["h2"] = POM_DEFAULTS["h2"]
+            type(self).DEFAULTS = composed
 
         user_params = parameters or {}
         unknown_keys = set(user_params) - set(self.DEFAULTS)
@@ -126,6 +136,14 @@ class BenthicAlgae(FloatingAlgae):
         self.balgae_orgp_from_mortality_rate: ArrayLike = 0.0
         self.balgae_poc_from_mortality_rate: ArrayLike = 0.0
         self.balgae_doc_from_mortality_rate: ArrayLike = 0.0
+        # Phase 3.5 inter-process coupling: POM consumer reads this
+        # cache. v1 ``POM_benthic_algae_mortality = Ab * kdb_tc * Fb *
+        # (1 - Fw) / h2`` (mg/L/d). Note: this uses ``(1 - Fw)`` (the
+        # fraction of mortality NOT released to the water column, which
+        # ends up as POM in the active sediment layer); the OrgN / OrgP
+        # / POC / DOC routings above use ``Fw`` (the fraction released
+        # to the water column) instead.
+        self.balgae_pom_from_mortality_rate: ArrayLike = 0.0
 
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
         # check if there is nitrogen process and set flags according
@@ -212,15 +230,27 @@ class BenthicAlgae(FloatingAlgae):
         """Compute and cache benthic-algae mortality routing rates.
 
         Per v1 (AbDeath_OrgN, AbDeath_OrgP, POC_benthic_algae_mortality,
-        DOC_benthic_algae_mortality):
+        DOC_benthic_algae_mortality, POM_benthic_algae_mortality):
 
         - AbDeath_OrgN = rnb * Fw * Fb * AbDeath / depth
         - AbDeath_OrgP = rpb * Fw * Fb * AbDeath / depth
         - POC_balgae_mortality = (1 / depth) * f_pocb * Fb * Fw * rcb * AbDeath
         - DOC_balgae_mortality = (1 / depth) * (1 - f_pocb) * Fb * Fw * rcb * AbDeath
+        - POM_balgae_mortality = Ab * kdb_tc * Fb * (1 - Fw) / h2
+                               = AbDeath * Fb * (1 - Fw) / h2
 
         v1 rnb / rpb / rcb are BWn/BWd, BWp/BWd, BWc/BWd. Here we use
         the v3 BALGAE_DEFAULTS keys directly.
+
+        Note on the POM term: the OrgN / OrgP / POC / DOC routings use
+        ``Fw`` (fraction released to water column) divided by ``depth``
+        (water column depth). The POM routing uses ``(1 - Fw)`` (the
+        complementary fraction NOT released to water; it ends up as
+        POM in the active sediment layer) divided by ``h2`` (active
+        sediment layer thickness, m). Per the Phase 4 Phosphorus agent
+        report, the mortality-routing caches return consumer-ready
+        fluxes: the consumer reads them directly without re-multiplying
+        by ``Fw``, ``Fb``, ``depth``, or ``h2``.
         """
         ab_death = self.rate_death(algae, water_temperature)
 
@@ -239,6 +269,11 @@ class BenthicAlgae(FloatingAlgae):
         )
         self.balgae_doc_from_mortality_rate = (
             (1.0 - self.f_pocb) * fb * fw * rcb * ab_death / depth
+        )
+        # POM source from benthic algae mortality (mg/L/d). Uses (1-Fw)
+        # and h2 (sediment layer thickness), NOT Fw and depth.
+        self.balgae_pom_from_mortality_rate = (
+            ab_death * fb * (1.0 - fw) / self.h2
         )
 
     def _ab_uptake_fr_nh4(

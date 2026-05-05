@@ -143,6 +143,15 @@ class Nitrogen(Process):
         from clearwater_modules_v3.utils.numerics import Diagnostics
         self.diagnostics = Diagnostics()
 
+        # Integration Item 1 (v3 NSM1, registry rate-variable convention,
+        # spec resolved Q10 / Section 14): step-scoped flux caches read
+        # by sibling Processes (N2 denit source, DOX nitrification O2
+        # sink, eventually Alkalinity). Initialized to 0 so a downstream
+        # Process that runs before Nitrogen.run gets a clean fallback
+        # via getattr instead of an AttributeError.
+        self.nitrification_flux_rate: ArrayLike = 0.0
+        self.denitrification_flux_rate: ArrayLike = 0.0
+
     @ProcessFactory.register("nitrogen")
     @staticmethod
     def from_config(config: dict, variable_registry: VariableRegistry) -> "Nitrogen":
@@ -181,6 +190,16 @@ class Nitrogen(Process):
           ``organic_nitrogen_new`` via ``registry.set_at_time``.
         * Q7 clip-with-log via ``clip_negative_state`` (with diagnostics).
         * OrgN: third state variable integrated alongside NH4 / NO3.
+
+        Integration Item 1 (v3 NSM1, registry rate-variable convention,
+        spec resolved Q10): cache the *step-scoped* nitrification and
+        denitrification fluxes onto ``self`` for downstream consumers
+        (N2, DOX, eventual Alkalinity). The legacy
+        ``self.nitrification_rate`` / ``self.denitrification_rate``
+        attribute names remain bound to the kinetic rate *constants*
+        (1/d) for back-compat with v2 kwargs; the new fluxes use the
+        ``_flux_rate`` suffix to disambiguate, with units mg-N/L/d and
+        positive-valued absolute magnitudes.
         """
         from clearwater_modules_v3.utils.numerics import clip_negative_state
 
@@ -201,6 +220,29 @@ class Nitrogen(Process):
 
         # 1/d -> per-step concentration delta.
         dt_days = self.time_step.total_seconds() / 86400.0
+
+        # --- Step-scoped flux caches (Integration Item 1) ---
+        # Compute the nitrification flux (NH4 -> NO3) and denitrification
+        # flux (NO3 -> N2) here, before the change-rate decomposition.
+        # These are positive-valued absolute magnitudes in mg-N/L/d that
+        # downstream Processes (N2 source, DOX O2 sink) read via getattr.
+        # NOTE: ``ammonium_nitrification`` and ``nitrate_denitrification``
+        # already return non-negative fluxes by construction (kinetic
+        # rates >= 0, NH4/NO3 >= 0, inhibition factors in [0, 1]); the
+        # signs in ``change_ammonium`` / ``change_nitrate`` come from
+        # how they are summed into the change-rates, not from the flux
+        # values themselves.
+        self.nitrification_flux_rate = self.ammonium_nitrification(
+            ammonium,
+            temperature,
+            oxygen_dissolved,
+        )
+        self.denitrification_flux_rate = self.nitrate_denitrification(
+            oxygen_dissolved,
+            self.KsOxdn,
+            nitrate,
+            temperature,
+        )
 
         # --- Ammonium update ---
         ammonium_rate = self.change_ammonium(

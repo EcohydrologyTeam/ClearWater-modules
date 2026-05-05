@@ -23,6 +23,14 @@ from clearwater_modules_v3.processes import (
     BenthicAlgae,
     FloatingAlgae,
     Nitrogen,
+    Pathogen,
+    POM,
+    CBOD,
+    N2,
+    Phosphorus,
+    Carbon,
+    DOX,
+    Alkalinity,
 )
 
 __all__ = [
@@ -33,4 +41,12 @@ __all__ = [
     "BenthicAlgae",
     "FloatingAlgae",
     "Nitrogen",
+    "Pathogen",
+    "POM",
+    "CBOD",
+    "N2",
+    "Phosphorus",
+    "Carbon",
+    "DOX",
+    "Alkalinity",
 ]

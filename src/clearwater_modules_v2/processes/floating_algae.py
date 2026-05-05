@@ -31,6 +31,12 @@ mortality rates as instance attributes so downstream Processes
 - ``algal_orgp_from_mortality_rate``  (mg-P/L/d)
 - ``algal_poc_from_mortality_rate``   (mg-C/L/d)
 - ``algal_doc_from_mortality_rate``   (mg-C/L/d)
+- ``algal_pom_from_settling_rate``    (mg/L/d) -- consumed by ``POM``;
+  v1 ``POM_algal_settling = vsap * Ap * (AWd/AWa) / h2``. Note: this is
+  a *settling* flux (Bug-#-fix-symmetry with the mortality flux pattern),
+  not a mortality flux. ``h2`` (active sediment layer thickness) is
+  composed onto the FloatingAlgae instance from ``parameters.pom`` via
+  the DEFAULTS-composition pattern (Phase 5.B DOX precedent).
 
 Per the resolved Q10 GS-rates contract, these are step-scoped (NOT
 time-indexed). The full registry-side rate-variable plumbing
@@ -143,9 +149,20 @@ class FloatingAlgae(Process):
         # --- Phase 1.3 / 2.A: v3-style parameter merge (DEFAULTS + user overrides) ---
         # Lazy-load ALGAE_DEFAULTS on the first instantiation; see
         # the module-level note about the v2 <-> v3 circular import.
+        # Phase 3.5 inter-process coupling: compose ``h2`` (active sediment
+        # layer thickness) from POM_DEFAULTS onto the algae DEFAULTS so
+        # ``algal_pom_from_settling_rate`` can be cached without requiring
+        # the user to pass ``h2`` explicitly. Mirrors the Phase 5.B DOX
+        # multi-group composition pattern.
         if not type(self).DEFAULTS:
             from clearwater_modules_v3.parameters.algae import DEFAULTS as ALGAE_DEFAULTS
-            type(self).DEFAULTS = ALGAE_DEFAULTS
+            from clearwater_modules_v3.parameters.pom import DEFAULTS as POM_DEFAULTS
+            composed: dict[str, float | int | bool] = {}
+            composed.update(ALGAE_DEFAULTS)
+            # h2: active sediment layer thickness (m). Lives in POM_DEFAULTS
+            # but is needed by the POM<-FloatingAlgae settling coupling.
+            composed["h2"] = POM_DEFAULTS["h2"]
+            type(self).DEFAULTS = composed
 
         user_params = parameters or {}
         unknown_keys = set(user_params) - set(self.DEFAULTS)
@@ -195,6 +212,10 @@ class FloatingAlgae(Process):
         self.algal_orgp_from_mortality_rate: ArrayLike = 0.0
         self.algal_poc_from_mortality_rate: ArrayLike = 0.0
         self.algal_doc_from_mortality_rate: ArrayLike = 0.0
+        # Phase 3.5 inter-process coupling: POM consumer reads this
+        # cache to avoid re-computing the v1 settling flux inline.
+        # v1 ``POM_algal_settling = vsap * Ap * (AWd/AWa) / h2`` (mg/L/d).
+        self.algal_pom_from_settling_rate: ArrayLike = 0.0
 
         # Diagnostics handle is set in init_process when a v3 Model is
         # available; otherwise a local Diagnostics is used so
@@ -314,6 +335,14 @@ class FloatingAlgae(Process):
 
         rna/rpa/rca are AWn/AWa, AWp/AWa, AWc/AWa per v1 (lines 308-348).
         ApDeath is computed from rate_death (kdp_tc * Ap).
+
+        Also caches ``algal_pom_from_settling_rate`` (Phase 3.5
+        inter-process coupling) per v1
+        ``POM_algal_settling = vsap * Ap * (AWd/AWa) / h2`` (mg/L/d).
+        Note: this is a *settling* flux, not a mortality flux. It is
+        cached here for symmetry with the mortality routing helpers and
+        because the POM consumer reads it via the same step-scoped Q10
+        GS-rates pattern.
         """
         ap_death = self.rate_death(algae, water_temperature)
 
@@ -326,6 +355,12 @@ class FloatingAlgae(Process):
         self.algal_orgp_from_mortality_rate = rpa * ap_death
         self.algal_poc_from_mortality_rate = self.f_pocp * rca * ap_death
         self.algal_doc_from_mortality_rate = (1.0 - self.f_pocp) * rca * ap_death
+
+        # POM source from settling of algal biomass (mg/L/d).
+        # v1 dPOMdt term: vsap * Ap * (AWd/AWa) / h2.
+        self.algal_pom_from_settling_rate = (
+            self.vsap * algae * (self.AWd / self.AWa) / self.h2
+        )
 
     def rate(
         self,

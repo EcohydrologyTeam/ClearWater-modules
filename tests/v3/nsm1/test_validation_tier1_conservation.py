@@ -259,3 +259,125 @@ def test_diagnostics_import_smoke() -> None:
     assert diag.clip_events == {}
     assert diag.clip_log == []
     assert diag.detail_limit_per_call == 10
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.3: CBOD Tier 1 conservation
+# ---------------------------------------------------------------------------
+
+
+def test_tier1_cbod_conservation_closed_system_loss_disabled(
+    in_memory_registry,
+    closed_system_time_window: tuple[datetime, datetime, timedelta],
+) -> None:
+    """Closed-system CBOD conservation when oxidation and settling
+    are disabled. CBOD should be invariant.
+
+    Setup:
+    * 5-cell mesh, ``initial_state_5cell`` initial conditions (CBOD
+      pool = [2.0, 2.5, 3.0, 3.5, 4.0] mg/L).
+    * ``kbod_20=0`` disables CBOD oxidation; ``ksbod_20=0`` disables
+      settling. With both loss terms zeroed the Forward Euler update
+      ``cbod_new = cbod + 0 * dt_days`` leaves CBOD unchanged.
+    * DOX is read from the registry (path (a) — the Tier 1 fixture
+      provides ``oxygen_dissolved``); the DOX-Monod attenuation factor
+      is irrelevant when ``kbod_tc == 0``.
+
+    The DOX-coupled full-conservation test (CBOD + DOX = invariant
+    under closed system with reaeration disabled) is deferred to
+    Phase 5 once the v3 DOX Process lands.
+
+    Expected:
+    * Per-cell CBOD invariant to roundoff (rtol=1e-12)
+    * ``diagnostics.clip_events == {}``
+    * ``cbod_oxidation_rate`` cached on the Process instance for
+      downstream Phase 5 DOX consumption (zero in this disabled-loss
+      configuration but must exist as an attribute).
+    """
+    from clearwater_modules_v3.processes.cbod import CBOD
+
+    start, end, time_step = closed_system_time_window
+
+    cbod = CBOD(
+        parameters={
+            "kbod_20": 0.0,    # disable oxidation
+            "ksbod_20": 0.0,   # disable settling (already 0 by default)
+        },
+        time_step=time_step,
+    )
+    # Wire the run-level diagnostics so clip events are routed to a
+    # known container (mirrors the v3 Model's init_process pattern).
+    diagnostics = Diagnostics()
+    cbod.diagnostics = diagnostics
+
+    # Snapshot the per-cell initial CBOD pool.
+    cbod_initial = in_memory_registry.get_at_time("cbod", start).copy()
+
+    # Run 100 substeps. CBOD.run mutates the registry in place via
+    # ``set_at_time``.
+    current_time = start
+    while current_time < end:
+        cbod.run(current_time, in_memory_registry)
+        current_time += time_step
+
+    # Tier 1 invariant 1: per-cell CBOD constant to roundoff.
+    cbod_final = in_memory_registry.get_at_time("cbod", end)
+    np.testing.assert_allclose(
+        cbod_final.values,
+        cbod_initial.values,
+        rtol=1e-12,
+        err_msg=(
+            "Closed-system CBOD conservation failed with oxidation and "
+            "settling disabled. "
+            f"initial={cbod_initial.values!r}, final={cbod_final.values!r}, "
+            f"absolute drift={(cbod_final.values - cbod_initial.values)!r}"
+        ),
+    )
+
+    # Tier 1 invariant 2: no clip events under closed-system, physically
+    # reasonable initial conditions.
+    assert diagnostics.clip_events == {}, (
+        f"Clip events fired under closed-system Tier 1 CBOD conditions: "
+        f"{diagnostics.clip_events!r}. The clip log is "
+        f"{diagnostics.clip_log!r}."
+    )
+
+    # Phase 5 DOX-coupling contract (resolved Q10 GS-rates): the
+    # Process must cache a ``cbod_oxidation_rate`` attribute that DOX
+    # can consume as a sink term. With ``kbod_20=0`` the rate is
+    # identically zero, but the attribute must still exist.
+    assert hasattr(cbod, "cbod_oxidation_rate"), (
+        "CBOD.run must cache 'cbod_oxidation_rate' as an instance "
+        "attribute for Phase 5 DOX consumption (Q10 GS-rates contract)."
+    )
+    # With kbod_20=0 the cached rate is zero on every cell.
+    cached_rate = cbod.cbod_oxidation_rate
+    if isinstance(cached_rate, xr.DataArray):
+        np.testing.assert_allclose(
+            cached_rate.values,
+            np.zeros_like(cached_rate.values),
+            atol=0.0,
+            rtol=0.0,
+        )
+    else:
+        assert cached_rate == 0.0
+
+
+@pytest.mark.xfail(
+    reason=(
+        "Phase 5: DOX-coupled CBOD+DOX closed-system conservation "
+        "(reaeration disabled) requires the v3 DOX Process, which is "
+        "not yet implemented. This xfail flips to passing the moment "
+        "Phase 5 lands."
+    ),
+    strict=True,
+)
+def test_tier1_cbod_dox_coupled_conservation_phase5_pending() -> None:
+    """Placeholder for the Phase 5 CBOD+DOX coupled conservation test.
+
+    When the v3 DOX Process lands, this test should be replaced with
+    a real Tier 1 assertion that ``total_o2_equivalents`` is invariant
+    under a closed system where CBOD oxidation transfers oxygen demand
+    from CBOD to DOX (i.e., 1 mg-CBOD oxidized -> 1 mg-O2 consumed).
+    """
+    raise NotImplementedError("Phase 5 DOX coupling pending.")

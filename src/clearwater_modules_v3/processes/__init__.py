@@ -18,6 +18,14 @@ from clearwater_modules_v3.processes.temperature import Temperature
 from clearwater_modules_v3.processes.benthic_algae import BenthicAlgae
 from clearwater_modules_v3.processes.floating_algae import FloatingAlgae
 from clearwater_modules_v3.processes.nitrogen import Nitrogen
+from clearwater_modules_v3.processes.pathogen import Pathogen
+from clearwater_modules_v3.processes.pom import POM
+from clearwater_modules_v3.processes.cbod import CBOD
+from clearwater_modules_v3.processes.n2 import N2
+from clearwater_modules_v3.processes.phosphorus import Phosphorus
+from clearwater_modules_v3.processes.carbon import Carbon
+from clearwater_modules_v3.processes.dox import DOX
+from clearwater_modules_v3.processes.alkalinity import Alkalinity
 
 __all__ = [
     "Process",
@@ -27,4 +35,12 @@ __all__ = [
     "BenthicAlgae",
     "FloatingAlgae",
     "Nitrogen",
+    "Pathogen",
+    "POM",
+    "CBOD",
+    "N2",
+    "Phosphorus",
+    "Carbon",
+    "DOX",
+    "Alkalinity",
 ]
