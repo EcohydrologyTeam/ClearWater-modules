@@ -16,7 +16,7 @@ from logging import getLogger, basicConfig
 LOGGER = getLogger(__name__)
 
 
-def set_logging_config(log_level: str = "DEBUG") -> None:
+def set_logging_config(log_level: str = "WARNING") -> None:
     basicConfig(
         level=log_level,
         format="[%(asctime)s] %(levelname)s - %(message)s",
