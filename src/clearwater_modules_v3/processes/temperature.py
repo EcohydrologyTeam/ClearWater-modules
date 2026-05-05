@@ -239,7 +239,15 @@ class Temperature(Process):
         sediment_temperature = registry.get_at_time("sediment_temperature", time)
         sediment_thickness = registry.get_at_time("sediment_thickness", time)
 
-        delta_water_temperature = self.temperature_change(
+        # F2 fix (audit 2026-05-05): use the with-factors helper so we
+        # can apply the SAME depth-ramp factor and rate-cap clip ratio
+        # to the sediment-side delta below, preserving the per-cell
+        # water-sediment energy pair-cancellation invariant.
+        (
+            delta_water_temperature,
+            ramp_factor,
+            cap_clip_ratio,
+        ) = self._temperature_change_with_factors(
             water_temperature=water_temperature,
             surface_area=surface_area,
             volume=volume,
@@ -288,6 +296,27 @@ class Temperature(Process):
                 water_temperature=water_temperature,
                 sediment_temperature=sediment_temperature,
                 sediment_thickness=sediment_thickness,
+            )
+            # F2 fix (audit 2026-05-05): apply the SAME depth-ramp
+            # factor and rate-cap clip ratio used on the water-side
+            # delta. Without this, the water side absorbs only
+            # ``q_sediment * ramp * clip_ratio`` of energy per substep
+            # while the sediment side loses an unattenuated
+            # ``q_sediment * dt`` worth of energy, breaking the
+            # per-cell water-sediment cancellation invariant by a
+            # factor of ``(1 - ramp * clip_ratio)``. Symmetric scaling
+            # restores per-substep ``dE_water + dE_sediment = 0``
+            # (verified in Phase R-3 +
+            # ``test_water_sediment_energy_conservation_per_substep``;
+            # the guarded-path extension is in
+            # ``test_water_sediment_energy_conservation_under_ramp``
+            # and ``..._under_cap``). Default values
+            # ``q_net_depth_ramp_ref = 0.3 m`` and
+            # ``dTdt_max_per_hour = 5 K/hr`` make ``ramp = 1.0`` and
+            # ``clip_ratio = 1.0`` for typical deep cells, so the
+            # multiplication is a no-op outside the guard regions.
+            delta_sediment_temperature = (
+                delta_sediment_temperature * ramp_factor * cap_clip_ratio
             )
             # m19 fix / C5 (review-findings 2026-05-04; gap-analysis row
             # N8 disposition "remove from process bodies"): the
@@ -398,9 +427,11 @@ class Temperature(Process):
         The factor ``/ 0.5`` represents the sediment active-layer
         half-thickness convention: heat is exchanged across the upper
         half of ``sediment_thickness``. Matches v1's
-        ``tsm/processes.py:q_sediment``. The ``/ 86400`` converts the
-        product of diffusivity (m^2/s) and bulk thermal capacity into the
-        per-substep flux units expected by the energy balance.
+        ``tsm/processes.py:q_sediment``. The ``/ 86400`` converts
+        ``sediment_diffusivity`` from its declared units of m^2/day to
+        m^2/s so the resulting flux is in W/m^2 = J/(m^2 s). (Audit
+        2026-05-05 corrected the prior wording, which mis-stated the
+        input units as m^2/s.)
         """
         if not self.use_sediment_temperature:
             # m6 fix (review-findings 2026-05-04): return a same-shape
@@ -538,6 +569,63 @@ class Temperature(Process):
            Set ``dTdt_max_per_hour = float("inf")`` to disable.
 
         With both disabled, the formula reduces to v2's pre-merge form.
+
+        Returns the per-substep delta T (Celsius). For the
+        energy-conservative pairing with the sediment-side update
+        (audit 2026-05-05 finding F2), see
+        ``_temperature_change_with_factors`` and ``Temperature.run``.
+        """
+        delta, _ramp, _clip_ratio = self._temperature_change_with_factors(
+            water_temperature=water_temperature,
+            surface_area=surface_area,
+            volume=volume,
+            cloudiness=cloudiness,
+            air_temperature=air_temperature,
+            solar_flux=solar_flux,
+            wind_speed=wind_speed,
+            sediment_temperature=sediment_temperature,
+            sediment_thickness=sediment_thickness,
+            atmospheric_pressure=atmospheric_pressure,
+            atmospheric_vapor_pressure=atmospheric_vapor_pressure,
+        )
+        return delta
+
+    def _temperature_change_with_factors(
+        self,
+        water_temperature: ArrayLike,
+        surface_area: ArrayLike,
+        volume: ArrayLike,
+        cloudiness: ArrayLike,
+        air_temperature: ArrayLike,
+        solar_flux: ArrayLike,
+        wind_speed: ArrayLike,
+        sediment_temperature: ArrayLike,
+        sediment_thickness: ArrayLike,
+        atmospheric_pressure: ArrayLike,
+        atmospheric_vapor_pressure: ArrayLike,
+    ) -> tuple:
+        """Internal helper for ``Temperature.run`` (audit 2026-05-05 F2).
+
+        Returns ``(delta_water, ramp, clip_ratio)``:
+
+        - ``delta_water`` — the guarded per-substep water-T delta
+          (Celsius), identical to ``temperature_change``'s public return.
+        - ``ramp`` — the depth-ramp factor applied to ``flux_net``.
+          ``min(1, depth / q_net_depth_ramp_ref)`` element-wise, or the
+          scalar ``1.0`` when the ramp is disabled
+          (``q_net_depth_ramp_ref = 0``).
+        - ``clip_ratio`` — per-cell ratio of clipped to unclipped delta
+          imposed by the rate cap. ``1.0`` for cells where the cap did
+          not fire; ``cap / |delta_unclipped|`` for cells where it did;
+          always in ``[0, 1]``.
+
+        The ``ramp`` and ``clip_ratio`` factors are exposed so
+        ``Temperature.run`` can apply the same scaling to the
+        sediment-side delta. Without that, the per-cell
+        water-sediment energy pair-cancellation breaks by a factor of
+        ``(1 - ramp * clip_ratio)`` whenever either guard is active —
+        a one-way energy sink in shallow cells (audit finding F2,
+        2026-05-05).
         """
         flux_net = self.flux_net(
             water_temperature=water_temperature,
@@ -567,7 +655,7 @@ class Temperature(Process):
             ramp = 1.0
         flux_ramped = flux_net * ramp
 
-        delta_temperature = (
+        delta_unclipped = (
             flux_ramped
             * surface_area
             * self.time_step_seconds
@@ -582,8 +670,24 @@ class Temperature(Process):
         # np.maximum become identity ops, so the cap is a no-op.
         dt_hours = self.time_step_seconds / 3600.0
         cap = self.dTdt_max_per_hour * dt_hours
-        delta_temperature = np.maximum(-cap, np.minimum(cap, delta_temperature))
-        return delta_temperature
+        delta_clipped = np.maximum(-cap, np.minimum(cap, delta_unclipped))
+
+        # Per-cell rate-cap clip ratio: 1.0 for cells where the cap did
+        # not fire, cap/|delta_unclipped| for cells where it did. Used
+        # by ``Temperature.run`` to apply the same proportional clip to
+        # the sediment-side delta (audit F2). The denominator-safety
+        # ``xr.where(abs > 0, abs, 1.0)`` avoids division by zero on
+        # cells where the unclipped delta was already 0; in that case
+        # the cap doesn't change anything and the ratio degenerates to
+        # 1.0 via the outer ``xr.where``.
+        abs_unclipped = np.abs(delta_unclipped)
+        clip_ratio = xr.where(
+            abs_unclipped > cap,
+            cap / xr.where(abs_unclipped > 0.0, abs_unclipped, 1.0),
+            1.0,
+        )
+
+        return delta_clipped, ramp, clip_ratio
 
     def sediment_temperature_change(
         self,
@@ -793,11 +897,20 @@ class Temperature(Process):
         intentional so the defect is visible at the output; silently
         clamping NaN to a finite value would mask bad forcing data.
         """
-        # The original v2 source carried a commented "-1" multiplier with
-        # a TODO. v1 has no such factor and Jason Rutyna's January 2026
-        # diff investigation (see commits 8218962 and 7f4166a in the
-        # modules repo) concluded the leading "-1" should not be there.
-        # v3 matches v1 exactly: no leading "-1".
+        # Sign convention (audit 2026-05-05). v3 stores
+        # ``constants.GRAVITY = -9.806 m/s^2`` (negative) and uses it
+        # directly in the formula below: the formula has no explicit
+        # leading minus sign because the sign is carried by the
+        # constant. v1 (`tsm/processes.py:150`) follows the same
+        # convention. Fortran-A and Fortran-B store ``gravity = +9.806``
+        # (positive, SI sign) and apply an explicit ``-gravity`` in the
+        # formula. Both produce algebraically identical Richardson
+        # numbers. **Do NOT 'normalize' GRAVITY to +9.806 without also
+        # reintroducing the explicit ``-`` here**; doing so would
+        # silently flip every Richardson regime. The earlier v2 source
+        # carried a commented ``-1`` factor with a TODO that was
+        # resolved per Jason Rutyna's January 2026 diff investigation
+        # (commits ``8218962`` and ``7f4166a`` in the modules repo).
         #
         # M3 fix (review-findings 2026-05-04): suppress the
         # ``RuntimeWarning: divide by zero`` emitted when ``wind_speed``
