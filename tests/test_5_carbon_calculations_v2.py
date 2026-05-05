@@ -130,25 +130,22 @@ def test_poc_hydrolysis_matches_v1(
     """v3 ``poc_hydrolysis_rate`` cache after run == v1 ``POC_hydrolysis``.
 
     v1 formula: ``kpoc_tc * POC`` (line 2455-2465; NO DOX-Monod factor).
-    v3 formula: ``kpoc_tc * POC * DOX_attenuation`` where
-    ``DOX_attenuation = DOX / (KsOxmc + DOX)``.
-
-    DEVIATION (documented): v3 multiplies POC hydrolysis by the same
-    DOX-Monod factor used for DOC->DIC oxidation, while v1 applies that
-    factor only to DOC->DIC oxidation. To make the parity check robust,
-    this test sets ``KsOxmc = 0`` so that
-    ``DOX_attenuation = DOX / DOX = 1`` exactly, making the v3 formula
-    collapse to v1's ``kpoc_tc * POC``.
+    v3 formula (post Phase 9.B audit fix C4): ``kpoc_tc * POC`` (no
+    DOX-Monod factor). v3 previously multiplied by
+    ``DOX / (KsOxmc + DOX)``; the Phase 9.B audit removed that factor
+    because neither Fortran (``modCarbon.f90:170``) nor v1 attenuate POC
+    hydrolysis by DOX. With non-zero ``KsOxmc`` and finite DOX, v3 and
+    v1 should now agree directly.
     """
     carbon = Carbon(
         parameters={
             "kpoc_20": 0.005,
             "kpoc_theta": 1.047,
-            # Force DOX_attenuation == 1 so v3's POC-hydrolysis term
-            # collapses to v1's (kpoc_tc * POC). This is the documented
-            # deviation: v3 added DOX-Monod to POC hydrolysis where v1
-            # had none.
-            "KsOxmc": 0.0,
+            # KsOxmc is now irrelevant for POC hydrolysis (no Monod
+            # attenuation applied) but still gates DOC->DIC oxidation.
+            # Use the default-typical value to confirm the fix decoupled
+            # POC hydrolysis from the Monod factor.
+            "KsOxmc": 1.0,
             # Disable other terms by zeroing their coefficients.
             "vsoc": 0.0,
             "kdoc_20": 0.0,
@@ -340,24 +337,30 @@ def test_dic_co2_reaeration_matches_v1(
     )
 
 
-def test_dic_algal_respiration_source_matches_v1(
+def test_dic_algal_respiration_source_matches_fortran_anchored(
     water_temp_5cell, depth_5cell, poc_5cell, doc_5cell, dic_5cell, dox_5cell
 ):
-    """v3 DIC algal-respiration coupling sub-term == v1 ``DIC_algal_respiration``.
+    """v3 DIC algal-respiration coupling sub-term == Fortran-anchored
+    ``DIC_algal_respiration`` with ``rca = AWc / AWa``.
 
-    v1 formula: ``ApRespiration * rca / 12000`` (line 2717-2731), where
-    ``rca = AWc / AWa = AWc`` in v3's per-Chla convention.
-    v3 formula: ``algae_respiration * AWc / 12000`` (carbon.py line 429),
-    same expression. v3 reads ``algal_respiration_rate`` from a
-    FloatingAlgae sibling Process; the parity test wires a mock with a
-    fixed ``algal_respiration_rate`` value.
+    Fortran formula (``modCarbon.f90:247``):
+        ``ApRespiration_DIC = rca * ApRespiration / 12000.0``
+    where ``rca = AWc / AWa = 40 / 1000 = 0.04 mg-C/ug-Chla`` (Fortran
+    derives the ratio per ``modAlgae.f90``; v1 derives the same via
+    ``processes.py:rca`` helper).
 
-    To isolate the DIC algal-respiration source, the test zeros every
-    other DIC source/sink (including algal photosynthesis by setting
-    ``algal_growth_rate = 0`` on the mock).
+    Phase 9.B audit C1: prior v3 used the raw ``self.AWc = 40`` instead
+    of the derived ratio, scaling the DIC algal coupling by 1000x. The
+    fix derives ``rca = AWc / AWa`` at run time. The earlier parity test
+    masked the bug by passing ``rca = AWc = 40`` to the v1 reference
+    (same wrong number on both sides). This test asserts against the
+    Fortran-anchored expected value computed manually with the correct
+    ratio.
     """
-    # AWc default: 40.0 mg-C/ug-Chla.
-    AWc = 40.0
+    AWc = 40.0      # mg-C raw weight
+    AWa = 1000.0    # ug-Chla algal unit
+    rca = AWc / AWa  # 0.04 mg-C / ug-Chla
+
     # Synthetic algal respiration rate (ug-Chla/L/d).
     algal_resp = xr.DataArray(
         np.array([0.5, 0.6, 0.7, 0.8, 1.0]), dims="cell"
@@ -370,6 +373,7 @@ def test_dic_algal_respiration_source_matches_v1(
     carbon = Carbon(
         parameters={
             "AWc": AWc,
+            "AWa": AWa,
             # Disable every other DIC source/sink.
             "kdoc_20": 0.0,
             "kpoc_20": 0.0,
@@ -400,15 +404,216 @@ def test_dic_algal_respiration_source_matches_v1(
     dt_days = timedelta(minutes=5).total_seconds() / 86400.0
     v3_dic_rate = (dic_final - dic_initial) / dt_days
 
-    # v1 reference: DIC_algal_respiration with use_Algae=True.
-    v1_rate = v1.DIC_algal_respiration(
-        ApRespiration=algal_resp, rca=AWc, use_Algae=True
-    )
+    # Fortran-anchored reference: rate = rca * ApRespiration / 12000.
+    expected_rate = rca * algal_resp / 12000.0
 
     np.testing.assert_allclose(
         np.asarray(v3_dic_rate),
-        np.asarray(v1_rate),
+        np.asarray(expected_rate),
         rtol=1e-6,
+    )
+
+    # And confirm the v1 helper agrees when fed the correct rca.
+    v1_rate_with_correct_rca = v1.DIC_algal_respiration(
+        ApRespiration=algal_resp, rca=rca, use_Algae=True
+    )
+    np.testing.assert_allclose(
+        np.asarray(v3_dic_rate),
+        np.asarray(v1_rate_with_correct_rca),
+        rtol=1e-6,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Audit-anchored regression tests (Phase 9.B)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _MockCBOD:
+    """Stand-in CBOD Process exposing ``cbod_oxidation_rate``."""
+    cbod_oxidation_rate: xr.DataArray | float
+
+
+def test_dic_algal_growth_uses_correct_rca(
+    water_temp_5cell, depth_5cell, poc_5cell, doc_5cell, dic_5cell, dox_5cell
+):
+    """Audit C1 (Phase 9.B): v3 dDIC/dt from algal *growth* uses
+    ``rca = 0.04`` mg-C/ug-Chla, not the raw ``AWc = 40``.
+
+    Default-instantiated Carbon + a mock FloatingAlgae with non-zero
+    ``algal_growth_rate``. The DIC sink magnitude must equal
+    ``rca * ApGrowth / 12000`` per Fortran ``modCarbon.f90:248``, which
+    is 1000x smaller than the prior v3 (raw-AWc) magnitude.
+    """
+    AWc = 40.0
+    AWa = 1000.0
+    rca = AWc / AWa  # 0.04
+    algal_growth = xr.DataArray(
+        np.array([1.0, 2.0, 3.0, 4.0, 5.0]), dims="cell"
+    )
+    mock_algae = _MockFloatingAlgae(
+        algal_growth_rate=algal_growth,
+        algal_respiration_rate=xr.zeros_like(algal_growth),
+    )
+
+    carbon = Carbon(
+        parameters={
+            "AWc": AWc,
+            "AWa": AWa,
+            # Isolate algal photosynthesis sink.
+            "kdoc_20": 0.0,
+            "kpoc_20": 0.0,
+            "vsoc": 0.0,
+            "JDIC": 0.0,
+            "kah_20_user": 0.0,
+            "kaw_20_user": 0.0,
+            "hydraulic_reaeration_option": 1,
+            "wind_reaeration_option": 1,
+        },
+        time_step=timedelta(minutes=5),
+    )
+    carbon.use_floating_algae = True
+    carbon.use_Algae = True
+    carbon.floating_algae_process = mock_algae
+
+    registry = _build_registry(
+        poc_5cell, doc_5cell, dic_5cell,
+        water_temp_5cell, depth_5cell, dox_5cell,
+    )
+    dic_initial = registry.get_at_time("dic", datetime(2026, 1, 1)).copy()
+    carbon.run(datetime(2026, 1, 1), registry)
+    dic_final = registry.get_at_time("dic", datetime(2026, 1, 1))
+
+    dt_days = timedelta(minutes=5).total_seconds() / 86400.0
+    v3_dic_rate = (dic_final - dic_initial) / dt_days
+
+    # Algal growth is a DIC *sink*; expected dDIC/dt is negative.
+    expected_rate = -rca * algal_growth / 12000.0
+    np.testing.assert_allclose(
+        np.asarray(v3_dic_rate),
+        np.asarray(expected_rate),
+        rtol=1e-6,
+    )
+
+    # Negative regression: confirm v3 is NOT using the raw AWc (which
+    # would yield 1000x larger magnitude).
+    raw_rate = -AWc * algal_growth / 12000.0
+    assert not np.allclose(
+        np.asarray(v3_dic_rate), np.asarray(raw_rate), rtol=1e-3
+    )
+
+
+def test_dic_includes_cbod_oxidation(
+    water_temp_5cell, depth_5cell, poc_5cell, doc_5cell, dic_5cell, dox_5cell
+):
+    """Audit C3 (Phase 9.B): with CBOD wired and ``cbod_oxidation_rate``
+    non-zero, v3 dDIC/dt includes the source ``cbod_oxidation_rate /
+    roc / 12000`` (Fortran ``modCarbon.f90:262-269``).
+
+    Prior v3 omitted the CBOD->DIC source entirely; the fix adds it via
+    the ``self.cbod_process.cbod_oxidation_rate`` cache.
+    """
+    roc = 32.0 / 12.0
+    cbod_ox_rate = xr.DataArray(
+        np.array([0.10, 0.20, 0.30, 0.40, 0.50]), dims="cell"
+    )  # mg-O2/L/d
+    mock_cbod = _MockCBOD(cbod_oxidation_rate=cbod_ox_rate)
+
+    carbon = Carbon(
+        parameters={
+            "roc": roc,
+            # Isolate CBOD source.
+            "kdoc_20": 0.0,
+            "kpoc_20": 0.0,
+            "vsoc": 0.0,
+            "JDIC": 0.0,
+            "kah_20_user": 0.0,
+            "kaw_20_user": 0.0,
+            "hydraulic_reaeration_option": 1,
+            "wind_reaeration_option": 1,
+        },
+        time_step=timedelta(minutes=5),
+    )
+    carbon.use_cbod = True
+    carbon.cbod_process = mock_cbod
+
+    registry = _build_registry(
+        poc_5cell, doc_5cell, dic_5cell,
+        water_temp_5cell, depth_5cell, dox_5cell,
+    )
+    dic_initial = registry.get_at_time("dic", datetime(2026, 1, 1)).copy()
+    carbon.run(datetime(2026, 1, 1), registry)
+    dic_final = registry.get_at_time("dic", datetime(2026, 1, 1))
+
+    dt_days = timedelta(minutes=5).total_seconds() / 86400.0
+    v3_dic_rate = (dic_final - dic_initial) / dt_days
+
+    # Fortran-anchored expected source: cbod_ox / roc / 12000.
+    expected_rate = cbod_ox_rate / roc / 12000.0
+
+    np.testing.assert_allclose(
+        np.asarray(v3_dic_rate),
+        np.asarray(expected_rate),
+        rtol=1e-6,
+    )
+
+    # Non-zero magnitude check (regression: prior v3 was 0).
+    assert np.all(np.asarray(v3_dic_rate) > 0)
+
+
+def test_poc_hydrolysis_no_longer_dox_attenuated(
+    water_temp_5cell, depth_5cell, poc_5cell, doc_5cell, dic_5cell
+):
+    """Audit C4 (Phase 9.B): POC hydrolysis is independent of DOX.
+
+    Run Carbon twice with different DOX values; with the C4 fix the
+    cached ``poc_hydrolysis_rate`` is identical across both runs because
+    the DOX-Monod factor was removed. With the prior buggy form, low
+    DOX would attenuate the rate to 50% at DOX = KsOxmc.
+    """
+    kpoc_20 = 0.005
+    kpoc_theta = 1.047
+    KsOxmc = 1.0  # so DOX/(DOX+KsOxmc) varies meaningfully across runs.
+
+    def _run_with_dox(dox_value):
+        dox_array = xr.DataArray(
+            np.full(5, dox_value), dims="cell"
+        )
+        carbon = Carbon(
+            parameters={
+                "kpoc_20": kpoc_20,
+                "kpoc_theta": kpoc_theta,
+                "KsOxmc": KsOxmc,
+                "vsoc": 0.0,
+                "kdoc_20": 0.0,
+                "JDIC": 0.0,
+                "kah_20_user": 0.0,
+                "kaw_20_user": 0.0,
+                "hydraulic_reaeration_option": 1,
+                "wind_reaeration_option": 1,
+            },
+            time_step=timedelta(minutes=5),
+        )
+        registry = _build_registry(
+            poc_5cell, doc_5cell, dic_5cell,
+            water_temp_5cell, depth_5cell, dox_array,
+        )
+        carbon.run(datetime(2026, 1, 1), registry)
+        return carbon.poc_hydrolysis_rate
+
+    rate_low_dox = _run_with_dox(0.5)   # Monod factor would be 1/3.
+    rate_high_dox = _run_with_dox(20.0)  # Monod factor ~ 1.
+
+    np.testing.assert_allclose(
+        np.asarray(rate_low_dox),
+        np.asarray(rate_high_dox),
+        rtol=1e-12,
+        err_msg=(
+            "POC hydrolysis rate must be independent of DOX (Phase 9.B "
+            "audit C4 fix); v3 should match Fortran modCarbon.f90:170 "
+            "and v1 processes.py:2455 form ``kpoc_tc * POC``."
+        ),
     )
 
 

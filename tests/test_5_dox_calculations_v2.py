@@ -268,27 +268,30 @@ def test_dox_nitrification_sink_matches_v1(
     )
 
 
-def test_dox_sod_sink_matches_v1(
+def test_dox_sod_sink_matches_v1_with_attenuation(
     water_temp_5cell, depth_5cell, dox_5cell
 ):
-    """v3 ``dox_sod_rate`` cache after run == v1 ``DOX_SOD``.
+    """v3 ``dox_sod_rate`` cache after run == v1 ``DOX_SOD`` *with*
+    DOX-Monod attenuation.
 
-    v1 ``DOX_SOD = SOD_tc / depth`` (line 3081-3092).
-    v3 ``_sod_flux = SOD_tc / depth`` (dox.py line 554-573).
-
-    v3 uses the pure-Arrhenius ``utils.sediment.SOD_tc`` (NO DOX-Monod
-    attenuation). v1's ``SOD_tc`` applies a DOX-Monod factor when
-    ``use_DOX==True``. To get matching values we set ``use_DOX=False``
-    in the v1 reference call so the v1 ``SOD_tc`` collapses to the same
-    pure-Arrhenius form.
+    Phase 9.B audit fix C2: v3 now applies the Fortran
+    ``modGlobalParam.f90:254`` DOX-Monod attenuation
+    (``SOD *= DOX / (DOX + KsSOD)``) inside ``_sod_flux`` (the
+    primitive ``utils.sediment.SOD_tc`` remains pure Arrhenius for
+    architectural reasons). The reference v1 call is now made with
+    ``use_DOX=True`` so v1 applies the same attenuation; v3 should
+    agree.
     """
     SOD_20 = 1.0
     SOD_theta = 1.060
+    KsSOD = 1.0
 
     dox_proc = DOX(
         parameters={
             "SOD_20": SOD_20,
             "SOD_theta": SOD_theta,
+            "KsSOD": KsSOD,
+            "use_DOX": True,
             # Disable every other DOX source/sink.
             "kah_20_user": 0.0,
             "kaw_20_user": 0.0,
@@ -300,14 +303,14 @@ def test_dox_sod_sink_matches_v1(
     registry = _build_registry(dox_5cell, water_temp_5cell, depth_5cell)
     dox_proc.run(datetime(2026, 1, 1), registry)
 
-    # v1 reference: SOD_tc with use_DOX=False == pure Arrhenius == v3.
+    # v1 reference: SOD_tc with use_DOX=True applies the same attenuation.
     v1_sod_tc = v1.SOD_tc(
         SOD_20=SOD_20,
         TwaterC=water_temp_5cell,
         SOD_theta=SOD_theta,
         DOX=dox_5cell,
-        KsSOD=1.0,
-        use_DOX=False,
+        KsSOD=KsSOD,
+        use_DOX=True,
     )
     v1_sod = v1.DOX_SOD(depth=depth_5cell, SOD_tc=v1_sod_tc)
 
@@ -318,28 +321,28 @@ def test_dox_sod_sink_matches_v1(
     )
 
 
-def test_dox_algal_photosynthesis_source_matches_v1(
+def test_dox_algal_photosynthesis_source_matches_fortran_anchored(
     water_temp_5cell, depth_5cell, dox_5cell, nh4_5cell
 ):
-    """v3 floating-algae photosynthesis O2 source (back-calculated from
-    DOX state) == v1 ``DOX_ApGrowth``.
+    """v3 floating-algae photosynthesis O2 source == Fortran-anchored
+    expected value with ``rca = AWc / AWa``.
 
-    v1 formula (line 2942-2959):
-        ApGrowth * rca * roc * (138/106 - 32/106 * ApUptakeFr_NH4)
-    v3 formula (dox.py ``_floating_algae_growth_flux`` line 400-428): same
-    (with ``rca = AWc``).
+    Fortran formula (``modDOX.f90:135``):
+        ``O2_ApGrowth = (138/106 - 32/106 * fNH4) * roc * rca * ApGrowth``
+    where ``rca = AWc / AWa`` (mg-C/ug-Chla). v1 derives the same.
 
-    The Redfield-derived 138/106 - 32/106 * fNH4 factor: with all-NH4
-    uptake (fNH4 == 1) the factor is 1.0; with all-NO3 uptake (fNH4 == 0)
-    the factor is 138/106 ≈ 1.30, reflecting the extra O2 released when
-    reducing NO3 back to organic-N.
-
-    The parity test isolates the algal-photosynthesis source by zeroing
-    every other DOX source/sink and back-calculates the rate from the
-    post-run DOX state.
+    Phase 9.B audit C1: prior v3 used ``self.AWc = 40`` (raw weight)
+    instead of the derived ratio (0.04 mg-C/ug-Chla), inflating the
+    photosynthesis O2 source by 1000x. The previous parity test masked
+    this by passing ``rca = AWc = 40`` to the v1 reference (same wrong
+    value on both sides). The fix derives ``rca = AWc / AWa`` and this
+    test asserts against the Fortran-anchored magnitude.
     """
-    AWc = 40.0
+    AWc = 40.0      # mg-C raw weight
+    AWa = 1000.0    # ug-Chla algal unit
+    rca = AWc / AWa  # 0.04 mg-C / ug-Chla (Fortran modAlgae.f90)
     roc = 32.0 / 12.0
+
     # Synthetic floating-algae rates.
     algal_growth = xr.DataArray(
         np.array([0.5, 0.6, 0.7, 0.8, 1.0]), dims="cell"
@@ -356,6 +359,7 @@ def test_dox_algal_photosynthesis_source_matches_v1(
     dox_proc = DOX(
         parameters={
             "AWc": AWc,
+            "AWa": AWa,
             "roc": roc,
             # Disable every other DOX source/sink.
             "kah_20_user": 0.0,
@@ -385,17 +389,172 @@ def test_dox_algal_photosynthesis_source_matches_v1(
     dt_days = timedelta(minutes=5).total_seconds() / 86400.0
     v3_dox_rate = (dox_final - dox_initial) / dt_days
 
-    # v1 reference: DOX_ApGrowth.
+    # Fortran-anchored expected value.
+    expected_rate = (
+        algal_growth
+        * rca
+        * roc
+        * (138.0 / 106.0 - 32.0 / 106.0 * nh4_uptake_fr)
+    )
+
+    np.testing.assert_allclose(
+        np.asarray(v3_dox_rate),
+        np.asarray(expected_rate),
+        rtol=1e-6,
+    )
+
+    # Confirm v1 helper agrees when fed the *correct* rca.
     v1_dox_apg = v1.DOX_ApGrowth(
         ApGrowth=algal_growth,
-        rca=AWc,
+        rca=rca,
         roc=roc,
         ApUptakeFr_NH4=nh4_uptake_fr,
         use_Algae=True,
     )
-
     np.testing.assert_allclose(
         np.asarray(v3_dox_rate),
         np.asarray(v1_dox_apg),
         rtol=1e-6,
     )
+
+
+# ---------------------------------------------------------------------------
+# Audit-anchored regression tests (Phase 9.B)
+# ---------------------------------------------------------------------------
+
+
+def test_dox_algal_photosynthesis_uses_correct_rca(
+    water_temp_5cell, depth_5cell, dox_5cell, nh4_5cell
+):
+    """Audit C1 (Phase 9.B): default-instantiated DOX with default
+    FloatingAlgae stoichiometry produces an O2 source ~1000x smaller
+    than the prior raw-AWc magnitude.
+
+    Setup: ``ApGrowth = 0.5 ug-Chla/L/d``, all-NH4 uptake (factor = 1).
+    Fortran-anchored expected = ``0.5 * 0.04 * (32/12) * 1.0 = 0.0533
+    mg-O2/L/d``. The prior raw-AWc form would give ~53.3 mg-O2/L/d.
+    """
+    rca = 40.0 / 1000.0  # 0.04
+    roc = 32.0 / 12.0
+    ap_growth = xr.DataArray(np.full(5, 0.5), dims="cell")
+    nh4_fr = xr.DataArray(np.full(5, 1.0), dims="cell")  # factor = 1.0
+    mock_algae = _MockFloatingAlgae(
+        algal_growth_rate=ap_growth,
+        algal_respiration_rate=xr.zeros_like(ap_growth),
+        algal_nh4_uptake_fraction=nh4_fr,
+    )
+
+    dox_proc = DOX(
+        parameters={
+            "kah_20_user": 0.0,
+            "kaw_20_user": 0.0,
+            "hydraulic_reaeration_option": 1,
+            "wind_reaeration_option": 1,
+            "SOD_20": 0.0,
+        },
+        time_step=timedelta(minutes=5),
+    )
+    dox_proc.use_floating_algae = True
+    dox_proc.use_Algae = True
+    dox_proc.floating_algae_process = mock_algae
+
+    registry = _build_registry(dox_5cell, water_temp_5cell, depth_5cell, nh4_5cell)
+    dox_initial = registry.get_at_time(
+        "oxygen_dissolved", datetime(2026, 1, 1)
+    ).copy()
+    dox_proc.run(datetime(2026, 1, 1), registry)
+    dox_final = registry.get_at_time("oxygen_dissolved", datetime(2026, 1, 1))
+
+    dt_days = timedelta(minutes=5).total_seconds() / 86400.0
+    rate = (dox_final - dox_initial) / dt_days
+
+    expected_rate_corrected = 0.5 * rca * roc * 1.0  # ~0.0533
+    np.testing.assert_allclose(
+        np.asarray(rate),
+        np.full(5, expected_rate_corrected),
+        rtol=1e-6,
+    )
+
+    # Negative regression: v3 must NOT produce the raw-AWc magnitude.
+    raw_AWc_rate = 0.5 * 40.0 * roc * 1.0
+    assert not np.allclose(np.asarray(rate), np.full(5, raw_AWc_rate), rtol=1e-3)
+
+
+def test_dox_sod_attenuates_at_low_dox(
+    water_temp_5cell, depth_5cell
+):
+    """Audit C2 (Phase 9.B): SOD effective rate equals half the unattenuated
+    Arrhenius value when ``DOX = KsSOD``.
+
+    Fortran (``modGlobalParam.f90:254``): ``SOD_tc *= DOX / (DOX + KsSOD)``
+    when ``use_DOX``. At ``DOX = KsSOD``, the factor is 0.5.
+    """
+    SOD_20 = 1.0
+    SOD_theta = 1.060
+    KsSOD = 1.0
+
+    # DOX exactly at KsSOD -> Monod factor = 0.5.
+    dox_at_ksod = xr.DataArray(np.full(5, KsSOD), dims="cell")
+
+    dox_proc = DOX(
+        parameters={
+            "SOD_20": SOD_20,
+            "SOD_theta": SOD_theta,
+            "KsSOD": KsSOD,
+            "use_DOX": True,
+            "kah_20_user": 0.0,
+            "kaw_20_user": 0.0,
+            "hydraulic_reaeration_option": 1,
+            "wind_reaeration_option": 1,
+        },
+        time_step=timedelta(minutes=5),
+    )
+    registry = _build_registry(dox_at_ksod, water_temp_5cell, depth_5cell)
+    dox_proc.run(datetime(2026, 1, 1), registry)
+    attenuated_sod = np.asarray(dox_proc.dox_sod_rate)
+
+    # Compute the unattenuated rate by disabling use_DOX.
+    dox_proc_unattenuated = DOX(
+        parameters={
+            "SOD_20": SOD_20,
+            "SOD_theta": SOD_theta,
+            "KsSOD": KsSOD,
+            "use_DOX": False,
+            "kah_20_user": 0.0,
+            "kaw_20_user": 0.0,
+            "hydraulic_reaeration_option": 1,
+            "wind_reaeration_option": 1,
+        },
+        time_step=timedelta(minutes=5),
+    )
+    registry2 = _build_registry(
+        dox_at_ksod.copy(), water_temp_5cell, depth_5cell
+    )
+    dox_proc_unattenuated.run(datetime(2026, 1, 1), registry2)
+    unattenuated_sod = np.asarray(dox_proc_unattenuated.dox_sod_rate)
+
+    # At DOX = KsSOD the attenuated rate is exactly half.
+    np.testing.assert_allclose(
+        attenuated_sod, 0.5 * unattenuated_sod, rtol=1e-12
+    )
+
+    # And under hypoxia (DOX -> 0) the SOD sink approaches zero.
+    dox_zero = xr.DataArray(np.full(5, 1e-6), dims="cell")
+    dox_proc_low = DOX(
+        parameters={
+            "SOD_20": SOD_20,
+            "SOD_theta": SOD_theta,
+            "KsSOD": KsSOD,
+            "use_DOX": True,
+            "kah_20_user": 0.0,
+            "kaw_20_user": 0.0,
+            "hydraulic_reaeration_option": 1,
+            "wind_reaeration_option": 1,
+        },
+        time_step=timedelta(minutes=5),
+    )
+    registry3 = _build_registry(dox_zero, water_temp_5cell, depth_5cell)
+    dox_proc_low.run(datetime(2026, 1, 1), registry3)
+    sod_at_low_dox = np.asarray(dox_proc_low.dox_sod_rate)
+    # Should be ~ DOX/KsSOD * unattenuated ~ 1e-6 * unattenuated.
+    assert np.all(sod_at_low_dox < 1e-5 * unattenuated_sod)

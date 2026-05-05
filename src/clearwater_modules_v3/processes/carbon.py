@@ -11,11 +11,15 @@ A single Carbon Process owns three state variables (mg/L):
 * ``doc``  -- dissolved organic carbon
 * ``dic``  -- dissolved inorganic carbon
 
-Kinetics (mirrors v1 ``processes.py:2439-2870``):
+Kinetics (mirrors v1 ``processes.py:2439-2870`` and Fortran
+``modCarbon.f90``):
 
     dPOC/dt =   algal_poc_from_mortality_rate                # FloatingAlgae
               + balgae_poc_from_mortality_rate               # BenthicAlgae
               - kpoc_tc * POC                                # POC -> DOC hydrolysis
+                                                             # (no DOX-Monod, per
+                                                             # Fortran modCarbon.f90:170
+                                                             # and v1 processes.py:2455)
               - vsoc / depth * POC                           # settling
 
     dDOC/dt = + kpoc_tc * POC                                # POC hydrolysis source
@@ -28,11 +32,12 @@ Kinetics (mirrors v1 ``processes.py:2439-2870``):
     dDIC/dt = + DOX_attenuation * kdoc_tc * DOC              # DOC oxidation -> DIC
               + 0.923 * ka_tc * (KH * pCO2 / 1e6
                                   - FCO2 * DIC)              # CO2 reaeration (atm)
-              + AWc / 12000 * (algal_respiration_rate
+              + rca / 12000 * (algal_respiration_rate
                                - algal_growth_rate)          # FloatingAlgae C
-              + BWc * Fb / depth / 12000 *
+              + rcb * Fb / depth / 12000 *
                        (balgae_respiration_rate
                         - balgae_growth_rate)                # BenthicAlgae C
+              + cbod_oxidation_rate / roc / 12000            # CBOD -> DIC oxidation
               + JDIC / depth / 12000                         # sediment release
 
 Where:
@@ -59,8 +64,14 @@ Where:
   resolved Q14 simple-tracer assumption, v3 1.0.0 does not solve for pH
   and uses a constant ``FCO2`` from the parameter file). Documented as a
   simple-tracer placeholder until the carbonate solver lands (v3 1.x).
-* ``AWc`` -- floating algal C:Chl-a ratio (mg-C/ug-Chla); BWc -- benthic
-  algal C:dry-weight ratio (mg-C/mg-D); ``Fb`` -- bottom-area fraction.
+* ``rca = AWc / AWa`` -- floating algal C:Chl-a stoichiometric ratio
+  (mg-C/ug-Chla; per v1 ``rca`` helper at ``processes.py:337-348``).
+  ``rcb = BWc / BWd`` -- benthic algal C:dry-weight ratio (mg-C/mg-D;
+  per v1 ``rcb`` helper at ``processes.py:776-786``). v3 (Phase 9.B
+  audit) computes these once at the top of ``run`` rather than passing
+  the raw weights ``AWc`` / ``BWc``; the prior v3 implementation used
+  ``AWc`` / ``BWc`` directly which yielded a 1000x / 100x scaling error
+  in DIC algal coupling. ``Fb`` -- bottom-area fraction.
 * ``JDIC`` -- DIC sediment release flux (g/m^2/d). v1 derives this from
   SOD (``SOD_tc / roc``); a Phase 5.B sediment integration may rewire
   this. For Phase 5.A standalone the term is identically zero unless the
@@ -247,9 +258,16 @@ class Carbon(Process):
             ):
                 composed[k] = GLOBAL_PARAM_DEFAULTS.get(k, True)
             # Algal stoichiometric ratios for DIC photosynthesis /
-            # respiration coupling.
-            composed["AWc"] = ALGAE_DEFAULTS["AWc"]   # mg-C / ug-Chla
-            composed["BWc"] = BALGAE_DEFAULTS["BWc"]  # mg-C / mg-D
+            # respiration coupling. v3 derives ``rca = AWc / AWa`` and
+            # ``rcb = BWc / BWd`` at run time per the Phase 9.B audit
+            # (Fortran ``modAlgae.f90`` / ``modBenthicAlgae.f90`` use the
+            # same identities); the raw weights ``AWc`` / ``BWc`` are
+            # composed here so the user can override either the raw
+            # weights or the derived ratio knobs.
+            composed["AWc"] = ALGAE_DEFAULTS["AWc"]   # mg-C raw weight
+            composed["AWa"] = ALGAE_DEFAULTS["AWa"]   # ug-Chla per algal unit
+            composed["BWc"] = BALGAE_DEFAULTS["BWc"]  # mg-C / g-D raw weight
+            composed["BWd"] = BALGAE_DEFAULTS["BWd"]  # mg-D / g-D dry-weight
             # Sediment release flux placeholder (g-C/m^2/d). Defaults to
             # zero; user can opt in via ``parameters={"JDIC": ...}``.
             composed["JDIC"] = 0.0
@@ -290,10 +308,12 @@ class Carbon(Process):
         self.use_benthic_algae: bool = False
         self.use_pom: bool = False
         self.use_dox: bool = False
+        self.use_cbod: bool = False
         self.floating_algae_process = None
         self.benthic_algae_process = None
         self.pom_process = None
         self.dox_process = None
+        self.cbod_process = None
 
     @ProcessFactory.register("carbon")
     @staticmethod
@@ -317,6 +337,7 @@ class Carbon(Process):
             self.use_benthic_algae = model.has_process("BenthicAlgae")
             self.use_pom = model.has_process("POM")
             self.use_dox = model.has_process("DOX")
+            self.use_cbod = model.has_process("CBOD")
             if self.use_floating_algae:
                 self.floating_algae_process = model.get_process("FloatingAlgae")
             if self.use_benthic_algae:
@@ -325,6 +346,8 @@ class Carbon(Process):
                 self.pom_process = model.get_process("POM")
             if self.use_dox:
                 self.dox_process = model.get_process("DOX")
+            if self.use_cbod:
+                self.cbod_process = model.get_process("CBOD")
 
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Advance POC, DOC, DIC by one substep using Forward Euler.
@@ -363,13 +386,25 @@ class Carbon(Process):
             t_water_c, self.kdoc_20, self.kdoc_theta
         )
 
-        # --- DOX-Monod attenuation (mineralization) ---
-        # Same attenuation factor for both POC -> DOC and DOC -> DIC,
-        # per v1 (each uses ``DOX / (KsOxmc + DOX)``).
+        # --- DOX-Monod attenuation (DOC -> DIC oxidation only) ---
+        # Per Fortran ``modCarbon.f90:198`` and v1 ``processes.py:2629``,
+        # DOC oxidation uses ``DOX / (KsOxmc + DOX)`` Monod attenuation.
+        # POC hydrolysis is *not* attenuated by DOX in either reference;
+        # earlier v3 applied the same factor to POC hydrolysis but Phase
+        # 9.B audit removed that factor for parity.
         dox_attenuation = dox / (self.KsOxmc + dox)
 
+        # --- Stoichiometric C-to-Chla / C-to-D ratios derived from raw
+        # weights (Phase 9.B audit fix; Fortran ``modAlgae.f90`` and v1
+        # ``processes.py`` derive these the same way). Cached once so the
+        # arithmetic below stays in mg-C/L/d cleanly. ---
+        rca = self.AWc / self.AWa     # mg-C / ug-Chla
+        rcb = self.BWc / self.BWd     # mg-C / mg-D
+
         # --- POC kinetic terms (mg-C/L/d) ---
-        poc_hydrolysis = kpoc_tc_value * poc * dox_attenuation
+        # POC hydrolysis: pure first-order (no DOX-Monod), per Fortran
+        # and v1.
+        poc_hydrolysis = kpoc_tc_value * poc
         poc_settling = self.vsoc / depth * poc
         poc_algal_mortality = self._poc_algal_mortality(poc)
         poc_balgae_mortality = self._poc_balgae_mortality(depth, poc)
@@ -422,22 +457,24 @@ class Carbon(Process):
 
         # Algal photosynthesis / respiration -> DIC source/sink.
         # Floating algae: rates are stored as ug-Chla/L/d on the
-        # FloatingAlgae Process; convert to mg-C/L/d via AWc / 12000.
+        # FloatingAlgae Process; convert to mg-C/L/d via ``rca / 12000``
+        # where ``rca = AWc / AWa`` (mg-C per ug-Chla).
         # (12000 = 12 g/mol-C * 1000 ug/mg.)
         algae_growth = self._floating_algae_growth_rate()
         algae_respiration = self._floating_algae_respiration_rate()
-        dic_algal_resp = algae_respiration * self.AWc / 12000.0
-        dic_algal_photo = algae_growth * self.AWc / 12000.0
+        dic_algal_resp = algae_respiration * rca / 12000.0
+        dic_algal_photo = algae_growth * rca / 12000.0
 
         # Benthic algae: rates are g-D/m^2/d on the BenthicAlgae
-        # Process; convert to mg-C/L/d via BWc * Fb / depth / 12000.
+        # Process; convert to mg-C/L/d via ``rcb * Fb / depth / 12000``
+        # where ``rcb = BWc / BWd`` (mg-C per mg-D).
         balgae_growth = self._benthic_algae_growth_rate()
         balgae_respiration = self._benthic_algae_respiration_rate()
         dic_balgae_resp = (
-            balgae_respiration * self.BWc * self.Fb / depth / 12000.0
+            balgae_respiration * rcb * self.Fb / depth / 12000.0
         )
         dic_balgae_photo = (
-            balgae_growth * self.BWc * self.Fb / depth / 12000.0
+            balgae_growth * rcb * self.Fb / depth / 12000.0
         )
 
         # Sediment release (g-C/m^2/d) -> mg-C/L/d. v1 wires this
@@ -448,6 +485,25 @@ class Carbon(Process):
         else:
             dic_sed_release = 0.0
 
+        # CBOD oxidation -> DIC source. Per Fortran
+        # ``modCarbon.f90:262-266`` and v1 ``processes.py:2793-2814``,
+        # the oxidation of carbonaceous BOD produces CO2 which adds to
+        # the DIC pool: ``DIC_CBOD_oxidation = sum(CBOD_Oxidation) / roc
+        # / 12000``. v3 reads the cached ``cbod_oxidation_rate``
+        # (mg-O2/L/d) from the CBOD sibling Process (already wired into
+        # DOX as a sink); divide by ``roc`` to get mg-C/L/d, then
+        # ``/ 12000`` for parity with the other DIC terms (mol-C/L/d).
+        # Phase 9.B audit C3.
+        if self.use_cbod and self.cbod_process is not None:
+            cbod_ox_rate = getattr(
+                self.cbod_process, "cbod_oxidation_rate", 0
+            )
+            if cbod_ox_rate is None:
+                cbod_ox_rate = 0
+            dic_cbod_oxidation = cbod_ox_rate / self.roc / 12000.0
+        else:
+            dic_cbod_oxidation = 0.0
+
         d_dic = (
             doc_oxidation
             + co2_reaeration
@@ -455,6 +511,7 @@ class Carbon(Process):
             - dic_algal_photo
             + dic_balgae_resp
             - dic_balgae_photo
+            + dic_cbod_oxidation
             + dic_sed_release
         )
 

@@ -42,9 +42,14 @@ Where:
   (= 2.0 * 32.0 / 14.0). Lives in ``DOX_DEFAULTS``.
 * ``roc = 32/12`` -- O2 mass per C oxidized. Lives in
   ``CARBON_DEFAULTS``; DOX composes it on the instance.
-* ``rca = AWc`` -- algal C:Chla. Lives in ``ALGAE_DEFAULTS``.
-* ``rcb = BWc`` -- benthic algae C:dry-weight. Lives in
-  ``BALGAE_DEFAULTS``.
+* ``rca = AWc / AWa`` -- algal C:Chla stoichiometric ratio
+  (mg-C/ug-Chla). Lives in ``ALGAE_DEFAULTS`` as the raw weights;
+  derived at run time per the Phase 9.B audit (Fortran ``modAlgae.f90``
+  and v1 ``processes.py:337-348`` derive the same way).
+* ``rcb = BWc / BWd`` -- benthic algae C:dry-weight ratio
+  (mg-C/mg-D). Lives in ``BALGAE_DEFAULTS`` as raw weights; derived
+  at run time per the same audit (Fortran ``modBenthicAlgae.f90``
+  and v1 ``processes.py:776-786``).
 * ``138/106 - 32/106 * X`` -- v1 Redfield-derived photosynthesis
   stoichiometric factor that fractionates O2 production by NH4 vs NO3
   uptake. With ``ApUptakeFr_NH4 == 1`` (all NH4) the factor is 1.0;
@@ -56,11 +61,12 @@ Where:
   (Arrhenius). Lives in ``NITROGEN_DEFAULTS`` as
   ``knit_20`` / ``knit_theta``; DOX composes them.
 * ``SOD_tc`` -- ``utils.sediment.SOD_tc`` (Arrhenius-corrected SOD).
-  Note Phase 1.1 reported it is pure Arrhenius with no DOX-Monod
-  attenuation; the optional Monod limitation lives here in DOX (and
-  is currently NOT applied, matching the v1 default behavior on the
-  ``SOD_tc`` primitive — see the Phase 5.5 deferred note in
-  ``run``).
+  Phase 1.1 made the utility pure Arrhenius (no DOX-Monod
+  attenuation); Phase 9.B audit re-applies the Fortran
+  ``modGlobalParam.f90:254`` form ``SOD_tc *= DOX / (DOX + KsSOD)``
+  here in the DOX consumer. Under hypoxia this drops SOD toward zero
+  (the sediment cannot deplete oxygen that is not there); without the
+  correction, v3 over-consumed O2 at low DOX.
 
 Coupling pattern (mirrors Phase 2.B Nitrogen for the multi-source-sink
 integrator). Every coupled Process is consumed via ``getattr(...)``
@@ -89,8 +95,9 @@ additionally composes onto the instance:
   ``use_NH4``, ``use_DOC``, ``use_Algae``, ``use_Balgae``
 * ``parameters.global_vars``: hydraulic forcings (``velocity``, ``flow``,
   ``topwidth``, ``slope``, ``shear_velocity``, ``wind_speed``)
-* ``parameters.algae``: ``AWc`` (== rca), ``AWa``
-* ``parameters.balgae``: ``BWc`` (== rcb), ``Fb``, ``Fw``
+* ``parameters.algae``: ``AWc``, ``AWa`` (rca = AWc / AWa)
+* ``parameters.balgae``: ``BWc``, ``BWd``, ``Fb``, ``Fw``
+  (rcb = BWc / BWd)
 * ``parameters.nitrogen``: ``KNR``, ``knit_20``, ``knit_theta``
 * ``parameters.carbon``:   ``roc``
 
@@ -277,6 +284,7 @@ class DOX(Process):
                 "use_DOC",
                 "use_Algae",
                 "use_Balgae",
+                "use_DOX",
             ):
                 composed[k] = GLOBAL_PARAM_DEFAULTS.get(k, True)
             # Hydraulic forcings (toy values; should be overridden per
@@ -290,13 +298,18 @@ class DOX(Process):
                 "wind_speed",
             ):
                 composed[k] = GLOBAL_VAR_DEFAULTS[k]
-            # Algal stoichiometry (rca = AWc; AWa needed only for Q10
-            # rate-cache dimensional sanity in Phase 5.5).
-            composed["AWc"] = ALGAE_DEFAULTS["AWc"]
-            composed["AWa"] = ALGAE_DEFAULTS["AWa"]
-            # Benthic algal stoichiometry (rcb = BWc) and the bottom-area
-            # / wet-fraction split.
-            composed["BWc"] = BALGAE_DEFAULTS["BWc"]
+            # Algal stoichiometry. v3 derives ``rca = AWc / AWa`` and
+            # ``rcb = BWc / BWd`` at run time (Phase 9.B audit fix; the
+            # raw weights ``AWc``/``BWc`` are 40 mg-C while ``rca`` is
+            # 0.04 mg-C/ug-Chla and ``rcb`` is 0.4 mg-C/mg-D — using the
+            # raw weights as ratios under-stated O2 photosynthesis /
+            # respiration coupling by 100-1000x).
+            composed["AWc"] = ALGAE_DEFAULTS["AWc"]   # mg-C raw weight
+            composed["AWa"] = ALGAE_DEFAULTS["AWa"]   # ug-Chla algal unit
+            # Benthic algal stoichiometry and the bottom-area / wet-
+            # fraction split.
+            composed["BWc"] = BALGAE_DEFAULTS["BWc"]  # mg-C / g-D raw
+            composed["BWd"] = BALGAE_DEFAULTS["BWd"]  # mg-D / g-D raw
             composed["Fb"] = BALGAE_DEFAULTS.get("Fb", 0.9)
             composed["Fw"] = BALGAE_DEFAULTS.get("Fw", 0.9)
             # Nitrogen kinetics for the local nitrification flux fallback.
@@ -417,9 +430,13 @@ class DOX(Process):
         ap_uptake_fr_nh4 = getattr(
             self.floating_algae_process, "algal_nh4_uptake_fraction", 0.5
         )
-        # rca: algal C:Chla. Per v1 the units are mg-C/ug-Chla; algal_growth_rate
-        # is in ug-Chla/L/d, so rca * algal_growth_rate is in mg-C/L/d.
-        rca = self.AWc
+        # rca: algal C:Chla stoichiometric ratio = AWc / AWa
+        # (mg-C/ug-Chla). algal_growth_rate is in ug-Chla/L/d, so rca *
+        # algal_growth_rate is in mg-C/L/d. Phase 9.B audit fix: prior
+        # v3 used ``self.AWc`` directly (40 mg-C) instead of the derived
+        # ratio (0.04 mg-C/ug-Chla); Fortran ``modDOX.f90:135`` and v1
+        # ``processes.py:2942-2959`` derive the ratio.
+        rca = self.AWc / self.AWa
         return (
             ap_growth
             * rca
@@ -440,7 +457,10 @@ class DOX(Process):
         ap_resp = getattr(
             self.floating_algae_process, "algal_respiration_rate", 0
         )
-        return ap_resp * self.AWc * self.roc
+        # rca = AWc / AWa per Phase 9.B audit (Fortran modDOX.f90:136 +
+        # v1 processes.py:2962-2977). Prior v3 used ``self.AWc`` directly.
+        rca = self.AWc / self.AWa
+        return ap_resp * rca * self.roc
 
     def _benthic_algae_growth_flux(self, depth: ArrayLike) -> ArrayLike:
         """Benthic-algae photosynthesis O2 source (mg/L/d). v1 ``DOX_AbGrowth``.
@@ -459,12 +479,13 @@ class DOX(Process):
         ab_uptake_fr_nh4 = getattr(
             self.benthic_algae_process, "balgae_nh4_uptake_fraction", 0.5
         )
-        # rcb: benthic algae C per dry-weight. v3 BALGAE default BWc is
-        # mg-C/g-D; multiplied by balgae_growth_rate (g-D/m^2/d), yields
-        # mg-C/m^2/d. Divided by depth (m) yields mg-C/L/d (since
-        # 1 m^3 == 1000 L and 1 m^2 * 1 m == 1 m^3, the units work out
-        # for the per-volume rate).
-        rcb = self.BWc
+        # rcb: benthic algae C-to-dry-weight stoichiometric ratio =
+        # BWc / BWd (mg-C/mg-D). Phase 9.B audit fix: prior v3 used
+        # ``self.BWc`` directly (40 mg-C/g-D raw weight) instead of the
+        # derived ratio (0.4 mg-C/mg-D); Fortran
+        # ``modDOX.f90:143`` and v1 ``processes.py:3032-3054`` derive
+        # the ratio.
+        rcb = self.BWc / self.BWd
         return (
             (138.0 / 106.0 - 32.0 / 106.0 * ab_uptake_fr_nh4)
             * self.roc
@@ -486,7 +507,10 @@ class DOX(Process):
         ab_resp = getattr(
             self.benthic_algae_process, "balgae_respiration_rate", 0
         )
-        return self.roc * self.BWc * ab_resp * self.Fb / depth
+        # rcb = BWc / BWd per Phase 9.B audit (Fortran modDOX.f90:144 +
+        # v1 processes.py:3057-3078). Prior v3 used ``self.BWc`` directly.
+        rcb = self.BWc / self.BWd
+        return self.roc * rcb * ab_resp * self.Fb / depth
 
     def _nitrification_flux(
         self,
@@ -552,24 +576,31 @@ class DOX(Process):
         return getattr(self.cbod_process, "cbod_oxidation_rate", 0)
 
     def _sod_flux(
-        self, t_water_c: ArrayLike, depth: ArrayLike
+        self,
+        t_water_c: ArrayLike,
+        depth: ArrayLike,
+        dox: ArrayLike,
     ) -> ArrayLike:
         """Sediment oxygen demand O2 sink (mg/L/d). v1 ``DOX_SOD``.
 
-        ``SOD_tc / depth``, where ``SOD_tc`` is Arrhenius-corrected
-        ``SOD_20`` (g-O2/m^2/d). Dividing by ``depth`` (m) yields
-        mg-O2/L/d (since 1 g/m^2/d / 1 m == 1 g/m^3/d == 1 mg/L/d).
+        ``SOD_tc * DOX / (DOX + KsSOD) / depth``, where ``SOD_tc`` is
+        Arrhenius-corrected ``SOD_20`` (g-O2/m^2/d). Dividing by
+        ``depth`` (m) yields mg-O2/L/d (since 1 g/m^2/d / 1 m ==
+        1 g/m^3/d == 1 mg/L/d).
 
-        Phase 5.5 deferred note: the v1 ``SOD_tc`` primitive in
-        ``utils.sediment`` is pure Arrhenius — no DOX-Monod attenuation.
-        v1 NSM1 includes a ``DOX / (KsSOD + DOX)`` factor when
-        ``use_DOX`` is on (v1 ``DOX_SOD`` / ``SOD_tc`` discussion in
-        the design spec Section 7); that limitation is currently NOT
-        applied here (matching the Phase 1.1 sediment utility report
-        and the Phase 5 "out of scope" note that semi-implicit /
-        Monod-attenuated SOD is for Phase 5.5+).
+        Phase 9.B audit fix (C2): the DOX-Monod attenuation is applied
+        here in the DOX consumer, not inside the
+        ``utils.sediment.SOD_tc`` primitive (Phase 1.1 made that
+        primitive pure Arrhenius for architectural reasons). Matches
+        Fortran ``modGlobalParam.f90:254``
+        (``SOD_tc *= DOX / (DOX + KsSod)`` when ``use_DOX``) and v1
+        ``shared.processes.SOD_tc:200``. Under hypoxia (DOX -> 0) the
+        attenuation drives the SOD sink to zero, reflecting that the
+        sediment cannot deplete oxygen that is not present.
         """
         sod = sod_tc_util(self.SOD_20, self.SOD_theta, t_water_c)
+        if self.use_DOX:
+            sod = sod * dox / (dox + self.KsSOD)
         return sod / depth
 
     # ------------------------------------------------------------------
@@ -659,7 +690,7 @@ class DOX(Process):
         nitr_sink = self._nitrification_flux(ammonium, t_water_c, dox)
         doc_sink = self._doc_oxidation_flux()
         cbod_sink = self._cbod_oxidation_flux()
-        sod_sink = self._sod_flux(t_water_c, depth)
+        sod_sink = self._sod_flux(t_water_c, depth, dox)
 
         # --- Net rate (mg/L/d). Mirrors v1 ``dDOXdt`` (line 3119) ---
         rate = (

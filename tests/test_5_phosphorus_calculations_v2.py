@@ -33,8 +33,8 @@ from clearwater_modules_v3.utils.partitioning import fdp as v3_fdp
 from tests.v3.nsm1.conftest import InMemoryRegistry
 
 
-def _v1_shared_fdp(use_TIP, Solid, kdpo4):
-    """Inline reproduction of v1 ``shared.processes.fdp``.
+def _v1_shared_fdp_buggy(use_TIP, Solid, kdpo4):
+    """Inline reproduction of v1 ``shared.processes.fdp`` (the buggy form).
 
     The actual ``clearwater_modules.shared.processes.fdp`` is decorated
     with ``@numba.njit``, which cannot accept ``xarray.DataArray`` inputs
@@ -45,8 +45,25 @@ def _v1_shared_fdp(use_TIP, Solid, kdpo4):
 
     v1 source (clearwater_modules/shared/processes.py:257-271):
         return xr.where(use_TIP, 1 / (1 + kdpo4 * Solid / 0.000001), 0)
+
+    Note (Phase 9.B audit): this v1 form is dimensionally inverted;
+    ``kdpo4 * Solid`` is in mg/kg and must be multiplied by 1e-6 kg/mg
+    (equivalently, divided by 1e6 mg/kg) to be dimensionless. The v1
+    inline ``/0.000001`` is the wrong direction; Fortran
+    (``modGlobalParam.f90:228``) writes ``/ 1.0E6`` which is correct.
+    v3 follows Fortran. This helper is retained only for negative
+    regression tests (asserting v3 deliberately diverges from v1).
     """
     return xr.where(use_TIP, 1.0 / (1.0 + kdpo4 * Solid / 0.000001), 0.0)
+
+
+def _fortran_anchored_fdp(use_TIP, Solid, kdpo4):
+    """Dimensionally correct fdp matching Fortran ``modGlobalParam.f90:228``.
+
+    ``fdp = 1 / (1 + kdpo4 [L/kg] * Solid [mg/L] * 1e-6 [kg/mg])``. v3
+    ports this form; this helper is used as the parity reference.
+    """
+    return xr.where(use_TIP, 1.0 / (1.0 + kdpo4 * Solid * 1.0e-6), 0.0)
 
 
 # ---------------------------------------------------------------------------
@@ -171,19 +188,22 @@ def test_orgp_settling_matches_v1(
     )
 
 
-def test_tip_settling_matches_v1(
+def test_tip_settling_matches_fortran_anchored(
     water_temp_5cell, depth_5cell, tip_5cell, orgp_5cell
 ):
-    """v3 ``tip_settling_rate`` cache after run == v1 ``TIP_Settling`` with v3 ``fdp``.
+    """v3 ``tip_settling_rate`` cache after run == Fortran-anchored
+    ``TIP_Settling`` with the dimensionally correct ``fdp``.
 
-    v1 formula: ``vs / depth * (1 - fdp) * TIP`` (line 1973-1988).
-    v3 caches the same expression under ``self.tip_settling_rate``
-    (phosphorus.py line 294). The fdp here comes from the v3 partitioning
-    utility (``fdp(use_TIP, Solid, kdpo4)``); we pass a non-zero
-    ``kdpo4 > 0`` so ``fdp < 1`` and the test exercises the full term.
+    v1 formula: ``vs / depth * (1 - fdp) * TIP`` (line 1973-1988); v3
+    caches the same expression under ``self.tip_settling_rate``. The v3
+    ``fdp`` utility was corrected in Phase 9.B from v1's
+    ``/ 0.000001`` (== multiply by 1e6, dimensionally inverted) to
+    Fortran's ``* 1e-6`` (correct). This test asserts v3's ``fdp``
+    output drives the TIP settling term toward the Fortran-anchored
+    expectation, not the v1 inverted form.
     """
-    kdpo4 = 1000.0     # L/kg; non-zero to force fdp < 1
-    solid = 5.0        # mg/L; non-zero to force fdp < 1
+    kdpo4 = 1000.0     # L/kg
+    solid = 5.0        # mg/L
     phosphorus = Phosphorus(
         parameters={
             "vs": 0.1,
@@ -202,37 +222,91 @@ def test_tip_settling_matches_v1(
     )
     phosphorus.run(datetime(2026, 1, 1), registry)
 
-    # v1 fdp formula (shared module): 1 / (1 + kdpo4 * Solid / 1e-6).
-    v1_fdp = _v1_shared_fdp(use_TIP=True, Solid=solid, kdpo4=kdpo4)
-    v1_rate = v1.TIP_Settling(0.1, depth_5cell, v1_fdp, tip_5cell)
+    # Fortran-anchored fdp (matches v3 partitioning utility).
+    fortran_fdp = _fortran_anchored_fdp(
+        use_TIP=True, Solid=solid, kdpo4=kdpo4
+    )
+    v1_rate_with_fortran_fdp = v1.TIP_Settling(
+        0.1, depth_5cell, fortran_fdp, tip_5cell
+    )
 
     np.testing.assert_allclose(
         np.asarray(phosphorus.tip_settling_rate),
-        np.asarray(v1_rate),
+        np.asarray(v1_rate_with_fortran_fdp),
         rtol=1e-6,
     )
 
 
-def test_tip_partitioning_fdp_matches_v1():
-    """v3 ``utils.partitioning.fdp`` == v1 ``shared.processes.fdp``.
+def test_tip_partitioning_fdp_matches_fortran():
+    """v3 ``utils.partitioning.fdp`` == Fortran ``modGlobalParam.f90:228`` form.
 
-    v1 signature: ``fdp(use_TIP, Solid, kdpo4)``; v3 utility uses the
-    same signature. Both implement
-    ``xr.where(use_TIP, 1 / (1 + kdpo4 * Solid / 1e-6), 0)``.
-
-    Note: there are TWO v1 ``fdp`` definitions (Phase 0.2 audit):
-    ``nsm1.processes.fdp`` is a degenerate stub returning 1.0 when
-    use_TIP, while ``shared.processes.fdp`` is the proper formula. The
-    v3 utility ports the ``shared`` formula, so we parity-check against
-    that.
+    Phase 9.B audit fix: v3 corrects the unit factor from v1's inverted
+    ``/ 0.000001`` (multiplies dimensional product by 1e6) to Fortran's
+    ``* 1e-6`` (correct dimensionless conversion). This test compares
+    v3 against the Fortran-anchored reference, not the buggy v1 inline.
     """
     use_TIP = True
     solid = xr.DataArray(np.array([1.0, 2.5, 5.0, 10.0, 25.0]), dims="cell")
     kdpo4 = 100.0
 
     v3_value = v3_fdp(use_TIP=use_TIP, Solid=solid, kdpo4=kdpo4)
-    v1_value = _v1_shared_fdp(use_TIP=use_TIP, Solid=solid, kdpo4=kdpo4)
+    fortran_value = _fortran_anchored_fdp(
+        use_TIP=use_TIP, Solid=solid, kdpo4=kdpo4
+    )
 
     np.testing.assert_allclose(
-        np.asarray(v3_value), np.asarray(v1_value), rtol=1e-6
+        np.asarray(v3_value), np.asarray(fortran_value), rtol=1e-6
     )
+
+
+# ---------------------------------------------------------------------------
+# Audit-anchored regression tests (Phase 9.B)
+# ---------------------------------------------------------------------------
+
+
+def test_fdp_unit_factor_dimensionally_correct():
+    """Audit C5 (Phase 9.B): v3 ``fdp`` matches the Fortran dimensionally
+    correct form, not the v1 inverted form.
+
+    Setup: ``kdpo4 = 0.001`` L/kg, ``Solid = 10`` mg/L. The dimensional
+    product ``kdpo4 * Solid * 1e-6 = 1e-8``, so corrected ``fdp ~= 1``
+    (essentially all P stays dissolved at low solids load). The v1 form
+    yields ``1 / (1 + 1e4) ~= 1e-4`` (essentially all P sorbs to
+    nonexistent solids, physically nonsensical).
+    """
+    use_TIP = True
+    kdpo4 = 0.001       # L/kg
+    solid = 10.0        # mg/L
+
+    v3_value = v3_fdp(
+        use_TIP=use_TIP,
+        Solid=xr.DataArray([solid]),
+        kdpo4=kdpo4,
+    )
+    fortran_value = _fortran_anchored_fdp(
+        use_TIP=use_TIP,
+        Solid=xr.DataArray([solid]),
+        kdpo4=kdpo4,
+    )
+    buggy_v1_value = _v1_shared_fdp_buggy(
+        use_TIP=use_TIP,
+        Solid=xr.DataArray([solid]),
+        kdpo4=kdpo4,
+    )
+
+    # v3 should match Fortran ~ 1.0 (all dissolved at low solids).
+    expected_corrected = 1.0 / (1.0 + 0.001 * 10.0 * 1.0e-6)  # ~ 1 - 1e-8
+    np.testing.assert_allclose(
+        float(v3_value.values[0]), expected_corrected, rtol=1e-12
+    )
+    np.testing.assert_allclose(
+        float(v3_value.values[0]), float(fortran_value.values[0]),
+        rtol=1e-12,
+    )
+    # And v3 should NOT match the buggy v1 form (which yields ~ 1e-4).
+    expected_buggy = 1.0 / (1.0 + 0.001 * 10.0 / 1.0e-6)  # ~ 1e-4
+    np.testing.assert_allclose(
+        float(buggy_v1_value.values[0]), expected_buggy, rtol=1e-6
+    )
+    assert float(v3_value.values[0]) > 0.99
+    assert float(buggy_v1_value.values[0]) < 1e-3
