@@ -4,8 +4,12 @@ Phase 1: every process is an overlay re-export from v2. As later phases
 replace each process with a v3-native implementation, the import in the
 corresponding submodule is updated; this file does not change.
 
-Run order matches v2's ``RUN_ORDER`` (Riverine first so transport state is
-available before kinetics).
+m18 (review-findings 2026-05-04): the prior ``RUN_ORDER`` constant was
+exported but never consulted by v3 orchestration code. Process firing
+order is determined by the order of ``processes`` passed to ``Model``
+(typically driven by the YAML ``processes:`` block), not by a
+package-level constant. The constant has been removed to avoid the
+false expectation that reordering it changes behavior.
 """
 
 from clearwater_modules_v3.processes.base import Process, ProcessFactory
@@ -23,13 +27,4 @@ __all__ = [
     "BenthicAlgae",
     "FloatingAlgae",
     "Nitrogen",
-    "RUN_ORDER",
-]
-
-RUN_ORDER = [
-    Riverine,
-    Temperature,
-    BenthicAlgae,
-    FloatingAlgae,
-    Nitrogen,
 ]

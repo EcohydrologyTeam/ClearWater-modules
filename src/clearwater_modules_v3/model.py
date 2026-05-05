@@ -69,7 +69,7 @@ class Model:
 
     def __init__(
         self,
-        processes: tuple[Process, ...],
+        processes: Iterable[Process],
         variable_registry: VariableRegistry,
         variable_data_sources: dict[str, DataSource | ChunkedDataSource],
         start_time: datetime,
@@ -149,9 +149,18 @@ class Model:
         # this was a bare ``str`` "." which raised TypeError on the
         # default-constructed Model whenever ``output_variables`` was
         # non-empty.
-        self.__simulation_directory: Path = (
-            Path(simulation_directory) if simulation_directory else Path(".")
-        )
+        #
+        # m12 fix (review-findings 2026-05-04): the previous truthy check
+        # ``if simulation_directory else Path(".")`` rewrote any
+        # falsy-but-non-None argument (including ``""`` and ``Path("")``)
+        # to ``Path(".")`` silently. The predicate below treats
+        # ``None``, ``""``, and ``Path("")`` as "not provided" and falls
+        # back to cwd; every other value (including absolute paths,
+        # relative paths, and ``Path(".")`` itself) is taken as-is.
+        if simulation_directory is None or simulation_directory in ("", Path("")):
+            self.__simulation_directory: Path = Path(".")
+        else:
+            self.__simulation_directory = Path(simulation_directory)
 
         self.__chunked_mode: bool = chunk_size is not None
         self.__chunk_size: timedelta | None = chunk_size
@@ -481,11 +490,6 @@ class Model:
         ``end_time`` (exclusive)."""
         delta_seconds = (self.__end_time - self.__start_time).total_seconds()
         return int(delta_seconds // self.__time_step.total_seconds())
-
-    def __step_index(self, current_time: datetime) -> int:
-        """Map a substep ``current_time`` to its index in ``__process_schedule``."""
-        delta_seconds = (current_time - self.__start_time).total_seconds()
-        return int(round(delta_seconds / self.__time_step.total_seconds()))
 
     # ---------- wet-mask ----------
 

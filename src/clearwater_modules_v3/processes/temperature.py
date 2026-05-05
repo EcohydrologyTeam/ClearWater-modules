@@ -253,10 +253,22 @@ class Temperature(Process):
             atmospheric_vapor_pressure=atmospheric_vapor_pressure,
         )
 
-        # Per-process dry-cell guard. Phase 3 makes this redundant by adding
-        # registry-level wet-mask handling at the orchestration layer; it is
-        # kept here so v3 remains correct on its own without that change.
-        delta_water_temperature = xr.where(volume > 0, delta_water_temperature, 0)
+        # m19 fix / C5 (review-findings 2026-05-04; gap-analysis row N8
+        # disposition "remove from process bodies"): the per-process
+        # ``xr.where(volume > 0, ...)`` guard previously applied here
+        # is now removed. ``Model.__apply_wet_mask`` is the single point
+        # of dry-cell handling at the orchestration layer; running both
+        # is dominated by the Model-level mask (per-process zeros the
+        # delta first, then the Model-level mask overwrites the result
+        # with NaN on dry cells), so the per-process branch is dead.
+        # Trade-off: a run without a configured wet-mask that has
+        # ``volume == 0`` cells will produce NaN/inf delta values
+        # (division by zero in ``temperature_change``). This is the
+        # documented behavior change between Phase 2 and Phase 3 and is
+        # acceptable because (a) a run without a wet-mask should have a
+        # uniformly wet mesh, and (b) a run with a wet-mask uses
+        # ``Model.__apply_wet_mask`` to overwrite dry cells with NaN as
+        # the design intent.
         updated_water_temperature = water_temperature + delta_water_temperature
 
         registry.set_at_time("water_temperature", time, updated_water_temperature)
@@ -277,10 +289,13 @@ class Temperature(Process):
                 sediment_temperature=sediment_temperature,
                 sediment_thickness=sediment_thickness,
             )
-            # No water in contact -> no heat exchange -> no sediment T change.
-            delta_sediment_temperature = xr.where(
-                volume > 0, delta_sediment_temperature, 0
-            )
+            # m19 fix / C5 (review-findings 2026-05-04; gap-analysis row
+            # N8 disposition "remove from process bodies"): the
+            # per-process ``xr.where(volume > 0, ...)`` guard previously
+            # applied here is now removed in favor of the orchestration
+            # layer's ``Model.__apply_wet_mask``. See the matching
+            # comment above the water-temperature branch for the full
+            # rationale and trade-off.
             updated_sediment_temperature = (
                 sediment_temperature + delta_sediment_temperature
             )
@@ -306,12 +321,23 @@ class Temperature(Process):
     ) -> ArrayLike:
         """Downwelling atmospheric longwave flux (W/m^2).
 
-        Brunt-style emissivity (``9.37e-6 * T_K^2``) with a Kiehl
-        cloud-cover correction ``(1 + 0.17 * C^2)`` and the standard
-        Stefan-Boltzmann radiation. The temperature dependence of
-        emissivity is already captured by the polynomial in ``T_K``.
+        Swinbank (1963) air-emissivity polynomial in absolute air
+        temperature combined with a Bolz (1949) cloud-cover correction
+        and the Stefan-Boltzmann radiation law. The temperature
+        dependence of emissivity is already captured by the polynomial
+        in ``T_K``.
+
+        m2 fix (review-findings 2026-05-04): the prior docstring
+        attributed the ``9.37e-6 * T_K^2`` form to "Brunt" and the
+        cloud correction to "Kiehl", which is incorrect. Brunt's form
+        is ``epsilon = a + b * sqrt(e_a)`` (vapor-pressure dependent,
+        not ``T_K^2``); the ``T_K^2`` form is Swinbank's, and the
+        ``(1 + 0.17 * C^2)`` cloud correction is Bolz's.
         """
         air_temperature_kelvin = conversions.celsius_to_kelvin(air_temperature)
+        # Swinbank (1963) air-emissivity polynomial:
+        # epsilon_a = 9.37e-6 * T_K^2; Bolz (1949) cloud-cover
+        # correction (1 + 0.17 * C^2).
         emissivity_air = 9.37e-6 * air_temperature_kelvin**2
         return (
             emissivity_air
@@ -377,7 +403,17 @@ class Temperature(Process):
         per-substep flux units expected by the energy balance.
         """
         if not self.use_sediment_temperature:
-            return 0.0
+            # m6 fix (review-findings 2026-05-04): return a same-shape
+            # zero-array rather than the Python scalar ``0.0`` so
+            # downstream ``flux_net`` arithmetic preserves a consistent
+            # dtype and dask-graph structure across enable/disable
+            # configurations. ``xr.zeros_like`` is used for ``DataArray``
+            # inputs (the production code path); scalar/ndarray inputs
+            # (used in v1-port unit tests) fall back to ``np.zeros_like``
+            # so this method remains type-stable on both surfaces.
+            if isinstance(water_temperature, xr.DataArray):
+                return xr.zeros_like(water_temperature)
+            return np.zeros_like(water_temperature)
         # M2 fix (review-findings 2026-05-04): degenerate-layer guard.
         # ``sediment_thickness == 0`` (missing data, hotstart artifact)
         # or ``< 0`` (transport-coupling bug) would produce inf/NaN here
@@ -444,8 +480,15 @@ class Temperature(Process):
     # ---------- Thermodynamic state functions ----------
 
     def water_specific_heat(self, temperature: ArrayLike) -> ArrayLike:
-        """Specific heat of water (J/kg/K) as a function of T (Celsius)."""
-        return np.select(
+        """Specific heat of water (J/kg/K) as a function of T (Celsius).
+
+        m4 fix (review-findings 2026-05-04): ``np.select`` evaluates
+        every comparison against NaN as False and would silently return
+        the ``default=4178.0`` value, masking missing-data defects.
+        Wrap the result with ``xr.where`` on ``np.isnan(temperature)``
+        so NaN propagates rather than being replaced by a finite value.
+        """
+        result = np.select(
             condlist=[
                 temperature <= 0.0,
                 temperature <= 5.0,
@@ -464,6 +507,7 @@ class Temperature(Process):
             ],
             default=4178.0,
         )
+        return xr.where(np.isnan(temperature), np.nan, result)
 
     def temperature_change(
         self,
@@ -509,7 +553,14 @@ class Temperature(Process):
 
         # Depth ramp.
         depth = xr.where(surface_area > 0.0, volume / surface_area, 0.0)
-        depth = xr.where(depth > 0.0, depth, 0.0)
+        # m9 fix (review-findings 2026-05-04): the prior second clamp
+        # ``depth = xr.where(depth > 0.0, depth, 0.0)`` was redundant
+        # against the wet/dry guard above; the only inputs it would
+        # ever rewrite are negative ``volume`` or NaN ``volume`` --
+        # both of which indicate a transport-coupling bug upstream.
+        # Let NaN/inf propagate so the defect surfaces rather than
+        # silently zeroing the cell. Wet/dry margin is already handled
+        # by the ``surface_area > 0`` guard above.
         if self.q_net_depth_ramp_ref > 0.0:
             ramp = np.minimum(1.0, depth / self.q_net_depth_ramp_ref)
         else:
@@ -661,14 +712,20 @@ class Temperature(Process):
         (Upstream v2's scalar ``if`` comparison raises ``ValueError`` for
         arrays of length > 1.)
         """
+        # m1 / m7 cleanup (review-findings 2026-05-04): compute a
+        # divide-safe denominator once rather than nesting an inverted
+        # ``xr.where`` inside the outer guard. Behavior is identical to
+        # the prior nested form -- the C4 fix (``denom <= 0`` returns
+        # 0.0) is preserved -- but the predicate is no longer repeated.
         denominator = atmospheric_pressure - atmospheric_vapor_pressure
-        # C4 fix: guard on ``<= 0.0`` (not ``== 0.0``) so the pathological
-        # ``e_air > P_air`` case also returns 0.0 rather than a negative
-        # mixing ratio. See review-findings C4.
+        # C4 fix: guard on ``> 0.0`` (rather than ``!= 0.0``) so the
+        # pathological ``e_air > P_air`` case also returns 0.0 rather
+        # than a negative mixing ratio. See review-findings C4.
+        denominator_safe = xr.where(denominator > 0.0, denominator, 1.0)
         return xr.where(
-            denominator <= 0.0,
+            denominator > 0.0,
+            0.622 * atmospheric_vapor_pressure / denominator_safe,
             0.0,
-            0.622 * atmospheric_vapor_pressure / xr.where(denominator <= 0.0, 1.0, denominator),
         )
 
     def density_air(

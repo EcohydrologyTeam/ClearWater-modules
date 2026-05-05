@@ -2,17 +2,29 @@
 
 Re-export from v2 unchanged. The v2 ``Process`` contract is the
 architectural baseline for v3 (architecture spec section 3 non-goal: no
-new framework). v3 establishes an *integrator-pattern contract* on top
-of this class that future v3-native processes follow:
+new framework).
 
-1. ``Process.run`` reads state from the registry at the current time.
-2. Computes a net rate of change with units of ``[state] / second``.
-3. Applies the rate via Forward Euler:
-   ``state_new = state_old + rate * self.time_step.total_seconds()``.
-4. Writes the updated state back via ``registry.set_at_time``.
-5. Applies negative-state guards with ``xr.where`` where appropriate.
+------------------------------------------------------------------
+Integration patterns (guideline, not enforced contract)
+------------------------------------------------------------------
 
-The contract is documented in the umbrella architecture spec section 4.
+v3-native processes implement ``run(time, registry)`` to advance state
+by one substep. Two integration patterns are common:
+
+(a) Compute a per-second rate of change and apply Forward Euler
+    ``state_new = state_old + rate * time_step_seconds``. This is
+    suitable for processes with simple linear kinetics (e.g., NSM1
+    reaction terms).
+(b) Compute the per-substep ``delta_state`` directly and add it to the
+    current state. This is suitable for processes whose update depends
+    non-linearly on the substep length (e.g., the v3 ``Temperature``
+    thin-water guards).
+
+Both patterns are valid; the choice belongs to the process author. M16
+(review-findings 2026-05-04) demoted an earlier numbered "5-step
+contract" to this guideline because real v3 processes (notably
+``Temperature``) follow pattern (b) and the contract wording did not
+reflect actual practice.
 
 ------------------------------------------------------------------
 M5 ordering contract for ``init_process`` and ``from_hotstart``

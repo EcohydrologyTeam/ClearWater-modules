@@ -28,9 +28,9 @@ Severity counts (after deduplication of cross-reviewer overlaps):
 
 | Severity | Count |
 |---|---|
-| CRITICAL | 10 (10 resolved 2026-05-04 — C1, C2, C3, C4, C5, C6, C7, C8, C9, C10) |
-| MAJOR | 18 (15 resolved 2026-05-04 — M1, M2, M3, M5, M6, M7, M8, M9, M10, M11, M12, M13, M14, M15, M17) |
-| MINOR | 19 |
+| CRITICAL | 10 (10 resolved 2026-05-04) |
+| MAJOR | 18 (17 resolved 2026-05-04 — only M4 deferred per Phase R-4 schedule) |
+| MINOR | 19 (10 resolved 2026-05-04 — m1, m2, m4, m6, m7, m9, m11, m12, m15, m18, m19; 9 documented as deferred or out-of-scope) |
 | Observations | 6 |
 
 Cross-reviewer convergence (issues found by multiple agents):
@@ -349,23 +349,51 @@ Status says "Phase 1 (scaffold)" but Phases 2-4 are complete. Migration table co
 12. ✓ **M12, M13, M15** — Hotstart unsupported-suffix handling; timestep eager-parse; KeyError-to-ValueError with deep YAML path via `_required(d, *path)` helper.
 13. ✓ **M17** — README refreshed with current Phase status, full migration table, "What's new in v3" list, and YAML schema documentation.
 
-### Phase R-4 (deferred, track for v3.x)
+### Phase R-4 (deferred at original triage, mostly resolved 2026-05-04)
 
-14. M4 (273.16 → 273.15) — hold until v1-parity tests are decommissioned
-15. M16 — integrator-pattern contract: enforce or remove from docstring
-16. M18 — non-integer-second timestep test
-17. All MINOR items
+14. **M4 (273.16 → 273.15)** — **STILL DEFERRED.** Holds until v1-parity tests are decommissioned (would require re-deriving ~15 expected values across `test_5_tsm_calculations_v3.py` and propagating the 0.01 K offset through every Kelvin-temperature term). The 0.014% radiative-flux bias is documented as a known divergence in the v3 release notes.
+15. ✓ **M16 — integrator-pattern contract.** Resolved by *demoting to guideline* in `processes/base.py` docstring. The numbered 5-step "contract" was aspirational and v3 ``Temperature.run`` did not actually follow it; replaced with a guideline noting two valid patterns (per-second rate + Forward Euler vs. per-substep delta_state). M5 hotstart-ordering contract is preserved unchanged.
+16. ✓ **M18 — non-integer-second time_step test.** Resolved by `tests/v3/test_schedule_non_integer_v3.py` (6 tests pinning C6's cadence-multiple validation; documents `time_step=0` ZeroDivisionError as an unguarded edge case).
+17. **All MINOR items** — see Phase R-5 section.
 
-### Phase R-5 (test coverage, in parallel with R-1 through R-3)
+### Phase R-5 (test coverage) — mostly complete 2026-05-04
 
-18. Unit-import test (`import clearwater_modules_v3` standalone)
-19. v2-helper-contract test
-20. Chunked end-to-end test (catches C1, C2, C7)
-21. Wet-mask forcing-preservation test (catches C5)
-22. Timezone reproducibility test (catches C6)
-23. Wet/dry transition regression test (Phase 2 vs Phase 3 semantics)
-24. NaN propagation regression test
-25. MMS test for energy conservation
+18. ✓ Unit-import test (`import clearwater_modules_v3` standalone) — covered by C8 fix verification.
+19. ✓ v2-helper-contract test — `tests/v3/test_v2_helper_contract.py` (6 tests).
+20. ✓ Chunked end-to-end test (catches C1, C2, C7) — `tests/v3/test_model_orchestration_v3.py` and `test_model_robustness_v3.py`.
+21. ✓ Wet-mask forcing-preservation test (catches C5) — `tests/v3/test_wet_mask_scope_v3.py` (6 tests).
+22. ✓ Timezone reproducibility test (catches C6) — covered by `tests/v3/test_model_orchestration_v3.py` C6 cases.
+23. ✓ Wet/dry transition regression test — `tests/v3/test_wet_dry_transition_v3.py` (4 tests pinning post-m19 semantics).
+24. ✓ NaN propagation regression test — `tests/v3/test_nan_propagation_e2e_v3.py` (4 tests through `Temperature.run`).
+25. **MMS test for energy conservation** — DEFERRED. Designing a manufactured-solutions test for the energy budget is a non-trivial test-design effort (closed-system zero-flux conservation is partially covered by the sediment-T energy-conservation test in `tests/v3/test_tsm_sediment_v3.py`). Worth doing for v3.1 NSM1 work where reactive transport raises the conservation stakes.
+
+### MINOR cleanup (resolved 2026-05-04)
+
+| MINOR ID | Status | Resolution |
+|---|---|---|
+| m1, m7 | Resolved | `mixing_ratio_air` collapsed to a single divide-safe denominator. |
+| m2 | Resolved | `flux_atmospheric_longwave` attribution corrected to Swinbank (1963) / Bolz (1949). |
+| m4 | Resolved | `water_specific_heat` wrapped to propagate NaN. |
+| m6 | Resolved | `flux_sediment` disabled branch returns DataArray (not scalar). |
+| m9 | Resolved | Redundant `depth > 0` clamp removed; lets upstream defects surface. |
+| m11 | Resolved | Dead `__step_index` deleted. |
+| m12 | Resolved | `simulation_directory` predicate explicit; `Path("")` no longer silently rewritten. |
+| m15 | Resolved | `processes` parameter annotation widened to `Iterable[Process]`. |
+| m18 (MINOR) | Resolved | Unused `RUN_ORDER` removed from `processes/__init__.py`. |
+| m19 | Resolved | Per-process `xr.where(volume > 0, ...)` guards removed from `Temperature.run`; orchestration-layer wet-mask is sole authority. |
+
+### MINOR cleanup (deferred or out-of-scope)
+
+| MINOR ID | Status | Rationale |
+|---|---|---|
+| m3 | Deferred | `wind_function` `1_000_000` divisor units documentation needs a literature reference (likely Edinger Brady & Geyer 1974 or the NSM/TSM ERDC manual); deferred to NSM1 v3 work where wind-function callers expand. |
+| m5 | Deferred | `wind_a/b/c` no defaults — design call (whether to bake legacy values into a class method); user input pending. |
+| m8 | Deferred | `q_net_depth_ramp_ref` scalar-only — deferred until heterogeneous-reach use case surfaces. |
+| m10 | Acceptable | Floating-point ordering relative to v1 (~1e-15 relative); within `rtol=1e-12` test tolerance; document and accept. |
+| m13 | Out-of-scope | `water_temperature → nface` hack belongs to riverine refactor. |
+| m14 | Documented | Schedule `n_steps + 1` defensive margin already commented in code. |
+| m16 (MINOR) | Out-of-scope | `__output_data_store.write_chunk(data=variable)` Variable-vs-DataArray annotation belongs to `clearwater_data` typing. |
+| m17 | Subsumed | `_v2_init_helper` candidate ordering — resolved by C9 (helper replaced with single-name `_resolve_v2_helper`). |
 
 ---
 
