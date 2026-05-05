@@ -29,12 +29,13 @@ notation, which is not copyrightable.
 from __future__ import annotations
 
 import warnings
-from typing import Protocol, runtime_checkable
+from typing import Optional, Protocol, runtime_checkable
 
 import numpy as np
 import xarray as xr
 
 from . import contracts  # noqa: F401  (re-exported for downstream submodules)
+from .consolidation import ConsolidationModel
 
 
 # Floor value used when the layer below the deepest in-place layer would be
@@ -90,6 +91,7 @@ class SedflumeTableErosionModel:
         erate_active_per_size: np.ndarray,          # (NSICM, ITBM) cm/s — for active/deposited layers
         size_interpolants_um: np.ndarray,           # (NSICM,) μm — SCND
         taucrit_per_size_pa: np.ndarray,            # (NSICM,) Pa — TAUCRITE
+        consolidation_model: Optional[ConsolidationModel] = None,
     ) -> None:
         tau_levels_pa = np.asarray(tau_levels_pa, dtype=np.float64)
         erate_per_core = np.asarray(erate_per_core, dtype=np.float64)
@@ -153,6 +155,10 @@ class SedflumeTableErosionModel:
         self.k_b = erate_per_core.shape[1]
         self.itbm = itbm
         self.nsicm = nsicm
+        # Optional consolidation model used by the SSM driver to age the
+        # per-(layer, class) τ_ce gate; this class itself does not apply
+        # the gate. Stored as an attribute so the driver can introspect.
+        self.consolidation_model: Optional[ConsolidationModel] = consolidation_model
 
     def erosion_rate(
         self,
@@ -304,6 +310,7 @@ class PowerLawErosionModel:
         actdep_a: np.ndarray,           # (NSICM,) for active/deposited layers
         actdep_n: np.ndarray,
         actdep_max: np.ndarray,
+        consolidation_model: Optional[ConsolidationModel] = None,
     ) -> None:
         ea_per_core = np.asarray(ea_per_core, dtype=np.float64)
         en_per_core = np.asarray(en_per_core, dtype=np.float64)
@@ -347,6 +354,8 @@ class PowerLawErosionModel:
         self.n_cores = ea_per_core.shape[0]
         self.k_b = ea_per_core.shape[1]
         self.nsicm = actdep_a.shape[0]
+        # Optional consolidation model — see SedflumeTableErosionModel.
+        self.consolidation_model: Optional[ConsolidationModel] = consolidation_model
 
     def erosion_rate(
         self,
@@ -423,6 +432,33 @@ class PowerLawErosionModel:
         e_rate_g_cm2_s = np.maximum(e_rate_g_cm2_s, 0.0)
 
         return _to_dataarray_like(e_rate_g_cm2_s, template)
+
+
+def apply_consolidation(
+    tau_ce_layer_class_pa: xr.DataArray,                      # (nface, ssm_layer, ssm_class)
+    layer_age_s: xr.DataArray,                                # (nface, ssm_layer)
+    is_cohesive: np.ndarray,                                  # (n_class,) bool
+    consolidation_model: Optional[ConsolidationModel] = None,
+) -> xr.DataArray:
+    """Apply Sanford-Maa-style consolidation to per-(layer, class) τ_ce.
+
+    For cohesive classes only (``is_cohesive[c] == True``), the per-layer
+    effective τ_ce is replaced by ``consolidation_model.effective_tau_ce(
+    layer_age_s)``. Non-cohesive classes retain the static value.
+
+    If ``consolidation_model`` is ``None`` the input is returned
+    unchanged — opt-in semantics matching SEDZLJ defaults.
+    """
+    if consolidation_model is None:
+        return tau_ce_layer_class_pa
+    # Delegate to consolidation module (handles broadcast + masking).
+    from .consolidation import apply_consolidation_per_class
+    return apply_consolidation_per_class(
+        tau_ce_layer_class_pa=tau_ce_layer_class_pa,
+        layer_age_s=layer_age_s,
+        is_cohesive=is_cohesive,
+        model=consolidation_model,
+    )
 
 
 def apply_vegetation_cohesion(

@@ -35,6 +35,7 @@ from . import (
     armoring,
     bed as bed_mod,
     bedload as bedload_mod,
+    consolidation as consolidation_mod,
     contracts,
     coupling,
     deposition as deposition_mod,
@@ -107,6 +108,41 @@ def _surface_class_fraction(
     return out
 
 
+def _wentworth_sand_mask(d50_um_array: np.ndarray) -> np.ndarray:
+    """Wentworth-classification sand mask: D50 in [62.5, 2000] μm.
+
+    Used to compute the bed-surface sand fraction ``F_s`` consumed by
+    the Wilcock-Crowe (2003) closure. The bound 62.5 μm is the classical
+    silt/sand boundary; 2000 μm is the sand/granule boundary.
+    """
+    d = np.asarray(d50_um_array, dtype="float64")
+    return (d >= 62.5) & (d <= 2000.0)
+
+
+def _surface_geometric_mean_um(
+    surface_class_fraction: np.ndarray,   # (nface, n_class)
+    d50_um_array: np.ndarray,             # (n_class,)
+) -> np.ndarray:
+    """Per-cell surface geometric-mean grain size :math:`d_{sg}` (μm).
+
+    Computed via the standard mass-weighted log-mean
+    :math:`\\log d_{sg} = \\sum_i F_i \\log d_i`, used by Wilcock & Crowe
+    (2003) eq. 4 as the reference grain for the surface Shields stress.
+    Falls back to the unweighted mean when a cell carries zero surface
+    mass (degenerate; the closure will then apply its built-in default).
+    """
+    log_d = np.log(np.maximum(np.asarray(d50_um_array, dtype="float64"), 1.0e-12))
+    fac = np.asarray(surface_class_fraction, dtype="float64")
+    fac_sum = fac.sum(axis=-1, keepdims=True)
+    safe_sum = np.where(fac_sum > 0.0, fac_sum, 1.0)
+    fac_norm = np.where(fac_sum > 0.0, fac / safe_sum, 0.0)
+    log_dsg = (fac_norm * log_d[None, :]).sum(axis=-1)
+    out = np.exp(log_dsg)
+    # Where the surface had zero mass, fall back to the array median.
+    fallback = float(np.exp(log_d.mean()))
+    return np.where(fac_sum.squeeze(-1) > 0.0, out, fallback)
+
+
 def _surface_taucrit_pa(
     layer_taucrit: np.ndarray,        # (nface, n_layer) Pa
     layer_active: np.ndarray,         # (nface, n_layer) int8
@@ -160,6 +196,11 @@ class SSM(Process):
         Extra kwargs forwarded to the shear-driver constructor.
     bedload_solver : str
         ``"standalone" | "riverine" | "off"``.
+    bedload_transport_function : str
+        Name of the bedload transport-rate closure (Stage-1 menu of seven
+        formulas; see :data:`bedload.BEDLOAD_TRANSPORT_FUNCTIONS`).
+        Default ``"van_rijn"`` preserves backwards compatibility with the
+        original SEDZLJ-port behaviour.
     bed_streaming_interval_multiplier : int
         Bed-state Zarr flush every N transport flushes
         (default :data:`contracts.DEFAULT_BED_STREAMING_INTERVAL_MULTIPLIER`).
@@ -187,11 +228,13 @@ class SSM(Process):
         shear_driver: str = "current_only",
         shear_options: dict[str, Any] | None = None,
         bedload_solver: str = "standalone",
+        bedload_transport_function: str = contracts.DEFAULT_BEDLOAD_TRANSPORT_FUNCTION,
         bed_streaming_interval_multiplier: int = contracts.DEFAULT_BED_STREAMING_INTERVAL_MULTIPLIER,
         nsedflume: int | None = None,
         biostabilization_alpha: float = 0.5,
         time_step: timedelta = timedelta(hours=1),
         core_id=None,
+        consolidation_model: consolidation_mod.ConsolidationModel | None = None,
     ) -> None:
         Process.__init__(self, time_step)
         self.registry_classes = (
@@ -203,6 +246,16 @@ class SSM(Process):
         self.shear_driver_name = shear_driver
         self.shear_options = dict(shear_options) if shear_options else {}
         self.bedload_solver_name = bedload_solver
+        # Validate the transport-function name eagerly so misconfigurations
+        # surface at construction time, not deep in the run loop.
+        bl_fn_name = str(bedload_transport_function).strip().lower()
+        if bl_fn_name not in contracts.BEDLOAD_FUNCTIONS:
+            raise ValueError(
+                f"Unknown bedload_transport_function {bedload_transport_function!r}; "
+                f"expected one of {contracts.BEDLOAD_FUNCTIONS}."
+            )
+        self.bedload_transport_function_name = bl_fn_name
+        self._bedload_transport_function = None  # bound in _instantiate_drivers
         self.bed_streaming_interval_multiplier = bed_streaming_interval_multiplier
         # Default nsedflume from the bundle when caller did not override.
         self.nsedflume = (
@@ -210,6 +263,13 @@ class SSM(Process):
             else int(sedflume_bundle.nsedflume)
         )
         self.biostabilization_alpha = float(biostabilization_alpha)
+        # Optional cohesive-bed consolidation model (Sanford-Maa 2001).
+        # When None, behaviour matches SEDZLJ (constant per-layer τ_ce);
+        # when provided, the per-layer τ_ce gate for cohesive classes is
+        # aged via the model's effective_tau_ce(layer_age_s) call.
+        self.consolidation_model: consolidation_mod.ConsolidationModel | None = (
+            consolidation_model
+        )
         self._user_core_id = (
             np.asarray(core_id, dtype=np.int64) if core_id is not None else None
         )
@@ -249,6 +309,8 @@ class SSM(Process):
         Optional keys
         -------------
         ``shear_driver``, ``shear_options``, ``bedload_solver``,
+        ``bedload_transport_function`` (one of
+        :data:`contracts.BEDLOAD_FUNCTIONS`; default ``"van_rijn"``),
         ``nsedflume``, ``biostabilization_alpha``, ``time_step``
         (parsed with :func:`pandas.Timedelta`),
         ``bed_streaming_interval_multiplier``, ``core_map_csv``
@@ -284,12 +346,60 @@ class SSM(Process):
         # core_map_csv resolved against nface in init_process; stash now.
         core_map_csv = config.get("core_map_csv")
 
+        # ------------------------------------------------------------------
+        # Optional consolidation model. Schema:
+        #   consolidation:
+        #     enabled: true
+        #     model: sanford_maa
+        #     tau_ce_zero_pa: 0.10
+        #     tau_ce_inf_pa:  0.50
+        #     consolidation_time_s: 604800
+        # If absent or ``enabled: false``, no consolidation is applied
+        # (SEDZLJ-equivalent behaviour).
+        # ------------------------------------------------------------------
+        consolidation_model = None
+        consol_cfg = config.get("consolidation")
+        if consol_cfg and bool(consol_cfg.get("enabled", False)):
+            model_name = str(consol_cfg.get("model", "sanford_maa")).lower()
+            if model_name == "sanford_maa":
+                consolidation_model = consolidation_mod.SanfordMaaConsolidation(
+                    tau_ce_zero_pa=float(
+                        consol_cfg.get(
+                            "tau_ce_zero_pa",
+                            contracts.DEFAULT_CONSOLIDATION_TAU_CE_ZERO_PA,
+                        )
+                    ),
+                    tau_ce_inf_pa=float(
+                        consol_cfg.get(
+                            "tau_ce_inf_pa",
+                            contracts.DEFAULT_CONSOLIDATION_TAU_CE_INF_PA,
+                        )
+                    ),
+                    consolidation_time_s=float(
+                        consol_cfg.get(
+                            "consolidation_time_s",
+                            contracts.DEFAULT_CONSOLIDATION_TIME_S,
+                        )
+                    ),
+                )
+            else:
+                raise ValueError(
+                    f"Unknown consolidation.model {model_name!r}; "
+                    "expected 'sanford_maa'."
+                )
+
         ssm = SSM(
             sediment_classes=registry,
             sedflume_bundle=bundle,
             shear_driver=str(config.get("shear_driver", "current_only")),
             shear_options=config.get("shear_options"),
             bedload_solver=str(config.get("bedload_solver", "standalone")),
+            bedload_transport_function=str(
+                config.get(
+                    "bedload_transport_function",
+                    contracts.DEFAULT_BEDLOAD_TRANSPORT_FUNCTION,
+                )
+            ),
             bed_streaming_interval_multiplier=int(
                 config.get(
                     "bed_streaming_interval_multiplier",
@@ -299,6 +409,7 @@ class SSM(Process):
             nsedflume=config.get("nsedflume"),
             biostabilization_alpha=float(config.get("biostabilization_alpha", 0.5)),
             time_step=time_step,
+            consolidation_model=consolidation_model,
         )
         ssm._core_map_csv_path = core_map_csv  # consumed in init_process
         return ssm
@@ -492,6 +603,7 @@ class SSM(Process):
                 erate_active_per_size=erate_active,
                 size_interpolants_um=bundle.size_interpolants_um,
                 taucrit_per_size_pa=bundle.taucrit_per_size_pa,
+                consolidation_model=self.consolidation_model,
             )
         elif self.nsedflume == 2:
             if (
@@ -521,11 +633,21 @@ class SSM(Process):
                 actdep_a=actdep_a,
                 actdep_n=actdep_n,
                 actdep_max=actdep_max,
+                consolidation_model=self.consolidation_model,
             )
         else:
             raise ValueError(
                 f"nsedflume must be 1 or 2; got {self.nsedflume}"
             )
+
+        # Bedload transport-rate closure (Stage-1 menu of seven formulas).
+        # The standalone / Riverine solvers default to van Rijn for the
+        # advection velocity; the closure object is exposed on the SSM
+        # instance for downstream code that wants to compute q_b directly
+        # (e.g. mass-budget reporting, future implicit bed-evolution).
+        self._bedload_transport_function = bedload_mod.get_transport_function(
+            self.bedload_transport_function_name
+        )
 
         # Bedload solver ------------------------------------------------
         bl_name = self.bedload_solver_name.lower()
@@ -539,6 +661,7 @@ class SSM(Process):
                     if self.sedflume_bundle.bedload_cutoff_um > 0.0
                     else contracts.DEFAULT_BEDLOAD_CUTOFF_UM
                 ),
+                transport_function=self._bedload_transport_function,
             )
         elif bl_name == "riverine":
             if self._riverine is None:
@@ -554,6 +677,7 @@ class SSM(Process):
                     if self.sedflume_bundle.bedload_cutoff_um > 0.0
                     else contracts.DEFAULT_BEDLOAD_CUTOFF_UM
                 ),
+                transport_function=self._bedload_transport_function,
             )
         else:
             raise ValueError(
@@ -730,8 +854,29 @@ class SSM(Process):
             class_fraction * layer_mass[..., None]
         )                                                  # (nface, n_layers, n_class)
 
-        # Per-class shear gate. Erosion only occurs where τ ≥ τ_ce_eff.
-        gate = (tau_arr[:, None] >= tau_ce_eff)            # (nface, n_class)
+        # Per-(layer, class) effective τ_ce. Default: broadcast the
+        # per-class vegetation-aged value across layers (no consolidation).
+        # When a consolidation model is configured, age-adjust the cohesive
+        # classes per-layer using the current age field.
+        tau_ce_layer_class = np.broadcast_to(
+            tau_ce_eff[:, None, :], (n_face, n_layers, n_classes)
+        ).copy()                                           # (nface, n_layers, n_class)
+        if self.consolidation_model is not None:
+            layer_age = bed.layer_age_at(time)             # (nface, n_layers) DataArray
+            cohesive_mask = np.array(
+                [c.is_cohesive for c in self.registry_classes], dtype=bool
+            )
+            tau_ce_layer_class_da = xr.DataArray(
+                tau_ce_layer_class,
+                dims=(contracts.DIM_NFACE, contracts.DIM_LAYER, contracts.DIM_CLASS),
+            )
+            aged_da = erosion_mod.apply_consolidation(
+                tau_ce_layer_class_da,
+                layer_age,
+                cohesive_mask,
+                consolidation_model=self.consolidation_model,
+            )
+            tau_ce_layer_class = np.asarray(aged_da.values, dtype="float64")
 
         for k in range(n_layers):
             mass_k = layer_mass[:, k]
@@ -758,10 +903,17 @@ class SSM(Process):
             # Bulk mass eroded this step (g/cm²).
             bulk_erode = erate_arr * dt                # (nface,)
 
-            # Fractionate per class via PERSED, gated by τ ≥ τ_ce_eff.
+            # Fractionate per class via PERSED, gated by
+            # τ ≥ τ_ce_eff(layer k, class). The gate is per-layer when
+            # consolidation is in use (so freshly-deposited cohesive
+            # mass on layer 1 may erode at a lower threshold than the
+            # in-place core layers below).
             persed_k = class_fraction[:, k, :]          # (nface, n_class)
+            gate_k = (
+                tau_arr[:, None] >= tau_ce_layer_class[:, k, :]
+            )                                           # (nface, n_class)
             class_eroded = (
-                bulk_erode[:, None] * persed_k * gate.astype("float64")
+                bulk_erode[:, None] * persed_k * gate_k.astype("float64")
             )                                           # (nface, n_class)
 
             # Cap per-class erosion at the available per-class layer mass
@@ -819,6 +971,18 @@ class SSM(Process):
         bed.set_class_fraction_at(time, new_persed)
         bed.set_layer_active_at(time, new_active)
 
+        # Age dilution on deposition: every g/cm² of fresh mass added to
+        # layer 1 enters with age 0, so the mass-weighted layer-1 age is
+        # diluted accordingly. We pass (old_layer1_mass, deposit_total)
+        # so the helper can compute the new mass-weighted age in place.
+        # No-op when deposit_total is zero everywhere.
+        if np.any(deposit_total > 0.0):
+            bed_mod.dilute_layer1_age_on_deposition(
+                bed=bed, t=time,
+                layer1_mass_before=old_layer1_mass,
+                deposited_mass=deposit_total,
+            )
+
         # Per-class flux diagnostics in g/cm²/s.
         erosion_rate = (erosion_per_class / dt).astype("float32")
         deposition_rate = (deposition_arr / dt).astype("float32")
@@ -833,7 +997,7 @@ class SSM(Process):
         self._write_tau_diagnostics(mesh, time, tau_pa, tau_crit_surface)
 
         # --- (9) Bed elevation diagnostics -----------------------------
-        bed_mod.update_bed_elevation(bed, t=time)
+        bed_mod.update_bed_elevation(bed, t=time, dt_seconds=dt)
 
         # --- (10) Bedload step -----------------------------------------
         if self._bedload_solver is not None:
@@ -841,11 +1005,20 @@ class SSM(Process):
             # indexing for time-dimensioned bedload arrays. When given a
             # datetime label we resolve the integer index.
             t_for_bedload = self._resolve_time_index(mesh, time)
+            # Build the surface-composition context for the chosen
+            # transport function. Use the post-erosion / post-deposition
+            # surface fractions (new_persed / new_active) so closures see
+            # the bed state consistent with the rest of this step.
+            surface_pers_post = _surface_class_fraction(new_persed, new_active)
+            registry_context = self._build_bedload_registry_context(
+                surface_class_fraction=surface_pers_post,
+            )
             self._bedload_solver.step(
                 mesh=mesh,
                 time=t_for_bedload,
                 tau_pa=tau_pa,
                 dt_seconds=dt,
+                registry_context=registry_context,
             )
 
         # --- (11) Stage net (E − D) on the mesh for Riverine -----------
@@ -857,6 +1030,60 @@ class SSM(Process):
     # -----------------------------------------------------------------
     # Internal mesh I/O helpers
     # -----------------------------------------------------------------
+
+    def _build_bedload_registry_context(
+        self,
+        surface_class_fraction: np.ndarray,
+    ) -> dict:
+        """Construct the registry-wide ``registry_context`` for the bedload step.
+
+        The dict carries everything the seven shipped transport functions
+        might need from the bed surface:
+
+        ``surface_class_fraction``
+            xr.DataArray of shape ``(nface, ssm_class)`` — per-class mass
+            fractions on the topmost non-absent layer (sums to 1 in cells
+            with surface mass).
+        ``surface_sand_fraction``
+            xr.DataArray of shape ``(nface,)`` — sum of fractions for
+            classes whose D50 falls in the Wentworth sand window
+            [62.5, 2000] μm. Consumed by Wilcock-Crowe (2003) eq. 4.
+        ``surface_geometric_mean_um``
+            xr.DataArray of shape ``(nface,)`` — mass-weighted log-mean
+            grain size on the surface; consumed by Wilcock-Crowe as
+            :math:`d_{sg}` in the hiding/exposure law.
+        ``pe_ph_ratio``
+            Scalar 1.0 — defaults to the uniform-bed limit for
+            Wu-Wang-Jia (2000). A future enhancement will derive
+            ``p_e/p_h`` from the full surface size-distribution per
+            Wu, Wang & Jia (2000) eqs. 3-4.
+        ``registry``
+            The :class:`SedimentClassRegistry` itself, in case a future
+            closure needs the full per-class metadata.
+
+        Closures that don't read these keys ignore them
+        (van Rijn, Engelund-Hansen, Toffaleti, Yang).
+        """
+        d50_array = np.asarray(self.registry_classes.d50_um_array, dtype="float64")
+        sand_mask = _wentworth_sand_mask(d50_array)
+        surface_sand_fraction = surface_class_fraction[:, sand_mask].sum(axis=-1)
+        d_sg_um = _surface_geometric_mean_um(surface_class_fraction, d50_array)
+        return {
+            "surface_class_fraction": xr.DataArray(
+                surface_class_fraction.astype("float64"),
+                dims=(contracts.DIM_NFACE, contracts.DIM_CLASS),
+            ),
+            "surface_sand_fraction": xr.DataArray(
+                surface_sand_fraction.astype("float64"),
+                dims=(contracts.DIM_NFACE,),
+            ),
+            "surface_geometric_mean_um": xr.DataArray(
+                d_sg_um.astype("float64"),
+                dims=(contracts.DIM_NFACE,),
+            ),
+            "pe_ph_ratio": 1.0,
+            "registry": self.registry_classes,
+        }
 
     def _read_previous_tau(self, mesh: xr.Dataset, time) -> xr.DataArray:
         """Return τ at the previous time slot, or zeros at t=0."""

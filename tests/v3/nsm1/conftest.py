@@ -55,20 +55,33 @@ from clearwater_modules_v3.parameters.balgae import DEFAULTS as BALGAE_DEFAULTS
 # ---------------------------------------------------------------------------
 # Stoichiometric ratios (sourced from parameter library)
 # ---------------------------------------------------------------------------
-# Floating algae per-Chla mass ratios (mg-X / ug-Chla) from algae.DEFAULTS:
-#   AWn  -- N per Chla
-#   AWp  -- P per Chla
-#   AWc  -- C per Chla
-#   AWd  -- dry weight per Chla (used to convert biomass back to org-X)
-# Benthic algae are reported in g-D / m^2 with BWn / BWp / BWc per g-D, so
-# the conversion to mg-X is BWn * Ab (g-D/m^2) * 1000 (mg/g).
+# Floating algae per-Chla mass ratios (mg-X / ug-Chla):
+#   The v3 NSM1 audit (Phase 9.B) found that ``AWn`` / ``AWp`` / ``AWc``
+#   are *raw stoichiometric weights* (not per-Chla ratios on their own).
+#   The actual per-Chla ratio is ``AWx / AWa``, where ``AWa`` is the
+#   algal-Chla weight (1000 ug-Chla per stoichiometric unit). Mirrors
+#   the v1 helper definitions ``rna = AWn/AWa``, ``rpa = AWp/AWa``,
+#   ``rca = AWc/AWa`` (``processes.py`` lines 308-348).
+#
+# Benthic algae per-dry-weight ratios (mg-X / g-D):
+#   Same correction applies. ``BWn`` / ``BWp`` / ``BWc`` are raw weights;
+#   the per-dry-weight ratio is ``BWx / BWd`` (``BWd = 100 mg-D per
+#   stoichiometric unit``). Mirrors v1 ``rnb = BWn/BWd``, ``rpb = BWp/BWd``,
+#   ``rcb = BWc/BWd``.
+#
+# Pre-Phase-9.D fix these constants used the raw weights directly,
+# overstating algal-N / algal-P / algal-C by a factor of AWa=1000 (or
+# BWd=100 for benthic). The bug was masked in closed-system Tier 1
+# tests because both sides of the conservation equation carried the
+# same factor; the active-kinetics Tier-1.5 test (Phase 9.D) exposed
+# it.
 
-AP_N_PER_CHLA: float = float(ALGAE_DEFAULTS["AWn"])     # mg-N per ug-Chla
-AP_P_PER_CHLA: float = float(ALGAE_DEFAULTS["AWp"])     # mg-P per ug-Chla
-AP_C_PER_CHLA: float = float(ALGAE_DEFAULTS["AWc"])     # mg-C per ug-Chla
-AB_N_PER_GD: float = float(BALGAE_DEFAULTS["BWn"])      # mg-N per g-D
-AB_P_PER_GD: float = float(BALGAE_DEFAULTS["BWp"])      # mg-P per g-D
-AB_C_PER_GD: float = float(BALGAE_DEFAULTS["BWc"])      # mg-C per g-D
+AP_N_PER_CHLA: float = float(ALGAE_DEFAULTS["AWn"]) / float(ALGAE_DEFAULTS["AWa"])  # mg-N per ug-Chla
+AP_P_PER_CHLA: float = float(ALGAE_DEFAULTS["AWp"]) / float(ALGAE_DEFAULTS["AWa"])  # mg-P per ug-Chla
+AP_C_PER_CHLA: float = float(ALGAE_DEFAULTS["AWc"]) / float(ALGAE_DEFAULTS["AWa"])  # mg-C per ug-Chla
+AB_N_PER_GD: float = float(BALGAE_DEFAULTS["BWn"]) / float(BALGAE_DEFAULTS["BWd"])  # mg-N per g-D
+AB_P_PER_GD: float = float(BALGAE_DEFAULTS["BWp"]) / float(BALGAE_DEFAULTS["BWd"])  # mg-P per g-D
+AB_C_PER_GD: float = float(BALGAE_DEFAULTS["BWc"]) / float(BALGAE_DEFAULTS["BWd"])  # mg-C per g-D
 
 # C:N (Redfield-ish) used for converting POM / CBOD to N-equivalents in
 # Tier 1 closed-system tests. v3 NSM1 sets per-process ratios; Phase 3+

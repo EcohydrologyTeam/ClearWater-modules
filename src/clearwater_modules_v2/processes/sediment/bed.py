@@ -138,6 +138,18 @@ class BedState:
     def set_layer_thickness_at(self, t: TimeKey, value) -> None:
         _assign_time(self.mesh, contracts.VAR_BED_LAYER_THICKNESS, t, value)
 
+    def layer_age_at(self, t: TimeKey) -> xr.DataArray:
+        """Per-layer mean age (s) at time ``t`` — dims (nface, ssm_layer).
+
+        Used by the consolidation model to compute the effective τ_ce.
+        Older layers have larger ages and (for cohesive sediment) higher
+        effective critical shear stress.
+        """
+        return _select_time(self.mesh[contracts.VAR_BED_LAYER_AGE], t)
+
+    def set_layer_age_at(self, t: TimeKey, value) -> None:
+        _assign_time(self.mesh, contracts.VAR_BED_LAYER_AGE, t, value)
+
     def bedload_mass_at(self, t: TimeKey) -> xr.DataArray:
         """CBL at time ``t`` — dims (nface, ssm_class), g/cm²."""
         return _select_time(self.mesh[contracts.VAR_BEDLOAD_MASS], t)
@@ -396,6 +408,12 @@ def reorganize_active_layer(
     layer_taucrit = np.asarray(
         bed.layer_taucrit_at(t).values, dtype="float64"
     )                                                       # (nface, n_layers) Pa
+    # Per-layer age (s) — for consolidation. May be all-zero if the
+    # consolidation feature isn't in use; the bookkeeping is cheap so
+    # we update it unconditionally.
+    layer_age = np.asarray(
+        bed.layer_age_at(t).values, dtype="float64"
+    ).copy()                                                # (nface, n_layers)
 
     tau = np.asarray(tau_pa.values, dtype="float64")            # (nface,)
     tau_crit = np.asarray(tau_crit_pa.values, dtype="float64")  # (nface,)
@@ -419,6 +437,8 @@ def reorganize_active_layer(
     p1 = class_fraction[:, 0, :]   # (nface, n_class)
     m2 = layer_mass[:, 1]
     p2 = class_fraction[:, 1, :]
+    a1 = layer_age[:, 0]           # (nface,) — layer-1 mean age (s)
+    a2 = layer_age[:, 1]           # (nface,) — layer-2 mean age (s)
 
     # ------------------------------------------------------------------
     # Branch (a): net deposition — layer 1 has more mass than T_act needs.
@@ -436,9 +456,17 @@ def reorganize_active_layer(
         safe_denom = np.where(denom > 0.0, denom, 1.0)
         new_p2 = (p2 * m2[:, None] + p1 * excess[:, None]) / safe_denom
 
+        # Age inheritance for layer 2: mass-weighted blend of its
+        # existing age and the (younger) excess transferred from
+        # layer 1. Layer 1's mean age is unchanged (uniform-aged
+        # mass is removed from the top).
+        safe_denom_age = np.where(new_m2 > 0.0, new_m2, 1.0)
+        new_a2 = (a2 * m2 + a1 * excess) / safe_denom_age
+
         layer_mass[:, 1] = np.where(branch_a, new_m2, m2)
         layer_mass[:, 0] = np.where(branch_a, t_act, m1)
         class_fraction[:, 1, :] = np.where(branch_a[:, None], new_p2, p2)
+        layer_age[:, 1] = np.where(branch_a, new_a2, a2)
         # Layer 2 is "active/deposited" once it has any mass.
         layer_active[:, 1] = np.where(
             branch_a & (new_m2 > 0.0), LAYER_ACTIVE, layer_active[:, 1]
@@ -447,6 +475,7 @@ def reorganize_active_layer(
     # Refresh views after branch (a).
     m1 = layer_mass[:, 0]
     p1 = class_fraction[:, 0, :]
+    a1 = layer_age[:, 0]
 
     # ------------------------------------------------------------------
     # Branches (b) and (c): erosion regime. Need SLLN — index of next
@@ -466,6 +495,7 @@ def reorganize_active_layer(
         class_fraction[rows, safe_slln, :],
         np.zeros_like(class_fraction[rows, 0, :]),
     )
+    a_slln = np.where(has_slln, layer_age[rows, safe_slln], 0.0)
 
     erosion_regime = (m1 < t_act) & has_slln & (tau > tau_slln) & (t_act > 0.0)
 
@@ -480,6 +510,13 @@ def reorganize_active_layer(
         new_p1_b = (p1 * m1[:, None] + p_slln * deficit[:, None]) / denom_b
         new_m_slln = m_slln - deficit
 
+        # Age inheritance for layer 1: mass-weighted blend of its
+        # existing age and the (older) age of the donor SLLN. SLLN's
+        # mean age is preserved (uniform-aged mass is removed from
+        # below).
+        denom_b_age = np.where(t_act > 0.0, t_act, 1.0)
+        new_a1_b = (a1 * m1 + a_slln * deficit) / denom_b_age
+
         # Update SLLN mass.
         layer_mass[rows, safe_slln] = np.where(
             branch_b, new_m_slln, layer_mass[rows, safe_slln]
@@ -489,6 +526,7 @@ def reorganize_active_layer(
         class_fraction[:, 0, :] = np.where(
             branch_b[:, None], new_p1_b, class_fraction[:, 0, :]
         )
+        layer_age[:, 0] = np.where(branch_b, new_a1_b, layer_age[:, 0])
 
     if np.any(branch_c):
         # Mass-weighted blend of (layer 1, SLLN) into layer 1.
@@ -496,10 +534,16 @@ def reorganize_active_layer(
         denom_c = np.where(new_m1 > 0.0, new_m1, 1.0)[:, None]
         new_p1_c = (p1 * m1[:, None] + p_slln * m_slln[:, None]) / denom_c
 
+        # Age inheritance for layer 1: mass-weighted blend of its
+        # existing age and SLLN's age (now fully merged into layer 1).
+        denom_c_age = np.where(new_m1 > 0.0, new_m1, 1.0)
+        new_a1_c = (a1 * m1 + a_slln * m_slln) / denom_c_age
+
         class_fraction[:, 0, :] = np.where(
             branch_c[:, None], new_p1_c, class_fraction[:, 0, :]
         )
         layer_mass[:, 0] = np.where(branch_c, new_m1, layer_mass[:, 0])
+        layer_age[:, 0] = np.where(branch_c, new_a1_c, layer_age[:, 0])
         # Zero out SLLN.
         layer_mass[rows, safe_slln] = np.where(
             branch_c, 0.0, layer_mass[rows, safe_slln]
@@ -514,6 +558,10 @@ def reorganize_active_layer(
             branch_c[:, None],
             np.zeros_like(class_fraction[rows, safe_slln, :]),
             class_fraction[rows, safe_slln, :],
+        )
+        # Also reset the now-absent SLLN's age.
+        layer_age[rows, safe_slln] = np.where(
+            branch_c, 0.0, layer_age[rows, safe_slln]
         )
 
     # Mass-conservation invariant (development-time check).
@@ -534,6 +582,44 @@ def reorganize_active_layer(
     bed.set_layer_mass_at(t, layer_mass)
     bed.set_class_fraction_at(t, class_fraction)
     bed.set_layer_active_at(t, layer_active)
+    bed.set_layer_age_at(t, layer_age)
+
+
+# ---------------------------------------------------------------------------
+# Age dilution on deposition (used by ssm.run after deposition is added)
+# ---------------------------------------------------------------------------
+
+
+def dilute_layer1_age_on_deposition(
+    bed: BedState,
+    t: TimeKey,
+    layer1_mass_before: np.ndarray,        # (nface,) g/cm^2 — before deposition added
+    deposited_mass: np.ndarray,            # (nface,) g/cm^2 — Δm added to layer 1
+) -> None:
+    """Update layer-1 age in place via mass-weighted dilution by fresh deposit.
+
+    .. math::
+
+        t_{1,\\rm new} = \\frac{t_1 \\, m_1}{m_1 + \\Delta m}
+
+    The new mass enters with age 0; the new layer-mean age is the
+    existing age weighted by the existing-mass fraction of the total.
+    This is the simplest and most common dilution rule in the
+    depth-averaged consolidation literature (Sanford & Maa 2001).
+
+    Where there is no existing mass and no deposit, the layer age is
+    left at its current value (typically zero).
+    """
+    age = np.asarray(bed.layer_age_at(t).values, dtype="float64").copy()
+    m1 = np.asarray(layer1_mass_before, dtype="float64")
+    dm = np.asarray(deposited_mass, dtype="float64")
+    new_m1 = m1 + dm
+    # Where new_m1 == 0, no mass present at all → leave age unchanged
+    # (still 0). Otherwise dilute by the mass-weighted formula.
+    safe = np.where(new_m1 > 0.0, new_m1, 1.0)
+    new_a1 = age[:, 0] * m1 / safe
+    age[:, 0] = np.where(new_m1 > 0.0, new_a1, age[:, 0])
+    bed.set_layer_age_at(t, age)
 
 
 # ---------------------------------------------------------------------------
@@ -541,7 +627,7 @@ def reorganize_active_layer(
 # ---------------------------------------------------------------------------
 
 
-def update_bed_elevation(bed: BedState, t: TimeKey) -> None:
+def update_bed_elevation(bed: BedState, t: TimeKey, dt_seconds: float = 0.0) -> None:
     """Recompute bed thickness, total thickness, and bed-change diagnostics.
 
     Per layer:
@@ -553,6 +639,16 @@ def update_bed_elevation(bed: BedState, t: TimeKey) -> None:
     is the running sum from t=0.
 
     All quantities are written back to the mesh dataset in place.
+
+    Parameters
+    ----------
+    bed : BedState
+    t : TimeKey
+        Time slice to update.
+    dt_seconds : float, optional
+        SSM time step (s). When ``> 0``, the per-layer age field is
+        advanced by ``dt`` for every layer that currently holds mass.
+        Defaults to ``0.0`` for backward compatibility (no aging).
     """
     layer_mass = np.asarray(bed.layer_mass_at(t).values, dtype="float64")
     bulk_density = np.asarray(bed.layer_bulk_density.values, dtype="float64")
@@ -601,3 +697,15 @@ def update_bed_elevation(bed: BedState, t: TimeKey) -> None:
 
     _assign_time(bed.mesh, contracts.VAR_BED_CHANGE, t, bed_change)
     _assign_time(bed.mesh, contracts.VAR_BED_CUMULATIVE_CHANGE, t, cumulative)
+
+    # ------------------------------------------------------------------
+    # Advance layer age by dt for every layer that currently holds mass.
+    # Empty layers stay at age 0 (no consolidation clock for ghost mass).
+    # ------------------------------------------------------------------
+    if dt_seconds > 0.0:
+        age = np.asarray(bed.layer_age_at(t).values, dtype="float64").copy()
+        has_mass = layer_mass > 0.0
+        age = np.where(has_mass, age + float(dt_seconds), age)
+        # Empty layers: pin to zero (covers any leftover float drift).
+        age = np.where(has_mass, age, 0.0)
+        bed.set_layer_age_at(t, age)

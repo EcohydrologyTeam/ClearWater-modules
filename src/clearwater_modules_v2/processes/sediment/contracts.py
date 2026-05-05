@@ -66,6 +66,7 @@ VAR_BED_LAYER_ACTIVE: Final[str] = "ssm_bed_layer_active"                   # (t
 VAR_BED_LAYER_TAUCRIT: Final[str] = "ssm_bed_layer_taucrit"                 # (time, nface, ssm_layer)  Pa  -- TAUCOR
 VAR_BED_LAYER_BULK_DENSITY: Final[str] = "ssm_bed_layer_bulk_density"       # (nface, ssm_layer)        g/cm^3 -- BULKDENS (constant per SEDZLJ)
 VAR_BED_LAYER_THICKNESS: Final[str] = "ssm_bed_layer_thickness"             # (time, nface, ssm_layer)  m  -- HBED
+VAR_BED_LAYER_AGE: Final[str] = "ssm_bed_layer_age"                         # (time, nface, ssm_layer)  s  -- consolidation age
 
 # Per-cell aggregate bed state
 VAR_BED_TOTAL_THICKNESS: Final[str] = "ssm_bed_total_thickness"             # (time, nface) m
@@ -149,6 +150,8 @@ BED_STATE_SPECS: Final[tuple[VarSpec, ...]] = (
             "float32", "g cm-3", "Per-layer dry bulk density (BULKDENS); SEDZLJ holds this constant", "bed_state"),
     VarSpec(VAR_BED_LAYER_THICKNESS, (DIM_TIME, DIM_NFACE, DIM_LAYER),
             "float32", "m", "Per-layer thickness (HBED) = 0.01 * TSED / BULKDENS", "bed_state"),
+    VarSpec(VAR_BED_LAYER_AGE, (DIM_TIME, DIM_NFACE, DIM_LAYER),
+            "float32", "s", "Per-layer mean age since deposition (for consolidation τ_ce(age))", "bed_state"),
     VarSpec(VAR_BED_TOTAL_THICKNESS, (DIM_TIME, DIM_NFACE),
             "float32", "m", "Total bed thickness (sum over layers)", "bed_state"),
     VarSpec(VAR_BED_D50_SURFACE, (DIM_TIME, DIM_NFACE),
@@ -223,3 +226,49 @@ DEFAULT_TACTM: Final[float] = 2.0
 #: induced oscillations near abrupt velocity changes; mirrors SEDZLJ_SHEAR
 #: behaviour at s_shear.f90:315.
 DEFAULT_SHEAR_GROWTH_LIMIT: Final[float] = 0.10
+
+# ---------------------------------------------------------------------------
+# Default consolidation calibration (Sanford & Maa 2001, single-mode)
+# ---------------------------------------------------------------------------
+
+#: Default freshly-deposited cohesive critical shear stress (Pa). Lower
+#: bound of the τ_ce(age) envelope. The Sanford-Maa 2001 calibration on
+#: estuarine mud yields τ_ce,0 in the range 0.05–0.15 Pa; we pick a
+#: middle value as a conservative default.
+DEFAULT_CONSOLIDATION_TAU_CE_ZERO_PA: Final[float] = 0.10
+
+#: Default fully-consolidated cohesive critical shear stress (Pa). Upper
+#: bound of the envelope; 5× the freshly-deposited value, consistent
+#: with Sanford & Maa (2001) Fig. 4 measurements on Chesapeake Bay
+#: cohesive sediment.
+DEFAULT_CONSOLIDATION_TAU_CE_INF_PA: Final[float] = 0.50
+
+#: Default consolidation time scale (s). Seven days, the typical
+#: e-folding time observed in flume consolidation experiments on
+#: estuarine mud (Mehta & Partheniades 1975; Sanford & Maa 2001).
+DEFAULT_CONSOLIDATION_TIME_S: Final[float] = 7.0 * 86400.0
+
+
+# ---------------------------------------------------------------------------
+# Bedload transport-function selection
+# ---------------------------------------------------------------------------
+
+#: Default name for the pluggable bedload transport-function closure
+#: (selected via SSM YAML ``sediment.bedload.transport_function``). The
+#: actual class registry lives in :data:`bedload.BEDLOAD_TRANSPORT_FUNCTIONS`;
+#: this constant just pins the default string for backwards compatibility.
+DEFAULT_BEDLOAD_TRANSPORT_FUNCTION: Final[str] = "van_rijn"
+
+#: Names of the bedload transport functions shipped with SSM. Mirrors the
+#: keys of :data:`bedload.BEDLOAD_TRANSPORT_FUNCTIONS`; duplicated here so
+#: callers can validate config at parse time without importing the bedload
+#: module (which would create a circular import).
+BEDLOAD_FUNCTIONS: Final[tuple[str, ...]] = (
+    "van_rijn",
+    "wilcock_crowe",
+    "parker",
+    "yang",
+    "wu",
+    "engelund_hansen",
+    "toffaleti",
+)

@@ -600,3 +600,155 @@ class TestUpdateBedElevation:
             .values
         )
         np.testing.assert_allclose(cum, expected, rtol=1e-5, atol=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# Per-layer age tracking (consolidation prerequisite)
+# ---------------------------------------------------------------------------
+
+
+class TestLayerAgeTracking:
+    """Bed-side bookkeeping for the consolidation feature.
+
+    Detailed semantics of the τ_ce(age) function live in
+    :mod:`tests.sediment.test_consolidation`; here we just verify the
+    bed.py mechanics: age field is allocated, accessor round-trips,
+    update_bed_elevation advances by dt, branches a/b/c on
+    reorganize_active_layer propagate ages correctly.
+    """
+
+    def test_age_field_allocated_and_zero_at_t0(self, initialized_bed):
+        age = initialized_bed.layer_age_at(0).values
+        assert age.shape == (3, 5)
+        np.testing.assert_allclose(age, 0.0, atol=1e-12)
+
+    def test_set_and_read_layer_age_round_trips(self, initialized_bed):
+        n_face = initialized_bed.mesh.sizes[contracts.DIM_NFACE]
+        n_layers = initialized_bed.n_layers
+        new_age = np.arange(n_face * n_layers, dtype="float64").reshape(
+            n_face, n_layers
+        )
+        initialized_bed.set_layer_age_at(0, new_age)
+        round_trip = initialized_bed.layer_age_at(0).values
+        np.testing.assert_allclose(round_trip, new_age.astype("float32"), rtol=1e-6)
+
+    def test_update_bed_elevation_advances_age_with_dt(self, initialized_bed):
+        # Seed nontrivial ages on the layers that hold mass.
+        n_face = initialized_bed.mesh.sizes[contracts.DIM_NFACE]
+        n_layers = initialized_bed.n_layers
+        seed = np.full((n_face, n_layers), 100.0)
+        # Cell 2 has zero mass on layers 3 and 4 (per fixture); their
+        # age should pin to zero after the call.
+        initialized_bed.set_layer_age_at(0, seed)
+
+        bed_mod.update_bed_elevation(initialized_bed, t=0, dt_seconds=600.0)
+
+        age = initialized_bed.layer_age_at(0).values
+        # Cells 0 and 1 hold mass on every layer → all ages bumped by 600.
+        np.testing.assert_allclose(age[0], 700.0, atol=1e-4)
+        np.testing.assert_allclose(age[1], 700.0, atol=1e-4)
+        # Cell 2 layers 3/4 absent → age pinned to 0.
+        assert age[2, 3] == 0.0
+        assert age[2, 4] == 0.0
+        # Cell 2 layers 0/1/2 hold mass → bumped.
+        np.testing.assert_allclose(age[2, :3], 700.0, atol=1e-4)
+
+    def test_dilute_layer1_age_on_deposition_mass_weighted(self, small_registry):
+        """Standalone helper: m1=1, age=200; deposit Δm=3 → new age = 200/4 = 50."""
+        # Build a simple 1-cell, 2-layer bed.
+        layer_mass = np.array([[1.0, 0.0]])
+        pers = np.zeros((1, 2, 2))
+        pers[..., 0] = 1.0
+        bd = np.full((1, 2), 1.6)
+        active = np.array(
+            [[bed_mod.LAYER_ACTIVE, bed_mod.LAYER_ABSENT]], dtype="int8"
+        )
+        taucor = np.full((1, 2), 0.5)
+
+        mesh = xr.Dataset(
+            coords={
+                contracts.DIM_TIME: np.arange(2, dtype="int32"),
+                contracts.DIM_NFACE: np.arange(1, dtype="int32"),
+            }
+        )
+        bed = bed_mod.initialize_bed_state(
+            mesh=mesh,
+            registry=small_registry,
+            n_layers=2,
+            initial_layer_mass=layer_mass,
+            initial_class_fraction=pers,
+            bulk_density=bd,
+            initial_layer_active=active,
+            taucor_initial=taucor,
+        )
+        bed.set_layer_age_at(0, np.array([[200.0, 0.0]]))
+
+        bed_mod.dilute_layer1_age_on_deposition(
+            bed, t=0,
+            layer1_mass_before=np.array([1.0]),
+            deposited_mass=np.array([3.0]),
+        )
+        np.testing.assert_allclose(
+            bed.layer_age_at(0).values[0, 0], 50.0, rtol=1e-6
+        )
+
+    def test_age_inheritance_branch_b_borrow(self, small_registry):
+        """Borrow from layer 2 with different ages → mass-weighted layer-1 age."""
+        layer_mass = np.array([0.1, 1.0, 1.0, 0.0, 0.0])
+        class_fraction = np.array(
+            [
+                [0.8, 0.2],
+                [0.2, 0.8],
+                [0.5, 0.5],
+                [0.0, 0.0],
+                [0.0, 0.0],
+            ]
+        )
+        bulk_density = np.array([1.6] * 5)
+        layer_active = np.array(
+            [
+                bed_mod.LAYER_ACTIVE,
+                bed_mod.LAYER_ACTIVE,
+                bed_mod.LAYER_IN_PLACE,
+                bed_mod.LAYER_ABSENT,
+                bed_mod.LAYER_ABSENT,
+            ],
+            dtype="int8",
+        )
+        taucrit = np.array([0.5, 0.3, 0.5, 1.0, 1.0])
+
+        bed = _make_single_cell_bed(
+            layer_mass, class_fraction, bulk_density, layer_active, taucrit, small_registry
+        )
+        # Layer 1 age 80 s; layer 2 age 7000 s. Borrow 0.4 g/cm² from layer 2.
+        # New layer-1 age = (80 × 0.1 + 7000 × 0.4) / 0.5 = (8 + 2800) / 0.5 = 5616.
+        bed.set_layer_age_at(0, np.array([[80.0, 7000.0, 0.0, 0.0, 0.0]]))
+
+        tau = xr.DataArray(np.array([0.6]), dims=(contracts.DIM_NFACE,))
+        tau_crit = xr.DataArray(np.array([0.6]), dims=(contracts.DIM_NFACE,))
+        d50_arr = xr.DataArray(np.array([1562.5]), dims=(contracts.DIM_NFACE,))
+        bd1 = xr.DataArray(np.array([1.6]), dims=(contracts.DIM_NFACE,))
+
+        bed_mod.reorganize_active_layer(
+            bed=bed, t=0,
+            tau_pa=tau, tau_crit_pa=tau_crit,
+            d50_surface_um=d50_arr, bulk_density_layer1=bd1,
+            tactm=2.0,
+        )
+
+        new_age = bed.layer_age_at(0).values[0, :]
+        assert new_age[0] == pytest.approx(5616.0, rel=1e-5)
+        assert new_age[1] == pytest.approx(7000.0, rel=1e-5)
+
+    def test_update_bed_elevation_dt_zero_is_no_op_for_age(self, initialized_bed):
+        # Backward-compat: omitting dt_seconds (or passing 0) leaves age alone.
+        n_face = initialized_bed.mesh.sizes[contracts.DIM_NFACE]
+        n_layers = initialized_bed.n_layers
+        seed = np.full((n_face, n_layers), 42.0)
+        initialized_bed.set_layer_age_at(0, seed)
+
+        bed_mod.update_bed_elevation(initialized_bed, t=0)  # default dt=0
+
+        np.testing.assert_allclose(
+            initialized_bed.layer_age_at(0).values, seed.astype("float32"), atol=1e-4
+        )
