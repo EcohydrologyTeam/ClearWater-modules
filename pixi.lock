@@ -1472,15 +1472,17 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.2-h25fd6f3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-ng-2.3.3-hceb46e0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
+      - pypi: https://files.pythonhosted.org/packages/36/fd/eb9606cda66a3d9583ff6231dafe2c45c1865506b4529b5d170665124f8e/cf_xarray-0.11.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/88/39/799be3f2f0f38cc727ee3b4f1445fe6d5e4133064ec2e4115069418a5bb6/cloudpickle-3.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4a/f3/00bb1e867fba351e2d784170955713bee200c43ea306c59f30bd7e748192/dask-2026.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d5/0c/043d5e551459da400957a1395e0febbf771446ff34291afcbe3d8be2a279/fsspec-2026.4.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/ed/2f/1046d464ad1db29a4f6c70ba4e19b39baa8a6542c719eaa4e765108f07f1/hdf5plugin-6.0.0-py3-none-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/db/bc/83e112abc66cd466c6b83f99118035867cecd41802f8d044638aa78a106e/locket-1.0.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/71/e7/40fb618334dcdf7c5a316c0e7343c5cd82d3d866edc100d98e29bc945ecd/partd-1.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d4/24/a372aaf5c9b7208e7112038812994107bc65a84cd00e0354a88c2c77a617/pytest-9.0.3-py3-none-any.whl
-      - pypi: ../ClearWater-Riverine-streaming
       - pypi: ../ClearWater-data
+      - pypi: ../ClearWater-riverine
       - pypi: ./
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/_openmp_mutex-4.5-7_kmp_llvm.conda
@@ -1806,15 +1808,17 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.2-h8088a28_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-hed4e4f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
+      - pypi: https://files.pythonhosted.org/packages/36/fd/eb9606cda66a3d9583ff6231dafe2c45c1865506b4529b5d170665124f8e/cf_xarray-0.11.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/88/39/799be3f2f0f38cc727ee3b4f1445fe6d5e4133064ec2e4115069418a5bb6/cloudpickle-3.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4a/f3/00bb1e867fba351e2d784170955713bee200c43ea306c59f30bd7e748192/dask-2026.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d5/0c/043d5e551459da400957a1395e0febbf771446ff34291afcbe3d8be2a279/fsspec-2026.4.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/9c/13/15017f6210bfea843316d62f0f121e364e17bb129444ed803a256a213036/hdf5plugin-6.0.0-py3-none-macosx_10_13_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/db/bc/83e112abc66cd466c6b83f99118035867cecd41802f8d044638aa78a106e/locket-1.0.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/71/e7/40fb618334dcdf7c5a316c0e7343c5cd82d3d866edc100d98e29bc945ecd/partd-1.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d4/24/a372aaf5c9b7208e7112038812994107bc65a84cd00e0354a88c2c77a617/pytest-9.0.3-py3-none-any.whl
-      - pypi: ../ClearWater-Riverine-streaming
       - pypi: ../ClearWater-data
+      - pypi: ../ClearWater-riverine
       - pypi: ./
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/_openmp_mutex-4.5-20_gnu.conda
@@ -2157,15 +2161,17 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.2-hfd05255_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
+      - pypi: https://files.pythonhosted.org/packages/36/fd/eb9606cda66a3d9583ff6231dafe2c45c1865506b4529b5d170665124f8e/cf_xarray-0.11.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/88/39/799be3f2f0f38cc727ee3b4f1445fe6d5e4133064ec2e4115069418a5bb6/cloudpickle-3.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6f/3a/2121294941227c548d4b5f897a8a1b5f4c44a58f5437f239e6b86511d78e/dask-2025.12.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/c9/97cc5aae1648dcb851958a3ddf73ccd7dbe5650d95203ecb4d7720b4cdbf/fsspec-2026.1.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/61/b3/75478bdfee85533777de4204373f563aa7a1074355300743c3aedc33cac5/hdf5plugin-6.0.0-py3-none-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/db/bc/83e112abc66cd466c6b83f99118035867cecd41802f8d044638aa78a106e/locket-1.0.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/71/e7/40fb618334dcdf7c5a316c0e7343c5cd82d3d866edc100d98e29bc945ecd/partd-1.4.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3b/ab/b3226f0bd7cdcf710fbede2b3548584366da3b19b5021e74f5bde2a8fa3f/pytest-9.0.2-py3-none-any.whl
-      - pypi: ../ClearWater-Riverine-streaming
       - pypi: ../ClearWater-data
+      - pypi: ../ClearWater-riverine
       - pypi: ./
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
@@ -3289,6 +3295,19 @@ packages:
   - pkg:pypi/certifi?source=compressed-mapping
   size: 135656
   timestamp: 1776866680878
+- pypi: https://files.pythonhosted.org/packages/36/fd/eb9606cda66a3d9583ff6231dafe2c45c1865506b4529b5d170665124f8e/cf_xarray-0.11.0-py3-none-any.whl
+  name: cf-xarray
+  version: 0.11.0
+  sha256: 25c44b98c59236ca048d2a084e8846a7c341eceb22467772b807ac11f49463f3
+  requires_dist:
+  - xarray>=2024.7.0
+  - matplotlib ; extra == 'all'
+  - pint>=0.18,!=0.24.0 ; extra == 'all'
+  - shapely ; extra == 'all'
+  - regex ; extra == 'all'
+  - rich ; extra == 'all'
+  - pooch ; extra == 'all'
+  requires_python: '>=3.11'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/cffi-2.0.0-py314h4a8dc5f_1.conda
   sha256: c6339858a0aaf5d939e00d345c98b99e4558f285942b27232ac098ad17ac7f8e
   md5: cf45f4278afd6f4e6d03eda0f435d527
@@ -3408,7 +3427,7 @@ packages:
 - pypi: ./
   name: clearwater-modules
   version: 0.1.0
-  sha256: ca52bdfdc1c10374941bbca5845bde2c8b02fb6fee174a53db63d0c5bf2e4356
+  sha256: b04baff1347483a66016927b6603b82dc2a58dc5b96de71c02c5398abee1a999
   requires_dist:
   - dask
   - jupyterlab
@@ -3416,10 +3435,26 @@ packages:
   - pyyaml
   - xarray
   requires_python: '>=3.11'
-- pypi: ../ClearWater-Riverine-streaming
+- pypi: ../ClearWater-riverine
   name: clearwater-riverine
-  version: 0.6.0
-  sha256: 81730d9dd05cdf3bf11c289d4b5ccebf2ccb507074619ad1678bfc4c2f78a8f8
+  version: 0.8.0a0
+  sha256: e46f572c3d01f0f1c988487f33d7166db1f2b18032df2af005f8ff9a557c66f6
+  requires_dist:
+  - cf-xarray
+  - dask
+  - geopandas
+  - h5py
+  - hdf5plugin
+  - holoviews
+  - matplotlib
+  - numpy
+  - pandas
+  - pyyaml
+  - scipy
+  - shapely
+  - xarray
+  - zarr
+  requires_python: '>=3.11'
 - conda: https://conda.anaconda.org/conda-forge/noarch/click-8.3.3-pyh6dadd2b_0.conda
   sha256: acdcff82819e9c20719f8e6b6f69d72109ee056445a9995417dafe15a50d07fa
   md5: 8f03c7a39b01ebc57b647f7b48bbeed9
@@ -4730,6 +4765,66 @@ packages:
   purls: []
   size: 2564561
   timestamp: 1775244102272
+- pypi: https://files.pythonhosted.org/packages/61/b3/75478bdfee85533777de4204373f563aa7a1074355300743c3aedc33cac5/hdf5plugin-6.0.0-py3-none-win_amd64.whl
+  name: hdf5plugin
+  version: 6.0.0
+  sha256: 99866f90be1ceac5519e6e038669564be326c233618d59ba1f38c9dd8c32099e
+  requires_dist:
+  - h5py>=3.0.0
+  - ipython ; extra == 'doc'
+  - nbsphinx ; extra == 'doc'
+  - sphinx ; extra == 'doc'
+  - sphinx-autodoc-typehints ; extra == 'doc'
+  - sphinx-rtd-theme ; extra == 'doc'
+  - numpy<2 ; python_full_version == '3.9.*' and extra == 'test'
+  - blosc2>=2.5.1 ; extra == 'test'
+  - blosc2-grok>=0.2.2 ; extra == 'test'
+  - hdf5plugin[doc,test] ; extra == 'dev'
+  - bandit ; extra == 'dev'
+  - black ; extra == 'dev'
+  - flake8 ; extra == 'dev'
+  - isort ; extra == 'dev'
+  requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/9c/13/15017f6210bfea843316d62f0f121e364e17bb129444ed803a256a213036/hdf5plugin-6.0.0-py3-none-macosx_10_13_universal2.whl
+  name: hdf5plugin
+  version: 6.0.0
+  sha256: a59fbd5d4290a8a5334d82ccb4c6b9bfc7aaf586de7fedb88762e8601bc05fd4
+  requires_dist:
+  - h5py>=3.0.0
+  - ipython ; extra == 'doc'
+  - nbsphinx ; extra == 'doc'
+  - sphinx ; extra == 'doc'
+  - sphinx-autodoc-typehints ; extra == 'doc'
+  - sphinx-rtd-theme ; extra == 'doc'
+  - numpy<2 ; python_full_version == '3.9.*' and extra == 'test'
+  - blosc2>=2.5.1 ; extra == 'test'
+  - blosc2-grok>=0.2.2 ; extra == 'test'
+  - hdf5plugin[doc,test] ; extra == 'dev'
+  - bandit ; extra == 'dev'
+  - black ; extra == 'dev'
+  - flake8 ; extra == 'dev'
+  - isort ; extra == 'dev'
+  requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/ed/2f/1046d464ad1db29a4f6c70ba4e19b39baa8a6542c719eaa4e765108f07f1/hdf5plugin-6.0.0-py3-none-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
+  name: hdf5plugin
+  version: 6.0.0
+  sha256: 79e0524d18ddc41c0cf2e1bb2e529d4e154c286f6a1bd85f3d44019d2a17574a
+  requires_dist:
+  - h5py>=3.0.0
+  - ipython ; extra == 'doc'
+  - nbsphinx ; extra == 'doc'
+  - sphinx ; extra == 'doc'
+  - sphinx-autodoc-typehints ; extra == 'doc'
+  - sphinx-rtd-theme ; extra == 'doc'
+  - numpy<2 ; python_full_version == '3.9.*' and extra == 'test'
+  - blosc2>=2.5.1 ; extra == 'test'
+  - blosc2-grok>=0.2.2 ; extra == 'test'
+  - hdf5plugin[doc,test] ; extra == 'dev'
+  - bandit ; extra == 'dev'
+  - black ; extra == 'dev'
+  - flake8 ; extra == 'dev'
+  - isort ; extra == 'dev'
+  requires_python: '>=3.9'
 - conda: https://conda.anaconda.org/conda-forge/noarch/holoviews-1.22.1-pyhd8ed1ab_0.conda
   sha256: 598c989ceb11bba5c0c142b8394016ddb26153a02e8275eb045985913c72beaf
   md5: 32bc3daa3fa9619d84e634b4515f564a

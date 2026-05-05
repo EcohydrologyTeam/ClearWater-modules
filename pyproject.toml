@@ -70,7 +70,7 @@ dev = { features = ["dev"], solve-group = "default" }
 pytest = "*"
 clearwater_modules = { path = ".", editable = true}
 clearwater_data = { path = "../ClearWater-data", editable = true}
-clearwater_riverine = {path = "../ClearWater-Riverine-streaming", editable=true}
+clearwater_riverine = {path = "../ClearWater-riverine", editable=true}
 
 [tool.pixi.tasks]
 verify-install = {cmd = "python -c \"import clearwater_data; import clearwater_riverine; import clearwater_modules;\""}
