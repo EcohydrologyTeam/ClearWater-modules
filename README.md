@@ -6,12 +6,12 @@
 The [ClearWater-modules](https://github.com/EcohydrologyTeam/ClearWater-modules) package is a collection of water quality and vegetation process simulation modules written in modern Python and designed to flexibly couple with a variety of water transport models, such as HEC-RAS-2D, GSSHA, CE-QUAL-W2, [AdH](https://www.erdc.usace.army.mil/Locations/CHL/AdH/), and others. The U.S. Army Engineer Research and Development Center (ERDC), Environmental Laboratory (EL) develops these modules.
 
 - [TSM: Temperature Simulation Module](src/clearwater_modules/tsm) (formerly TEMP)
-- [NSM: Nutrient Simulation Modules](src/clearwater_modules/nsm1) ([NSM-I](src/clearwater_modules/nsm1) and [NSM-II](src/clearwater_modules/nsm2))
+- [NSM1: Nutrient Simulation Module I](src/clearwater_modules/nsm1)
 - [GSM: General Constituent Simulation Module](src/clearwater_modules/gsm)
-- [CSM: Contaminant Simulation Module](src/clearwater_modules/csm)
-- [MSM: Mercury Simulation Module](src/clearwater_modules/msm)
 - SSM: Solids Simulation Module (Fortran only)
 - RVSM: Riparian Vegetation Simulation Module (Fortran only)
+
+NSM-II, CSM (Contaminant Simulation Module), and MSM (Mercury Simulation Module) prototypes that previously lived under `src/clearwater_modules/{nsm2,csm,msm}/` were removed on this branch. Future contaminant- and mercury-process work is expected to go through the PhreeqcRM coupling path rather than reviving the prototype Python ports; benthic sediment diagenesis (the substantive content of the former NSM-II) is on the v3.x roadmap as a separate process module.
 
 These water quality modules form the central capabilities of the [ClearWater (Corps Library for Environmental Analysis and Restoration of Watersheds)](https://ui.adsabs.harvard.edu/abs/2023EGUGA..2512470S/abstract) software system. The overall goal of the ClearWater system is to couple these water quality simulation capabilities to state-of-the-art hydrologic and hydraulic modeling tools, such as HEC-RAS-2D, CE-QUAL-W2, and GSSHA, allowing users to leverage existing river, reservoir, and watershed models for water quality studies. The Temperature Simulation Module (TSM) and Nutrient Simulation Module (NSM) have been successfully coupled to HEC-RAS-2D models via the [ClearWater-riverine](https://github.com/EcohydrologyTeam/ClearWater-riverine) package.
 
@@ -143,11 +143,8 @@ The v3 package's own README is at `src/clearwater_modules_v3/README.md` and cove
 | v3 (convergence) | `src/clearwater_modules_v3/` | Active development; v3 `Temperature`, `Model`, `init_from_file` are v3-native; v3 1.0.0 targets TSM-complete + multi-agent-review-resolved (10/10 CRITICAL, 17/18 MAJOR, 10/19 MINOR closed); 153 tests passing |
 | TSM (v1) | `src/clearwater_modules/tsm/` | Production-ready; latent-heat fix, thin-water stability guard, hotstart, multi-cell debug-print removal |
 | NSM1 (v1) | `src/clearwater_modules/nsm1/` | Production-ready; ~150 dynamic variables; hotstart support |
-| NSM2 (v1) | `src/clearwater_modules/nsm2/` | Production; submodules for algae, alkalinity, benthic algae, carbon, CBOD, dissolved oxygen, N2, nitrogen, pathogens, phosphorus, particulate organic matter, and sediment flux |
 | v2 modules | `src/clearwater_modules_v2/` | LimnoTech framework, mirrored from `upstream/memory-refactor-pytestUpdate`; refactored Temperature, BenthicAlgae, FloatingAlgae, and Nitrogen with v1-parity tests passing; the architectural baseline for v3 |
 | GSM (v1) | `src/clearwater_modules/gsm/` | Stub; limited process implementation |
-| CSM (v1) | `src/clearwater_modules/csm/` | Stub; no dynamic-variable registration |
-| MSM (v1) | `src/clearwater_modules/msm/` | Stub; no process definitions |
 
 ## Variable and process registration
 
