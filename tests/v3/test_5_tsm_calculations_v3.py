@@ -23,10 +23,12 @@ v3-specific notes
    separately in the stability-ramp test.
 
 3. **Sediment parameters.** v1's ``Temperature`` constants used
-   ``cps=1673.0`` and ``alphas=0.0432``. v3's class defaults are
-   ``sediment_specific_heat=1000.0`` and ``sediment_diffusivity=0.0061``.
-   The fixture overrides v3 defaults to match v1 so the expected values
-   line up.
+   ``cps=1673.0`` and ``alphas=0.0432`` (m^2/day). The original v2/v3
+   defaults of 1000.0 and 0.0061 (with docstring "m^2/s") were
+   transcription errors that did not match the canonical Fortran TSM
+   source; the v3 defaults were corrected on 2026-05-04 to match
+   Fortran/v1. The fixture sets these values explicitly anyway so the
+   test pins the v1 reference values regardless of class defaults.
 
 4. **Time step.** v1 ran with ``dt=1/86400`` (1 second). v3's
    ``time_step`` is a ``timedelta``; we use ``timedelta(seconds=1)``.

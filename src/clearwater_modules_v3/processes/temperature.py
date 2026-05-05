@@ -74,11 +74,12 @@ class Temperature(Process):
         wind_b: float,
         wind_c: float,
         sediment_density: ArrayLike = 1600.0,
-        sediment_specific_heat: float = 1000.0,
+        sediment_specific_heat: float = 1673.0,
         air_diffusivity_ratio: float = 1.0,
-        sediment_diffusivity: float = 0.0061,
+        sediment_diffusivity: float = 0.0432,
         time_step: timedelta = timedelta(minutes=5),
         use_sediment_temperature: bool = True,
+        evolve_sediment_temperature: bool = True,
         q_net_depth_ramp_ref: float = 0.3,
         dTdt_max_per_hour: float = 5.0,
     ) -> None:
@@ -86,12 +87,33 @@ class Temperature(Process):
 
         Args:
             wind_a, wind_b, wind_c: Wind-function parameters.
-            sediment_density: Sediment density (kg/m^3).
+            sediment_density: Sediment bulk density (kg/m^3). Fortran
+                default ``pb = 1600``; matches v1.
             sediment_specific_heat: Sediment specific heat (J/kg/C).
+                Fortran default ``Cps = 1673``; matches v1.
             air_diffusivity_ratio: Sensible-heat diffusivity ratio.
-            sediment_diffusivity: Sediment thermal diffusivity (m^2/s).
+            sediment_diffusivity: Sediment thermal diffusivity in
+                **m^2/day**. Default ``0.0432`` matches the Fortran
+                ``alphas`` default in
+                ``HEC-RAS-WQ/RAS-1D-WQ/Kinetics Libraries/Temperature*/Source files/modTemperature.f90``
+                and v1 ``clearwater_modules.tsm.constants.alphas``. The
+                ``flux_sediment`` formula divides by 86400 to convert to
+                W/m^2 internally; supplying an m^2/s value will produce a
+                86400x-too-small flux.
             time_step: Substep length.
-            use_sediment_temperature: If False, sediment heat flux is zero.
+            use_sediment_temperature: If False, all sediment heat exchange
+                is disabled (no flux, no sediment temperature evolution).
+                Matches the Fortran ``use_SedTemp`` flag.
+            evolve_sediment_temperature: If True (default), sediment
+                temperature evolves each substep per the Fortran formula
+                ``dTsed/dt = alphas / (0.5 * h2^2) * (T_water - T_sed)``.
+                The water-sediment heat exchange is energy-conservative
+                in this mode. If False, sediment temperature stays at
+                its registered (or hotstart-seeded) value forever — this
+                reproduces the v1/v2 Python ports' behavior, which is
+                **not** energy-conservative and biases sediment heat
+                damping under sustained warm or cold forcing. Has no
+                effect when ``use_sediment_temperature`` is False.
             q_net_depth_ramp_ref: Reference depth (m) for the thin-water
                 flux ramp. The net flux is multiplied by
                 ``min(1, depth / q_net_depth_ramp_ref)``. Set to ``0.0``
@@ -110,6 +132,7 @@ class Temperature(Process):
         self.air_diffusivity_ratio = air_diffusivity_ratio
         self.sediment_diffusivity = sediment_diffusivity
         self.use_sediment_temperature = use_sediment_temperature
+        self.evolve_sediment_temperature = evolve_sediment_temperature
         self.q_net_depth_ramp_ref = q_net_depth_ramp_ref
         self.dTdt_max_per_hour = dTdt_max_per_hour
 
@@ -199,6 +222,33 @@ class Temperature(Process):
         updated_water_temperature = water_temperature + delta_water_temperature
 
         registry.set_at_time("water_temperature", time, updated_water_temperature)
+
+        # Sediment temperature evolution. The Fortran TSM
+        # (``HEC-RAS-WQ/RAS-1D-WQ/Kinetics Libraries/Temperature*/Source files/modTemperature.f90``)
+        # gates both ``q_sediment`` and ``dT_sed/dt`` on the same
+        # ``use_SedTemp`` flag, so the water-sediment exchange is
+        # energy-conservative. The earlier Python ports (v1, v2)
+        # dropped the dT_sed/dt update, breaking energy conservation
+        # between the water and sediment heat reservoirs. v3 restores
+        # the Fortran behavior; ``evolve_sediment_temperature=False``
+        # is available for backward-compat against tests that depend
+        # on a static sediment forcing.
+        if self.use_sediment_temperature and self.evolve_sediment_temperature:
+            delta_sediment_temperature = self.sediment_temperature_change(
+                water_temperature=water_temperature,
+                sediment_temperature=sediment_temperature,
+                sediment_thickness=sediment_thickness,
+            )
+            # No water in contact -> no heat exchange -> no sediment T change.
+            delta_sediment_temperature = xr.where(
+                volume > 0, delta_sediment_temperature, 0
+            )
+            updated_sediment_temperature = (
+                sediment_temperature + delta_sediment_temperature
+            )
+            registry.set_at_time(
+                "sediment_temperature", time, updated_sediment_temperature
+            )
 
     # ---------- Energy-balance fluxes ----------
 
@@ -435,6 +485,36 @@ class Temperature(Process):
         cap = self.dTdt_max_per_hour * dt_hours
         delta_temperature = np.maximum(-cap, np.minimum(cap, delta_temperature))
         return delta_temperature
+
+    def sediment_temperature_change(
+        self,
+        water_temperature: ArrayLike,
+        sediment_temperature: ArrayLike,
+        sediment_thickness: ArrayLike,
+    ) -> ArrayLike:
+        """Per-substep change in sediment temperature (Celsius).
+
+        Mirrors the Fortran TSM update at
+        ``HEC-RAS-WQ/RAS-1D-WQ/Kinetics Libraries/Temperature*/Source files/modTemperature.f90``::
+
+            if (use_SedTemp) dTsedCdt = alphas(r) / (0.5 * h2(r) * h2(r)) * (TwaterC - TsedC)
+
+        where ``alphas`` is in m^2/day. The relaxation time constant is
+        ``tau = 0.5 * h2^2 / alphas``; with the default
+        ``alphas = 0.0432 m^2/day`` and ``h2 = 0.1 m``, ``tau ~ 2.78 hours``.
+
+        The water-side flux ``flux_sediment`` and this sediment-side
+        update are paired so that the heat exchanged per unit area per
+        substep is equal and opposite (energy conservation between the
+        water and sediment heat reservoirs).
+        """
+        return (
+            self.sediment_diffusivity                       # m^2/day
+            / (0.5 * sediment_thickness**2)                 # 1/m^2
+            * (water_temperature - sediment_temperature)    # Celsius
+            * self.time_step_seconds                        # seconds
+            / 86400.0                                       # seconds -> days
+        )                                                   # = Celsius
 
     def water_density(self, temperature: ArrayLike) -> ArrayLike:
         """Fresh-water density (kg/m^3) as a function of T (Celsius).
