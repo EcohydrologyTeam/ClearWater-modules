@@ -153,6 +153,27 @@ class Temperature(Process):
         self.q_net_depth_ramp_ref = q_net_depth_ramp_ref
         self.dTdt_max_per_hour = dTdt_max_per_hour
 
+        # M1 fix (review-findings 2026-05-04): validate stability params.
+        # ``q_net_depth_ramp_ref`` must be finite and >= 0 (0 disables the
+        # depth ramp). NaN, +inf, and negative values are rejected so a
+        # silent-disable cannot occur from a typo or bad config.
+        if not (np.isfinite(q_net_depth_ramp_ref) and q_net_depth_ramp_ref >= 0.0):
+            raise ValueError(
+                f"q_net_depth_ramp_ref must be >= 0.0 and finite (set 0.0 to disable); "
+                f"got {q_net_depth_ramp_ref!r}"
+            )
+        # ``dTdt_max_per_hour`` must be strictly > 0. ``+inf`` is the
+        # documented disable value and passes ``> 0.0``. Zero would freeze
+        # the temperature field; negatives produce a constant-pegged
+        # field; NaN propagates everywhere. Reject all three.
+        # Note: ``np.isnan(+inf)`` is False, so the ``> 0.0`` predicate
+        # admits ``+inf`` and rejects NaN (NaN comparisons are False).
+        if not (dTdt_max_per_hour > 0.0):
+            raise ValueError(
+                f"dTdt_max_per_hour must be > 0.0 (set float('inf') to disable); "
+                f"got {dTdt_max_per_hour!r}"
+            )
+
         # v1's coupling protocol skipped step 1 and started kinetics on step
         # 2. v2 reproduces that behavior so coupled TSM+Riverine runs match
         # v1 outputs exactly. See v3 hotstart contract: when resuming from a
@@ -357,15 +378,25 @@ class Temperature(Process):
         """
         if not self.use_sediment_temperature:
             return 0.0
-        return (
+        # M2 fix (review-findings 2026-05-04): degenerate-layer guard.
+        # ``sediment_thickness == 0`` (missing data, hotstart artifact)
+        # or ``< 0`` (transport-coupling bug) would produce inf/NaN here
+        # and poison ``water_temperature`` on every wet cell that depends
+        # on this flux. Replace the divisor with 1.0 to keep the
+        # expression finite, then return 0.0 for the degenerate cells.
+        safe_thickness = xr.where(
+            sediment_thickness > 0.0, sediment_thickness, 1.0
+        )
+        flux = (
             self.sediment_density
             * self.sediment_specific_heat
             * self.sediment_diffusivity
             / 0.5
-            / sediment_thickness
+            / safe_thickness
             * (sediment_temperature - water_temperature)
             / 86400.0
         )
+        return xr.where(sediment_thickness > 0.0, flux, 0.0)
 
     def flux_net(
         self,
@@ -525,13 +556,24 @@ class Temperature(Process):
         substep is equal and opposite (energy conservation between the
         water and sediment heat reservoirs).
         """
-        return (
+        # M2 fix (review-findings 2026-05-04): degenerate-layer guard.
+        # Mirrors the guard in ``flux_sediment``. Division by
+        # ``sediment_thickness ** 2`` is even more sensitive to zero or
+        # negative inputs; without the guard, a single bad cell can
+        # produce NaN/inf in ``sediment_temperature`` for the rest of the
+        # run. Returns 0.0 (no sediment temperature change) for cells
+        # whose active layer is degenerate.
+        safe_thickness = xr.where(
+            sediment_thickness > 0.0, sediment_thickness, 1.0
+        )
+        delta = (
             self.sediment_diffusivity                       # m^2/day
-            / (0.5 * sediment_thickness**2)                 # 1/m^2
+            / (0.5 * safe_thickness**2)                     # 1/m^2
             * (water_temperature - sediment_temperature)    # Celsius
             * self.time_step_seconds                        # seconds
             / 86400.0                                       # seconds -> days
         )                                                   # = Celsius
+        return xr.where(sediment_thickness > 0.0, delta, 0.0)
 
     def water_density(self, temperature: ArrayLike) -> ArrayLike:
         """Fresh-water density (kg/m^3) as a function of T (Celsius).
@@ -685,21 +727,44 @@ class Temperature(Process):
 
         Returns:
             (richardson_number, richardson_function)
+
+        NaN handling (M3, review-findings 2026-05-04): a NaN
+        ``wind_speed``, ``density_air``, or ``density_air_sat`` (e.g.
+        from missing meteorology forcing) produces a NaN
+        ``richardson_number``, which propagates through the stability
+        function and the dependent latent and sensible fluxes. This is
+        intentional so the defect is visible at the output; silently
+        clamping NaN to a finite value would mask bad forcing data.
         """
         # The original v2 source carried a commented "-1" multiplier with
         # a TODO. v1 has no such factor and Jason Rutyna's January 2026
         # diff investigation (see commits 8218962 and 7f4166a in the
         # modules repo) concluded the leading "-1" should not be there.
         # v3 matches v1 exactly: no leading "-1".
-        richardson_number: ArrayLike = (
-            constants.GRAVITY
-            * (density_air - density_air_sat)
-            * 2.0
-            / (density_air * (wind_speed**2.0))
-        )
+        #
+        # M3 fix (review-findings 2026-05-04): suppress the
+        # ``RuntimeWarning: divide by zero`` emitted when ``wind_speed``
+        # is exactly zero. The resulting -inf is clamped to -1.0 below by
+        # ``np.maximum``. ``invalid='ignore'`` also silences the 0/0
+        # case which produces NaN. Matches v1's posture.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            richardson_number: ArrayLike = (
+                constants.GRAVITY
+                * (density_air - density_air_sat)
+                * 2.0
+                / (density_air * (wind_speed**2.0))
+            )
 
-        richardson_number = xr.where(richardson_number > 2.0, 2.0, richardson_number)
-        richardson_number = xr.where(richardson_number < -1.0, -1.0, richardson_number)
+        # M3 fix: ``xr.where(NaN > 2.0, 2.0, NaN) -> NaN`` correctly
+        # propagates NaN, but the equivalent chained ``xr.where`` form
+        # below was rewritten to use ``np.minimum`` / ``np.maximum``
+        # because both are NaN-aware on both branches and avoid eager
+        # evaluation of the regime predicates. The clamp is a no-op for
+        # NaN inputs (NaN survives), which is the desired visible-defect
+        # behavior documented above.
+        richardson_number = np.minimum(
+            2.0, np.maximum(-1.0, richardson_number)
+        )
 
         # Stability function. v1 used ``np.select``; v2's chained
         # ``xr.where`` is correct but slower. Performance optimization is
@@ -727,6 +792,21 @@ class Temperature(Process):
         richardson_function = xr.where(
             (richardson_number >= 0.0) & (richardson_number > 0.01),
             (1.0 + 34.0 * richardson_number) ** (-0.80),
+            richardson_function,
+        )
+
+        # M3 fix (review-findings 2026-05-04): the chained ``xr.where``
+        # comparisons above all evaluate False against NaN, so a NaN
+        # ``richardson_number`` would silently leave ``richardson_function``
+        # at its initial 1.0. That hides upstream NaN (typically from a
+        # missing meteorology forcing) inside a finite stability function
+        # and propagates a wrong-but-finite result through the sensible
+        # and latent fluxes. Force NaN to survive: where ``richardson_number``
+        # is NaN, ``richardson_function`` is NaN too. The visible-defect
+        # contract from the M3 review fix.
+        richardson_function = xr.where(
+            np.isnan(richardson_number),
+            np.nan,
             richardson_function,
         )
         return (richardson_number, richardson_function)

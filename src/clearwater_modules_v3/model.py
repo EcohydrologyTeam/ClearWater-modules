@@ -95,8 +95,30 @@ class Model:
                 dry cells for every variable each Process declares. ``None``
                 disables the mask (legacy v2 behavior).
             wet_mask_threshold: Threshold value paired with
-                ``wet_mask_variable``. Cells with value strictly greater
-                than the threshold are considered wet.
+                ``wet_mask_variable``. The comparison is a
+                **strict-inequality**: cells with ``value > threshold``
+                are wet, cells with ``value <= threshold`` are dry.
+
+                The default of ``0.0`` has the literal semantic "any
+                positive value is wet". For variables that represent
+                a physical volume, surface area, or depth, this default
+                is too permissive: a cell with ``value=1e-300`` (well
+                below any meaningful physical threshold and within
+                machine round-off) is classified as wet, and any
+                downstream divide ``X / value`` produces ``inf`` or
+                ``NaN`` that the wet-mask cannot subsequently clean up.
+
+                **Recommendation (caller-side, not enforced by the
+                Model):** when the variable has units of m^3, m^2, or m,
+                set ``wet_mask_threshold`` to a small positive epsilon
+                appropriate to the variable's units, e.g.
+                ``1e-6`` m^2 for ``wetted_surface_area``. Values close
+                to zero but above the epsilon are still classified as
+                dry, avoiding the ``1 / very_small`` numerical hazard.
+                The Model itself does not pick an epsilon for you,
+                because the appropriate value is variable- and
+                application-dependent (M11; review-findings
+                2026-05-04).
             wet_mask_provider: Optional callable that takes
                 ``(current_time, registry)`` and returns a boolean DataArray
                 wet-mask. If provided, takes precedence over
@@ -141,6 +163,13 @@ class Model:
         self.__hotstart_timestep = hotstart_timestep
 
         self.__init_complete: bool = False
+        # M10 fix (review-findings 2026-05-04): a second ``run()`` call
+        # against the same Model instance silently re-iterates from
+        # ``start_time`` against an already-advanced registry. The flag
+        # below is set after the substep loop exits and consulted on
+        # subsequent ``run()`` calls so the second call raises rather
+        # than corrupting state.
+        self.__run_complete: bool = False
         self.__output_data_store: ChunkedZarrDataStore | None = None
 
         # Filled in by __init_model. ``__process_schedule[i]`` is the tuple
@@ -159,6 +188,22 @@ class Model:
         self.__init_complete = True
 
     def run(self) -> None:
+        # M10 fix (review-findings 2026-05-04): a second ``run()`` against
+        # the same Model instance is a footgun — the registry has already
+        # been advanced from ``start_time`` to ``end_time``, so a second
+        # call would re-iterate against post-final state without the
+        # caller noticing. Disallow it explicitly. Callers that genuinely
+        # need to re-run the same configuration should construct a fresh
+        # Model with the same arguments (which re-loads the data sources
+        # into a fresh registry).
+        if self.__run_complete:
+            raise RuntimeError(
+                "Model.run() has already completed for this instance. "
+                "Construct a fresh Model to run the configuration again; "
+                "the current registry has been advanced from start_time "
+                "to end_time and a second run() would re-iterate against "
+                "post-final state."
+            )
         if not self.__init_complete:
             self.__init_model()
             self.__init_complete = True
@@ -166,6 +211,7 @@ class Model:
             self.__process_loop_chunked()
         else:
             self.__process_loop_full()
+        self.__run_complete = True
 
     def has_process(self, process_type: type[Process] | str) -> bool:
         if isinstance(process_type, str):
@@ -209,13 +255,52 @@ class Model:
     # ---------- private lifecycle ----------
 
     def __init_model(self) -> None:
+        """Initialize the registry, processes, schedule, and output store.
+
+        Ordering invariant (M5 contract, review-findings 2026-05-04):
+
+        1. Load every data source (or first chunk) into the registry.
+        2. If a hotstart dataset was provided, overwrite registry contents
+           with the saved-dataset slice at ``hotstart_timestep``.
+        3. Run ``init_process`` on every process. **By contract,
+           ``init_process`` sets each process's substep-internal state
+           assuming a fresh start.** A process author who adds new
+           internal substep state and writes initialization in
+           ``init_process`` MUST also restore that state from the
+           saved dataset in ``from_hotstart`` (step 4 below).
+        4. If a hotstart dataset was provided, call ``from_hotstart`` on
+           every process that defines it. **By contract,
+           ``from_hotstart`` MUST override the fresh-start defaults set
+           by ``init_process`` with the values saved in the hotstart
+           dataset's ``attrs``.**
+
+        Steps 3 and 4 together ensure that a fresh-start run and a
+        hotstart-resume run produce equivalent post-init state when
+        identical initial conditions are loaded. The cost of forgetting
+        this contract is silent: the fresh-start path and the
+        hotstart-resume path will diverge at the first substep where the
+        un-restored state matters.
+
+        Step 5 builds the precomputed process firing schedule.
+        Step 6 initializes the output data store.
+        Step 7 (M14) validates that ``wet_mask_variable``, if set, is
+        registered, so a typo is caught at init rather than at the first
+        substep.
+        """
         # Step 1: load every data source (or first chunk) into the registry.
+        # M7 fix (review-findings 2026-05-04): when chunk_size is None
+        # (non-chunked simulation), a ChunkedDataSource was previously
+        # asked for a window of just one substep; only the first slice
+        # of the dataset would be loaded. The full simulation duration
+        # must be read in non-chunked mode so subsequent substeps have
+        # data available.
+        if self.__chunked_mode:
+            chunk_end = self.__start_time + self.__chunk_size
+        else:
+            chunk_end = self.__end_time
         for variable_name, data_source in self.__variable_data_sources.items():
             if isinstance(data_source, ChunkedDataSource):
-                data = data_source.read_chunk(
-                    self.__start_time,
-                    self.__start_time + (self.__chunk_size or self.__time_step),
-                )
+                data = data_source.read_chunk(self.__start_time, chunk_end)
             else:
                 data = data_source.read(variable_name)
             self.__registry.register(variable_name, data)
@@ -226,13 +311,19 @@ class Model:
         if self.__hotstart_dataset is not None:
             self.__seed_from_hotstart()
 
-        # Step 3: process-level initialization. Processes see the
-        # post-hotstart registry state.
+        # Step 3 (M5 contract): process-level initialization. Processes
+        # see the post-hotstart registry state. ``init_process`` sets
+        # default substep-internal state assuming a *fresh start*; if the
+        # process has any internal substep state that needs to survive a
+        # hotstart, ``from_hotstart`` (step 4) must override the
+        # defaults set here.
         for process in self.__processes:
             process.init_process(self, self.__registry)
 
-        # Step 4: invoke from_hotstart on any process that defines it,
-        # passing whatever process-specific state is available.
+        # Step 4 (M5 contract): invoke ``from_hotstart`` on any process
+        # that defines it, passing whatever process-specific state is
+        # available. By contract this MUST override the fresh-start
+        # defaults set by ``init_process`` with the saved values.
         if self.__hotstart_dataset is not None:
             self.__restore_process_hotstart()
 
@@ -241,6 +332,33 @@ class Model:
 
         # Step 6: output store.
         self.__init_output_source()
+
+        # Step 7 (M14 fix, review-findings 2026-05-04): validate that
+        # ``wet_mask_variable`` exists in the registry now, before the
+        # substep loop. Pre-fix, a typo such as ``wetted_surface_aera``
+        # only surfaced as a KeyError on the first substep, deep inside
+        # ``__compute_wet_mask`` (or worse, was masked by a fallback in
+        # the registry). Surfacing it at init time short-circuits long
+        # simulations that would otherwise fail mid-run.
+        if self.__wet_mask_variable is not None:
+            if self.__wet_mask_variable not in self.__registry:
+                # Best-effort enumeration of what *is* registered, to help
+                # the caller identify the typo. The real
+                # ``VariableRegistry`` stores entries in ``_registry``;
+                # the test stubs use ``_data``. Fall back to an empty
+                # tuple if neither attribute is exposed.
+                declared_dict = (
+                    getattr(self.__registry, "_registry", None)
+                    or getattr(self.__registry, "_data", None)
+                    or {}
+                )
+                declared = sorted(declared_dict.keys()) if hasattr(
+                    declared_dict, "keys"
+                ) else []
+                raise KeyError(
+                    f"wet_mask_variable={self.__wet_mask_variable!r} not "
+                    f"registered; declared variables: {declared!r}"
+                )
 
     def __finalize_model(self) -> None:
         # C2 fix (review-findings 2026-05-04): the upstream ``Process``
@@ -436,25 +554,54 @@ class Model:
         """Replace registry contents with the saved-dataset slice at
         ``hotstart_timestep``. Variables already in the registry are
         overwritten; variables only in the saved dataset are added.
+
+        M8 fix (review-findings 2026-05-04): the previous fallback
+        ``next(iter(ds.dims))`` silently treated the first available
+        dim as the time dim. If the saved dataset only had a spatial
+        dim (e.g. ``nface``), ``isel({nface: -1})`` produced single-cell
+        scalars rather than per-cell snapshots. The new contract:
+
+        - If the dataset has a recognized time dim (``time``,
+          ``time_step``, or ``datetime``), use it.
+        - Otherwise, if ``hotstart_timestep`` is None, treat the dataset
+          as a single-snapshot dataset and use it as-is (no slicing).
+        - Otherwise, raise ``ValueError`` — the caller asked for a
+          specific time slice but the dataset has no recognizable time
+          axis to slice along.
         """
         ds = self.__hotstart_dataset
         slice_ts = self.__hotstart_timestep
-        # Identify the time dimension of the saved dataset. Fall back to
-        # "time" if the dataset doesn't expose a clear single time dim.
+        # Identify the time dimension of the saved dataset.
         time_dim = None
         for candidate in ("time", "time_step", "datetime"):
             if candidate in ds.dims:
                 time_dim = candidate
                 break
-        if time_dim is None and ds.dims:
-            time_dim = next(iter(ds.dims))
 
-        if slice_ts is None:
-            sliced = ds.isel({time_dim: -1}) if time_dim else ds
-        elif isinstance(slice_ts, int):
-            sliced = ds.isel({time_dim: slice_ts}) if time_dim else ds
+        if time_dim is None:
+            # No recognizable time dim. Two cases:
+            if slice_ts is not None:
+                # Caller asked for a specific slice but there is no
+                # time axis — fail loudly rather than silently picking
+                # an arbitrary dim (which would, for an ``nface``-only
+                # dataset, slice space-as-time and produce scalars).
+                raise ValueError(
+                    "hotstart_dataset has no recognizable time dimension "
+                    "(expected one of 'time', 'time_step', 'datetime') but "
+                    f"hotstart_timestep={slice_ts!r} was provided. Either "
+                    "provide a dataset with a time dimension or pass "
+                    "hotstart_timestep=None to use the single-snapshot "
+                    "dataset as-is."
+                )
+            # Single-snapshot dataset: use as-is.
+            sliced = ds
         else:
-            sliced = ds.sel({time_dim: slice_ts}, method="nearest") if time_dim else ds
+            if slice_ts is None:
+                sliced = ds.isel({time_dim: -1})
+            elif isinstance(slice_ts, int):
+                sliced = ds.isel({time_dim: slice_ts})
+            else:
+                sliced = ds.sel({time_dim: slice_ts}, method="nearest")
 
         for variable_name, da in sliced.data_vars.items():
             self.__registry.register(variable_name, da)

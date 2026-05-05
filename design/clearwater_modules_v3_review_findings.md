@@ -29,7 +29,7 @@ Severity counts (after deduplication of cross-reviewer overlaps):
 | Severity | Count |
 |---|---|
 | CRITICAL | 10 (10 resolved 2026-05-04 — C1, C2, C3, C4, C5, C6, C7, C8, C9, C10) |
-| MAJOR | 18 (2 resolved 2026-05-04 — M6, M9) |
+| MAJOR | 18 (15 resolved 2026-05-04 — M1, M2, M3, M5, M6, M7, M8, M9, M10, M11, M12, M13, M14, M15, M17) |
 | MINOR | 19 |
 | Observations | 6 |
 
@@ -342,12 +342,12 @@ Status says "Phase 1 (scaffold)" but Phases 2-4 are complete. Migration table co
 8. ✓ **C6 — schedule timezone dependence.** Refactored to delta-seconds-from-start; cadence-multiple validation.
 9. ✓ **C9 — _v2_init_helper.** Direct `getattr` + 6-test contract test.
 
-### Phase R-3 (robustness, fix before v3 1.0 ship)
+### Phase R-3 (robustness, fix before v3 1.0 ship) — **COMPLETE 2026-05-04**
 
-10. M1, M2, M3 — parameter validation, sediment_thickness guard, NaN propagation through Richardson
-11. M5–M11 — orchestration robustness items
-12. M12–M15 — YAML resolver error reporting
-13. M17 — README refresh
+10. ✓ **M1, M2, M3** — Stability-param validation, sediment_thickness guard, NaN propagation hardening through Richardson + RuntimeWarning suppression on wind=0.
+11. ✓ **M5, M7, M8, M10, M11, M14** — Hotstart-ordering contract documented; non-chunked Model with chunked sources reads full window; seed_from_hotstart raises on missing time-dim; non-idempotent run() detection; wet_mask threshold semantics documented; wet_mask_variable existence validated post-init.
+12. ✓ **M12, M13, M15** — Hotstart unsupported-suffix handling; timestep eager-parse; KeyError-to-ValueError with deep YAML path via `_required(d, *path)` helper.
+13. ✓ **M17** — README refreshed with current Phase status, full migration table, "What's new in v3" list, and YAML schema documentation.
 
 ### Phase R-4 (deferred, track for v3.x)
 
