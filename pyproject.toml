@@ -20,7 +20,44 @@ allow-direct-references = true
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
-platforms = ["win-64"]
+platforms = ["linux-64", "osx-arm64", "win-64"]
+
+# Conda-side dependencies. Mirrors the modules-repo dev-env set so the
+# streaming env imports v1, v2, v3, ClearWater-data, and
+# ClearWater-Riverine-streaming with the same package versions LimnoTech
+# tests against. ``pyproj`` and ``numba`` are explicit (the former so a
+# binary wheel against conda's PROJ is preferred over a PyPI source
+# build that would need PROJ 9.4+; the latter for v1's kernel
+# optimization in ``clearwater_modules.utils``). The visualization
+# stack (geoviews, hvplot, panel, jupyterlab, etc.) is included for
+# notebook examples and pulls in h5py / geopandas / matplotlib / scipy
+# transitively, which clearwater_riverine needs.
+[tool.pixi.dependencies]
+# Direct runtime deps (clearwater_riverine reads HEC-RAS HDF; v1 uses
+# numba; pyproj is a binary dep that needs to come from conda not PyPI).
+pyproj = "*"
+numba = "*"
+h5py = "*"
+geopandas = "*"
+scipy = "*"
+matplotlib = "*"
+shapely = "*"
+zarr = "*"
+netcdf4 = "*"
+# Visualization / notebook stack (matches modules-repo dev env).
+geoviews = "*"
+hvplot = "*"
+panel  = "*"
+jupyterlab = "*"
+jupyterlab-lsp = "*"
+ipympl = "*"
+ipywidgets = "*"
+jupyter_bokeh = "*"
+pyviz_comms = "*"
+selenium = "*"
+geckodriver = "*"
+python-lsp-server = "*"
+pylsp-mypy = "*"
 
 #[tool.pixi.pypi-dependencies]
 #ClearWater-modules = { path = ".", editable = true }
@@ -32,8 +69,8 @@ dev = { features = ["dev"], solve-group = "default" }
 [tool.pixi.feature.dev.pypi-dependencies]
 pytest = "*"
 clearwater_modules = { path = ".", editable = true}
-clearwater_data = { path = "../clearwater-data", editable = true}
-clearwater_riverine = {path = "../clearwater-riverine", editable=true}
+clearwater_data = { path = "../ClearWater-data", editable = true}
+clearwater_riverine = {path = "../ClearWater-Riverine-streaming", editable=true}
 
 [tool.pixi.tasks]
 verify-install = {cmd = "python -c \"import clearwater_data; import clearwater_riverine; import clearwater_modules;\""}
