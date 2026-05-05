@@ -68,21 +68,21 @@ class Nitrogen(Process):
         self,
         parameters: dict | None = None,
         time_step: timedelta = timedelta(minutes=5),
-        denitrification_rate: ArrayLike = 1.0,
-        denitrification_theta: ArrayLike = 1.0,
-        nitrification_rate: ArrayLike = 1.0,
-        nitrification_theta: ArrayLike = 1.0,
-        sediment_denitrification_rate: ArrayLike = 1.0,
-        sediment_denitrification_theta: ArrayLike = 1.0,
-        sediment_ammonium_release_rate: ArrayLike = 1.0,
-        sediment_ammonium_release_theta: ArrayLike = 1.0,
-        ammonium_decay_rate: ArrayLike = 1.0,
-        ammonium_decay_theta: ArrayLike = 1.0,
+        denitrification_rate: ArrayLike | None = None,
+        denitrification_theta: ArrayLike | None = None,
+        nitrification_rate: ArrayLike | None = None,
+        nitrification_theta: ArrayLike | None = None,
+        sediment_denitrification_rate: ArrayLike | None = None,
+        sediment_denitrification_theta: ArrayLike | None = None,
+        sediment_ammonium_release_rate: ArrayLike | None = None,
+        sediment_ammonium_release_theta: ArrayLike | None = None,
+        ammonium_decay_rate: ArrayLike | None = None,
+        ammonium_decay_theta: ArrayLike | None = None,
         floating_algae_preference_factor: ArrayLike = 0.5,
         settling_velocity: ArrayLike = 1.0,
         death_rate: ArrayLike = 1.0,
-        float_algea_faction_uptake_from_nitrate: ArrayLike = 1.0,
-        nitrification_oxygen_inhibition_factor: ArrayLike = 1.0,
+        float_algea_faction_uptake_from_nitrate: ArrayLike | None = None,
+        nitrification_oxygen_inhibition_factor: ArrayLike | None = None,
     ) -> None:
         Process.__init__(self, time_step)
 
@@ -108,19 +108,62 @@ class Nitrogen(Process):
             setattr(self, k, v)
 
         # --- Legacy v2 kwargs (preserved for backward compatibility) ---
-        # These names do not collide with NITROGEN_DEFAULTS keys, so both
-        # naming schemes coexist on the instance. Phase 2 will rewire the
-        # kinetic methods to the v3 names and retire these.
-        self.denitrification_rate = denitrification_rate
-        self.denitrification_theta = denitrification_theta
-        self.nitrification_rate = nitrification_rate
-        self.nitrification_theta = nitrification_theta
-        self.sediment_denitrification_rate = sediment_denitrification_rate
-        self.sediment_denitrification_theta = sediment_denitrification_theta
-        self.sediment_ammonium_release_rate = sediment_ammonium_release_rate
-        self.sediment_ammonium_release_theta = sediment_ammonium_release_theta
-        self.ammonium_decay_rate = ammonium_decay_rate
-        self.ammonium_decay_theta = ammonium_decay_theta
+        # Phase 9.A.2 (audit findings N1, N2, N4, N10, N11): the kinetic
+        # methods now read from the DEFAULTS-key attributes
+        # (``self.knit_20``, ``self.kdnit_20``, ``self.rnh4_20``, etc.)
+        # rather than the legacy v2 kwargs. Legacy kwargs default to
+        # ``None`` and only override the DEFAULTS-key attribute when
+        # explicitly provided by the caller. This preserves backwards
+        # compatibility with existing tests/YAML configs that pass
+        # ``nitrification_rate=0.1`` etc. while making
+        # ``Nitrogen()`` (no kwargs) produce v1/Fortran-correct kinetics.
+        #
+        # Mapping legacy kwarg -> DEFAULTS key (synced both directions):
+        #   nitrification_rate                       -> knit_20
+        #   nitrification_theta                      -> knit_theta
+        #   denitrification_rate                     -> kdnit_20
+        #   denitrification_theta                    -> kdnit_theta
+        #   sediment_ammonium_release_rate           -> rnh4_20
+        #   sediment_ammonium_release_theta          -> rnh4_theta
+        #   sediment_denitrification_rate            -> vno3_20
+        #   sediment_denitrification_theta           -> vno3_theta
+        #   nitrification_oxygen_inhibition_factor   -> KNR
+        _legacy_to_defaults = {
+            "nitrification_rate": ("knit_20", nitrification_rate),
+            "nitrification_theta": ("knit_theta", nitrification_theta),
+            "denitrification_rate": ("kdnit_20", denitrification_rate),
+            "denitrification_theta": ("kdnit_theta", denitrification_theta),
+            "sediment_ammonium_release_rate": ("rnh4_20", sediment_ammonium_release_rate),
+            "sediment_ammonium_release_theta": ("rnh4_theta", sediment_ammonium_release_theta),
+            "sediment_denitrification_rate": ("vno3_20", sediment_denitrification_rate),
+            "sediment_denitrification_theta": ("vno3_theta", sediment_denitrification_theta),
+            "nitrification_oxygen_inhibition_factor": ("KNR", nitrification_oxygen_inhibition_factor),
+        }
+        for legacy_name, (defaults_key, legacy_value) in _legacy_to_defaults.items():
+            if legacy_value is not None:
+                # User explicitly supplied the legacy kwarg; sync both
+                # naming schemes onto the same value.
+                setattr(self, legacy_name, legacy_value)
+                setattr(self, defaults_key, legacy_value)
+            else:
+                # Legacy kwarg not supplied; keep DEFAULTS-key value and
+                # mirror it onto the legacy attribute for back-compat
+                # with any caller still reading the legacy name.
+                setattr(self, legacy_name, getattr(self, defaults_key))
+
+        # ammonium_decay_rate / ammonium_decay_theta: phantom NH4 source
+        # term (audit finding N2). v1 and Fortran NSM1 have no analogue.
+        # The kinetic method ``ammonium_decay_nitrate`` is dropped from
+        # the NH4 budget below (audit fix); these attributes are kept on
+        # the instance for back-compat with callers that might inspect
+        # them, but they no longer feed into ``change_ammonium``.
+        self.ammonium_decay_rate = (
+            ammonium_decay_rate if ammonium_decay_rate is not None else 0.0
+        )
+        self.ammonium_decay_theta = (
+            ammonium_decay_theta if ammonium_decay_theta is not None else 1.0
+        )
+
         self.floating_algae_preference_factor = floating_algae_preference_factor
         self.settling_velocity = settling_velocity
         # Phase 2.B Bug #12: ``death_rate`` is preserved as a legacy
@@ -129,11 +172,17 @@ class Nitrogen(Process):
         # ``floating_algae_process.algal_death_rate`` /
         # ``algal_orgn_from_mortality_rate`` (Phase 2.A populates these).
         self.death_rate = death_rate
+
+        # Phase 9.A.2 audit finding N12: ``float_algea_faction_uptake_from_nitrate``
+        # was a static parameter (default 1.0) that broke algal-N mass
+        # balance. The corrected ``nitrate_uptake_floating_algae`` reads
+        # the dynamic ``1 - algal_nh4_uptake_fraction`` from FloatingAlgae
+        # instead. Retain the attribute for back-compat with tests/YAML
+        # that set it, but it is now a deprecated no-op.
         self.float_algea_faction_uptake_from_nitrate = (
             float_algea_faction_uptake_from_nitrate
-        )
-        self.nitrification_oxygen_inhibition_factor = (
-            nitrification_oxygen_inhibition_factor
+            if float_algea_faction_uptake_from_nitrate is not None
+            else 1.0
         )
 
         # Phase 8.A: legacy v2 algal-uptake attributes that are read by
@@ -331,12 +380,17 @@ class Nitrogen(Process):
             temperature=temperature,
         )
 
+        # Phase 9.A.2 audit finding N2: dropped the phantom
+        # ``ammonium_decay_nitrate`` source term. v1 (processes.py:1584)
+        # and Fortran NSM1 (modNitrogen.f90:296) have no analogue. The
+        # legacy v2 kwarg ``ammonium_decay_rate=1.0/d`` (default) was
+        # injecting a first-order NH4 *source* with no matching sink,
+        # making default-instantiated NH4 grow exponentially. The
+        # ``ammonium_decay_nitrate`` method is retained for back-compat
+        # with any caller that invokes it directly, but it is no longer
+        # part of the NH4 budget.
         rate = (
-            self.ammonium_decay_nitrate(
-                ammonium,
-                temperature,
-            )
-            - self.ammonium_nitrification(
+            -self.ammonium_nitrification(
                 ammonium,
                 temperature,
                 oxygen_dissolved,
@@ -449,10 +503,14 @@ class Nitrogen(Process):
         return rate
 
     def ammonium_from_bed(self, depth: ArrayLike, temperature: ArrayLike) -> ArrayLike:
+        # Phase 9.A.2 audit finding N4: read NITROGEN_DEFAULTS attributes
+        # (``rnh4_20=0`` v1/Fortran default) instead of the legacy v2 kwarg
+        # (was 1.0/d). Legacy kwarg, when supplied, syncs onto ``rnh4_20``
+        # in __init__.
         rate = arrhenius_correction(
             temperature,
-            self.sediment_ammonium_release_rate,
-            self.sediment_ammonium_release_theta,
+            self.rnh4_20,
+            self.rnh4_theta,
         )
         return rate / depth
 
@@ -499,9 +557,12 @@ class Nitrogen(Process):
         if not self.use_ammonium:
             return 0.0
 
-        # temperature adjust rate
+        # Phase 9.A.2 audit finding N1: read NITROGEN_DEFAULTS attributes
+        # (``knit_20=0.1``, ``knit_theta=1.083`` v1/Fortran defaults).
+        # Legacy ``nitrification_rate``/``nitrification_theta`` kwargs,
+        # when supplied, sync onto these in __init__.
         rate_corrected = arrhenius_correction(
-            temperature, self.nitrification_rate, self.nitrification_theta
+            temperature, self.knit_20, self.knit_theta
         )
 
         return (
@@ -531,9 +592,12 @@ class Nitrogen(Process):
         if not self.use_nitrate:
             return 0.0
 
-        # temperature adjust rate
+        # Phase 9.A.2 audit finding N10: read NITROGEN_DEFAULTS attributes
+        # (``kdnit_20=0.002``, ``kdnit_theta=1.08`` v1 defaults). Legacy
+        # ``denitrification_rate``/``denitrification_theta`` kwargs, when
+        # supplied, sync onto these in __init__.
         rate_corrected = arrhenius_correction(
-            temperature, self.denitrification_rate, self.denitrification_theta
+            temperature, self.kdnit_20, self.kdnit_theta
         )
 
         rate = (
@@ -553,11 +617,14 @@ class Nitrogen(Process):
         nitrate: ArrayLike,
         temperature: ArrayLike,
     ) -> ArrayLike:
-        # temperature adjust rate
+        # Phase 9.A.2 audit finding N11: read NITROGEN_DEFAULTS attributes
+        # (``vno3_20=0`` v1/Fortran default). Legacy
+        # ``sediment_denitrification_rate``/``sediment_denitrification_theta``
+        # kwargs, when supplied, sync onto these in __init__.
         rate_corrected = arrhenius_correction(
             temperature,
-            self.sediment_denitrification_rate,
-            self.sediment_denitrification_theta,
+            self.vno3_20,
+            self.vno3_theta,
         )
 
         return nitrate * rate_corrected / depth
@@ -565,15 +632,34 @@ class Nitrogen(Process):
     def nitrate_uptake_floating_algae(
         self, nitrate: ArrayLike, ammonium: ArrayLike, algea_growth_rate: ArrayLike
     ) -> ArrayLike:
+        """v1 NO3_ApGrowth: ApUptakeFr_NO3 * rna * ApGrowth (mg-N/L/d).
+
+        Phase 9.A.2 audit finding N12: previously used the static
+        ``float_algea_faction_uptake_from_nitrate`` (default 1.0) for the
+        NO3 uptake fraction while the NH4 path read the dynamic
+        ``algal_nh4_uptake_fraction`` recomputed each step. The two paths
+        therefore did not sum to ``rna * ApGrowth``; algal-N mass balance
+        was violated. Per v1 (processes.py:1675) and Fortran
+        (modNitrogen.f90:321), the NO3 fraction is exactly
+        ``1 - ApUptakeFr_NH4``, computed dynamically from current NH4/NO3.
+
+        We now read ``floating_algae_process.algal_nh4_uptake_fraction``
+        (recomputed in FloatingAlgae.run via _ap_uptake_fr_nh4) and use
+        ``1 - that`` for the NO3 path. Total NH4 + NO3 algal uptake then
+        sums to ``rna * algal_growth_rate`` exactly.
+        """
         if not self.use_floating_algae:
             return 0.0
 
-        return (
-            self.floating_algae_nitrogen_weight
-            / self.algal_chlorophyll
-            * algea_growth_rate
-            * self.float_algea_faction_uptake_from_nitrate
+        # Dynamic NO3 uptake fraction = 1 - dynamic NH4 uptake fraction.
+        algal_nh4_uptake_fraction = getattr(
+            self.floating_algae_process, "algal_nh4_uptake_fraction", 0.5
         )
+        algal_no3_uptake_fraction = 1.0 - algal_nh4_uptake_fraction
+
+        # rna = AWn / AWa (mg-N/ug-Chla).
+        rna = self.floating_algae_nitrogen_weight / self.algal_chlorophyll
+        return rna * algea_growth_rate * algal_no3_uptake_fraction
 
     def nitrate_uptake_benthic_algae(
         self,
@@ -582,24 +668,66 @@ class Nitrogen(Process):
         algea_growth_rate: ArrayLike,
         depth: ArrayLike,
     ) -> ArrayLike:
+        """v1 NO3_AbGrowth: AbUptakeFr_NO3 * rnb * Fb * AbGrowth / depth.
+
+        Phase 9.A.2 audit finding N13: previous implementation had four
+        structural defects:
+        (1) divided by ``algal_chlorophyll`` (= AWa, the *floating*-algae
+            chlorophyll factor of 1000) instead of by ``BWd`` (benthic
+            dry-weight). Wrong stoichiometry by orders of magnitude.
+        (2) omitted the ``/depth`` divisor (benthic processes are area-
+            integrated; v1 and Fortran both convert g/m^2/d to mg-N/L/d
+            via /depth).
+        (3) multiplied by ``self.fraction_bottom_area`` (default 1.0)
+            instead of ``Fb`` (benthic ``fraction of bottom area``,
+            default 0.9).
+        (4) used static ``benthic_algea_faction_uptake_from_nitrate``
+            (default 0.5) instead of dynamic
+            ``1 - balgae_nh4_uptake_fraction`` recomputed per step in
+            BenthicAlgae.run.
+
+        Corrected form per v1 (processes.py:1697) and Fortran
+        (modNitrogen.f90:328):
+
+            NO3_AbGrowth = AbUptakeFr_NO3 * rnb * Fb * AbGrowth / depth
+
+        with ``rnb = BWn / BWd`` (mg-N/mg-D), ``Fb`` from
+        BENTHIC_DEFAULTS, ``AbGrowth`` (g/m^2/d) cached on BenthicAlgae,
+        and ``AbUptakeFr_NO3 = 1 - balgae_nh4_uptake_fraction`` dynamic.
+
+        Mirrors the v3 Phosphorus benthic-uptake pattern
+        (``Phosphorus._tip_uptake_benthic_algae``).
+        """
         if not self.use_benthic_algae:
             return 0.0
 
-        return (
-            self.benthic_algae_nitrogen_weight
-            / self.algal_chlorophyll
-            * algea_growth_rate
-            * self.benthic_algea_faction_uptake_from_nitrate
-            * self.fraction_bottom_area
+        # Dynamic NO3 fraction = 1 - dynamic NH4 fraction (recomputed
+        # per step in BenthicAlgae.run via _ab_uptake_fr_nh4).
+        balgae_nh4_uptake_fraction = getattr(
+            self.benthic_algae_process, "balgae_nh4_uptake_fraction", 0.5
         )
+        balgae_no3_uptake_fraction = 1.0 - balgae_nh4_uptake_fraction
+
+        # rnb = BWn / BWd (mg-N/mg-D); read directly from BenthicAlgae
+        # for parity with the NH4 path (benthic_algae.py:508).
+        bwn = getattr(self.benthic_algae_process, "BWn", self.benthic_algae_nitrogen_weight)
+        bwd = getattr(self.benthic_algae_process, "BWd", 100.0)
+        rnb = bwn / bwd
+
+        # Fb from BenthicAlgae (default 0.9).
+        fb = getattr(self.benthic_algae_process, "Fb", 0.9)
+
+        return balgae_no3_uptake_fraction * rnb * fb * algea_growth_rate / depth
 
     def nitrification_inhibition(self, oxygen_dissolved: ArrayLike) -> ArrayLike:
         if not self.use_nitrate:
             return 1.0
 
-        return 1.0 - np.exp(
-            -self.nitrification_oxygen_inhibition_factor * oxygen_dissolved
-        )
+        # Phase 9.A.2 audit finding N1: read NITROGEN_DEFAULTS attribute
+        # ``KNR=0.6`` (v1/Fortran default). Legacy
+        # ``nitrification_oxygen_inhibition_factor`` kwarg, when supplied,
+        # syncs onto ``self.KNR`` in __init__.
+        return 1.0 - np.exp(-self.KNR * oxygen_dissolved)
 
     # ------------------------------------------------------------------
     # Organic Nitrogen (Phase 2.B; v3 NSM1 design spec Section 5)

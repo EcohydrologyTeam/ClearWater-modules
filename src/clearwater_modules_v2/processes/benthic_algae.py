@@ -63,11 +63,29 @@ class BenthicAlgae(FloatingAlgae):
     # on first instantiation to avoid the v2 <-> v3 circular import.
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Phase 9.A.1 wiring fix: BenthicAlgae overrides the legacy-kwarg
+    # to v3-DEFAULTS mapping inherited from FloatingAlgae so that
+    # benthic-specific defaults (e.g. ``KsNb`` instead of ``KsN``,
+    # ``mub_max_20`` instead of ``mu_max_20``) flow into the legacy
+    # attribute names that the rate methods read.
+    _LEGACY_TO_DEFAULTS: dict[str, str] = {
+        "growth_rate_max": "mub_max_20",
+        "growth_rate_correction": "mub_max_theta",
+        "death_rate": "kdb_20",
+        "death_rate_correction_factor": "kdb_theta",
+        "repiration_rate": "krb_20",
+        "repiration_rate_correction_factor": "krb_theta",
+        "light_limitation_constant": "KLb",
+        "nitrogen_michaelis_menton_constant": "KsNb",
+        "phosphorus_michaelis_menton_constant": "KsPb",
+        "density_michaelis_menton_constant": "Ksb",
+    }
+
     def __init__(
         self,
         parameters: dict | None = None,
         *args,
-        density_michaelis_menton_constant: float = 1.0,
+        density_michaelis_menton_constant: float | None = None,
         **kwargs,
     ) -> None:
         """Initialize the benthic algae process.
@@ -77,7 +95,14 @@ class BenthicAlgae(FloatingAlgae):
                 Merged with the class-level ``DEFAULTS`` (v3
                 ``BALGAE_DEFAULTS``). Unknown keys are warned and ignored.
             density_michaelis_menton_constant: Michaelis-Menton constant
-                for benthic-density limitation (v1 Ksb).
+                for benthic-density limitation (v1 Ksb). If None, falls
+                back to ``Ksb`` (10.0 g-D/m^2) from BALGAE_DEFAULTS.
+
+        Phase 9.A.1 wiring fix: see FloatingAlgae.__init__ for the
+        contract. BenthicAlgae overrides ``_LEGACY_TO_DEFAULTS`` so
+        the rate methods (most of which are inherited) read benthic-
+        specific values (``mub_max_20``, ``kdb_20``, ``KsNb``, etc.)
+        rather than the floating-algae shadows.
         """
         # --- Phase 2.A: v3-style parameter merge for BALGAE_DEFAULTS ---
         # Done here rather than relying on FloatingAlgae.__init__ because
@@ -97,6 +122,18 @@ class BenthicAlgae(FloatingAlgae):
             # h2: active sediment layer thickness (m). Lives in POM_DEFAULTS
             # but is needed by the POM<-BenthicAlgae mortality coupling.
             composed["h2"] = POM_DEFAULTS["h2"]
+            # Selector-name remap: BALGAE_DEFAULTS uses
+            # ``b_growth_rate_option`` and ``b_light_limitation_option``;
+            # the FloatingAlgae rate methods read ``growth_rate_option``
+            # and ``light_limitation_option``. Mirror the benthic
+            # selectors onto the floating-algae names so the inherited
+            # methods read the benthic-specific values.
+            if "b_growth_rate_option" in composed:
+                composed["growth_rate_option"] = composed["b_growth_rate_option"]
+            if "b_light_limitation_option" in composed:
+                composed["light_limitation_option"] = composed[
+                    "b_light_limitation_option"
+                ]
             type(self).DEFAULTS = composed
 
         user_params = parameters or {}
@@ -116,14 +153,22 @@ class BenthicAlgae(FloatingAlgae):
             if not hasattr(self, k):
                 setattr(self, k, user_params.get(k, v))
 
-        self.density_michaelis_menton_constant = density_michaelis_menton_constant
-
         # FloatingAlgae.__init__ does NOT take a `parameters` kwarg here;
         # we already applied the BALGAE_DEFAULTS merge above. Pass
         # parameters=None to FloatingAlgae to skip a second merge against
         # ALGAE_DEFAULTS (which would overwrite our BALGAE values for any
         # non-overlapping keys with algae-pelagic defaults). Legacy v2
-        # kwargs pass through unchanged.
+        # kwargs pass through unchanged. The Phase 9.A.1 wiring fix
+        # (resolving the legacy-kwarg shadow with self._LEGACY_TO_DEFAULTS)
+        # runs inside FA.__init__ and uses BenthicAlgae's overridden
+        # mapping (``mub_max_20``, ``kdb_20``, ``KsNb``, etc.) because
+        # ``self._LEGACY_TO_DEFAULTS`` resolves to the leaf class.
+        # ``density_michaelis_menton_constant`` is handled by FA.__init__
+        # via the inherited legacy-kwarg path; pass it through kwargs.
+        if density_michaelis_menton_constant is not None:
+            kwargs["density_michaelis_menton_constant"] = (
+                density_michaelis_menton_constant
+            )
         FloatingAlgae.__init__(self, parameters=None, *args, **kwargs)
 
         # Step-scoped rate-variable cache for benthic algae, keyed for the
@@ -434,6 +479,10 @@ class BenthicAlgae(FloatingAlgae):
                 )
             )
         # Steele Model
+        # Phase 9.A.1 audit B6: with x = PAR*KEXT/KLb, the Steele form
+        # is ``x * exp(1 - x)``. The previous form used division
+        # (``x / exp(1-x)`` = ``x * exp(x-1)``), which is the wrong
+        # sign for the exponent argument. v1/Fortran use ``x * exp(1-x)``.
         elif self.light_limitation_option == 3:
             raw_rate = xr.where(
                 abs(self.light_limitation_constant) < 1e-10,
@@ -441,14 +490,12 @@ class BenthicAlgae(FloatingAlgae):
                 (
                     surface_light_intensity
                     * light_at_depth_coefficent
-                    / (
-                        self.light_limitation_constant
-                        * np.exp(
-                            1.0
-                            - surface_light_intensity
-                            * light_at_depth_coefficent
-                            / self.light_limitation_constant
-                        )
+                    / self.light_limitation_constant
+                    * np.exp(
+                        1.0
+                        - surface_light_intensity
+                        * light_at_depth_coefficent
+                        / self.light_limitation_constant
                     )
                 ),
             )

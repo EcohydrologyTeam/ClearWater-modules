@@ -154,11 +154,18 @@ def test_nitrate_denitrification_water_column_matches_v1_NO3_Denit(
     np.testing.assert_allclose(np.asarray(v2_rate), np.asarray(v1_rate), rtol=1e-6)
 
 
-def test_change_ammonium_no_algae_drops_to_decay_minus_nitrification_plus_bed(
+def test_change_ammonium_no_algae_drops_to_minus_nitrification_plus_bed(
     n_instance, nh4_5cell, no3_5cell, water_temp_5cell, depth_5cell, dox_5cell
 ):
     """When use_floating_algae=use_benthic_algae=False, change_ammonium reduces to:
-    ammonium_decay_nitrate - ammonium_nitrification + ammonium_from_bed.
+    -ammonium_nitrification + ammonium_from_bed.
+
+    Phase 9.A.2 audit finding N2: the phantom ``ammonium_decay_nitrate`` term
+    (no v1 or Fortran NSM1 analogue) was dropped from change_ammonium. Pre-fix,
+    this test asserted the rate equaled ``decay - nitrification + bed``; post-fix
+    it asserts ``-nitrification + bed``. The legacy decay method is retained
+    on the instance for back-compat but is no longer part of the NH4 budget.
+
     Verifies the post-fix isnull NaN replacement (bug #4) does not perturb finite inputs.
     """
     n_instance.use_floating_algae = False
@@ -173,7 +180,6 @@ def test_change_ammonium_no_algae_drops_to_decay_minus_nitrification_plus_bed(
     )
 
     expected = (
-        n_instance.ammonium_decay_nitrate(nh4_5cell, water_temp_5cell)
         - n_instance.ammonium_nitrification(nh4_5cell, water_temp_5cell, dox_5cell)
         + n_instance.ammonium_from_bed(depth=depth_5cell, temperature=water_temp_5cell)
     )
@@ -181,6 +187,260 @@ def test_change_ammonium_no_algae_drops_to_decay_minus_nitrification_plus_bed(
     np.testing.assert_allclose(v2_rate.values, expected.values, rtol=1e-6)
     # And no NaNs survive the isnull replacement
     assert not np.any(np.isnan(v2_rate.values))
+
+
+# ---------------------------------------------------------------------------
+# Phase 9.A.2 regression tests: default-instantiated Nitrogen() with v3 wiring.
+# ---------------------------------------------------------------------------
+#
+# These tests pin the post-Phase-9.A.2 contract: a bare ``Nitrogen()`` (no
+# kwargs) reads NITROGEN_DEFAULTS for nitrification/denitrification/sediment
+# rate constants and produces v1/Fortran-correct kinetics. Pre-fix, the
+# legacy v2 kwargs all defaulted to ``1.0`` (5x to 500x larger than NSM1
+# defaults) and the kinetic methods read from the legacy attributes; this
+# made default-instantiated Nitrogen unsafe at any non-zero state.
+
+
+def test_default_nitrogen_uses_v3_defaults_for_nitrification(
+    nh4_5cell, water_temp_5cell, dox_5cell
+):
+    """Phase 9.A.2 audit finding N1: default Nitrogen() reads ``knit_20=0.1`` /
+    ``knit_theta=1.083`` / ``KNR=0.6`` from NITROGEN_DEFAULTS, not the legacy
+    kwarg (which defaulted to 1.0 / 1.0 / 1.0).
+    """
+    inst = Nitrogen()
+    inst.use_nitrate = True
+    inst.use_ammonium = True
+    inst.use_floating_algae = False
+    inst.use_benthic_algae = False
+
+    assert inst.knit_20 == 0.1
+    assert inst.knit_theta == 1.083
+    assert inst.KNR == 0.6
+
+    # Inhibition uses KNR (0.6), not the legacy default (1.0).
+    inhib = inst.nitrification_inhibition(dox_5cell)
+    expected_inhib = 1.0 - np.exp(-0.6 * dox_5cell.values)
+    np.testing.assert_allclose(np.asarray(inhib), expected_inhib, rtol=1e-12)
+
+    # Nitrification flux uses knit_20=0.1 (not 1.0).
+    rate = inst.ammonium_nitrification(nh4_5cell, water_temp_5cell, dox_5cell)
+    knit_tc = 0.1 * 1.083 ** (water_temp_5cell.values - 20.0)
+    expected = nh4_5cell.values * knit_tc * expected_inhib
+    np.testing.assert_allclose(np.asarray(rate), expected, rtol=1e-6)
+
+
+def test_default_nitrogen_uses_v3_defaults_for_denitrification(
+    no3_5cell, water_temp_5cell, dox_5cell
+):
+    """Phase 9.A.2 audit finding N10: default Nitrogen() reads ``kdnit_20=0.002``
+    / ``kdnit_theta=1.08`` from NITROGEN_DEFAULTS (not legacy 1.0/1.0).
+    """
+    inst = Nitrogen()
+    inst.use_nitrate = True
+    inst.use_ammonium = True
+    inst.use_floating_algae = False
+    inst.use_benthic_algae = False
+
+    assert inst.kdnit_20 == 0.002
+    assert inst.kdnit_theta == 1.08
+
+    rate = inst.nitrate_denitrification(
+        dissolved_oxygen=dox_5cell,
+        half_saturation_oxygen=inst.KsOxdn,
+        nitrate=no3_5cell,
+        temperature=water_temp_5cell,
+    )
+    kdnit_tc = 0.002 * 1.08 ** (water_temp_5cell.values - 20.0)
+    expected = (
+        no3_5cell.values
+        * kdnit_tc
+        * (1.0 - dox_5cell.values / (dox_5cell.values + inst.KsOxdn))
+    )
+    np.testing.assert_allclose(np.asarray(rate), expected, rtol=1e-6)
+
+
+def test_default_nitrogen_sediment_rates_zero_at_v3_defaults(
+    depth_5cell, water_temp_5cell, no3_5cell
+):
+    """Phase 9.A.2 audit findings N4, N11: default Nitrogen() reads
+    ``rnh4_20=0`` / ``vno3_20=0`` (v1/Fortran defaults), so sediment NH4
+    release and sediment NO3 denitrification are silently zero by default
+    (matches v1/Fortran). Pre-fix the legacy default 1.0/d injected a
+    1/depth source/sink at every step.
+    """
+    inst = Nitrogen()
+    inst.use_nitrate = True
+    inst.use_ammonium = True
+
+    assert inst.rnh4_20 == 0.0
+    assert inst.vno3_20 == 0.0
+
+    nh4_from_bed = inst.ammonium_from_bed(depth=depth_5cell, temperature=water_temp_5cell)
+    np.testing.assert_allclose(np.asarray(nh4_from_bed), 0.0)
+
+    no3_bed_denit = inst.nitrate_bed_denitrification(
+        depth=depth_5cell, nitrate=no3_5cell, temperature=water_temp_5cell
+    )
+    np.testing.assert_allclose(np.asarray(no3_bed_denit), 0.0)
+
+
+def test_phantom_ammonium_decay_term_dropped_from_change_ammonium(
+    nh4_5cell, no3_5cell, water_temp_5cell, depth_5cell, dox_5cell
+):
+    """Phase 9.A.2 audit finding N2: default-instantiated Nitrogen() does NOT
+    inject the phantom ``ammonium_decay_nitrate`` source into the NH4 budget.
+
+    Pre-fix, the term ``ammonium_decay_rate=1.0/d * NH4`` was added as a
+    *positive source* with no v1/Fortran analogue, causing NH4 to grow
+    without bound at default kwargs. Post-fix, the term is removed from
+    ``change_ammonium`` regardless of the legacy ``ammonium_decay_rate``
+    value.
+    """
+    # Build a default Nitrogen but intentionally set ammonium_decay_rate=99
+    # to confirm the decay term is fully dropped (not just zeroed).
+    inst = Nitrogen(ammonium_decay_rate=99.0)
+    inst.use_nitrate = True
+    inst.use_ammonium = True
+    inst.use_floating_algae = False
+    inst.use_benthic_algae = False
+
+    rate = inst.change_ammonium(
+        nitrate=no3_5cell,
+        ammonium=nh4_5cell,
+        temperature=water_temp_5cell,
+        depth=depth_5cell,
+        oxygen_dissolved=dox_5cell,
+    )
+
+    # Expected (post-fix): -nitrification + bed (+ orgn hydrolysis if present).
+    # With default NITROGEN_DEFAULTS (rnh4_20=0), bed term = 0; OrgN absent.
+    expected = -inst.ammonium_nitrification(nh4_5cell, water_temp_5cell, dox_5cell)
+    np.testing.assert_allclose(np.asarray(rate), np.asarray(expected), rtol=1e-6)
+
+
+def test_legacy_kwargs_still_override_defaults():
+    """Phase 9.A.2 wiring contract: when a legacy v2 kwarg is explicitly
+    supplied, it overrides the corresponding NITROGEN_DEFAULTS value AND
+    syncs onto both naming schemes (legacy attribute and DEFAULTS-key
+    attribute end up with the same value).
+    """
+    inst = Nitrogen(
+        nitrification_rate=0.5,
+        nitrification_theta=1.1,
+        denitrification_rate=0.05,
+        sediment_ammonium_release_rate=0.2,
+        sediment_denitrification_rate=0.3,
+        nitrification_oxygen_inhibition_factor=0.7,
+    )
+
+    # Both attribute names share the user value.
+    assert inst.nitrification_rate == 0.5
+    assert inst.knit_20 == 0.5
+    assert inst.nitrification_theta == 1.1
+    assert inst.knit_theta == 1.1
+    assert inst.denitrification_rate == 0.05
+    assert inst.kdnit_20 == 0.05
+    assert inst.sediment_ammonium_release_rate == 0.2
+    assert inst.rnh4_20 == 0.2
+    assert inst.sediment_denitrification_rate == 0.3
+    assert inst.vno3_20 == 0.3
+    assert inst.nitrification_oxygen_inhibition_factor == 0.7
+    assert inst.KNR == 0.7
+
+
+def test_nitrate_uptake_floating_algae_uses_dynamic_split(
+    no3_5cell, nh4_5cell
+):
+    """Phase 9.A.2 audit finding N12: NO3 algal uptake uses dynamic
+    ``1 - algal_nh4_uptake_fraction`` from FloatingAlgae, NOT the static
+    ``float_algea_faction_uptake_from_nitrate=1.0``. NH4 + NO3 paths must
+    sum to ``rna * algal_growth_rate``.
+    """
+    inst = Nitrogen()
+    inst.use_floating_algae = True
+    inst.use_benthic_algae = False
+    inst.use_nitrate = True
+    inst.use_ammonium = True
+
+    # Stand-in FloatingAlgae with the two cached attributes the post-fix
+    # code reads.
+    class FakeFloatingAlgae:
+        AWn = 7.2
+        AWa = 1000.0
+        algal_growth_rate = xr.DataArray(np.array([0.5, 0.6, 0.7, 0.8, 1.0]))
+        algal_nh4_uptake_fraction = xr.DataArray(
+            np.array([0.2, 0.3, 0.5, 0.7, 0.9])
+        )
+
+        def ammonium_growth(self):
+            rna = self.AWn / self.AWa
+            return self.algal_nh4_uptake_fraction * rna * self.algal_growth_rate
+
+    fake_falgae = FakeFloatingAlgae()
+    inst.floating_algae_process = fake_falgae
+
+    nh4_uptake = inst.ammonium_floating_growth()
+    no3_uptake = inst.nitrate_uptake_floating_algae(
+        nitrate=no3_5cell,
+        ammonium=nh4_5cell,
+        algea_growth_rate=fake_falgae.algal_growth_rate,
+    )
+
+    rna = fake_falgae.AWn / fake_falgae.AWa
+    expected_total = rna * fake_falgae.algal_growth_rate
+    actual_total = nh4_uptake + no3_uptake
+
+    # Mass-balance invariant: NH4_uptake + NO3_uptake == rna * AlgalGrowth.
+    np.testing.assert_allclose(
+        np.asarray(actual_total), np.asarray(expected_total), rtol=1e-12
+    )
+
+
+def test_nitrate_uptake_benthic_algae_uses_dynamic_split_and_correct_units(
+    no3_5cell, nh4_5cell, depth_5cell
+):
+    """Phase 9.A.2 audit finding N13: rebuilt ``nitrate_uptake_benthic_algae``
+    uses ``rnb = BWn/BWd`` (NOT BWn/AWa), divides by ``depth`` (was missing),
+    multiplies by ``Fb`` (NOT fraction_bottom_area), and uses dynamic
+    ``1 - balgae_nh4_uptake_fraction`` (NOT static 0.5).
+
+    Mirrors the v3 Phosphorus benthic-uptake pattern.
+    """
+    inst = Nitrogen()
+    inst.use_floating_algae = False
+    inst.use_benthic_algae = True
+    inst.use_nitrate = True
+    inst.use_ammonium = True
+
+    class FakeBenthicAlgae:
+        BWn = 7.2
+        BWd = 100.0
+        Fb = 0.9
+        balgae_growth_rate = xr.DataArray(np.array([0.5, 0.6, 0.7, 0.8, 1.0]))
+        balgae_nh4_uptake_fraction = xr.DataArray(
+            np.array([0.2, 0.3, 0.5, 0.7, 0.9])
+        )
+
+    fake_balgae = FakeBenthicAlgae()
+    inst.benthic_algae_process = fake_balgae
+
+    no3_uptake = inst.nitrate_uptake_benthic_algae(
+        nitrate=no3_5cell,
+        ammonium=nh4_5cell,
+        algea_growth_rate=fake_balgae.balgae_growth_rate,
+        depth=depth_5cell,
+    )
+
+    rnb = fake_balgae.BWn / fake_balgae.BWd  # 0.072
+    expected = (
+        (1.0 - fake_balgae.balgae_nh4_uptake_fraction)
+        * rnb
+        * fake_balgae.Fb
+        * fake_balgae.balgae_growth_rate
+        / depth_5cell
+    )
+    np.testing.assert_allclose(np.asarray(no3_uptake), np.asarray(expected), rtol=1e-12)
 
 
 def test_change_nitrate_no_algae_drops_to_nitrification_minus_denit_minus_beddenit(

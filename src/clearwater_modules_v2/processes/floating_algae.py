@@ -105,22 +105,42 @@ class FloatingAlgae(Process):
     # ALGAE_DEFAULTS dict every subsequent instance reads.
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Legacy v2 kwarg name -> v3 DEFAULTS-aligned attribute name.
+    # Phase 9.A.1 wiring fix: when a legacy kwarg is omitted, the
+    # rate methods read the corresponding DEFAULTS-merged attribute
+    # (v1/Fortran-aligned values). When a legacy kwarg is supplied
+    # explicitly, both the legacy attribute and the DEFAULTS-aligned
+    # attribute are set so older callers continue to work.
+    _LEGACY_TO_DEFAULTS: dict[str, str] = {
+        "growth_rate_max": "mu_max_20",
+        "growth_rate_correction": "mu_max_theta",
+        "death_rate": "kdp_20",
+        "death_rate_correction_factor": "kdp_theta",
+        "repiration_rate": "krp_20",
+        "repiration_rate_correction_factor": "krp_theta",
+        "settling_velocity": "vsap",
+        "light_limitation_constant": "KL",
+        "nitrogen_michaelis_menton_constant": "KsN",
+        "phosphorus_michaelis_menton_constant": "KsP",
+    }
+
     def __init__(
         self,
         parameters: dict | None = None,
         time_step: timedelta = timedelta(minutes=5),
-        settling_velocity: float = 0.0,
-        repiration_rate: float = 0.0,
-        repiration_rate_correction_factor: float = 1.0,
-        death_rate: float = 0.0,
-        death_rate_correction_factor: float = 1.0,
-        growth_rate_option: int = 1,
-        growth_rate_max: float = 1.0,
-        growth_rate_correction: float = 1.0,
-        phosphorus_michaelis_menton_constant: float = 0.0012,
-        nitrogen_michaelis_menton_constant: float = 0.04,
-        light_limitation_option: int = 1,
-        light_limitation_constant: float = 1.0,
+        settling_velocity: float | None = None,
+        repiration_rate: float | None = None,
+        repiration_rate_correction_factor: float | None = None,
+        death_rate: float | None = None,
+        death_rate_correction_factor: float | None = None,
+        growth_rate_option: int | None = None,
+        growth_rate_max: float | None = None,
+        growth_rate_correction: float | None = None,
+        phosphorus_michaelis_menton_constant: float | None = None,
+        nitrogen_michaelis_menton_constant: float | None = None,
+        density_michaelis_menton_constant: float | None = None,
+        light_limitation_option: int | None = None,
+        light_limitation_constant: float | None = None,
         light_attenuation_coefficient: float = 1.0,
         ratio_chla_carbon: float = 40.0,
         ratio_chla_nitrogen: float = 7.2,
@@ -134,10 +154,13 @@ class FloatingAlgae(Process):
                 ``ALGAE_DEFAULTS``). Unknown keys are warned and ignored.
             time_step: Substep cadence for this Process.
             settling_velocity: Settling velocity of floating algae (m/d).
-            repiration_rate: Respiration rate (1/d).
-            death_rate: Death rate (1/d).
+                If None, defaults to v3 ``vsap`` (0.15) from ALGAE_DEFAULTS.
+            repiration_rate: Respiration rate (1/d). If None, defaults
+                to v3 ``krp_20`` (0.2).
+            death_rate: Death rate (1/d). If None, defaults to v3
+                ``kdp_20`` (0.15).
             growth_rate_option: 1=Multiplicative, 2=Limiting Nutrient,
-                3=Harmonic Mean.
+                3=Harmonic Mean. If None, defaults to v3 ``growth_rate_option``.
             ratio_chla_nitrogen, ratio_chla_phosphorus, ratio_chla_carbon:
                 Stoichiometric mass ratios (mg/ug-Chla). NOTE: these
                 kwargs are kept for backward compatibility but are NOT
@@ -145,6 +168,13 @@ class FloatingAlgae(Process):
                 routing — those are derived from
                 ``self.AWn / self.AWa`` (and AWp/AWc/AWd) per the v3
                 ``rna``/``rpa``/``rca``/``rda`` helpers.
+
+        Phase 9.A.1 wiring fix: legacy kwargs that map to v3 DEFAULTS
+        keys (see ``_LEGACY_TO_DEFAULTS``) now default to ``None``. When
+        a kwarg is None, the DEFAULTS value is used (v1/Fortran-aligned).
+        When a kwarg is provided, it overrides both the legacy attribute
+        name and the DEFAULTS-aligned name so all rate methods see the
+        same value regardless of which name they read.
         """
         # --- Phase 1.3 / 2.A: v3-style parameter merge (DEFAULTS + user overrides) ---
         # Lazy-load ALGAE_DEFAULTS on the first instantiation; see
@@ -182,18 +212,65 @@ class FloatingAlgae(Process):
                 setattr(self, k, user_params.get(k, v))
 
         # --- Legacy v2 kwargs (preserved for backward compatibility) ---
-        self.settling_velocity = settling_velocity
-        self.repiration_rate = repiration_rate
-        self.repiration_rate_correction_factor = repiration_rate_correction_factor
-        self.death_rate = death_rate
-        self.death_rate_correction_factor = death_rate_correction_factor
-        self.growth_rate_option = growth_rate_option
-        self.growth_rate_max = growth_rate_max
-        self.growth_rate_correction = growth_rate_correction
-        self.phosphorus_michaelis_menton_constant = phosphorus_michaelis_menton_constant
-        self.nitrogen_michaelis_menton_constant = nitrogen_michaelis_menton_constant
-        self.light_limitation_option = light_limitation_option
-        self.light_limitation_constant = light_limitation_constant
+        # Phase 9.A.1 wiring fix: each legacy kwarg either takes the
+        # value supplied by the user (and is also mirrored onto the
+        # DEFAULTS-aligned attribute), or falls back to the
+        # DEFAULTS-merged value (v1/Fortran-aligned). This guarantees
+        # that default-instantiated FloatingAlgae() produces the
+        # v1/Fortran-aligned rates rather than zero.
+        legacy_kwargs = {
+            "settling_velocity": settling_velocity,
+            "repiration_rate": repiration_rate,
+            "repiration_rate_correction_factor": repiration_rate_correction_factor,
+            "death_rate": death_rate,
+            "death_rate_correction_factor": death_rate_correction_factor,
+            "growth_rate_max": growth_rate_max,
+            "growth_rate_correction": growth_rate_correction,
+            "light_limitation_constant": light_limitation_constant,
+            "nitrogen_michaelis_menton_constant": nitrogen_michaelis_menton_constant,
+            "phosphorus_michaelis_menton_constant": phosphorus_michaelis_menton_constant,
+            "density_michaelis_menton_constant": density_michaelis_menton_constant,
+        }
+        for legacy_name, defaults_name in self._LEGACY_TO_DEFAULTS.items():
+            user_val = legacy_kwargs.get(legacy_name)
+            if user_val is None:
+                # Fall back to the DEFAULTS-aligned attribute (already
+                # set above by the merged-dict loop). Mirror onto the
+                # legacy name so downstream code reading either name
+                # sees the same value.
+                setattr(self, legacy_name, getattr(self, defaults_name))
+            else:
+                # User supplied an explicit override; sync both names.
+                setattr(self, legacy_name, user_val)
+                setattr(self, defaults_name, user_val)
+
+        # ``density_michaelis_menton_constant`` is only meaningful for
+        # BenthicAlgae (whose ``_LEGACY_TO_DEFAULTS`` includes it). For
+        # FloatingAlgae the legacy attribute does not appear in the
+        # mapping; if a caller supplied it explicitly, mirror it onto
+        # ``self.density_michaelis_menton_constant`` so subclasses that
+        # set it directly (legacy behavior) still see it. This is a
+        # no-op for default-instantiated FloatingAlgae().
+        if (
+            density_michaelis_menton_constant is not None
+            and "density_michaelis_menton_constant"
+            not in self._LEGACY_TO_DEFAULTS
+        ):
+            self.density_michaelis_menton_constant = (
+                density_michaelis_menton_constant
+            )
+
+        # Selector kwargs: growth_rate_option / light_limitation_option are
+        # already in ALGAE_DEFAULTS so the merge above set them; only
+        # override if the caller explicitly passed a value.
+        if growth_rate_option is not None:
+            self.growth_rate_option = growth_rate_option
+        if light_limitation_option is not None:
+            self.light_limitation_option = light_limitation_option
+
+        # ``light_attenuation_coefficient`` (lambda) is not in ALGAE_DEFAULTS
+        # (Fortran/v1 compute lambda from the POM/Chla sum in modGlobalParam).
+        # Keep the v2 scalar default as the wiring-only fallback per audit O4.
         self.light_attenuation_coefficient = light_attenuation_coefficient
         self.ratio_chla_carbon = ratio_chla_carbon
         self.ratio_chla_nitrogen = ratio_chla_nitrogen
@@ -433,6 +510,12 @@ class FloatingAlgae(Process):
                 growth_rate * limit_phosphorus * limit_light,
             )
         # Harmonic Mean
+        # Phase 9.A.1 audit F14: zero-guard should fire when FN==0 OR
+        # FP==0 (avoid division by zero in 1/FN + 1/FP). The previous
+        # form fired when FP==1 (i.e. when phosphorus is fully
+        # non-limiting), shutting down growth precisely when P is
+        # saturating — opposite of intent. v1/Fortran fire on
+        # ``(FN == 0) | (FP == 0)``.
         elif self.growth_rate_option == 3:
             rate_raw = (
                 growth_rate
@@ -441,14 +524,9 @@ class FloatingAlgae(Process):
                 / (1.0 / limit_nitrogen + 1.0 / limit_phosphorus)
             )
             rate = xr.where(
-                limit_nitrogen == 0.0,
+                (limit_nitrogen == 0.0) | (limit_phosphorus == 0.0),
                 0,
                 rate_raw,
-            )
-            rate = xr.where(
-                limit_phosphorus == 1.0,  # TODO: confirm this 1
-                0,
-                rate,
             )
         else:
             raise ValueError("Invalid growth rate option")
@@ -552,14 +630,21 @@ class FloatingAlgae(Process):
         """Compute the limiting light for floating algae."""
 
         # Half-saturation light limitation
+        # Phase 9.A.1 audit F5: the ``np.log`` argument must be the
+        # ratio (KL+PAR) / (KL+PAR*exp(-Ld)). The previous form split
+        # numerator and denominator across the *  /  operators so the
+        # log received only (KL+PAR), and the divisor multiplied the
+        # final result instead of forming the log argument.
         if self.light_limitation_option == 1:
             raw_rate = (
                 (1.0 / (self.light_attenuation_coefficient * depth))
-                * np.log(self.light_limitation_constant + surface_light_intensity)
-                / (
-                    self.light_limitation_constant
-                    + surface_light_intensity
-                    * np.exp(-(self.light_attenuation_coefficient * depth))
+                * np.log(
+                    (self.light_limitation_constant + surface_light_intensity)
+                    / (
+                        self.light_limitation_constant
+                        + surface_light_intensity
+                        * np.exp(-(self.light_attenuation_coefficient * depth))
+                    )
                 )
             )
         # Smith Model
