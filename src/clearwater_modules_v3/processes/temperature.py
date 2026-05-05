@@ -127,6 +127,34 @@ class Temperature(Process):
     def from_config(config: dict, variable_registry: VariableRegistry) -> "Temperature":
         return Temperature(**config)
 
+    # ---------- v3 hotstart hooks ----------
+
+    def to_hotstart(self) -> dict:
+        """Snapshot per-process substep state for a hotstart save.
+
+        Returns the keys this process owns inside the hotstart dataset's
+        ``attrs`` mapping. Currently only ``__skip_first_time_step`` is
+        process-internal; all other state is in the registry.
+        """
+        return {
+            "temperature.skip_first_time_step": bool(self.__skip_first_time_step),
+        }
+
+    def from_hotstart(self, state: dict) -> None:
+        """Restore process-internal substep state from a hotstart save.
+
+        After a hotstart, the next substep is processed normally — the
+        v1-coupling ``__skip_first_time_step`` semantic only applies to
+        a fresh start. If the saved hotstart provides an explicit value,
+        we honor it; otherwise we default to ``False`` (don't skip).
+        """
+        if "temperature.skip_first_time_step" in state:
+            self.__skip_first_time_step = bool(
+                state["temperature.skip_first_time_step"]
+            )
+        else:
+            self.__skip_first_time_step = False
+
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Run one TSM substep at ``time``, updating ``water_temperature``."""
 
