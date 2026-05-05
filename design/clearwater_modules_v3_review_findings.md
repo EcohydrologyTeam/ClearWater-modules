@@ -28,8 +28,8 @@ Severity counts (after deduplication of cross-reviewer overlaps):
 
 | Severity | Count |
 |---|---|
-| CRITICAL | 10 (6 resolved 2026-05-04 — C1, C2, C3, C7, C8, C10) |
-| MAJOR | 18 (1 resolved 2026-05-04 — M6) |
+| CRITICAL | 10 (10 resolved 2026-05-04 — C1, C2, C3, C4, C5, C6, C7, C8, C9, C10) |
+| MAJOR | 18 (2 resolved 2026-05-04 — M6, M9) |
 | MINOR | 19 |
 | Observations | 6 |
 
@@ -99,35 +99,17 @@ q_sediment = pb(r) * Cps(r) * alphas(r) / 0.5 / h2(r) * (TsedC - TwaterC) / 8640
 
 **Source:** Physics F2 (CRITICAL); Stability F2 (MINOR — flagged but lower-rated).
 **Location:** `temperature.py:516-521`.
-
-The vectorized guard catches only `denominator == 0.0` (measure-zero set). For pathological inputs where `e_air > P_air` (data-entry error, mis-scaled forcing, sensor noise near saturation), the formula returns a **negative mixing ratio**, which propagates into `density_air` via the `(1+r)/(1+1.61·r)` factor; that factor changes sign near `r = -0.621`, producing **negative or sign-flipped air densities**. Negative density poisons every flux that depends on it (`flux_sensible`, Richardson-stability-dependent `flux_latent_heat`).
-
-**Fix:** Replace `denominator == 0.0` with `denominator <= 0.0` so non-positive denominators all return 0.0. Optionally emit a one-time warning on first encounter.
+**Status:** **RESOLVED 2026-05-04** — both `xr.where` calls now use `denom <= 0.0` so the guard fires for both the exact-zero case (the previous v2 posture) and the pathological `e_air > P_air` case (the C4 fix). Tests in `tests/v3/test_mixing_ratio_air_v3.py` cover normal/equality/negative-denom/vectorized-mixed scenarios.
 
 ### C5. Wet-mask writes NaN into read-only forcing inputs, not just outputs
 
 **Source:** Orchestration F4; `model.py:336-357`, `temperature.py:57-69`.
-
-```python
-for variable_name in getattr(process, "variables", ()) or ():
-    # ... writes NaN into ALL declared variables on dry cells
-```
-
-`Process.variables` conflates the variable the process **writes** (`water_temperature`) with variables it **reads** (`wind_speed`, `air_temperature`, `solar_radiation`, `cloudiness`, etc.). After `Temperature.run`, the wet-mask code writes NaN into forcing variables on dry cells. Next substep, those forcings are NaN. v1 explicitly avoided this: NaN-fill state on dry cells, NaN-mask only output slots at write time.
-
-**Mission impact:** in any wet/dry-margin run (Sumwere Creek, any natural channel near baseflow), forcing data is silently corrupted on the margins. After a chunk reload the corruption is partially overwritten but persists between chunks for cells that stay dry.
-
-**Fix:** Either (a) add `Process.output_variables: list[str] = []` and have v3 mask only those, or (b) intersect `process.variables` with the registry's writable-state set and mask only that intersection. (a) is cleaner.
+**Status:** **RESOLVED 2026-05-04** — option (a) applied: v3 ``Temperature`` declares `output_variables = ["water_temperature", "sediment_temperature"]` (the variables it writes), and `Model.__apply_wet_mask` honors `output_variables` if defined (with `getattr` fallback to `variables` for backward compat with processes that haven't migrated). After this fix, dry-cell forcings (wind_speed, air_temperature, solar_radiation, cloudiness, atmospheric_pressure, atmospheric_vapor_pressure, wetted_surface_area, volume, sediment_thickness) are preserved across substeps; only outputs are NaN-masked. Tests in `tests/v3/test_wet_mask_scope_v3.py` pin the scope contract, the backward-compat fallback, and the no-op case.
 
 ### C6. `__build_process_schedule` uses `start_time.timestamp()` — timezone-dependent for naive datetimes
 
 **Source:** Orchestration F3; `model.py:298-303`.
-
-A naive `datetime` in `.timestamp()` is interpreted in the **local** timezone. The same `datetime(2026,1,1,0,0,0)` produces different POSIX seconds on a Pacific-time laptop vs a UTC cluster. The schedule is baked in at init time, so the bug isn't observable per-step, but the firing schedule **differs by timezone** for any process whose `time_step_seconds` doesn't divide 86400.
-
-For TSM at 5-min substep with model time_step at 5 min, the bug is invisible. For any future process with non-divisor cadence (25-min, hourly with non-zero start-minute), it's a reproducibility defect.
-
-**Fix:** Compute schedule offsets in delta-seconds from `start_time`, not absolute POSIX seconds. The semantic question is whether the user wants "fire when wall-clock UNIX seconds is divisible by interval" (current, TZ-dependent) or "fire every Nth substep starting at start_time" (TZ-independent). The TSM design spec is silent; clarify with author.
+**Status:** **RESOLVED 2026-05-04** — schedule firing semantic changed to **"every Nth substep starting at start_time"** (TZ-independent). Implementation: `delta_seconds = i * time_step_seconds` and fire when `delta_seconds % process.time_step_seconds == 0`. Mirrors the C7 chunk_size validation: `process.time_step_seconds` must be an integer multiple of `time_step_seconds`; otherwise raises `ValueError`. Tests in `tests/v3/test_model_orchestration_v3.py` pin TZ-independence (UTC vs Pacific), multi-cadence firing, non-aligned start_time, and the validation error.
 
 ### C7. Chunk-end membership test (`current_time in interior_chunk_ends`) is type-mixed and FP-fragile
 
@@ -188,10 +170,7 @@ This brings v3 into parity with the Fortran reference for sediment heat exchange
 ### C9. `_v2_init_helper` candidate-name dispatch is built on a misunderstanding
 
 **Source:** Framework F2; `config/init.py:108-114, 198-216`.
-
-The comment claims first candidate exists because "some import paths fold them via name-mangling on intermediate scopes." This is incorrect. Module-level Python name-mangling does not exist; `__name` is mangled only inside class bodies. The first candidate `_init__init_processes` will never match. The wrapper masks real `AttributeError` if v2 ever renames a helper upstream — exactly the silent-break risk the design spec acknowledges.
-
-**Fix:** Replace with direct `getattr(_v2_init, "__init_processes")`. Add a v2-helper-contract test (`tests/v3/test_v2_helper_contract.py`) that asserts presence and signature of `__init_processes` and `__init_model_data` so upstream changes surface as CI failures.
+**Status:** **RESOLVED 2026-05-04** — the multi-candidate `_v2_init_helper` was replaced with a single-name `_resolve_v2_helper(name)` that does direct `getattr(_v2_init, name)` and re-raises `AttributeError` with a descriptive message naming the missing attribute, the v2 module path, and the v3 files to update. Contract test at `tests/v3/test_v2_helper_contract.py` (6 tests) pins existence, callability, and exact parameter-name lists for both `__init_processes` and `__init_model_data` via `inspect.signature`. Upstream renames now surface as CI failures.
 
 ---
 
@@ -249,8 +228,7 @@ Single-snapshot dataset with only `nface` dim → fallback grabs `nface` as time
 ### M9. `__apply_wet_mask` bare `except Exception` swallows real errors
 
 **Source:** Orchestration F9; `model.py:349-353`.
-
-Catches `KeyError` (intent: "variable not yet in registry"), but also `TypeError`, `AttributeError`, `ValueError`. Silent skip on contract regression.
+**Status:** **RESOLVED 2026-05-04** — narrowed to `except KeyError` (the documented intent: "variable not yet in registry"). Resolved alongside C5 in the same patch since both touch `__apply_wet_mask`. Other exception types now propagate, surfacing real bugs.
 
 ### M10. `__init_complete` allows `run()` to be called twice silently
 
@@ -356,13 +334,13 @@ Status says "Phase 1 (scaffold)" but Phases 2-4 are complete. Migration table co
 3. ✓ **C2 — finalize_process AttributeError.** `getattr` callable guard. M6 also resolved (full-mode finalize call added).
 4. ✓ **C7 — chunk-end membership test.** Refactored to integer step-index comparison; `chunk_size` validated as integer multiple of `time_step`.
 
-### Phase R-2 (correctness, fix before sponsor demos)
+### Phase R-2 (correctness, fix before sponsor demos) — **COMPLETE 2026-05-04**
 
-5. **C3 — sediment_diffusivity unit mismatch.** Decide on units convention; align docstring + default + formula.
-6. **C4 — mixing_ratio_air negative-denominator guard.** Replace `denom == 0` with `denom <= 0`.
-7. **C5 — wet-mask read-only-input corruption.** Add `Process.output_variables` and mask only those.
-8. **C6 — schedule timezone dependence.** Refactor to delta-seconds-from-start.
-9. **C9 — _v2_init_helper.** Replace with direct getattr; add contract test.
+5. ✓ **C3 — sediment_diffusivity unit mismatch.** Aligned to Fortran (0.0432 m²/day).
+6. ✓ **C4 — mixing_ratio_air negative-denominator guard.** `denom <= 0` form.
+7. ✓ **C5 — wet-mask read-only-input corruption.** `output_variables` opt-in; M9 also resolved.
+8. ✓ **C6 — schedule timezone dependence.** Refactored to delta-seconds-from-start; cadence-multiple validation.
+9. ✓ **C9 — _v2_init_helper.** Direct `getattr` + 6-test contract test.
 
 ### Phase R-3 (robustness, fix before v3 1.0 ship)
 

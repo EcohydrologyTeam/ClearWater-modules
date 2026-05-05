@@ -307,22 +307,53 @@ class Model:
     def __build_process_schedule(self) -> tuple[tuple[Process, ...], ...]:
         """Precompute, for each step index, the tuple of processes that fire.
 
-        Replaces the per-step modulo check
-        ``current_time_seconds % process.time_step_seconds == 0`` with an
-        O(1) tuple lookup. Same firing semantics: a process fires whenever
-        the absolute time-since-epoch (seconds) is divisible by its
-        ``time_step_seconds``. We enumerate the model's grid of substep
-        times once and bind each step to its firing-process tuple.
+        Firing semantic: a process fires every Nth substep starting at
+        ``start_time``, where ``N = process.time_step_seconds /
+        time_step_seconds``. Equivalently, at substep index ``i`` a
+        process fires when ``(i * time_step_seconds) %
+        process.time_step_seconds == 0``. This is timezone-independent
+        and well-defined for naive ``datetime`` objects.
+
+        C6 fix (review-findings 2026-05-04): the previous implementation
+        used ``self.__start_time.timestamp()`` to seed the schedule.
+        ``datetime.timestamp()`` on a naive ``datetime`` is interpreted
+        in the local timezone (POSIX rule), so the same model
+        configuration produced different schedules on hosts in
+        different timezones for any process whose ``time_step_seconds``
+        did not divide 86400. The new semantic is keyed off
+        delta-seconds-from-``start_time`` and is reproducible across
+        hosts.
+
+        For the common case where ``process.time_step_seconds`` is an
+        integer multiple of ``time_step_seconds`` and the user happens
+        to start on a wall-clock-aligned boundary, the new semantic
+        agrees with the old one substep-for-substep.
+
+        Validation: ``process.time_step_seconds`` must be an integer
+        multiple of the model's ``time_step_seconds`` (mirroring the
+        C7 ``chunk_size`` validation). If not, this raises
+        ``ValueError``: there is no substep grid on which a non-divisor
+        cadence could fire under any deterministic semantic.
         """
         n_steps = self.__count_substeps()
-        schedule: list[tuple[Process, ...]] = []
         time_step_seconds = self.__time_step.total_seconds()
+        # Validate cadence alignment up front (C6 / mirrors C7 chunk_size check).
+        for p in self.__processes:
+            interval = p.time_step_seconds
+            if interval % time_step_seconds != 0:
+                raise ValueError(
+                    "process.time_step_seconds must be an integer multiple of "
+                    "model time_step; got "
+                    f"process={p.process_name()!r}, "
+                    f"process.time_step_seconds={interval}, "
+                    f"time_step={self.__time_step!r}"
+                )
         process_intervals = [(p, p.time_step_seconds) for p in self.__processes]
-        start_seconds = self.__start_time.timestamp()
+        schedule: list[tuple[Process, ...]] = []
         for i in range(n_steps + 1):
-            current_seconds = start_seconds + i * time_step_seconds
+            delta_seconds = i * time_step_seconds
             firing = tuple(
-                p for p, interval in process_intervals if current_seconds % interval == 0
+                p for p, interval in process_intervals if delta_seconds % interval == 0
             )
             schedule.append(firing)
         return tuple(schedule)
@@ -362,17 +393,37 @@ class Model:
         current_time: datetime,
         wet_mask: xr.DataArray | None,
     ) -> None:
-        """Write NaN into masked-dry cells for each variable the process declares.
+        """Write NaN into masked-dry cells for each output variable the process writes.
 
         No-op when ``wet_mask is None``. Variables that aren't currently
         in the registry, or whose dtype is non-floating, are skipped.
+
+        C5 fix (review-findings 2026-05-04): the previous implementation
+        masked **every** variable declared in ``process.variables``,
+        which conflates inputs the process *reads* (forcings like
+        ``wind_speed``, ``air_temperature``, ``solar_radiation``) with
+        outputs the process *writes* (``water_temperature``,
+        ``sediment_temperature``). NaN-masking forcings on dry cells
+        silently corrupts the input data for the next substep / process
+        / chunk. The fix: only mask variables a process declares as
+        *outputs*. Processes opt in by setting a class-level
+        ``output_variables: list[str]``; for backward compatibility,
+        processes that don't declare it fall back to the prior behavior
+        (mask everything in ``.variables``). v3 ``Temperature`` declares
+        ``output_variables = ["water_temperature", "sediment_temperature"]``.
         """
         if wet_mask is None:
             return
-        for variable_name in getattr(process, "variables", ()) or ():
+        # Use output_variables if declared; otherwise fall back to the
+        # full variables list for backward compatibility.
+        output_names = getattr(process, "output_variables", None)
+        if output_names is None:
+            output_names = getattr(process, "variables", ()) or ()
+        for variable_name in output_names:
             try:
                 value = self.__registry.get_at_time(variable_name, current_time)
-            except Exception:
+            except KeyError:
+                # Variable not yet in registry; nothing to mask.
                 continue
             if not hasattr(value, "dtype") or not np.issubdtype(value.dtype, np.floating):
                 continue

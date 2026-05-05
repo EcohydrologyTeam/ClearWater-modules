@@ -68,6 +68,23 @@ class Temperature(Process):
         "sediment_thickness",
     ]
 
+    # C5 fix (review-findings 2026-05-04): variables this process *writes*
+    # back to the registry. The orchestration-layer wet-mask in
+    # ``Model.__apply_wet_mask`` reads this list and masks NaN on dry
+    # cells **only for outputs**, leaving forcing inputs (wind_speed,
+    # air_temperature, solar_radiation, cloudiness, atmospheric_pressure,
+    # atmospheric_vapor_pressure, wetted_surface_area, volume,
+    # sediment_thickness) untouched. ``sediment_temperature`` is in the
+    # output list because v3 evolves it dynamically (see C10 / Fortran
+    # parity); when ``evolve_sediment_temperature=False`` the kernel
+    # writes the unchanged value, so masking dry cells of
+    # ``sediment_temperature`` is still correct (dry cells didn't have
+    # heat exchange anyway).
+    output_variables = [
+        "water_temperature",
+        "sediment_temperature",
+    ]
+
     def __init__(
         self,
         wind_a: float,
@@ -587,17 +604,29 @@ class Temperature(Process):
             atmospheric_vapor_pressure: Atmospheric vapor pressure (mb)
             atmospheric_pressure: Atmospheric pressure (mb)
 
-        Edge guard: when ``atmospheric_pressure == atmospheric_vapor_pressure``
-        the denominator is zero; we return 0.0 for those cells. Implemented
-        via ``xr.where`` so the guard works for both scalars and multi-cell
-        DataArray inputs. (Upstream v2's scalar ``if`` comparison raises
-        ``ValueError`` for arrays of length > 1.)
+        Edge guard: when ``atmospheric_pressure <= atmospheric_vapor_pressure``
+        the denominator is zero or negative; we return 0.0 for those cells.
+        The exact-equality case matches upstream v2's posture; the
+        ``e_air > P_air`` (negative-denominator) case is the C4 fix
+        documented in ``design/clearwater_modules_v3_review_findings.md``.
+        Without this extension, a data-entry error, mis-scaled forcing, or
+        sensor noise near saturation that produces ``e_air > P_air`` would
+        yield a negative mixing ratio, which propagates through
+        ``density_air``'s ``(1 + r) / (1 + 1.61 r)`` factor and produces
+        sign-flipped or near-singular air densities, poisoning every flux
+        that depends on ``density_air``. Implemented via ``xr.where`` so
+        the guard works for both scalars and multi-cell DataArray inputs.
+        (Upstream v2's scalar ``if`` comparison raises ``ValueError`` for
+        arrays of length > 1.)
         """
         denominator = atmospheric_pressure - atmospheric_vapor_pressure
+        # C4 fix: guard on ``<= 0.0`` (not ``== 0.0``) so the pathological
+        # ``e_air > P_air`` case also returns 0.0 rather than a negative
+        # mixing ratio. See review-findings C4.
         return xr.where(
-            denominator == 0.0,
+            denominator <= 0.0,
             0.0,
-            0.622 * atmospheric_vapor_pressure / xr.where(denominator == 0.0, 1.0, denominator),
+            0.622 * atmospheric_vapor_pressure / xr.where(denominator <= 0.0, 1.0, denominator),
         )
 
     def density_air(

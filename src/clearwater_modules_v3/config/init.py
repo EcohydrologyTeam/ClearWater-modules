@@ -101,17 +101,19 @@ def init_from_config(config: dict) -> Model:
 
     # Process and data-source wiring through v2's helpers. v2's helpers are
     # double-underscore-prefixed at module level (private by convention,
-    # but module-level dunder names are not class-mangled, so they are
-    # accessible from here via attribute access). v3 reuses them rather
-    # than forking so any LimnoTech changes to those helpers flow through
-    # to v3 unchanged.
-    processes = _v2_init_helper(
-        "_init__init_processes", "__init_processes"
-    )(config, variable_registry, default_time_step=time_step)
+    # but module-level dunder names are NOT class-mangled, so they are
+    # accessible from here via direct attribute access). v3 reuses them
+    # rather than forking so any LimnoTech changes to those helpers flow
+    # through to v3 unchanged. See finding C9 in
+    # design/clearwater_modules_v3_review_findings.md for context.
+    init_processes = _resolve_v2_helper("__init_processes")
+    init_model_data = _resolve_v2_helper("__init_model_data")
+
+    processes = init_processes(
+        config, variable_registry, default_time_step=time_step
+    )
     variables = {v for p in processes for v in p.variables}
-    variable_data_sources = _v2_init_helper(
-        "_init__init_model_data", "__init_model_data"
-    )(
+    variable_data_sources = init_model_data(
         config=config,
         variables=variables,
         start_time=start_time,
@@ -195,25 +197,26 @@ def _resolve_wet_mask(
     return (variable, threshold)
 
 
-def _v2_init_helper(*candidate_names: str):
-    """Resolve a helper function on the v2 init module by trying multiple names.
+def _resolve_v2_helper(name: str):
+    """Resolve a helper function on the v2 init module by exact name.
 
-    v2's helpers use leading double-underscore names. Module-level dunder
-    names are not class-mangled, so they are accessible via attribute
-    access — but some import paths fold them via name-mangling on
-    intermediate scopes, exposing them as e.g. ``_init__name``. This
-    helper tries each candidate in order so v3 is robust against either
-    resolution.
+    v2's helpers use leading double-underscore names at module scope.
+    Python name-mangling applies only inside class bodies, so module-level
+    ``__init_processes`` is exposed under that exact attribute name. v3
+    looks the helper up directly so any rename or removal upstream
+    surfaces as a loud, descriptive ``AttributeError`` at startup rather
+    than as a silent failure mid-simulation. See finding C9 in
+    design/clearwater_modules_v3_review_findings.md.
     """
-    for name in candidate_names:
-        helper = getattr(_v2_init, name, None)
-        if helper is not None:
-            return helper
-    raise AttributeError(
-        f"v2 config.init module exposes none of {candidate_names!r}; v3 "
-        f"cannot reuse v2's process / data-source helpers. Inspect v2's "
-        f"clearwater_modules_v2/config/init.py to confirm helper names."
-    )
+    try:
+        return getattr(_v2_init, name)
+    except AttributeError as exc:
+        raise AttributeError(
+            f"v3 expected `{name}` on clearwater_modules_v2.config.init; "
+            f"if v2 has been refactored, update v3's reuse contract in "
+            f"clearwater_modules_v3/config/init.py and "
+            f"tests/v3/test_v2_helper_contract.py."
+        ) from exc
 
 
 __all__ = ["init_from_file", "init_from_config"]
