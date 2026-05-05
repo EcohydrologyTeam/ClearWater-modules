@@ -187,7 +187,13 @@ def test_change_nitrate_no_algae_drops_to_nitrification_minus_denit_minus_bedden
     n_instance, nh4_5cell, no3_5cell, water_temp_5cell, depth_5cell, dox_5cell
 ):
     """When use_floating_algae=use_benthic_algae=False, change_nitrate reduces to:
-    ammonium_nitrification - nitrate_denitrification(half_sat=1) - nitrate_bed_denitrification.
+    ammonium_nitrification - nitrate_denitrification(half_sat=KsOxdn) - nitrate_bed_denitrification.
+
+    Phase 2.B Bug #9 fix: ``change_nitrate`` now wires ``half_saturation_oxygen``
+    from ``self.KsOxdn`` (NITROGEN_DEFAULTS, default 0.1) rather than the
+    legacy hard-coded literal ``1``. The test mirrors that wiring so the
+    expected matches the fixed behavior.
+
     Verifies the post-fix isnull NaN replacement and that the time_step_frequency
     typo (bug #3) is no longer reachable from change_nitrate.
     """
@@ -204,7 +210,9 @@ def test_change_nitrate_no_algae_drops_to_nitrification_minus_denit_minus_bedden
 
     expected = (
         n_instance.ammonium_nitrification(nh4_5cell, water_temp_5cell, dox_5cell)
-        - n_instance.nitrate_denitrification(dox_5cell, 1, no3_5cell, water_temp_5cell)
+        - n_instance.nitrate_denitrification(
+            dox_5cell, n_instance.KsOxdn, no3_5cell, water_temp_5cell
+        )
         - n_instance.nitrate_bed_denitrification(depth_5cell, no3_5cell, water_temp_5cell)
     )
 

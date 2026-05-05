@@ -13,6 +13,8 @@ its v2 counterpart unchanged. v3-native code lands in subsequent phases per
 ``design/clearwater_modules_v3_architecture_specification.md``.
 """
 
+from clearwater_modules_v3 import parameters
+from clearwater_modules_v3 import utils
 from clearwater_modules_v3.model import Model
 from clearwater_modules_v3.config import init_from_file
 from clearwater_modules_v3.processes import (

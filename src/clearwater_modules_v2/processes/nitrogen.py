@@ -1,4 +1,5 @@
 from datetime import timedelta, datetime
+import logging
 
 import numpy as np
 import xarray as xr
@@ -10,6 +11,14 @@ from clearwater_modules_v2.utils import conversions
 
 arrhenius_correction = conversions.arrhenius_correction
 
+logger = logging.getLogger(__name__)
+
+
+# Defer v3 import to first use to break the v2 <-> v3 circular import
+# chain that fires when v2.processes.benthic_algae triggers v3.__init__
+# during v2.processes.__init__ enumeration. See floating_algae.py for the
+# full discussion.
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -17,16 +26,47 @@ if TYPE_CHECKING:
 
 
 class Nitrogen(Process):
+    """v2 NSM1 Nitrogen Process (Phase 2.B fixes applied).
+
+    Phase 1.3 (v3 NSM1 design spec, Section 3.4 + Appendix B): adopt the
+    ``Process.DEFAULTS`` merge pattern for parameter handling. The v3
+    ``NITROGEN_DEFAULTS`` dict is exposed as the class attribute
+    ``DEFAULTS`` and merged with a user-supplied ``parameters`` dict at
+    construction time; each merged key becomes a ``self.<name>`` attribute
+    so subsequent NSM1 Process classes can copy the pattern.
+
+    Phase 2.B (v3 NSM1 design spec, Section 11): the 16 known v2 Nitrogen
+    bugs are now fixed (integrator additive Forward Euler in days, NaN
+    guards via ``isnull()``, ``half_saturation_oxygen`` wired from
+    ``self.KsOxdn``, algal growth/mortality coupling via the rate-variable
+    cache on FloatingAlgae/BenthicAlgae, ``set_at_time`` persistence,
+    clip-with-log diagnostics). OrgN is added as a third state variable
+    (``change_organic_nitrogen``) per design spec Section 5.
+
+    The legacy v2 keyword arguments (``nitrification_rate``,
+    ``denitrification_rate``, etc.) are preserved for backward
+    compatibility with existing tests and YAML configs. v2 kwargs and v3
+    DEFAULTS keys have non-overlapping names, so both naming schemes
+    coexist on the instance.
+    """
+
     variables = [
         "nitrate",
         "ammonium",
+        "organic_nitrogen",
         "oxygen_dissolved",
         "water_temperature",
         "depth",
     ]
 
+    # Class-level v3 defaults (Section 3.4 of design spec). Lazy-loaded
+    # on first instantiation; see the module-level note about the v2
+    # <-> v3 circular import chain.
+    DEFAULTS: dict[str, float | int | bool] = {}
+
     def __init__(
         self,
+        parameters: dict | None = None,
         time_step: timedelta = timedelta(minutes=5),
         denitrification_rate: ArrayLike = 1.0,
         denitrification_theta: ArrayLike = 1.0,
@@ -45,6 +85,32 @@ class Nitrogen(Process):
         nitrification_oxygen_inhibition_factor: ArrayLike = 1.0,
     ) -> None:
         Process.__init__(self, time_step)
+
+        # --- Phase 1.3: v3-style parameter merge (DEFAULTS + user overrides) ---
+        # Warn (don't error, don't silently ignore) on unknown keys so that
+        # YAML typos surface but don't break instantiation.
+        # Lazy-load NITROGEN_DEFAULTS to break the v2 <-> v3 circular
+        # import chain.
+        if not type(self).DEFAULTS:
+            from clearwater_modules_v3.parameters.nitrogen import DEFAULTS as NITROGEN_DEFAULTS
+            type(self).DEFAULTS = NITROGEN_DEFAULTS
+
+        user_params = parameters or {}
+        unknown_keys = set(user_params) - set(self.DEFAULTS)
+        for key in sorted(unknown_keys):
+            logger.warning(
+                "Nitrogen: unknown parameter %r in 'parameters' dict; "
+                "ignoring (not in NITROGEN_DEFAULTS).",
+                key,
+            )
+        merged = {**self.DEFAULTS, **user_params}
+        for k, v in merged.items():
+            setattr(self, k, v)
+
+        # --- Legacy v2 kwargs (preserved for backward compatibility) ---
+        # These names do not collide with NITROGEN_DEFAULTS keys, so both
+        # naming schemes coexist on the instance. Phase 2 will rewire the
+        # kinetic methods to the v3 names and retire these.
         self.denitrification_rate = denitrification_rate
         self.denitrification_theta = denitrification_theta
         self.nitrification_rate = nitrification_rate
@@ -57,7 +123,11 @@ class Nitrogen(Process):
         self.ammonium_decay_theta = ammonium_decay_theta
         self.floating_algae_preference_factor = floating_algae_preference_factor
         self.settling_velocity = settling_velocity
-        # TODO: this should come from floating algae process
+        # Phase 2.B Bug #12: ``death_rate`` is preserved as a legacy
+        # kwarg for back-compat with existing v2 unit tests, but the
+        # canonical algal-death routing in v3 reads
+        # ``floating_algae_process.algal_death_rate`` /
+        # ``algal_orgn_from_mortality_rate`` (Phase 2.A populates these).
         self.death_rate = death_rate
         self.float_algea_faction_uptake_from_nitrate = (
             float_algea_faction_uptake_from_nitrate
@@ -65,6 +135,13 @@ class Nitrogen(Process):
         self.nitrification_oxygen_inhibition_factor = (
             nitrification_oxygen_inhibition_factor
         )
+
+        # Phase 2.B: diagnostics handle for clip-with-log. ``init_process``
+        # will replace this with the model's run-level Diagnostics if a
+        # v3 Model is wired up; tests that drive ``run`` directly without
+        # a Model (e.g. Tier 1) keep this local instance.
+        from clearwater_modules_v3.utils.numerics import Diagnostics
+        self.diagnostics = Diagnostics()
 
     @ProcessFactory.register("nitrogen")
     @staticmethod
@@ -82,26 +159,62 @@ class Nitrogen(Process):
         if self.use_benthic_algae:
             self.benthic_algae_process = model.get_process("BenthicAlgae")
 
+        # Phase 2.B: capture run-level Diagnostics from the v3 Model so
+        # ``clip_negative_state`` records clip events on the canonical
+        # diagnostics. v2's Model has no ``diagnostics`` attribute; in
+        # that case the locally-instantiated Diagnostics from __init__
+        # is retained.
+        model_diagnostics = getattr(model, "diagnostics", None)
+        if model_diagnostics is not None:
+            self.diagnostics = model_diagnostics
+
     def run(self, time: datetime, registry: VariableRegistry) -> None:
-        # pull data from regsitry
+        """Run the Nitrogen process for one time step.
+
+        Phase 2.B fixes:
+        * Bug #1 / #2: replaced the multiplicative ``X = 0 + X * rate * dt``
+          update with additive Forward Euler ``X_new = X + rate * dt_days``
+          (rates are 1/d per the v1 NSM1 convention; ``dt_days`` converts
+          the legacy seconds-based ``time_step`` to days). The ``dt``
+          attribute name typo (``time_step_frequency``) is also fixed.
+        * Bug #16: persist ``ammonium_new`` / ``nitrate_new`` /
+          ``organic_nitrogen_new`` via ``registry.set_at_time``.
+        * Q7 clip-with-log via ``clip_negative_state`` (with diagnostics).
+        * OrgN: third state variable integrated alongside NH4 / NO3.
+        """
+        from clearwater_modules_v3.utils.numerics import clip_negative_state
+
+        # Pull state from registry.
         nitrate = registry.get_at_time("nitrate", time)
         ammonium = registry.get_at_time("ammonium", time)
         temperature = registry.get_at_time("water_temperature", time)
         depth = registry.get_at_time("depth", time)
         oxygen_dissolved = registry.get_at_time("oxygen_dissolved", time)
 
-        # update ammonium
+        # OrgN may not be present in legacy v2 registries; fall back to
+        # zeros-like(ammonium) so the integrator and rate calculations
+        # still execute (with ``use_OrgN`` gating the source/sink terms).
+        if "organic_nitrogen" in registry:
+            organic_nitrogen = registry.get_at_time("organic_nitrogen", time)
+        else:
+            organic_nitrogen = xr.zeros_like(ammonium) if hasattr(ammonium, "dims") else 0.0
+
+        # 1/d -> per-step concentration delta.
+        dt_days = self.time_step.total_seconds() / 86400.0
+
+        # --- Ammonium update ---
         ammonium_rate = self.change_ammonium(
             nitrate,
             ammonium,
             temperature,
             depth,
             oxygen_dissolved,
+            organic_nitrogen=organic_nitrogen,
         )
-        ammonium = 0 + ammonium * ammonium_rate * self.time_step.total_seconds()
-        ammonium = xr.where(ammonium < 0, 0, ammonium)
+        ammonium_new = ammonium + ammonium_rate * dt_days
+        ammonium_new = self._clip(ammonium_new, "ammonium")
 
-        # update nitrate
+        # --- Nitrate update ---
         nitrate_rate = self.change_nitrate(
             nitrate,
             ammonium,
@@ -109,8 +222,30 @@ class Nitrogen(Process):
             depth,
             oxygen_dissolved,
         )
-        nitrate = 0 + nitrate * nitrate_rate * self.time_step_frequency.total_seconds()
-        nitrate = xr.where(nitrate < 0, 0, nitrate)
+        nitrate_new = nitrate + nitrate_rate * dt_days
+        nitrate_new = self._clip(nitrate_new, "nitrate")
+
+        # --- Organic Nitrogen update ---
+        orgn_rate = self.change_organic_nitrogen(
+            organic_nitrogen=organic_nitrogen,
+            temperature=temperature,
+            depth=depth,
+        )
+        organic_nitrogen_new = organic_nitrogen + orgn_rate * dt_days
+        organic_nitrogen_new = self._clip(organic_nitrogen_new, "organic_nitrogen")
+
+        # --- Persistence (Bug #16) ---
+        registry.set_at_time("ammonium", time, ammonium_new)
+        registry.set_at_time("nitrate", time, nitrate_new)
+        if "organic_nitrogen" in registry:
+            registry.set_at_time("organic_nitrogen", time, organic_nitrogen_new)
+
+    def _clip(self, state, name: str):
+        """Apply v3 clip-with-log if available; fall back to xr.where."""
+        from clearwater_modules_v3.utils.numerics import clip_negative_state
+        if isinstance(state, xr.DataArray) and self.diagnostics is not None:
+            return clip_negative_state(state, name, self.diagnostics, step=0)
+        return xr.where(state < 0, 0, state)
 
     def change_ammonium(
         self,
@@ -119,9 +254,17 @@ class Nitrogen(Process):
         temperature: ArrayLike,
         depth: ArrayLike,
         oxygen_dissolved: ArrayLike,
+        organic_nitrogen: ArrayLike | None = None,
     ) -> None:
         if not self.use_ammonium:
             return 0
+
+        # Phase 2.B: OrgN -> NH4 hydrolysis source (v1 OrgN_NH4_Decay).
+        # Adds ``kon_tc * OrgN`` to the NH4 rate when ``use_OrgN`` is on.
+        orgn_to_nh4 = self.organic_nitrogen_to_ammonium_hydrolysis(
+            organic_nitrogen=organic_nitrogen,
+            temperature=temperature,
+        )
 
         rate = (
             self.ammonium_decay_nitrate(
@@ -141,10 +284,15 @@ class Nitrogen(Process):
             - self.ammonium_floating_growth()
             + self.ammonium_benthic_respiration()
             - self.ammonium_benthic_growth()
+            + orgn_to_nh4
         )
 
-        # Replace nan's with 0's
-        rate = xr.where(rate == np.nan, 0, rate)
+        # Phase 2.B Bugs #5-#8: replace ``rate == np.nan`` (always False)
+        # with a real null check.
+        if isinstance(rate, xr.DataArray):
+            rate = xr.where(rate.isnull(), 0, rate)
+        else:
+            rate = np.where(np.isnan(rate), 0, rate)
         return rate
 
     def ammonium_floating_respiration(self) -> ArrayLike:
@@ -178,6 +326,24 @@ class Nitrogen(Process):
         if not self.use_nitrate:
             return 0
 
+        # Phase 2.B Bugs #10, #11: read algal growth rates from the
+        # FloatingAlgae / BenthicAlgae step-scoped rate cache (Phase 2.A
+        # populated these in their ``run`` methods). Falls back to 0 when
+        # the algae module is disabled or when ``run`` has not yet been
+        # called this step.
+        if self.use_floating_algae:
+            float_algae_growth = getattr(
+                self.floating_algae_process, "algal_growth_rate", 0
+            )
+        else:
+            float_algae_growth = 0
+        if self.use_benthic_algae:
+            benthic_algae_growth = getattr(
+                self.benthic_algae_process, "balgae_growth_rate", 0
+            )
+        else:
+            benthic_algae_growth = 0
+
         rate = (
             self.ammonium_nitrification(
                 ammonium,
@@ -186,9 +352,9 @@ class Nitrogen(Process):
             )
             - self.nitrate_denitrification(
                 oxygen_dissolved,
-                # TODO: need argument
-                # half_saturation_oxygen,
-                1,
+                # Phase 2.B Bug #9: wire half-saturation O2 from the v3
+                # ``KsOxdn`` parameter (NITROGEN_DEFAULTS).
+                self.KsOxdn,
                 nitrate,
                 temperature,
             )
@@ -200,22 +366,21 @@ class Nitrogen(Process):
             - self.nitrate_uptake_floating_algae(
                 nitrate,
                 ammonium,
-                # TODO: need argument
-                # algea_growth_rate,
-                0,
+                float_algae_growth,
             )
             - self.nitrate_uptake_benthic_algae(
                 nitrate,
                 ammonium,
-                # TODO: need argument
-                # algea_growth_rate,
-                0,
+                benthic_algae_growth,
                 depth,
             )
         )
 
-        # Replace nan's with 0's
-        rate = xr.where(rate == np.nan, 0, rate)
+        # Phase 2.B Bugs #5-#8: real null check (was ``rate == np.nan``).
+        if isinstance(rate, xr.DataArray):
+            rate = xr.where(rate.isnull(), 0, rate)
+        else:
+            rate = np.where(np.isnan(rate), 0, rate)
         return rate
 
     def ammonium_from_bed(self, depth: ArrayLike, temperature: ArrayLike) -> ArrayLike:
@@ -246,8 +411,11 @@ class Nitrogen(Process):
                 )
             )
 
-        # For cases where NH4 or NO3 are very small, force uptake fractions to ratio
-        return xr.where(rate == np.nan, self.floating_algae_preference_factor, rate)
+        # For cases where NH4 or NO3 are very small, force uptake fractions to ratio.
+        # Phase 2.B Bugs #5-#8: real null check (was ``rate == np.nan``).
+        if isinstance(rate, xr.DataArray):
+            return xr.where(rate.isnull(), self.floating_algae_preference_factor, rate)
+        return np.where(np.isnan(rate), self.floating_algae_preference_factor, rate)
 
     def ammonium_rate_settling(self, depth: ArrayLike) -> ArrayLike:
         return depth * self.settling_velocity
@@ -309,8 +477,10 @@ class Nitrogen(Process):
             * (1.0 - (dissolved_oxygen / (dissolved_oxygen + half_saturation_oxygen)))
         )
 
-        # replace nan's with 0's
-        return xr.where(rate == np.nan, 0.0, rate)
+        # Phase 2.B Bugs #5-#8: real null check (was ``rate == np.nan``).
+        if isinstance(rate, xr.DataArray):
+            return xr.where(rate.isnull(), 0.0, rate)
+        return np.where(np.isnan(rate), 0.0, rate)
 
     def nitrate_bed_denitrification(
         self,
@@ -365,3 +535,104 @@ class Nitrogen(Process):
         return 1.0 - np.exp(
             -self.nitrification_oxygen_inhibition_factor * oxygen_dissolved
         )
+
+    # ------------------------------------------------------------------
+    # Organic Nitrogen (Phase 2.B; v3 NSM1 design spec Section 5)
+    # ------------------------------------------------------------------
+    # OrgN is a third state variable on the Nitrogen Process. Sources:
+    # algal mortality routing from FloatingAlgae/BenthicAlgae (Phase 2.A's
+    # ``algal_orgn_from_mortality_rate`` / ``balgae_orgn_from_mortality_rate``).
+    # Sinks: hydrolysis to NH4 (``kon_tc * OrgN``) and settling
+    # (``vson_tc / depth * OrgN``). v1 source: ``processes.py`` 1173-1420.
+
+    def organic_nitrogen_to_ammonium_hydrolysis(
+        self,
+        organic_nitrogen: ArrayLike | None,
+        temperature: ArrayLike,
+    ) -> ArrayLike:
+        """OrgN -> NH4 hydrolysis flux (mg-N/L/d). v1 ``OrgN_NH4_Decay``.
+
+        Returns ``kon_tc * OrgN`` when ``use_OrgN`` is on; 0 otherwise.
+        """
+        if not getattr(self, "use_OrgN", True):
+            return 0.0
+        if organic_nitrogen is None:
+            return 0.0
+        kon_tc = arrhenius_correction(temperature, self.kon_20, self.kon_theta)
+        return kon_tc * organic_nitrogen
+
+    def organic_nitrogen_settling(
+        self,
+        organic_nitrogen: ArrayLike,
+        temperature: ArrayLike,
+        depth: ArrayLike,
+    ) -> ArrayLike:
+        """OrgN -> bed settling flux (mg-N/L/d). v1 ``OrgN_Settling``.
+
+        ``vson_tc / depth * OrgN``. ``vson_20`` carries m/d units; the
+        Arrhenius temperature correction is applied for parity with v1.
+        """
+        if not getattr(self, "use_OrgN", True):
+            return 0.0
+        vson_tc = arrhenius_correction(temperature, self.vson_20, self.vson_theta)
+        return vson_tc / depth * organic_nitrogen
+
+    def organic_nitrogen_from_floating_algae_mortality(self) -> ArrayLike:
+        """Algal-mortality OrgN source (mg-N/L/d). v1 ``ApDeath_OrgN``.
+
+        Routes through Phase 2.A's ``algal_orgn_from_mortality_rate`` cache
+        on the FloatingAlgae process.
+        """
+        if not self.use_floating_algae:
+            return 0.0
+        return getattr(
+            self.floating_algae_process, "algal_orgn_from_mortality_rate", 0.0
+        )
+
+    def organic_nitrogen_from_benthic_algae_mortality(self) -> ArrayLike:
+        """Benthic-algal-mortality OrgN source (mg-N/L/d). v1 ``AbDeath_OrgN``.
+
+        Routes through Phase 2.A's ``balgae_orgn_from_mortality_rate`` cache
+        on the BenthicAlgae process.
+        """
+        if not self.use_benthic_algae:
+            return 0.0
+        return getattr(
+            self.benthic_algae_process, "balgae_orgn_from_mortality_rate", 0.0
+        )
+
+    def change_organic_nitrogen(
+        self,
+        organic_nitrogen: ArrayLike,
+        temperature: ArrayLike,
+        depth: ArrayLike,
+    ) -> ArrayLike:
+        """Net OrgN rate of change (mg-N/L/d). v1 ``dOrgNdt`` (line 1383).
+
+        Sources: algal mortality (floating + benthic).
+        Sinks: hydrolysis to NH4, settling to bed.
+        Gated by ``use_OrgN`` (default True).
+        """
+        if not getattr(self, "use_OrgN", True):
+            return 0.0
+
+        ap_death_orgn = self.organic_nitrogen_from_floating_algae_mortality()
+        ab_death_orgn = self.organic_nitrogen_from_benthic_algae_mortality()
+        orgn_to_nh4 = self.organic_nitrogen_to_ammonium_hydrolysis(
+            organic_nitrogen=organic_nitrogen,
+            temperature=temperature,
+        )
+        orgn_settling = self.organic_nitrogen_settling(
+            organic_nitrogen=organic_nitrogen,
+            temperature=temperature,
+            depth=depth,
+        )
+
+        rate = ap_death_orgn + ab_death_orgn - orgn_to_nh4 - orgn_settling
+
+        # Phase 2.B Bugs #5-#8: real null check.
+        if isinstance(rate, xr.DataArray):
+            rate = xr.where(rate.isnull(), 0, rate)
+        elif isinstance(rate, np.ndarray):
+            rate = np.where(np.isnan(rate), 0, rate)
+        return rate

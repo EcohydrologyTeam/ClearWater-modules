@@ -1,4 +1,26 @@
+"""v2 NSM1 BenthicAlgae Process.
+
+Phase 2.A (v3 NSM1 design spec, Section 11 + Section 6 bug list): apply
+the parallel set of bug fixes to ``BenthicAlgae`` that Phase 2.A applies
+to ``FloatingAlgae``:
+
+- Integrator fix: replace the broken multiplicative integrator inherited
+  from ``FloatingAlgae.run`` with additive Forward Euler.
+- Implement ``ammonium_respiration`` and ``ammonium_growth`` per v1
+  benthic algae kinetics (NH4_AbRespiration / NH4_AbGrowth) using the
+  benthic stoichiometry (BWn) and the depth/Fb area-integration factor.
+- NaN guards: replace broken ``rate == np.nan`` with ``isnull`` /
+  ``np.isnan``.
+- Persistence: persist updated state via ``registry.set_at_time``.
+
+Adopt the v3 ``BALGAE_DEFAULTS`` merge pattern. Algal-mortality routing
+methods are added that mirror FloatingAlgae's, using benthic
+stoichiometry (BWn, BWp, BWc) and the v1 ``Fw`` (fraction to water
+column) and ``Fb`` (fraction of bottom area) factors.
+"""
+
 from datetime import datetime, timedelta
+import logging
 
 import numpy as np
 import xarray as xr
@@ -10,42 +32,234 @@ from .floating_algae import FloatingAlgae
 
 from clearwater_modules_v2.utils.conversions import arrhenius_correction
 
+# Defer v3 imports to first use; see floating_algae.py for the full
+# discussion of the v2 <-> v3 circular-import chain.
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from model import Model
 
 
+logger = logging.getLogger(__name__)
+
+
+# Inline fallback defaults for partitioning inputs that live in the
+# v3 phosphorus / global_vars / carbon modules. Used only when the user
+# does not pass them in the merged parameters dict.
+_BENTHIC_FDP_DEFAULTS = {
+    "kdpo4": 0.0,
+    "Solid": 1.0,
+    "use_TIP": True,
+    # mortality routing fractions (v1 carbon: f_pocb)
+    "f_pocb": 0.5,  # fraction of benthic algal mortality C that goes to POC
+}
+
+
 class BenthicAlgae(FloatingAlgae):
     variables = ["benthic_algae", "solar_radiation"]
 
+    # Class-level v3 defaults for benthic algae parameters. Lazy-loaded
+    # on first instantiation to avoid the v2 <-> v3 circular import.
+    DEFAULTS: dict[str, float | int | bool] = {}
+
     def __init__(
         self,
+        parameters: dict | None = None,
         *args,
         density_michaelis_menton_constant: float = 1.0,
         **kwargs,
     ) -> None:
-        """
-        Initialize the floating algae process.
+        """Initialize the benthic algae process.
 
-        Parameters:
-            time_step_frequency (timedelta): Time step frequency
-            growth_rate_option (int): Growth rate option
-                1 = Multiplicative
-                2 = Limiting Nutrient
-            density_michaelis_menton_constant (float): Michaelis-Menton constant for density
+        Args:
+            parameters: Optional dict of v3 balgae parameter overrides.
+                Merged with the class-level ``DEFAULTS`` (v3
+                ``BALGAE_DEFAULTS``). Unknown keys are warned and ignored.
+            density_michaelis_menton_constant: Michaelis-Menton constant
+                for benthic-density limitation (v1 Ksb).
         """
+        # --- Phase 2.A: v3-style parameter merge for BALGAE_DEFAULTS ---
+        # Done here rather than relying on FloatingAlgae.__init__ because
+        # BenthicAlgae has its own DEFAULTS (BALGAE_DEFAULTS) that
+        # override ALGAE_DEFAULTS for benthic-specific parameters.
+        # Lazy-load BALGAE_DEFAULTS to break the v2 <-> v3 circular
+        # import.
+        if not type(self).DEFAULTS:
+            from clearwater_modules_v3.parameters.balgae import DEFAULTS as BALGAE_DEFAULTS
+            type(self).DEFAULTS = BALGAE_DEFAULTS
+
+        user_params = parameters or {}
+        unknown_keys = set(user_params) - set(self.DEFAULTS)
+        for key in sorted(unknown_keys):
+            logger.warning(
+                "BenthicAlgae: unknown parameter %r in 'parameters' dict; "
+                "ignoring (not in BALGAE_DEFAULTS).",
+                key,
+            )
+        merged = {**self.DEFAULTS, **user_params}
+        for k, v in merged.items():
+            setattr(self, k, v)
+
+        # Inline partitioning / routing defaults from non-balgae groups.
+        for k, v in _BENTHIC_FDP_DEFAULTS.items():
+            if not hasattr(self, k):
+                setattr(self, k, user_params.get(k, v))
+
         self.density_michaelis_menton_constant = density_michaelis_menton_constant
-        FloatingAlgae.__init__(self, *args, **kwargs)
+
+        # FloatingAlgae.__init__ does NOT take a `parameters` kwarg here;
+        # we already applied the BALGAE_DEFAULTS merge above. Pass
+        # parameters=None to FloatingAlgae to skip a second merge against
+        # ALGAE_DEFAULTS (which would overwrite our BALGAE values for any
+        # non-overlapping keys with algae-pelagic defaults). Legacy v2
+        # kwargs pass through unchanged.
+        FloatingAlgae.__init__(self, parameters=None, *args, **kwargs)
+
+        # Step-scoped rate-variable cache for benthic algae, keyed for the
+        # benthic-specific consumer side (v1 NH4_AbRespiration etc.).
+        self.balgae_growth_rate: ArrayLike = 0.0
+        self.balgae_respiration_rate: ArrayLike = 0.0
+        self.balgae_death_rate: ArrayLike = 0.0
+        self.balgae_nh4_uptake_fraction: ArrayLike = 0.5
+        self.balgae_orgn_from_mortality_rate: ArrayLike = 0.0
+        self.balgae_orgp_from_mortality_rate: ArrayLike = 0.0
+        self.balgae_poc_from_mortality_rate: ArrayLike = 0.0
+        self.balgae_doc_from_mortality_rate: ArrayLike = 0.0
 
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
         # check if there is nitrogen process and set flags according
         self.use_nitrate = True
         self.use_ammonium = True
-
-        # check if there is a phosphorus process and set flags according
-        # TODO: implement
         self.use_phosphate = True
+
+        # Capture run-level Diagnostics (Phase 2.0 prerequisite).
+        model_diagnostics = getattr(model, "diagnostics", None)
+        if model_diagnostics is not None:
+            self.diagnostics = model_diagnostics
+
+    def run(self, time: datetime, registry: VariableRegistry) -> None:
+        """Run the benthic algae process.
+
+        Forward-Euler integrator with v3 clip-with-log diagnostics and
+        registry persistence. Mirrors ``FloatingAlgae.run`` but uses the
+        benthic algae registry variable name and the additional density
+        limitation factor.
+        """
+
+        algae = registry.get_at_time("benthic_algae", time)
+        ammonium = registry.get_at_time("ammonium", time)
+        nitrate = registry.get_at_time("nitrate", time)
+        phosphorus_total_inorganic = registry.get_at_time(
+            "phosphorus_total_inorganic", time
+        )
+        depth = registry.get_at_time("depth", time)
+        water_temperature = registry.get_at_time("water_temperature", time)
+        solar = registry.get_at_time("solar_radiation", time)
+
+        # Use v3 fdp utility for the dissolved P fraction.
+        from clearwater_modules_v3.utils.partitioning import fdp as fdp_partition
+
+        phosphate_fraction_dissolved = fdp_partition(
+            use_TIP=self.use_TIP,
+            Solid=self.Solid,
+            kdpo4=self.kdpo4,
+        )
+
+        rate = self.rate(
+            algae=algae,
+            depth=depth,
+            water_temperature=water_temperature,
+            phosphorus_total_inorganic=phosphorus_total_inorganic,
+            phosphate_fraction_dissolved=phosphate_fraction_dissolved,
+            ammonium=ammonium,
+            nitrate=nitrate,
+            solar=solar,
+        )
+
+        # Cache depth for v1 NH4_AbRespiration / NH4_AbGrowth (which
+        # divide by depth to convert g/m^2/d areal rates into mg-N/L/d
+        # volumetric rates).
+        self._cached_depth = depth
+
+        # Cache step-scoped routing variables for downstream Processes.
+        self._cache_benthic_mortality_rates(algae, water_temperature, depth)
+
+        # Cache the benthic NH4-uptake fraction.
+        self.balgae_nh4_uptake_fraction = self._ab_uptake_fr_nh4(
+            ammonium=ammonium, nitrate=nitrate
+        )
+
+        # Forward Euler in days.
+        dt_days = self.time_step.total_seconds() / 86400.0
+        algae_new = algae + rate * dt_days
+
+        # Clip-with-log per Q7.
+        from clearwater_modules_v3.utils.numerics import clip_negative_state
+        algae_new = clip_negative_state(
+            algae_new, "benthic_algae", self.diagnostics, step=0
+        )
+
+        # Persistence (Bug #16 parallel for benthic algae).
+        registry.set_at_time("benthic_algae", time, algae_new)
+
+    def _cache_benthic_mortality_rates(
+        self,
+        algae: ArrayLike,
+        water_temperature: ArrayLike,
+        depth: ArrayLike,
+    ) -> None:
+        """Compute and cache benthic-algae mortality routing rates.
+
+        Per v1 (AbDeath_OrgN, AbDeath_OrgP, POC_benthic_algae_mortality,
+        DOC_benthic_algae_mortality):
+
+        - AbDeath_OrgN = rnb * Fw * Fb * AbDeath / depth
+        - AbDeath_OrgP = rpb * Fw * Fb * AbDeath / depth
+        - POC_balgae_mortality = (1 / depth) * f_pocb * Fb * Fw * rcb * AbDeath
+        - DOC_balgae_mortality = (1 / depth) * (1 - f_pocb) * Fb * Fw * rcb * AbDeath
+
+        v1 rnb / rpb / rcb are BWn/BWd, BWp/BWd, BWc/BWd. Here we use
+        the v3 BALGAE_DEFAULTS keys directly.
+        """
+        ab_death = self.rate_death(algae, water_temperature)
+
+        rnb = self.BWn / self.BWd  # mg-N/mg-D
+        rpb = self.BWp / self.BWd  # mg-P/mg-D
+        rcb = self.BWc / self.BWd  # mg-C/mg-D
+
+        fw = self.Fw
+        fb = self.Fb
+
+        self.balgae_death_rate = ab_death
+        self.balgae_orgn_from_mortality_rate = rnb * fw * fb * ab_death / depth
+        self.balgae_orgp_from_mortality_rate = rpb * fw * fb * ab_death / depth
+        self.balgae_poc_from_mortality_rate = (
+            self.f_pocb * fb * fw * rcb * ab_death / depth
+        )
+        self.balgae_doc_from_mortality_rate = (
+            (1.0 - self.f_pocb) * fb * fw * rcb * ab_death / depth
+        )
+
+    def _ab_uptake_fr_nh4(
+        self, ammonium: ArrayLike, nitrate: ArrayLike
+    ) -> ArrayLike:
+        """v1 AbUptakeFr_NH4 (lines 1263-1302). Same shape as
+        ``ApUptakeFr_NH4`` but uses the benthic preference factor PNb."""
+        pnb = getattr(self, "PNb", 0.5)
+
+        if self.use_ammonium and not self.use_nitrate:
+            return 1.0
+        if not self.use_ammonium and self.use_nitrate:
+            return 0.0
+        if not self.use_ammonium and not self.use_nitrate:
+            return 0.5
+
+        denom = pnb * ammonium + (1.0 - pnb) * nitrate
+        result = xr.where(denom > 0, pnb * ammonium / denom, pnb)
+        if isinstance(result, xr.DataArray):
+            result = xr.where(result.isnull(), pnb, result)
+        return result
 
     def rate(
         self,
@@ -58,9 +272,7 @@ class BenthicAlgae(FloatingAlgae):
         nitrate: ArrayLike,
         solar: ArrayLike,
     ) -> ArrayLike:
-        """
-        Compute the rate of change of floating algae.
-        """
+        """Compute the rate of change of benthic algae."""
         # growth limiting factors
         limit_phosphorus = self.limit_phosphorus(
             concentration=phosphorus_total_inorganic,
@@ -96,9 +308,7 @@ class BenthicAlgae(FloatingAlgae):
         limit_light: ArrayLike,
         limit_density: ArrayLike,
     ) -> ArrayLike:
-        """
-        Compute the rate of growth of floating algae.
-        """
+        """Compute the rate of growth of benthic algae."""
 
         growth_rate = arrhenius_correction(
             water_temperature,
@@ -125,7 +335,28 @@ class BenthicAlgae(FloatingAlgae):
         else:
             raise ValueError("Invalid growth rate option")
 
-        return rate * algae
+        result = rate * algae
+        # Cache for downstream consumers (Q10 GS-rates pattern).
+        self.balgae_growth_rate = result
+        return result
+
+    def rate_respiration(
+        self, algae: ArrayLike, water_temperature: ArrayLike
+    ) -> ArrayLike:
+        """Compute the rate of respiration of benthic algae.
+
+        Mirrors v1 AbRespiration but uses ``corrected_respiration_rate *
+        algae``. We override FloatingAlgae's so we can cache the benthic
+        rate variable separately.
+        """
+        corrected_respiration_rate = arrhenius_correction(
+            water_temperature,
+            self.repiration_rate,
+            self.repiration_rate_correction_factor,
+        )
+        result = algae * corrected_respiration_rate
+        self.balgae_respiration_rate = result
+        return result
 
     def limit_light(
         self,
@@ -133,9 +364,7 @@ class BenthicAlgae(FloatingAlgae):
         depth: ArrayLike,
         surface_light_intensity: ArrayLike,
     ) -> ArrayLike:
-        """
-        Compute the limiting light for floating algae.
-        """
+        """Compute the limiting light for benthic algae."""
 
         light_at_depth_coefficent = np.exp(-self.light_attenuation_coefficient * depth)
 
@@ -194,11 +423,69 @@ class BenthicAlgae(FloatingAlgae):
         return rate
 
     def limit_density(self, algae: ArrayLike) -> ArrayLike:
-        """
-        Compute the limiting density for floating algae.
+        """Compute the limiting density for benthic algae.
+
+        Matches v1 ``FSb(Ab, Ksb) = 1 - Ab / (Ab + Ksb)``.
         """
         limit_raw = 1.0 - (algae / (algae + self.density_michaelis_menton_constant))
         limit = xr.where(limit_raw > 1, 1, limit_raw)
-        limit = xr.where(limit_raw == np.nan, 0, limit)
+        # Bug fix: x == np.nan is always False per IEEE 754. Use isnull.
+        if isinstance(limit, xr.DataArray):
+            limit = xr.where(limit.isnull(), 0, limit)
+        else:
+            limit = xr.where(np.isnan(limit), 0, limit)
 
         return limit
+
+    # ------------------------------------------------------------------
+    # NH4 coupling for benthic algae (v1 NH4_AbRespiration / NH4_AbGrowth)
+    # ------------------------------------------------------------------
+
+    def ammonium_respiration(self) -> ArrayLike:
+        """v1 NH4_AbRespiration (line 1525): (rnb * AbRespiration * Fb) / depth.
+
+        Returns mg-N/L/d transferred from benthic algal respiration to
+        NH4. Uses cached ``balgae_respiration_rate``. We use a stored
+        depth value cached during ``run``; if ``run`` has not been
+        called yet, returns 0.
+        """
+        rnb = self.BWn / self.BWd  # mg-N/mg-D
+        fb = self.Fb
+        depth = getattr(self, "_cached_depth", None)
+        if depth is None:
+            return 0.0
+        return rnb * self.balgae_respiration_rate * fb / depth
+
+    def ammonium_growth(self) -> ArrayLike:
+        """v1 NH4_AbGrowth (line 1547): (AbUptakeFr_NH4 * rnb * Fb * AbGrowth) / depth.
+
+        Returns mg-N/L/d removed from NH4 by benthic algal growth.
+        Uses the cached ``balgae_growth_rate`` and
+        ``balgae_nh4_uptake_fraction`` written by ``run``.
+        """
+        rnb = self.BWn / self.BWd  # mg-N/mg-D
+        fb = self.Fb
+        depth = getattr(self, "_cached_depth", None)
+        if depth is None:
+            return 0.0
+        return self.balgae_nh4_uptake_fraction * rnb * fb * self.balgae_growth_rate / depth
+
+    # ------------------------------------------------------------------
+    # Algal mortality routing helpers (Q10 GS-rates contract)
+    # ------------------------------------------------------------------
+
+    def death_to_orgn(self) -> ArrayLike:
+        """v1 AbDeath_OrgN: rnb * Fw * Fb * AbDeath / depth (mg-N/L/d)."""
+        return self.balgae_orgn_from_mortality_rate
+
+    def death_to_orgp(self) -> ArrayLike:
+        """v1 AbDeath_OrgP: rpb * Fw * Fb * AbDeath / depth (mg-P/L/d)."""
+        return self.balgae_orgp_from_mortality_rate
+
+    def death_to_poc(self) -> ArrayLike:
+        """v1 POC_benthic_algae_mortality: (1/depth) * f_pocb * Fb * Fw * rcb * AbDeath."""
+        return self.balgae_poc_from_mortality_rate
+
+    def death_to_doc(self) -> ArrayLike:
+        """v1 DOC_benthic_algae_mortality: (1/depth) * (1-f_pocb) * Fb * Fw * rcb * AbDeath."""
+        return self.balgae_doc_from_mortality_rate

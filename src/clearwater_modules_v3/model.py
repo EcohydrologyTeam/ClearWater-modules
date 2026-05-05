@@ -60,6 +60,7 @@ from clearwater_data.io.zarr import ChunkedZarrDataStore
 from clearwater_data.variables import VariableRegistry
 
 from clearwater_modules_v3.processes.base import Process
+from clearwater_modules_v3.utils.numerics import Diagnostics
 
 LOGGER = getLogger(__name__)
 
@@ -170,6 +171,14 @@ class Model:
         self.__wet_mask_provider = wet_mask_provider
         self.__hotstart_dataset: xr.Dataset | None = hotstart_dataset
         self.__hotstart_timestep = hotstart_timestep
+
+        # Run-level diagnostics (resolved Q7, NSM1 design spec Section 14):
+        # the clip-with-log contract for state integrators routes per-step
+        # clip events here so Tier 1 conservation tests can assert
+        # ``model.diagnostics.clip_events == 0`` directly. Public by design;
+        # Process classes capture a reference in ``init_process`` and pass
+        # it to ``clip_negative_state`` from each ``Process.run``.
+        self.diagnostics: Diagnostics = Diagnostics()
 
         self.__init_complete: bool = False
         # M10 fix (review-findings 2026-05-04): a second ``run()`` call

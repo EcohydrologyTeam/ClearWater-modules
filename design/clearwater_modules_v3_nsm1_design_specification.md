@@ -117,6 +117,27 @@ NSM1 has substantial inter-process coupling: algae produce O2 (consumed by DOX),
 
 This is the v2 pattern, generalized. The 4 existing v2 NSM1 processes already use this pattern (e.g., `Nitrogen.change_ammonium` reads `floating_algae_process.ammonium_respiration()` and `ammonium_growth()`). v3 makes the pattern uniform across all 11 processes by routing through the registry rather than direct cross-process method calls.
 
+#### Within-timestep update semantics — Jacobi for state, Gauss-Seidel for rate variables
+
+The Registry distinguishes two value classes with different lifecycles:
+
+- **State variables** (Ap, Ab, NH4, NO3, OrgN, TIP, OrgP, POC, DOC, DIC, POM, CBOD groups, DOX, PX, Alk, N2): time-indexed. Within a step processing `t_current → t_current + dt`, every `Process.run` reads state via `get_at_time(t=t_current)` and writes via `set_at_time(t=t_current + dt)`. State reads always see pre-update (time-`n`) values regardless of dispatch order — Jacobi semantics. Two dispatch orderings that respect rate-variable producer→consumer edges produce identical state evolution.
+- **Rate variables** (`algal_growth_rate`, `algal_respiration_rate`, `algal_death_rate`, `algal_nh4_uptake_fraction`, `nitrification_rate`, `denitrification_rate`, `doc_dic_oxidation_rate`, `cbod_oxidation_rate`, the sediment-flux variables): step-scoped, not time-indexed. Cleared at the start of each step. Producers write via `set_rate_variable(name, value)`; consumers read via `get_rate_variable(name)`. Reading a rate variable that has not been written in the current step raises an error — Gauss-Seidel semantics with strict producer-precedes-consumer enforcement, which catches dispatch-order bugs immediately.
+
+The Model.run loop is therefore:
+
+```
+for each step (t_current → t_current + dt):
+    registry.clear_rate_variables()
+    for process in dispatch_order:
+        process.run(t_current, dt)   # state reads at t_current; rate vars within-step
+    registry.advance_time(t_current + dt)
+```
+
+NSM1 Processes never read state via a "latest available time" accessor; reads always pass `t=t_current` explicitly. The naming convention from Appendix A (`_rate` / `_fraction` suffixes) doubles as the lifecycle marker: state variables don't carry those suffixes; rate variables do.
+
+This convention matches v1 NSM1's xarray-DAG behavior (compute all dynamic quantities in dependency order using time-`n` state, then apply state updates), which tightens v1/v3 parity tolerances. v2's accidental sequential-read pattern is closer to pure Gauss-Seidel; v2/v3 parity tests must constrain conditions where the state-read difference is moot, or accept small differences attributable to v2's looser contract.
+
 ### Process dispatch order
 
 The NSM1 dispatch order, declared in the YAML and honored by v3 `Model`:
@@ -135,6 +156,8 @@ The NSM1 dispatch order, declared in the YAML and honored by v3 `Model`:
 
 This order matches v1 NSM1's `ComputeKinetics` sequence. NSM2 features (when added in v3 1.1+) will require reordering: SedFlux moves earlier; methane-sulfide goes between carbon and DOX; alkalinity moves to the end. The v3 framework handles ordering via the YAML declaration, so future reordering is a config change.
 
+Note that under the Jacobi-state semantics defined above, dispatch order is required only to respect rate-variable producer→consumer dependencies — state variable evolution is order-independent. Two orderings that both respect the rate-DAG produce identical state outputs. The order above reflects the rate-DAG; alternative orderings that satisfy the DAG (e.g., swapping Pathogen and Alkalinity, which share no rate variables) are equivalent.
+
 ### Integrator pattern
 
 The v2 NSM1 multiplicative-integrator bug is a symptom of an unclear contract for what `Process.run` should do. v3 establishes the contract explicitly:
@@ -142,8 +165,13 @@ The v2 NSM1 multiplicative-integrator bug is a symptom of an unclear contract fo
 1. Each `Process.run` reads its state variables from the registry at the current time.
 2. Each `Process.run` computes net rate of change for each state variable, with units of `[state] / second` (additively combining sources and sinks).
 3. Each `Process.run` applies the rate to the state via Forward Euler: `state_new = state_old + rate * self.time_step.total_seconds()`.
-4. Each `Process.run` writes the updated state back to the registry via `set_at_time`.
-5. Negative-state guards (e.g., concentration cannot go below zero) are applied with `xr.where(state_new < 0, 0, state_new)`.
+4. Each `Process.run` calls the shared `clip_negative_state(state_new, name, cell_mask, diagnostics)` utility (in `clearwater_modules_v3/utils/numerics.py`), which clips negatives to zero, emits a structured log entry per affected cell (with rate-limiting for high-volume events), and increments a per-Process per-variable counter on the run-level `diagnostics` object. Clipping is a safety net for off-design conditions (unphysical parameters, dt too large, bad initial conditions); under reasonable closed-system inputs it should never fire — see Section 9 Tier 1.
+5. Each `Process.run` writes the (post-clip) updated state back to the registry via `set_at_time`.
+
+Notes on the clipping contract:
+- Clip target is exactly 0, not a small epsilon. Monod ratios `C/(C+K)` are well-defined at `C=0`. If a kinetics formula would divide directly by a clipped state, the formula is reformulated rather than the clip target adjusted.
+- DOX is the most clip-prone constituent (multiple first-order sinks: SOD + nitrification + CBOD oxidation + DOC oxidation). Phase 5 evaluates whether DOX should opt into a semi-implicit treatment of its first-order sinks (`DOX_new = (DOX_old + sources*dt) / (1 + sum_of_first_order_sink_coefs*dt)`), which is positive by construction. This is a per-Process opt-in, not a framework-wide change.
+- Adaptive substepping when a clip would fire is deferred to v3 1.1+ if profiling shows it is needed.
 
 This is the corrected version of what v2 NSM1 attempted. The integrator is the same shape across all 11 processes; only the rate computation differs.
 
@@ -255,18 +283,24 @@ v3 NSM1 parameters are organized into the following groups, mapping to v1's `Typ
 | global_parameters | `GlobalParameters` | All processes (passed via dependency injection or registry) |
 | global_vars | `GlobalVars` | Initial conditions for state variables |
 
-Parameters that need correction during port (sentinel `999` values in v1):
-
-| Parameter | v1 default | v3 default | Source |
-|---|---|---|---|
-| `vsop` | 999 | 0.1 m/d | OrgP settling velocity, typical range 0.01-1.0 m/d |
-| `vs` | 999 | 0.1 m/d | TIP settling velocity, similar range |
-| `SOD_20` | 999 | 1.0 g-O2/m²/d | Reasonable default for moderate organic loading |
-| `SOD_theta` | 999 | 1.060 | Standard Arrhenius theta for SOD (per Chapra 1997) |
-| `kaw_20_user` | 999 | 0.0 m/d | Disable user-defined wind reaeration by default |
-| `kah_20_user` | 999 | 0.0 m/d | Disable user-defined hydraulic reaeration by default |
+Parameters that need correction during port (see Section 7 for the canonical list of seven critical default-value corrections, including the Phase 0 finding `pressure_mb=2026.5 → 1013.25 hPa`).
 
 The corrections are documented in v3's `parameter_defaults_corrections.md` (a new doc) so the rationale is on record. The DOX bug investigation already documented in `NSM1_DOX_rate_bug_investigation.md` is referenced.
+
+#### Other defaults under Phase 1 audit
+
+The Phase 0 parameter audit (`docs/clearwater_modules_v3_nsm1_phase0_parameter_audit.md`) flagged 8 additional defaults that do not block the port but warrant Phase 1 review and documentation:
+
+- `rnh4_20=0`, `vno3_20=0`, `rpo4_20=0` — sediment release silently disabled; verify gated by `use_SedFlux`
+- `kdpo4=0.0` — TIP partitioning feature disabled; NSM2 territory
+- `ksbod_20=0.0` — CBOD never settles; confirm with LimnoTech whether intentional
+- `apx=1`, `vx=1` — pathogen placeholders without literature basis; document units and source
+- `h2=0.1` — POM dissolution depth, unclear physical role; add docstring
+- `vb=0.01` — burial velocity magnitude; document with reference
+- `q_solar=500` units — code docstring says `1/d` but actually W/m²; standardize
+- `lambdas` — light extinction parameter defined in constants but disabled in code; remove or activate
+
+Phase 1 dispositions each item in `parameter_defaults_corrections.md` alongside the seven critical corrections.
 
 ---
 
@@ -357,20 +391,23 @@ The fixes from `streaming` (#3, #5, #6, #16) need to be brought forward into v3 
 
 ---
 
-## 7. Sentinel-`999` Bug Fixes
+## 7. Critical Default-Value Corrections
 
-v1's `nsm1/constants.py` contains 6 parameters defaulted to `999`:
+v1's `nsm1/constants.py` contains 7 parameter defaults that v3 corrects at the port: 6 sentinel-`999` values and 1 magnitude error in `pressure_mb` (identified during Phase 0 parameter audit, 2026-05-04).
 
-| Parameter | Risk | Phase 0 mitigation in v3 |
-|---|---|---|
-| `vsop` (OrgP settling velocity) | Multiplied into rate; wrong magnitude propagates | Default to `0.1` m/d |
-| `vs` (TIP settling velocity) | Same | Default to `0.1` m/d |
-| `SOD_20` (SOD at 20 °C) | Wrong magnitude propagates | Default to `1.0` g-O2/m²/d |
-| `SOD_theta` (Arrhenius theta for SOD) | `999^(T-20)` — catastrophic blowup at T > 20 °C | Default to `1.060` (Chapra 1997 standard) |
-| `kaw_20_user` (user-override wind reaeration at 20 °C) | Used only when option set; spurious if set incorrectly | Default to `0.0` (disabled unless user opts in) |
-| `kah_20_user` (user-override hydraulic reaeration at 20 °C) | Same | Default to `0.0` |
+| Parameter | v1 default | Risk | v3 default | Source |
+|---|---|---|---|---|
+| `vsop` (OrgP settling velocity) | 999 | Multiplied into rate; wrong magnitude propagates | `0.1` m/d | Typical 0.01–1.0 m/d |
+| `vs` (TIP settling velocity) | 999 | Same | `0.1` m/d | Typical 0.01–1.0 m/d |
+| `SOD_20` (SOD at 20 °C) | 999 | Wrong magnitude propagates | `1.0` g-O2/m²/d | Reasonable for moderate organic loading |
+| `SOD_theta` (Arrhenius theta for SOD) | 999 | `999^(T-20)` — catastrophic blowup at T > 20 °C | `1.060` | Chapra 1997 standard |
+| `kaw_20_user` (user-override wind reaeration at 20 °C) | 999 | Used only when option set; spurious if set incorrectly | `0.0` m/d | Disabled unless user opts in |
+| `kah_20_user` (user-override hydraulic reaeration at 20 °C) | 999 | Same | `0.0` m/d | Disabled unless user opts in |
+| `pressure_mb` (atmospheric pressure) | 2026.5 | ~2× sea-level pressure; biases `O2sat`, `N2sat`, atmospheric reaeration | `1013.25` hPa | Standard sea-level pressure (ISO 2533) |
 
-Each fix is documented in `clearwater_modules_v3/parameter_defaults_corrections.md` (new doc) with the rationale. Regression test added: `test_sod_theta_no_blowup.py` confirms that with default parameters, a 30 °C simulation produces finite SOD values.
+Each fix is documented in `clearwater_modules_v3/parameter_defaults_corrections.md` (new doc) with the rationale. Regression tests added: `test_sod_theta_no_blowup.py` confirms that with default parameters, a 30 °C simulation produces finite SOD values; `test_pressure_correction.py` confirms `O2sat` and `N2sat` track standard tabulated values at the corrected pressure.
+
+Phase 0 also flagged 8 lower-priority parameter findings (sediment-flux gating, `ksbod_20=0`, pathogen placeholders, units/docstring gaps) that do not require spec amendments; see `docs/clearwater_modules_v3_nsm1_gap_analysis.md` Section 3.2 for the full list and Phase 1 actions.
 
 ---
 
@@ -434,7 +471,7 @@ v3 NSM1 inherits the test directory structure and adds:
 
 Per the validation strategy (`Validation_strategy_no_reference.md`):
 
-- **Tier 1 (conservation):** mass balance for N, P, C, O₂-equivalents, alkalinity. Closed-system test: no boundaries, no settling, all source/sink pairs internally balanced. Assert totals constant to roundoff. **Mandatory before merge.**
+- **Tier 1 (conservation):** mass balance for N, P, C, O₂-equivalents, alkalinity. Closed-system test: no boundaries, no settling, all source/sink pairs internally balanced. Assert totals constant to roundoff AND `model.diagnostics.clip_events == 0`. A clip event under closed-system test conditions indicates either unphysical parameters or a malformed test case — the test fails in that situation, which is the correct diagnostic. **Mandatory before merge.**
 - **Tier 2 (analytical limits):** each kinetic function reduces to known closed-form solution under simplified conditions (first-order decay, Streeter-Phelps DO sag, Monod growth at constant nutrient, Henry's-law equilibration for DIC and N2). **Mandatory before merge.**
 - **Tier 3 (steady-state algebra):** constant-inflow steady-state matches algebraic balance. **Recommended.**
 - **Tier 5 (sensitivity):** parameter sweeps confirm physical direction of response. **Recommended.**
@@ -594,14 +631,20 @@ Items that genuinely benefit from LimnoTech input:
 
 ---
 
-## 14. Open Questions
+## 14. Design Decisions
 
-1. **Should `OrgN` extension be added to the existing v2 `Nitrogen` Process or as a separate `OrganicNitrogen` Process?** Section 3 proposes extension. Alternative: separate Process. Decision pending: design discussion.
-2. **How are inter-process rate variables named in the registry?** Examples: `nitrification_rate`, `algal_growth_rate`, `algal_respiration_rate`, `cbod_oxidation_rate`. Decision pending: convention setting in Phase 0.
-3. **What is the v3 NSM1 default YAML — does it ship a working example modules.yml that exercises all 11 processes?** Decision pending: yes if Phase 7 produces a coupled demo; otherwise the demo doc would be incomplete.
-4. **For the Alkalinity Process in v3 1.0.0, is the simple-tracer model (source/sink terms only, no pH solver) sufficient, or do users need pH from day one?** Section 5 proposes simple tracer. Decision pending: confirm with LimnoTech and downstream users.
-5. **Should sediment-flux parameters (`NH4fromBed`, `DIPfromBed`, etc.) be globally configured or per-cell variables read from the registry?** v1 treats them as global parameters. v3 1.0.0 follows v1; v3 1.1+ with full sediment diagenesis will move to per-cell variables.
-6. **Is the v2 `floating_algae` and `benthic_algae` interface (single algal compartment) the right shape, or should v3 NSM1 anticipate the multi-group capability needed for NSM2?** Multi-group is a NSM2 feature; v3 1.0.0 stays single-group; v3 1.x adds multi-group as part of NSM2 features integration. Decision pending: confirm framework can extend without breaking changes.
+All design questions surfaced during spec review are resolved. Three of the LimnoTech-input items (Alkalinity scope, sediment-flux structure, single-compartment algae) are tentatively decided as listed below; LimnoTech confirmation closes them. None block the start of Phase 0 or Phase 1.
+
+**Resolved:**
+- OrgN is added as a third state variable on the existing `Nitrogen` Process (extension, not a separate `OrganicNitrogen` Process), consistent with the topical-grouping rule applied to `Phosphorus` (TIP+OrgP) and `Carbon` (POC+DOC+DIC). Decided 2026-05-04.
+- Inter-process rate variables in the registry follow the names listed in Appendix A (e.g., `algal_growth_rate`, `algal_respiration_rate`, `algal_death_rate`, `algal_nh4_uptake_fraction`, `nitrification_rate`, `denitrification_rate`, `doc_dic_oxidation_rate`, `cbod_oxidation_rate`, `sod_rate`, `nh4_from_bed`, `dip_from_bed`, `no3_from_bed_denit`, `dic_from_bed`). Convention: snake_case, suffix `_rate` for time-derivative quantities, `_fraction` for dimensionless ratios, source-named prefixes for sediment fluxes. Decided 2026-05-04.
+- Negative-state handling uses the **clip-with-log** contract: every `Process.run` calls `clip_negative_state(...)` after the Forward Euler step; clips are counted on `model.diagnostics`; Tier 1 closed-system tests assert `clip_events == 0`. Clip target is exactly 0 (not epsilon). Adaptive substepping is deferred to v3 1.1+; semi-implicit sink treatment is a Phase 5 per-Process opt-in (most likely for DOX). Decided 2026-05-04.
+- Within-timestep update semantics: **Jacobi for state, Gauss-Seidel for rate variables.** State reads always pass `t=t_current` (pre-update values, order-independent); rate variables are step-scoped, written by producers and read by consumers within the same step, cleared at start of each step, and reading an unset rate variable raises an error. Naming convention from Appendix A (`_rate` / `_fraction` suffixes) marks the lifecycle class. Decided 2026-05-04.
+- Package location: v3 NSM1 lives in `src/clearwater_modules_v3/` alongside v3 TSM. The existing layout (`config/`, `processes/`, `utils/`, `model.py`, `README.md`, `__init__.py`) is the foundation; Phase 1 adds `utils/{reaeration,sediment,light,partitioning,numerics}.py` and `parameters/<group>.py`; Phase 2+ extends `processes/` with the NSM1 Process classes. Decided 2026-05-04.
+- v3 NSM1 ships a working default `modules.yml` that exercises all 11 Process classes end-to-end. Built and validated as part of Phase 7 alongside the coupled NSM1+Riverine demo notebook; lives at `src/clearwater_modules_v3/config/nsm1_default.yml` (or equivalent path under `config/`). Decided 2026-05-04.
+- Alkalinity in v3 1.0.0 is a **simple tracer**: state variable with source/sink terms (nitrification consumption, denitrification production, algal growth/respiration coupling) integrated by Forward Euler. No carbonate equilibrium, no pH solver. Full pH chemistry (carbonate equilibrium, NH3/NH4+ partitioning, free-CO2 fraction, carbonate speciation) is NSM2 territory in v3 1.1+. v3 1.0.0 documentation includes a worked example of post-hoc pH computation from `Alk`, `DIC`, `T`, salinity output trajectories for users who need a quick number. Decided 2026-05-04 (pending LimnoTech confirmation that no current applications require pH from day one).
+- Sediment-flux parameters (`SOD_20`, `NH4fromBed`, `DIPfromBed`, `NO3_BedDenit`, `DIC_sed_release`) are **scalar globals** in v3 1.0.0, applied uniformly to all cells, set in YAML (matching v1's pattern exactly). Per-cell spatially varying fluxes and dynamically computed fluxes both arrive in v3 1.1+ via the NSM2 sediment diagenesis Process. Decided 2026-05-04 (pending LimnoTech confirmation that no current applications use spatially varying SOD or bed fluxes).
+- Phytoplankton and benthic algae in v3 1.0.0 remain **single-compartment** (one `Ap` and one `Ab`), matching v1/v2. NSM2's multi-group capability lands as new Process classes (e.g., `PhytoplanktonGroups`) added *alongside* the single-compartment `FloatingAlgae`/`BenthicAlgae`, not as in-place extension. The YAML-driven Process registration framework supports this additive extension natively, so framework extensibility is not a blocker for 1.0.0. Decided 2026-05-04 (pending LimnoTech confirmation that no near-term applications require multi-group before v3 1.1+).
 
 ---
 
@@ -640,7 +683,7 @@ Variables written to the registry by each Process for downstream consumers:
 | CBOD | `cbod_oxidation_rate` (sum over groups) | DOX (sink) |
 | Sediment (parameterized in v3 1.0.0) | `sod_rate`, `nh4_from_bed`, `dip_from_bed`, `no3_from_bed_denit`, `dic_from_bed` | DOX, Nitrogen, Phosphorus, Carbon |
 
-Phase 0 enumerates the exact variable names; this appendix is the convention proposal.
+These names are the v3 NSM1 registry convention (decided 2026-05-04). Phase 0 verifies completeness against the per-constituent kinetics audit; additions during Phase 0 follow the same naming rules (snake_case, `_rate` for time derivatives, `_fraction` for dimensionless ratios, source-named prefixes for sediment fluxes).
 
 ---
 
