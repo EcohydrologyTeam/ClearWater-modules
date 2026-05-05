@@ -124,9 +124,6 @@ class FloatingAlgae(Process):
         # if change would have pushed it negative, correct the concentration
         algae = xr.where(algae < 0, 0, algae)
 
-        # persist updated algae back to the registry
-        registry.set_at_time("algae_floating", time, algae)
-
     def rate(
         self,
         algae: ArrayLike,

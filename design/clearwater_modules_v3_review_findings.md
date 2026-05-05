@@ -28,8 +28,8 @@ Severity counts (after deduplication of cross-reviewer overlaps):
 
 | Severity | Count |
 |---|---|
-| CRITICAL | 10 (2 resolved 2026-05-04) |
-| MAJOR | 18 |
+| CRITICAL | 10 (6 resolved 2026-05-04 — C1, C2, C3, C7, C8, C10) |
+| MAJOR | 18 (1 resolved 2026-05-04 — M6) |
 | MINOR | 19 |
 | Observations | 6 |
 
@@ -50,30 +50,13 @@ Cross-reviewer convergence (issues found by multiple agents):
 
 **Source:** Orchestration F1; `model.py:118-120` and `model.py:261`.
 **Inherited from:** v2 verbatim.
-
-```python
-self.__simulation_directory = (
-    simulation_directory if simulation_directory else "."
-)
-# later:
-store_path=self.__simulation_directory / "model_outputs.zarr",
-```
-
-`'.' / 'model_outputs.zarr'` raises `TypeError: unsupported operand type(s) for /: 'str' and 'str'`. Default constructor crashes on any run with `output_variables` non-empty. Masked in tests because v3 tests use `output_variables=[]`.
-
-**Fix:**
-```python
-self.__simulation_directory = Path(simulation_directory) if simulation_directory else Path(".")
-```
+**Status:** **RESOLVED 2026-05-04** — `__simulation_directory` is now wrapped in `pathlib.Path` at construction time so the `/` operator works regardless of whether the caller passed `None`, a `str`, or a `Path`. Tests `test_c1_*` in `tests/v3/test_model_orchestration_v3.py` pin all four input variations.
 
 ### C2. `process.finalize_process` does not exist on Process base class → AttributeError on every chunked run
 
 **Source:** Orchestration F2; `model.py:233-235` and `model.py:490`.
 **Inherited from:** v2 verbatim.
-
-`grep -rn "def finalize_process" src/` returns nothing. v2's `Process` base defines `init_process` (no-op default) but not `finalize_process`. v2 chunked path was never exercised in production, hiding the bug. Every v3 chunked run will raise `AttributeError` at the end of `__process_loop_chunked` after the final write.
-
-**Fix (option A, recommended):** add a no-op default `finalize_process` to `clearwater_modules_v2/processes/base.py` mirroring `init_process`. Or fix in v3 by reading `getattr(process, "finalize_process", None)` and calling only if callable.
+**Status:** **RESOLVED 2026-05-04** — `__finalize_model` now uses `getattr(process, "finalize_process", None)` and calls only if callable, mirroring the optional-method pattern v3 already uses for `to_hotstart` / `from_hotstart`. Processes that opt in by defining `finalize_process` are honored; others are silently skipped (no AttributeError). Same fix also resolves **M6** by adding the previously-missing `__finalize_model` call to `__process_loop_full` so non-chunked runs are symmetric. Tests `test_c2_*` in `tests/v3/test_model_orchestration_v3.py`. Upstream v2's `Process` base could still benefit from a no-op default for clarity; flagged for LimnoTech.
 
 ### C3. `sediment_diffusivity` docstring/formula unit mismatch — up to 86400× error
 
@@ -149,28 +132,22 @@ For TSM at 5-min substep with model time_step at 5 min, the bug is invisible. Fo
 ### C7. Chunk-end membership test (`current_time in interior_chunk_ends`) is type-mixed and FP-fragile
 
 **Source:** Orchestration F5; `model.py:444-461`.
-
-`chunk_ends` is `pd.DatetimeIndex` of `pd.Timestamp` (always nanosecond precision). `current_time` is `datetime` advanced by `+= self.__time_step` each substep. `Timestamp.__hash__` vs `datetime.__hash__` are not guaranteed symmetric across pandas versions when one is tz-aware; may silently miss boundaries that print as equal. Sub-second `time_step` accumulates floating-point error and misses every boundary.
-
-**Consequence:** if a chunk boundary is missed, the chunk is **never written**, the next chunk's data is **never loaded**, the simulation silently produces wrong output for the rest of the run with no warning.
-
-**Fix:** Compare on **chunk-step-index**, not on time identity. Precompute `interior_chunk_step_indices: set[int]` from `(end - start).total_seconds() / time_step_seconds` for each boundary; test `step_index in interior_chunk_step_indices`. Exact-integer; matches the schedule's own indexing.
+**Status:** **RESOLVED 2026-05-04** — chunk-boundary detection now uses **integer step-index comparison**. `interior_chunk_step_indices: set[int]` is precomputed in `__process_loop_chunked` from `chunk_size_seconds / time_step_seconds` for each boundary; the hot loop tests `step_index in interior_chunk_step_indices`. Exact-integer; timezone-independent; immune to floating-point drift in `current_time +=` arithmetic. Validation enforces `chunk_size` is an integer multiple of `time_step` (raises `ValueError` if not). Tests `test_c7_*` in `tests/v3/test_model_orchestration_v3.py` pin the boundary indices, the post-loop final-chunk write, and the validation.
 
 ### C8. v3 cannot import standalone — vendored streaming-local v2 has broken bare imports
 
 **Source:** Framework F1 (also flagged in Phase 0 gap analysis).
 **Location:** `src/clearwater_modules_v2/config/__init__.py:2`, `src/clearwater_modules_v2/config/init.py:1` on the `streaming` branch.
+**Status:** **RESOLVED 2026-05-04** — non-sediment v2 files synced to `upstream/memory-refactor-pytestUpdate` via surgical `git checkout`:
+- `src/clearwater_modules_v2/__init__.py`
+- `src/clearwater_modules_v2/config/init.py`
+- `src/clearwater_modules_v2/model.py`
+- `src/clearwater_modules_v2/processes/base.py`
+- `src/clearwater_modules_v2/processes/{temperature,floating_algae,nitrogen,riverine}.py`
 
-```python
-# streaming-local v2/config/init.py:1
-from model import Model
-```
+The user's active sediment SSM work in `src/clearwater_modules_v2/processes/sediment/` was preserved. After the sync, `PYTHONPATH=src python -c "import clearwater_modules_v3"` succeeds without the test conftest shim. The streaming-local copies of these files are now byte-identical to upstream, so the upstream-discovered fixes (`dbe0ec7` mixing_ratio_air, `f7b0967` debug-print toggle-off, `209b67f` skip-first-step) are now present in streaming too.
 
-This imports a top-level `model` module that doesn't exist on `sys.path`. Tracing through, `import clearwater_modules_v3` fails with `ModuleNotFoundError: No module named 'model'` because v3's `config/init.py:42` does `from clearwater_modules_v2.config import init as _v2_init`. The test conftest at `tests/v3/conftest.py:26-40` works around this by pre-caching v2 from the sibling modules-repo's editable install.
-
-**Outside the test suite, the package cannot be imported.** This is a release-blocking defect for v3 1.0.
-
-**Fix:** Bring streaming-local v2 up to `upstream/memory-refactor-pytestUpdate`. Five commits behind, including `dbe0ec7` (mixing_ratio_air fix), `f7b0967` (debug-print toggle-off), `209b67f` (skip-first-step), and the absolute-import refactor.
+**Note:** the sync brings the same upstream defects v3 already worked around (e.g., `mixing_ratio_air` scalar-only guard). v3's own `Temperature` already has the vectorized form; the v2 module retains upstream's scalar form for fidelity to LimnoTech's baseline.
 
 ### C10. Dynamic sediment temperature evolution dropped from all Python ports
 
@@ -255,8 +232,7 @@ Process author who adds new internal state and forgets to add it to both `init_p
 ### M6. `__finalize_model` only called in chunked mode
 
 **Source:** Orchestration F11; `model.py:408-420` (full) vs `model.py:486-490` (chunked).
-
-Asymmetry between modes. Once C2 is fixed and processes gain real `finalize_process` bodies, non-chunked runs will silently skip finalization.
+**Status:** **RESOLVED 2026-05-04** — `__process_loop_full` now calls `__finalize_model()` after the post-loop save, mirroring the chunked path. Same fix as C2's getattr guard. Test `test_c2_finalize_model_invoked_in_full_mode` covers the symmetry.
 
 ### M7. Non-chunked simulation with chunked data source reads only first time-step
 
@@ -373,12 +349,12 @@ Status says "Phase 1 (scaffold)" but Phases 2-4 are complete. Migration table co
 
 ## 7. Recommended action plan
 
-### Phase R-1 (release-blocker, must fix before any production run)
+### Phase R-1 (release-blocker, must fix before any production run) — **COMPLETE 2026-05-04**
 
-1. **C8 — vendored v2 broken imports.** Bring streaming-local v2 up to `upstream/memory-refactor-pytestUpdate`. Without this, v3 cannot be imported standalone.
-2. **C1 — simulation_directory str/Path bug.** One-line fix in `model.py:118-120`.
-3. **C2 — finalize_process AttributeError.** Add no-op default to v2 `Process` base class, or use `getattr` in v3 Model.
-4. **C7 — chunk-end membership test.** Refactor to use chunk-step-index integer comparison.
+1. ✓ **C8 — vendored v2 broken imports.** Surgical `git checkout` of non-sediment v2 files from upstream. v3 imports standalone.
+2. ✓ **C1 — simulation_directory str/Path bug.** Wrapped in `Path(...)` at construction.
+3. ✓ **C2 — finalize_process AttributeError.** `getattr` callable guard. M6 also resolved (full-mode finalize call added).
+4. ✓ **C7 — chunk-end membership test.** Refactored to integer step-index comparison; `chunk_size` validated as integer multiple of `time_step`.
 
 ### Phase R-2 (correctness, fix before sponsor demos)
 

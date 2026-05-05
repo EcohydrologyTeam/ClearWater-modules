@@ -21,10 +21,15 @@ the four chunking TODOs left in v2's ``__process_loop_chunked``:
    ``from_hotstart(state)`` to restore process-internal substep state;
    v3's ``Temperature`` uses this to disable its
    ``__skip_first_time_step`` flag after a hotstart.
-4. **Chunking.** Mirrors the riverine chunking pattern: chunk boundaries
-   are precomputed via ``pd.date_range(start, end, freq=chunk_size)``,
-   and the per-chunk write of the trailing partial chunk is handled
-   exactly once after the main loop exits.
+4. **Chunking.** Chunk boundaries are precomputed as **integer step
+   indices** (``interior_chunk_step_indices = set[int]``), not as
+   datetime values. Step-index comparison is exact-integer,
+   timezone-independent, and immune to floating-point drift in
+   ``current_time += time_step`` arithmetic. The per-chunk write of
+   the trailing partial chunk is handled exactly once after the main
+   loop exits. (Mirrors the riverine pattern of "precompute once,
+   compare in the hot loop"; uses step-index instead of datetime
+   identity per the C7 review fix.)
 
 The class is a drop-in for v2 ``Model`` when none of the new constructor
 kwargs are passed: behavior is identical (modulo the kernel-optimization
@@ -43,6 +48,7 @@ from __future__ import annotations
 import os
 from datetime import datetime, timedelta
 from logging import getLogger
+from pathlib import Path
 from typing import Any, Callable, Iterable
 
 import numpy as np
@@ -115,8 +121,14 @@ class Model:
         self.__end_time: datetime = end_time
         self.__time_step: timedelta = time_step
         self.__output_variables: list[str] = list(output_variables) if output_variables else []
-        self.__simulation_directory = (
-            simulation_directory if simulation_directory else "."
+        # C1 fix (review-findings 2026-05-04): wrap with Path so the
+        # ``self.__simulation_directory / "model_outputs.zarr"`` operator
+        # in __init_output_source works on the default config. Previously
+        # this was a bare ``str`` "." which raised TypeError on the
+        # default-constructed Model whenever ``output_variables`` was
+        # non-empty.
+        self.__simulation_directory: Path = (
+            Path(simulation_directory) if simulation_directory else Path(".")
         )
 
         self.__chunked_mode: bool = chunk_size is not None
@@ -231,8 +243,19 @@ class Model:
         self.__init_output_source()
 
     def __finalize_model(self) -> None:
+        # C2 fix (review-findings 2026-05-04): the upstream ``Process``
+        # base class does not define ``finalize_process``, so calling it
+        # unconditionally crashes every chunked run with
+        # ``AttributeError`` after the final chunk write. The
+        # corresponding ``init_process`` is a no-op default on the base;
+        # ``finalize_process`` should follow the same contract but
+        # doesn't (yet). Use ``getattr`` so processes that opt in by
+        # defining ``finalize_process`` are honored, and processes that
+        # don't are silently skipped.
         for process in self.__processes:
-            process.finalize_process(self, self.__registry)
+            finalize = getattr(process, "finalize_process", None)
+            if callable(finalize):
+                finalize(self, self.__registry)
 
     def __init_output_source(self) -> None:
         if self.__output_variables is None or len(self.__output_variables) == 0:
@@ -418,6 +441,10 @@ class Model:
             current_time += self.__time_step
             step_index += 1
         self.__save_output_model(self.__start_time, self.__end_time)
+        # M6 fix (review-findings 2026-05-04): symmetry with the chunked
+        # path. Without this, processes with finalize_process bodies
+        # silently skip finalization in non-chunked mode.
+        self.__finalize_model()
 
     def __process_loop_chunked(self) -> None:
         """Chunked substep loop. Mirrors the chunking pattern in
@@ -429,27 +456,53 @@ class Model:
           input-load / substep-loop / per-chunk-output-write is the
           chunking logic; the prior placeholder comment is removed.
         - "look at riverine's code and mirror where applicable" /
-          "align with riverine" — the outer loop is structured the same
-          way riverine structures its chunked transport: chunk ends are
-          precomputed via ``pd.date_range``, and the ``[1:-1]`` slice is
-          used so the start and end boundaries don't trigger spurious
-          chunk transitions.
+          "align with riverine" — the outer loop precomputes chunk
+          boundaries (as step indices, not datetimes — see C7 fix
+          below) and tests membership once per substep, the same
+          shape as riverine's pattern.
         - "confirm if this is necessary to write out the last chunk or if
           it will be handled in the loop above" — yes, the last partial
           chunk is written exactly once, after the substep loop exits.
           The previous unconditional post-loop write was redundant for
           integer-multiple total durations and double-wrote the last
           chunk; v3 only writes the trailing partial chunk once.
+
+        C7 fix (review-findings 2026-05-04): the chunk-boundary check
+        compared ``current_time`` (a ``datetime``) against a
+        ``pd.DatetimeIndex`` of ``pd.Timestamp`` (always ns-precision,
+        sometimes tz-aware). ``Timestamp.__hash__`` vs
+        ``datetime.__hash__`` are not symmetric across all
+        configurations, and sub-second ``time_step`` arithmetic
+        accumulates floating-point drift that misses every boundary.
+        Replaced with **integer step-index** comparison: precompute
+        which step indices land on a chunk boundary, then check
+        ``step_index in interior_chunk_step_indices``. Exact-integer,
+        timezone-independent, drift-immune.
         """
-        chunk_ends = pd.date_range(
-            start=self.__start_time,
-            end=self.__end_time,
-            freq=self.__chunk_size,
-        )
-        # ``[1:-1]`` excludes the first boundary (== start_time, no-op) and
-        # the last boundary (== end_time when divisor is exact, handled in
-        # the post-loop final write below). Same as riverine.
-        interior_chunk_ends = set(chunk_ends[1:-1])
+        # Compute chunk boundaries as step indices, not as time values.
+        # The first boundary (step_index == 0) is the start; the last
+        # boundary (step_index == n_steps) coincides with end_time when
+        # the total duration is an integer multiple of chunk_size and
+        # is handled by the post-loop write below. Interior boundaries
+        # are 1 .. n_chunks - 1.
+        chunk_size_seconds = self.__chunk_size.total_seconds()
+        time_step_seconds = self.__time_step.total_seconds()
+        if chunk_size_seconds % time_step_seconds != 0:
+            # Chunk size must be an integer multiple of the substep so
+            # boundaries align with substep grid. Otherwise the chunk
+            # transition would land between two substeps.
+            raise ValueError(
+                "chunk_size must be an integer multiple of time_step; got "
+                f"chunk_size={self.__chunk_size!r}, time_step={self.__time_step!r}"
+            )
+        steps_per_chunk = int(round(chunk_size_seconds / time_step_seconds))
+        n_steps = self.__count_substeps()
+        # Interior boundaries: step indices that mark the start of each
+        # new chunk after the first. Excludes 0 (== start_time) and any
+        # boundary >= n_steps (== or past end_time).
+        interior_chunk_step_indices = {
+            i for i in range(steps_per_chunk, n_steps, steps_per_chunk)
+        }
 
         current_chunk_start = self.__start_time
         # Initial chunk's data is already loaded by __init_model; subsequent
@@ -458,7 +511,7 @@ class Model:
         current_time = self.__start_time
         step_index = 0
         while current_time < self.__end_time:
-            if current_time in interior_chunk_ends:
+            if step_index in interior_chunk_step_indices:
                 # Finalize this chunk before crossing the boundary.
                 self.__save_output_model(
                     start_time=current_chunk_start,

@@ -1,13 +1,13 @@
 from .base import Process, ProcessFactory
 from datetime import datetime, timedelta
-from clearwater_data.variables import VariableRegistry, DataArrayVariable, FloatVariable
+from clearwater_data.variables import VariableRegistry, DataArrayVariable
 import clearwater_riverine as cwr
 import clearwater_riverine.utilities as cwr_utils
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from model import Model
+    from clearwater_modules_v2.model import Model
 
 
 class Riverine(Process):
@@ -111,6 +111,9 @@ class Riverine(Process):
         # The rest of modules uses a definition of time_step as the time
         # to be updated. This boolean allows us to skip the first time_step
         self.__skip_first_time_step = True
+
+    def finalize_process(self, model, registry) -> None:
+        self.riverine_instance.finalize()
 
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """
