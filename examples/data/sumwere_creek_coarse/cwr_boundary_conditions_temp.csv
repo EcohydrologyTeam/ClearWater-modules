@@ -1,0 +1,9 @@
+RAS2D_TS_Name,Datetime,water_temperature,water_temperature_transport
+US_Flow,5/12/2022 0:00,15,15
+US_Flow,5/17/2022 0:00,15,15
+DS_Stage,5/12/2022 0:00,15,15
+DS_Stage,5/17/2022 0:00,15,15
+PwrPlnt_Flow,5/12/2022 0:00,20,20
+PwrPlnt_Flow,5/17/2022 0:00,20,20
+CoriolisColdSpringCreek,5/12/2022 0:00,10,10
+CoriolisColdSpringCreek,5/17/2022 0:00,10,10

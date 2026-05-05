@@ -1,4 +1,3 @@
-from clearwater_modules.tsm.processes import emissivity_air
 from .base import Process, ProcessFactory
 from datetime import datetime, timedelta
 from clearwater_data.variables import VariableRegistry
@@ -79,6 +78,11 @@ class Temperature(Process):
         self.air_diffusivity_ratio = air_diffusivity_ratio
         self.sediment_diffusivity = sediment_diffusivity
         self.use_sediment_temperature = use_sediment_temperature
+
+        #V1 of the coupling had timestep 1 be skipped and started processing on timestep 2.
+        self.__skip_first_time_step = True
+
+
         Process.__init__(self, time_step)
 
     @ProcessFactory.register("temperature")
@@ -90,6 +94,10 @@ class Temperature(Process):
         """
         Run the temperature process.
         """
+
+        if self.__skip_first_time_step:
+            self.__skip_first_time_step = False
+            return
 
         # pull out variables from the registry
         water_temperature = registry.get_at_time("water_temperature", time)
@@ -164,19 +172,20 @@ class Temperature(Process):
             flux_atmospheric_longwave [xr.DataArray]: Atmospheric longwave flux in units of W/m^2
         """
 
-        print(f"    Longwave down terms:")
-        print(f"      cloudiness_term: {float(1.0 + 0.17 * cloudiness**2)}")
-        print(f"        cloudiness_frac: {float(cloudiness)}")
-        print(
-            f"      emissivity_air: {float(9.37e-6 * conversions.celsius_to_kelvin(air_temperature) ** 2)}"
-        )
-        print(f"      stefan_boltzmann: {float(constants.STEFAN_BOLTZMANN)}")
-        print(
-            f"      air_temp_term: {float(conversions.celsius_to_kelvin(air_temperature) ** 4)}"
-        )
-        print(
-            f"        air_temp_k: {float(conversions.celsius_to_kelvin(air_temperature))}"
-        )
+        # TODO: convert this to log statements, but we cannot assume these will be float convertible
+        # print(f"    Longwave down terms:")
+        # print(f"      cloudiness_term: {float(1.0 + 0.17 * cloudiness**2)}")
+        ##print(f"        cloudiness_frac: {float(cloudiness)}")
+        # print(
+        #    f"      emissivity_air: {float(9.37e-6 * conversions.celsius_to_kelvin(air_temperature) ** 2)}"
+        # )
+        # print(f"      stefan_boltzmann: {float(constants.STEFAN_BOLTZMANN)}")
+        # print(
+        #    f"      air_temp_term: {float(conversions.celsius_to_kelvin(air_temperature) ** 4)}"
+        # )
+        # print(
+        #    f"        air_temp_k: {float(conversions.celsius_to_kelvin(air_temperature))}"
+        # )
 
         flux = (
             # TODO: Should this change as a function of temperature?
@@ -215,21 +224,22 @@ class Temperature(Process):
         Returns:
             xr.DataArray: latent heat flux in units of W/m^2
         """
-        print(f"    Latent heat terms:")
-        print(f"      atmospheric pressure: {float(atmospheric_pressure)}")
-        print(
-            f"      latent_heat_vaporization: {float(self.latent_heat_vaporization(water_temperature))}"
-        )
-        print(f"        water_temperature: {float(water_temperature)}")
-        print(f"      water_density: {float(self.water_density(water_temperature))}")
-        print(
-            f"      wind_function: {float(self.wind_function(wind_speed, richardson_function))}"
-        )
-        print(f"        wind_speed: {float(wind_speed)}")
-        print(
-            f"      saturation_vapor_pressure: {float(self.saturation_vapor_pressure(water_temperature))}"
-        )
-        print(f"      atmospheric_vapor_pressure: {float(atmospheric_vapor_pressure)}")
+        # TODO: we could consider keeping this for log statements, but we cannot assume they will be float convertible
+        # print(f"    Latent heat terms:")
+        # print(f"      atmospheric pressure: {float(atmospheric_pressure)}")
+        # print(
+        #    f"      latent_heat_vaporization: {float(self.latent_heat_vaporization(water_temperature))}"
+        # )
+        # print(f"        water_temperature: {float(water_temperature)}")
+        # print(f"      water_density: {float(self.water_density(water_temperature))}")
+        # print(
+        #    f"      wind_function: {float(self.wind_function(wind_speed, richardson_function))}"
+        # )
+        # print(f"        wind_speed: {float(wind_speed)}")
+        # print(
+        #    f"      saturation_vapor_pressure: {float(self.saturation_vapor_pressure(water_temperature))}"
+        # )
+        # print(f"      atmospheric_vapor_pressure: {float(atmospheric_vapor_pressure)}")
 
         flux = (
             -0.622
@@ -508,7 +518,7 @@ class Temperature(Process):
             atmospheric_pressure: Atmospheric pressure (mb)
         """
         # TODO: what if atmospheric_pressure == atmospheric_vapor_pressure?
-        if atmospheric_vapor_pressure == atmospheric_vapor_pressure:
+        if atmospheric_pressure == atmospheric_vapor_pressure:
             return 0.0
         mixing_ratio = (
             0.622
@@ -606,9 +616,9 @@ class Temperature(Process):
         # print(f"      density_air_sat: {float(density_air_sat)}")
         # print(f"      wind_speed: {float(wind_speed)}")
 
-        # TODO: this needs to be reworked to support array inputs
-
         # Set bounds for richardson number
+        # print(f"    Richardson Number before bounds: {richardson_number}")
+
         richardson_number = xr.where(richardson_number > 2.0, 2.0, richardson_number)
         richardson_number = xr.where(richardson_number < -1.0, -1.0, richardson_number)
 
@@ -617,28 +627,48 @@ class Temperature(Process):
         # four where clauses is a little rough
         richardson_function: ArrayLike = 1.0
 
+        ### CASE 1 ###
         # neutral rn < 0
         richardson_function = xr.where(
             (richardson_number < 0.0) & (richardson_number >= -0.01),
             1.0,
             richardson_function,
         )
+        # if (richardson_number < 0.0) & (richardson_number >= -0.01):
+        #    print('Case 1 == True')
+        # else:
+        #    print('Case 1 == False')
+
+        ### CASE 2 ###
         # unstable
         richardson_function = xr.where(
             (richardson_number < 0.0) & (richardson_number < -0.01),
             (1.0 - 22.0 * richardson_number) ** 0.80,
             richardson_function,
         )
+        # if (richardson_number < 0.0) & (richardson_number < -0.01):
+        #    print('Case 2 == True')
+        # else:
+        #    print('Case 2 == False')
+
+        ### CASE 3 ###
         # neutral rn > 0
         richardson_function = xr.where(
             (richardson_number >= 0.0) & (richardson_number <= 0.01),
             1.0,
             richardson_function,
         )
+        # if (richardson_number >= 0.0) & (richardson_number <= 0.01):
+        #    print('Case 3 == True')
+        # else:
+        #    print('Case 3 == False')
+
+        ### CASE 4 ###
         # stable
         richardson_function = xr.where(
             (richardson_number >= 0.0) & (richardson_number > 0.01),
             (1.0 + 34.0 * richardson_number) ** (-0.80),
             richardson_function,
         )
+
         return (richardson_number, richardson_function)

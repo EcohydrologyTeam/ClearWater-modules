@@ -1,7 +1,7 @@
 [![Tests Status](https://github.com/EcohydrologyTeam/ClearWater-modules/actions/workflows/tests.yml/badge.svg)](https://github.com/EcohydrologyTeam/ClearWater-modules/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/EcohydrologyTeam/ClearWater-modules/graph/badge.svg)](https://codecov.io/gh/EcohydrologyTeam/ClearWater-modules)
 
-# ClearWater Modules in Python
+# ClearWater Modules
 
 The [ClearWater-modules](https://github.com/EcohydrologyTeam/ClearWater-modules) package is a collection of water quality and vegetation process simulation modules written in modern Python and designed to flexibily couple with a variety of water transport models, such as RAS-2D, GSSHA, CE-Qual-W2, [AdH](https://www.erdc.usace.army.mil/Locations/CHL/AdH/), and others. These modules have been developed by the [U.S. Army Engineer Research and Development Center (ERDC)](https://www.erdc.usace.army.mil), [Environmental Laboratory (EL)](https://www.erdc.usace.army.mil/Locations/EL/).
 
@@ -25,48 +25,74 @@ This Python library is a port and modernization of the algorithms and structures
 
 ## Repository Directories
 
+**[`src`](src)** contains the source code to create and run the `clearwater_modules`.
+
+**[`examples`](examples)** contains tutorials and useful Juptyer Notebooks.
+
+**[`docs`](docs)** contains relevant reference documentation.
+
+**[`tests`](tests)** will contain clearwater_riverine tests once they are developed. 
 
 ## Getting Started
 
 ### Installation
 
-Clearwater-modules was developed with **Python 3.11**. 
+Follow these steps to install the ClearWater Modeling System and its dependancies in a custom Python environment.
 
-Follow these steps to install.
+We recommend using [pixi](https://pixi.prefix.dev/latest/), the next-generation reproducible package management tool built on [conda](https://docs.conda.io/projects/conda/en/stable/) tooling.
 
-#### Production 
-Pardon our mess! Production instructions coming soon. For now you can install using the [Developer](#developer) instructions. 
+If you are new to pixi but familiar with conda, this [Switching from Conda](https://pixi.prefix.dev/latest/switching_from/conda/) documentation succinctly compares similarities and differences.
 
-#### Developer
+Alternately, use a conda environment with the same dependencies.
 
-##### 1. Install Pixi
+#### 1. Install Pixi
 
-We recommend installing [pixi](https://pixi.prefix.dev/latest/), a fast, modern, and reproducible package management tool. 
+Follow [Pixi Installation](https://pixi.prefix.dev/latest/installation/) instructions for your platform.
 
-##### 2. Clone or Download this the ClearWater family of repositories
+#### 2. Clone or Download the ClearWater family of repositories
 
 There are three repositories which house the dependencies for this project. Navigate to each of the repositories listed below and follow the instructions to clone them to your local machine.
-[clearwater-modules](https://github.com/EcohydrologyTeam/ClearWater-modules)
-[clearwater-riverine](https://github.com/EcohydrologyTeam/ClearWater-riverine)
-[clearwater-data](https://github.com/EcohydrologyTeam/ClearWater-data)
 
-From this Github site, click on the green "Code" dropdown button near the upper right. Select to either Open in GitHub Desktop (i.e. git clone) or "Download ZIP". We recommend using GitHub Desktop, to most easily receive updates.
+- [ClearWater-riverine](https://github.com/EcohydrologyTeam/ClearWater-riverine) transport process simulator
+- [ClearWater-data](https://github.com/EcohydrologyTeam/ClearWater-data) perforamant data access and storage protocols
+- [ClearWater-modules](https://github.com/EcohydrologyTeam/ClearWater-modules) (optional) water quality reaction process simulator
 
-Place your copy of this repo folder in any convenient location on your computer.
+From these Github sites, click on the green "Code" dropdown button near the upper right. Select to either "Open in GitHub Desktop" (i.e. git clone) or "Download ZIP". 
 
-#### 3. Create the python environment using pixi. 
+We recommend using GitHub Desktop, to most easily manage git workflows by providing excellent visuals for stagging commits, exploring commit histories, comparing branches, and resolving merge conflicts in tight integration with Visual Studio Code.
 
-Navigate to the directory of the clearwater-modules repository you just cloned. To installed the development environment, execute the following command:
-`pixi install -e dev`
+Place your copy of these repos in any convenient location on your computer. Make sure that all are stored in the same directory OR you will need to update the `pyproject.toml` so that the `[pixi.tool.feature.dev.pypi-dependencies]` point to the correct location of your local clones.
 
-To activate the newly created environment, execute the following command:
-`pixi shell -e dev`
+### 3. Create Clearwater Workspace and Python Environments 
+
+Create a project-specific Pixi workspace and Python enviornment(s) from the `pyproject.toml` manifest file.
+
+#### Production 
+
+Pardon our mess! Production instructions coming soon. For now you can install using the [Developer](#developer) instructions. 
+
+#### Developers
+
+Developer instructions install all ClearWater repos in "editable" mode in a second `dev` environment.
+
+From your terminal or console, navigate to the directory of your `Clearwater-modules` clone and execute the following command to create a `dev` environment:
+
+```shell
+pixi install -e dev
+```
+
+To activate this environment in your shell, run the following:
+
+```shell
+pixi shell -e dev
+```
 
 You should now be able to run the examples and create your own Jupyter Notebooks!
 
-## Examples
+### Examples
 
-Coming soon...
+Try running our [03_Example_Coupled_TSM_and _Riverine.ipynb](examples/03_Example_Coupled_TSM_and _Riverine.ipynb) Jupyter Notebook.
+
 
 ## Contributing
 
@@ -74,9 +100,9 @@ We welcome your pull request.
 
 ## Acknowledgements
 
-The vision for modernizing this library, including the initial port to Python from Fortran, was developed by:
+This library is developed by ERDC-EL through funding from the ECOMOD project.
 
-- Dr. Todd E. Steissberg (ERDC-EL)
+Dr. Todd E. Steissberg (ERDC-EL) developed the vision for modernizing TSM, NSM, and related modules into this library, including coding the initial port form Fortran to Python.
 
 The algorithms and structure of this program were adapted from the Fortran 95 version 1.0 of these modules, originally developed by:
 

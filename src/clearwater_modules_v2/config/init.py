@@ -1,21 +1,25 @@
-from model import Model
-from processes.base import Process, ProcessFactory
 from pathlib import Path
-from config.read import read_config
 from datetime import timedelta, datetime
+import pandas as pd
+import xarray as xr
 
-from clearwater_data.variables import DataArrayVariable, Variable, VariableRegistry
+from clearwater_modules_v2.model import Model
+from clearwater_modules_v2.processes.base import Process, ProcessFactory
+from clearwater_modules_v2.config.read import read_config
+
+from clearwater_data.variables import Variable, VariableRegistry
 from clearwater_data.io.zarr import ZarrDataStore, ZarrDataSource
 from clearwater_data.io.csv import CSVDataSource
 from clearwater_data.io.base import DataSource, ChunkedDataSource
 from clearwater_data.io.float import FloatDataSource
-
-import pandas as pd
-import xarray as xr
-
+from clearwater_data.io.pathing import resolve_path
 from clearwater_data.custom_types import ArrayLike
 
 import warnings
+
+# This will enable deprecation warnings to be shown by default,
+# which is important for our users to see when they are using deprecated features
+# warnings.filterwarnings("default")
 
 
 def init_from_file(file_path: Path | str) -> Model:
@@ -29,9 +33,38 @@ def init_from_config(config: dict) -> Model:
         start_time = pd.to_datetime(config["model"]["start_datetime"])
         end_time = pd.to_datetime(config["model"]["end_datetime"])
         time_step = pd.Timedelta(config["model"]["time_step"])
-        root_directory = Path(config["model"]["root_directory"])
+
+        # Resolve paths relative to the repo, if not absolute
+        simulation_directory_path = resolve_path(Path(config["model"]["simulation_directory"]))
+        config["model"]["simulation_directory"] = simulation_directory_path
+        
+        for index, process_dict in enumerate(config['processes']):
+            process = list(process_dict.keys())[0]
+            file_path = config['processes'][index][process].get("configuration_path")
+            if file_path != None:
+                absolute_file_path = resolve_path(simulation_directory_path / file_path)
+                config['processes'][index][process]["configuration_path"] = absolute_file_path
+        for variable in config['data_sources'].keys():
+            file_path = config['data_sources'][variable]["data"].get('file_path')
+            if file_path != None:
+                absolute_file_path = resolve_path(simulation_directory_path / file_path)
+                config['data_sources'][variable]["data"]['file_path'] = absolute_file_path
     except KeyError as e:
         raise ValueError(f"Missing key in config: {e}")
+
+    # pull out chunking information if it exists
+    chunk_size = config["model"].get("chunk_size", None)
+
+    # we previously named this chunk_time_step, so we should check for that and issue a deprecation warning if it is used
+    if chunk_size is None:
+        chunk_size = config["model"].get("chunk_time_step", None)
+        if chunk_size is not None:
+            warnings.warn(
+                "The `chunk_time_step` configuration option is deprecated and will be removed in a future release. Please use `chunk_size` instead.",
+                DeprecationWarning,
+            )
+    if chunk_size is not None:
+        chunk_size = pd.Timedelta(chunk_size)
 
     # some of the processes need access to the variable registry for initialization
     variable_registry = VariableRegistry()
@@ -42,15 +75,6 @@ def init_from_config(config: dict) -> Model:
     # initialize the data store from data
     variables = {v for p in processes for v in p.variables}
 
-    # TODO: this needs to be replaced by ZarrDataSource
-    # store_path = data.init_data_store(
-    #    root_directory=root_directory,
-    #    start_time=start_time,
-    #    end_time=end_time,
-    #    time_step=time_step,
-    #    variables=variables,
-    # )
-
     # read data from original sources and map to an input zarr store
     variable_data_sources = __init_model_data(
         config=config,
@@ -60,15 +84,7 @@ def init_from_config(config: dict) -> Model:
         time_step=time_step,
     )
 
-    model_data_source = ZarrDataSource(store_path=root_directory / "model_inputs.zarr")
-
-    output_data_store = ZarrDataStore(
-        store_path=root_directory / "model_outputs.zarr",
-        start_date=start_time,
-        end_date=end_time,
-        time_step=time_step,
-        variables=config["model"].get("output_variables", []),
-    )
+    model_data_source = ZarrDataSource(store_path=simulation_directory_path / "model_inputs.zarr")
 
     # TODO: read data sources from conf
     return Model(
@@ -79,7 +95,10 @@ def init_from_config(config: dict) -> Model:
         end_time=end_time,
         time_step=time_step,
         output_variables=config["model"].get("output_variables", []),
-        output_store=output_data_store,
+        simulation_directory=simulation_directory_path,
+        chunk_size=chunk_size,
+        # output_store=output_data_store,
+        # TODO past along chunk size!!!!
     )
 
 
@@ -100,7 +119,7 @@ def __init_model_data(
     # init model data store
     # this is an intermediate data storage solution for model inputs
     data_store = ZarrDataStore(
-        store_path=Path(config["model"]["root_directory"]) / "model_inputs.zarr",
+        store_path=config["model"]["simulation_directory"]/"model_inputs.zarr",
         start_date=start_time,
         end_date=end_time,
         time_step=time_step,
