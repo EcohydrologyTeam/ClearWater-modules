@@ -121,64 +121,85 @@ def test_rate_growth_multiplicative_matches_v1_mub_times_Ab(
 
 
 # ---------------------------------------------------------------------------
-# Phase 9.E regression: BWa value pinned (resolved Section 4.2)
+# Phase 9.E follow-up: BWa harmonized to WASP7 canonical (resolved Section 4.2)
 # ---------------------------------------------------------------------------
 # BWa is the benthic algae chlorophyll-a stoichiometric weight (ug-Chla
 # per stoichiometric unit). v1 docstring at processes.py:797 confirms
 # "BWa: Benthic algae chlorophyll-a (ug-Chla-a)". The helper rab(BWa,
-# BWd) = BWa / BWd returns the benthic Chla:DW ratio.
+# BWd) = BWa / BWd returns the benthic Chla:DW ratio (ug-Chla/mg-D =
+# mg-Chla/g-DW).
 #
-#   Source                                  BWa     Chla:DW
-#   ----                                    ---     -------
-#   WASP7 Benthic Algae User's Guide        n/a     10 mg-Chla/g-DW
-#   Periphyton literature typical           n/a     1-15 mg-Chla/g-DW
-#   NSM1 floating (AWa=1000, AWd=100)       1000    10 mg-Chla/g-DW
-#   Fortran NSM1 benthic                    5000    50 mg-Chla/g-DW (5x WASP7)
-#   v1 / v3 NSM1 benthic                    3500    35 mg-Chla/g-DW (3.5x WASP7)
+#   Source                                       BWa     rab (mg-Chla/g-DW)
+#   ----                                         ---     ------------------
+#   WASP7 Benthic Algae User's Guide Table 1     n/a     10
+#     (Chla:C = 0.025, DW:C = 2.5 -> Chla:DW = 0.01 mg/mg)
+#   Periphyton literature typical                n/a     1-15
+#   NSM1 floating (AWa=1000, AWd=100)            1000    10
+#   Fortran NSM1 benthic                         5000    50 (5x WASP7)
+#   v1 / pre-9.E v3 NSM1 benthic                 3500    35 (3.5x WASP7)
+#   Phase 9.E v3 NSM1 benthic                    1000    10 (matches WASP7)
 #
-# Both NSM1 benthic defaults are HIGH relative to canonical literature.
-# v3 keeps v1's 3500 because it is closer to canonical (3.5x) than
-# Fortran's 5000 (5x), and v1 has the calibration application history.
-# A future v3.x may harmonize to WASP7-style 1000. See
-# parameter_defaults_corrections.md Section 4.2.
+# Phase 9.E follow-up harmonizes v3 to WASP7's canonical Chla:DW = 10
+# mg-Chla/g-DW for benthic algae, which also brings benthic and floating
+# algae onto the same Chla:DW basis (consistent with WASP7's convention
+# where benthic and floating share stoichiometry). Both v1's 3500 and
+# Fortran's 5000 are above canonical; Phase 9.E originally kept v1's
+# 3500 with documentation, then harmonized to 1000 after explicit
+# reconciliation. See parameter_defaults_corrections.md Section 1.13.
 
-def test_phase9e_bwa_value_pinned():
-    """Phase 9.E: BWa = 3500 (matches v1; closer to WASP7 canonical
-    Chla:DW = 10 mg/g than Fortran's 5000). Pin the value so any future
-    change requires explicit reconciliation."""
+def test_phase9e_bwa_harmonized_to_wasp7_canonical():
+    """Phase 9.E follow-up: BWa = 1000 (gives rab = 10 mg-Chla/g-DW =
+    WASP7 canonical benthic Chla:DW). Pin so any future change requires
+    explicit reconciliation against the WASP7 reference."""
     import xarray as xr
     import numpy as np
     from clearwater_modules.nsm1 import processes as v1
     from clearwater_modules_v3.parameters.balgae import (
         DEFAULTS as BALGAE_DEFAULTS,
     )
+    from clearwater_modules_v3.parameters.algae import (
+        DEFAULTS as ALGAE_DEFAULTS,
+    )
 
     bwa = BALGAE_DEFAULTS["BWa"]
     bwd = BALGAE_DEFAULTS["BWd"]
 
-    # Phase 9.E: keep v1's value.
-    assert bwa == 3500.0, (
-        f"BWa should be 3500.0 ug-Chla per stoichiometric unit (Phase 9.E "
-        f"keep-v1 choice; matches v1 history and is closer to WASP7's "
-        f"canonical Chla:DW=10 mg/g than Fortran's 5000); got {bwa}"
+    # Phase 9.E follow-up: harmonized to WASP7 canonical 10 mg-Chla/g-DW.
+    assert bwa == 1000.0, (
+        f"BWa should be 1000.0 ug-Chla per stoichiometric unit (Phase 9.E "
+        f"WASP7 harmonization; rab = BWa/BWd = 10 mg-Chla/g-DW matches "
+        f"WASP7 Benthic Algae User's Guide Table 1 canonical); got {bwa}"
     )
     # And confirm BWd hasn't drifted.
     assert bwd == 100.0
 
-    # Cross-check: derived Chla:DW ratio matches the documented value.
+    # Cross-check: derived Chla:DW ratio matches WASP7 canonical 10 mg/g.
     rab_value = v1.rab(
         BWa=xr.DataArray(np.array([bwa])),
         BWd=xr.DataArray(np.array([bwd])),
     )
-    expected_chla_per_d = 35.0  # ug-Chla/mg-D = mg-Chla/g-DW
+    wasp7_canonical_chla_per_d = 10.0  # mg-Chla/g-DW
     np.testing.assert_allclose(
-        float(rab_value.values[0]), expected_chla_per_d, rtol=1e-12,
+        float(rab_value.values[0]),
+        wasp7_canonical_chla_per_d,
+        rtol=1e-12,
     )
 
-    # Confirm v3 deliberately differs from Fortran's 5000 (which would
-    # give Chla:DW=50, even further from WASP7's canonical 10).
-    fortran_bwa = 5000.0
-    assert bwa < fortran_bwa, (
-        f"v3 BWa = {bwa} should be less than Fortran's {fortran_bwa}; "
-        f"v3 keeps v1's lower value as closer to WASP7 canonical."
+    # Cross-check: v3 benthic and floating algae now share the same
+    # Chla:DW basis (both equal 10 mg/g), consistent with WASP7's
+    # convention where benthic and floating algae share stoichiometry.
+    awa = ALGAE_DEFAULTS["AWa"]
+    awd = ALGAE_DEFAULTS["AWd"]
+    floating_chla_per_d = awa / awd
+    benthic_chla_per_d = bwa / bwd
+    np.testing.assert_allclose(
+        floating_chla_per_d, benthic_chla_per_d, rtol=1e-12,
+        err_msg=(
+            "Post-Phase-9.E benthic Chla:DW should match floating Chla:DW "
+            "(both equal WASP7 canonical 10 mg/g)."
+        ),
     )
+
+    # Confirm v3 deliberately differs from both v1 (3500) and Fortran (5000).
+    assert bwa < 3500.0
+    assert bwa < 5000.0

@@ -3,7 +3,23 @@
 Consumed by: ``BenthicAlgae`` Process.
 Source: v1 ``clearwater_modules/nsm1/constants.py`` ``BalgaeStaticVariables`` /
 ``DEFAULT_BALGAE``.
-Corrections applied: none.
+
+Corrections applied:
+
+* ``BWa`` corrected from ``3500.0`` to ``1000.0`` ug-Chla per stoichiometric
+  unit (Phase 9.E follow-up). Pre-9.E v3 inherited v1's ``3500`` (Fortran
+  uses ``5000``); the derived ``rab = BWa / BWd`` Chla:DW ratio for v1/v3
+  was 35 mg-Chla/g-DW (3.5x WASP7 canonical) and Fortran's was 50 mg/g
+  (5x WASP7). Phase 9.E harmonized v3 to WASP7's documented canonical
+  benthic Chla:DW = 10 mg-Chla/g-DW (computed from WASP7 Benthic Algae
+  User's Guide Table 1: Chla:C = 0.025 mg-Chla/mg-C, DW:C = 2.5 mg-DW/mg-C
+  -> Chla:DW = 0.01 mg/mg = 10 mg/g). With ``BWd = 100``, this requires
+  ``BWa = 1000``, giving ``rab = 10`` mg-Chla/g-DW. The corrected value
+  also matches NSM1's own floating-algae ratio (``AWa/AWd = 1000/100 =
+  10``), bringing benthic and floating algae onto the same Chla:DW
+  basis -- consistent with the WASP7 convention where benthic and
+  floating algae share the same stoichiometry. See
+  ``parameter_defaults_corrections.md`` Section 1.13.
 """
 
 DEFAULTS: dict[str, float | int | bool] = {
@@ -11,7 +27,7 @@ DEFAULTS: dict[str, float | int | bool] = {
     'BWc': 40.0,                        # mg-C/g-D; benthic algae carbon content
     'BWn': 7.2,                         # mg-N/g-D; benthic algae nitrogen content
     'BWp': 1.0,                         # mg-P/g-D; benthic algae phosphorus content
-    'BWa': 3500.0,                      # g-D/m^2; benthic algae areal density reference
+    'BWa': 1000.0,                      # ug-Chla per stoichiometric unit; gives rab = BWa/BWd = 10 mg-Chla/g-DW (matches WASP7 canonical and NSM1 floating-algae AWa/AWd; was 3500 in v1/v3 pre-Phase-9.E and 5000 in Fortran, both above canonical)
     'KLb': 10.0,                        # W/m^2; benthic light limitation half-saturation
     'KsNb': 0.25,                       # mg-N/L; nitrogen half-saturation for benthic algae
     'KsPb': 0.125,                      # mg-P/L; phosphorus half-saturation for benthic algae

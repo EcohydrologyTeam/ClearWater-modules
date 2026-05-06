@@ -13,7 +13,7 @@ broader Phase 0 inventory and rationale live in
 
 ---
 
-## Section 1: Critical default-value corrections (12 items, applied at port)
+## Section 1: Critical default-value corrections (13 items, applied at port)
 
 These are applied directly in the v3 `DEFAULTS` dicts. Each inline comment in
 the relevant `parameters/<group>.py` module records the v1 original. Items 1.1
@@ -328,6 +328,59 @@ non-zero reaeration on a representative stream.
   consumed. Regression coverage in
   `tests/test_5_nitrogen_calculations_v2.py::test_phase9e_orgn_settling_matches_v1_no_arrhenius`.
 
+### 1.13 `BWa` harmonized to WASP7 canonical (Phase 9.E follow-up)
+- **Module:** `parameters/balgae.py`
+- **v1 default:** `3500.0` ug-Chla per stoichiometric unit
+- **Fortran default:** `5000.0` (`modBenthicAlgae.f90:87`)
+- **Pre-9.E v3 default:** `3500.0` (matched v1)
+- **Phase 9.E v3 default:** `1000.0`
+- **Rationale:** `BWa` is the benthic algae chlorophyll-a stoichiometric
+  weight (ug-Chla per stoichiometric unit; v1 docstring at
+  ``processes.py:797``). The physically meaningful derived ratio is
+  `rab = BWa / BWd` in mg-Chla/g-DW.
+
+  | Source | `BWa` | `rab` (mg-Chla/g-DW) |
+  |---|---|---|
+  | WASP7 Benthic Algae User's Guide Table 1 | n/a* | **10** |
+  | Periphyton literature typical | n/a | 1-15 |
+  | NSM1 floating (`AWa`/`AWd` = 1000/100) | 1000 | 10 |
+  | Fortran NSM1 benthic | 5000 | 50 (5x WASP7) |
+  | v1 / pre-9.E v3 NSM1 benthic | 3500 | 35 (3.5x WASP7) |
+  | **Phase 9.E v3 NSM1 benthic** | **1000** | **10 (matches WASP7)** |
+
+  *WASP7 documents Chla:C = 0.025 mg-Chla/mg-C and DW:C = 2.5 mg-DW/mg-C
+  -> Chla:DW = 0.025 / 2.5 = 0.01 mg-Chla/mg-DW = **10 mg-Chla/g-DW**.
+
+  Phase 9.E originally kept v1's 3500 with documentation noting it was
+  3.5x WASP7's canonical value but had v1-application history. After
+  explicit reconciliation, Phase 9.E follow-up harmonizes v3 to the
+  WASP7 canonical: `BWa = 1000` gives `rab = 10` mg-Chla/g-DW, which
+  (a) matches WASP7's documented benthic stoichiometry, (b) matches
+  NSM1's own floating-algae Chla:DW (`AWa/AWd = 10`), bringing benthic
+  and floating algae onto the same Chla:DW basis as WASP7 does, and
+  (c) sits in the middle of the published periphyton range.
+
+  QUAL2K does not expose a directly comparable parameter; its bottom
+  algae kinetics use a cell-quota model (variable Chla per cell driven
+  by internal nitrogen and phosphorus quotas) rather than a fixed
+  Chla:DW stoichiometry. WASP7 is therefore the authoritative peer-EPA
+  reference for this default.
+
+  Calibration impact: any v3 simulation that exercises benthic algae
+  with the default `BWa` will see the effective `rab` value drop by
+  3.5x. The most visible consequence is that the modeled benthic
+  chlorophyll output (computed from biomass via `rab`) will be
+  proportionally lower for the same biomass, bringing it into line
+  with WASP7 and typical periphyton field measurements. Users with
+  v1-calibrated configurations who want to preserve the old behavior
+  should explicitly set `BWa = 3500` in their YAML; users with
+  Fortran-calibrated configurations should set `BWa = 5000`.
+
+  Regression coverage in
+  `tests/test_5_benthic_algae_calculations_v2.py::test_phase9e_bwa_harmonized_to_wasp7_canonical`.
+  See also Section 4.2 (audit-history record of how this got from
+  "flagged for review" to "RESOLVED in 9.E keep-v1" to the harmonization).
+
 ---
 
 ## Section 2: Lower-priority audit findings under review (8 items)
@@ -632,33 +685,27 @@ the benthic algae Chla:DW ratio in ug-Chla/mg-D = mg-Chla/g-DW.
 | WASP7 (EPA peer model) | n/a | 10 (= 0.025 mg-Chla/mg-C / 2.5 mg-DW/mg-C) | Documented Table 1 of WASP7 Benthic Algae User's Guide |
 | Periphyton literature typical | n/a | 1-15 | Bothwell 1989, Stevenson et al. 1996 |
 | NSM1 floating (`AWa=1000`, `AWd=100`) | 1000 | 10 | Matches WASP7 / typical literature |
-| Fortran NSM1 benthic | 5000 | **50** | 5x WASP7; high |
-| v1 / v3 NSM1 benthic | 3500 | **35** | 3.5x WASP7; high |
+| Fortran NSM1 benthic | 5000 | 50 | 5x WASP7; high |
+| v1 / pre-9.E v3 NSM1 benthic | 3500 | 35 | 3.5x WASP7; high |
+| **Phase 9.E v3 NSM1 benthic** | **1000** | **10** | **Matches WASP7 canonical** |
 
-Both NSM1 benthic defaults (3500 and 5000) are HIGH relative to
-canonical literature and to WASP7 (which uses the same Chla:DW for
-benthic and floating). The NSM1 convention may reflect an "active
-photosynthesizing layer" interpretation rather than bulk biofilm
-Chla:DW (which would include heterotrophs, EPS, and detritus that
-dilute the Chla content); without authoritative documentation we treat
-this as an undocumented NSM1-specific convention rather than a
-canonical biological measurement.
+Audit-history record (this section was updated twice during Phase 9.E):
 
-**v3 keeps `BWa = 3500`** (matches v1) on three grounds:
+1. **Phase 9.C audit** flagged the BWa value as a v1/v3-vs-Fortran
+   disagreement (3500 vs 5000) pending LimnoTech reconciliation.
+2. **Phase 9.E first pass** kept v1's 3500 with documentation noting
+   it was 3.5x WASP7 canonical but had v1-application history. Both
+   v1's 3500 and Fortran's 5000 were noted as HIGH relative to
+   WASP7's documented benthic Chla:DW.
+3. **Phase 9.E follow-up** (this commit) harmonized v3 to the WASP7
+   canonical: `BWa = 1000` gives `rab = 10` mg-Chla/g-DW, matching
+   WASP7 explicitly and bringing v3 benthic and floating algae onto
+   the same Chla:DW basis as WASP7's convention. Full rationale,
+   calibration-impact analysis, and migration guidance for users with
+   v1- or Fortran-calibrated configurations are in Section 1.13 above.
 
-1. v1's 3500 is closer to WASP7's canonical Chla:DW = 10 (35/10 = 3.5x)
-   than Fortran's 5000 is (50/10 = 5x).
-2. v1 has the calibration application history; downstream applications
-   that have been calibrated against v1 simulations will continue to
-   produce comparable results.
-3. Fortran's 5000 has no recorded rationale and no documented
-   calibration record beyond the legacy code comment.
-
-A future v3.x harmonization to WASP7-style canonical values (`BWa =
-1000`, giving Chla:DW = 10 mg/g equal to floating) would be a
-defensible direction, but is out of scope for v3 1.0.0. Regression
-coverage in
-`tests/test_5_benthic_algae_calculations_v2.py::test_phase9e_bwa_value_pinned`.
+This section is RESOLVED. Regression coverage in
+`tests/test_5_benthic_algae_calculations_v2.py::test_phase9e_bwa_harmonized_to_wasp7_canonical`.
 
 ### 4.3 `vsop` value — RESOLVED in Phase 9.E
 
