@@ -1,6 +1,7 @@
 # v3 TSM Four-Way Audit Findings
 
 **Date:** 2026-05-05
+**Last updated:** 2026-05-05 (resolution status added)
 **Method:** Three parallel reviewer agents partitioned by physics domain.
 **Sources audited:**
 - **v3 TSM:** `src/clearwater_modules_v3/processes/temperature.py`
@@ -9,6 +10,30 @@
 - **Fortran-B (WQM1D):** `ClearWater/WQM1D/TEMP/Source files/modHeatFlux.f90`
 
 **Framing:** the legacy Fortran code was not adequately validated and likely contains flaws. v3 has been actively improving on both v1 and Fortran. Deviation from Fortran does not imply v3 is wrong; the audit is about reasoning which version is physically correct.
+
+## Resolution status (added 2026-05-05)
+
+All findings against v3 and all open questions have been resolved on the
+`streaming` branch. The table below maps each item to its commit hash; full
+details are inline at each item below.
+
+| ID | Severity | Status | Commit | Title |
+|---|---|---|---|---|
+| F2 | MAJOR | Resolved | `808facb` | depth-ramp/rate-cap break water-sediment energy conservation |
+| F-Richardson-doc | MINOR | Resolved | `808facb` | Richardson docstring sign-convention rewording |
+| F-flux-sediment-doc | MINOR | Resolved | `808facb` | `/86400` docstring wording fix |
+| F-sign-convention | MINOR | Resolved | `9d8ebfc` | flux methods refactored to magnitudes-only |
+| Q1 (F2 fix) | — | Option A | `808facb` | symmetric ramp+cap on sediment side |
+| Q2 (TeqC) | — | Resolved | `a00065a` | vectorized Newton-Raphson, opt-in registry diagnostic |
+| Q3 (per-component fluxes) | — | Resolved | `a00065a` | seven `q_*` outputs + `flux_components` dict |
+| Q4 (wind-function provenance) | — | Resolved | `a8874e7` | Edinger Brady & Geyer (1974) cited |
+| Q5 (273.16 → 273.15) | — | Resolved | `a8874e7` | v3 SI Kelvin offset; v3 NSM1 modules already correct |
+| Q6 (v1 wind defaults) | — | Resolved | `a8874e7` | `wind_a/b/c = 0.3 / 1.5 / 3.0` defaults |
+| Q7 (sign-convention) | — | Resolved | `9d8ebfc` | refactored to v1/Fortran magnitudes-only |
+
+Test status after all fixes: 248 passed, 1 xfailed on the v3 suite (was 199 at audit time; +49 new regression tests).
+
+**Fortran-side defects** (1 CRITICAL in both Fortrans, 1 MAJOR in Fortran-B) are tracked in §2 below as informational findings against the audited Fortran reference snapshots. They are out of scope for v3 Python work, and the upstream Fortran sources are not maintained as part of this project. v3 Python already has the correct forms of both calculations.
 
 ---
 
@@ -32,7 +57,20 @@ Three parallel agents covering energy fluxes (Agent A), thermodynamics + atmosph
 
 ## 1. v3 defects identified by the audit
 
-### F2 (MAJOR, Agent C). Depth ramp + rate cap break water-sediment energy conservation in shallow cells.
+### F2 (MAJOR, Agent C) — **RESOLVED in `808facb`**. Depth ramp + rate cap break water-sediment energy conservation in shallow cells.
+
+**Resolution:** Option A applied. `temperature_change` was refactored to
+delegate to a new `_temperature_change_with_factors` helper that returns
+`(delta, ramp, clip_ratio)`. `Temperature.run` now multiplies the
+sediment-side delta by `ramp * clip_ratio` so the guards apply
+symmetrically. Defaults make `ramp = 1` and `clip_ratio = 1` in typical
+deep cells; the fix is a no-op outside the guard regions. Five new
+regression tests pin the contract:
+`test_F2_helper_returns_correct_ramp_when_active`,
+`test_F2_helper_returns_ramp_one_when_disabled_or_deep`,
+`test_F2_helper_returns_clip_ratio_when_cap_fires`,
+`test_F2_water_sediment_conservation_under_depth_ramp`,
+`test_F2_sediment_delta_scales_by_ramp_and_clip_ratio_in_run`.
 
 **Location:** `src/clearwater_modules_v3/processes/temperature.py`. The depth ramp and rate cap are applied to the water-side per-substep delta T inside `temperature_change` (lines 564-585), but `sediment_temperature_change` (lines 617-627) applies neither.
 
@@ -63,7 +101,13 @@ Acknowledge that the thin-water guards intentionally relax the energy-conservati
 
 **My recommendation: Option A.** The depth ramp's purpose is to attenuate the surface flux on shallow cells where the explicit-Euler step would be unstable; physically, that means slowing the heat transfer at both interfaces (water-air via the surface flux, water-sediment via the sediment flux). Applying the ramp symmetrically to both `flux_net` and `sediment_temperature_change` matches that physical intent and preserves conservation. The rate cap is more nuanced (it caps the resulting ΔT, not a flux), so cap-symmetry needs care — applying the same proportional clip to ΔT_s as to ΔT_w preserves cancellation.
 
-### F-Richardson-doc (MINOR, Agent B). Richardson docstring claims "removed −1 factor" but the sign is actually carried by `GRAVITY = -9.806`.
+### F-Richardson-doc (MINOR, Agent B) — **RESOLVED in `808facb`**. Richardson docstring claims "removed −1 factor" but the sign is actually carried by `GRAVITY = -9.806`.
+
+**Resolution:** Docstring at `temperature.py:796-800` rewritten to make the
+GRAVITY sign convention explicit: "v3 stores GRAVITY = -9.806 m/s²; the
+formula uses it directly. v1 has the same convention. Fortran-A and
+Fortran-B store gravity = +9.806 and apply an explicit `-gravity`. Do
+not 'normalize' GRAVITY to +9.806 without re-auditing every consumer."
 
 **Location:** `src/clearwater_modules_v3/processes/temperature.py:796-800`.
 
@@ -76,7 +120,7 @@ The v3 docstring asserts the leading `−1` was deleted "per Jason Rutyna's inve
 
 **Fix.** Reword the comment at lines 796-800 to make the sign convention explicit: "v3 stores `GRAVITY = -9.806 m/s²`; the Richardson formula uses it directly. v1 has the same convention. Fortran-A and Fortran-B store `gravity = +9.806` and apply an explicit `-gravity`. The two conventions produce algebraically identical Richardson numbers; do not 'normalize' `GRAVITY` to `+9.806` without re-auditing every consumer." Or, alternatively, flip `GRAVITY` to `+9.806` in `clearwater_modules_v3/utils/constants.py` and reintroduce the explicit `-` in the Richardson formula, matching Fortran convention. Either resolution is fine; the documentation defect is the priority.
 
-### F-flux-sediment-doc (MINOR, Agent C). `flux_sediment` docstring mis-states what `/86400` converts.
+### F-flux-sediment-doc (MINOR, Agent C) — **RESOLVED in `808facb`**. `flux_sediment` docstring mis-states what `/86400` converts.
 
 **Location:** `src/clearwater_modules_v3/processes/temperature.py:402-404`.
 
@@ -89,7 +133,16 @@ This is wrong:
 
 v1's wording at `tsm/processes.py:414` is correct: *"86400 converts the sediment thermal diffusivity from units of m²/d to m²/s"*. **Fix:** rewrite the v3 docstring to match v1's wording.
 
-### F-sign-convention (MINOR, Agent A). Mixed pre-negate vs compose-time-negate in v3 flux returns.
+### F-sign-convention (MINOR, Agent A) — **RESOLVED in `9d8ebfc`**. Mixed pre-negate vs compose-time-negate in v3 flux returns.
+
+**Resolution:** Refactored to v1 / Fortran magnitudes-only convention.
+`flux_upwelling_longwave` now returns the positive Stefan-Boltzmann
+magnitude; `flux_latent_heat` returns the unnegated form (positive in
+the evaporative regime, negative for condensation). `flux_net`
+composition is now `+ sensible + solar + sediment + LW_down - LW_up
+- latent`, matching v1 `tsm/processes.py:q_net` and Fortran-A
+`modTemperature.f90:257`. Math is identical end-to-end. New file
+`tests/v3/test_tsm_sign_convention_v3.py` (7 tests) pins the contract.
 
 **Location:** `src/clearwater_modules_v3/processes/temperature.py`. Sign convention is inconsistent across the flux methods:
 
@@ -105,9 +158,9 @@ v1 and both Fortran sources use a **consistent** convention: all flux functions 
 
 ---
 
-## 2. Defects in the legacy Fortran code (informational)
+## 2. Defects in the audited Fortran reference snapshots (informational)
 
-These are not v3 issues — v3 has already corrected them. Recorded here as a reviewer-facing artifact when v3 ships back to LimnoTech / ERDC, in case the Fortran modules are used as a baseline for any future validation.
+These are not v3 issues — v3 has already corrected them. The Fortran files audited on 2026-05-05 are reference snapshots only; they are not maintained as part of this project, and their current upstream state is unknown. Recorded here in case anyone tries to use those snapshots as a baseline in the future and needs to know which numerical conventions they should NOT inherit.
 
 ### Fortran-A and Fortran-B: Lv polynomial fed Kelvin instead of Celsius (CRITICAL)
 
@@ -139,39 +192,62 @@ v3 (with the clamp-then-evaluate structure inherited from v1 and matching Fortra
 
 ---
 
-## 3. Open questions for the human
+## 3. Open questions for the human — **ALL RESOLVED 2026-05-05**
 
-Audit-surfaced questions that benefit from your input:
+Audit-surfaced questions, with the user's resolution and shipping commit:
 
-1. **F2 fix decision.** Option A (apply ramp + cap symmetrically to sediment-side delta, preserving energy conservation) or Option B (document the trade-off and ship the asymmetric version as-is)? Recommend Option A.
-2. **TeqC equilibrium-temperature exposure.** Fortran-A implements a Newton-Raphson loop computing equilibrium temperature (`modTemperature.f90:209-262`). v3 does not expose `TeqC`. Was this an intentional simplification, or is `TeqC` needed as a future output?
-3. **Per-component flux outputs.** Should v3 expose `q_latent`, `q_sensible`, `q_longwave_up`, `q_longwave_down`, `q_sediment` as registry diagnostics matching Fortran-A's `TempPathwayOutput`? Useful for calibration and validation; v3 currently bundles them into `flux_net` only.
-4. **Wind-function provenance.** None of the four sources cites the calibration reference for `wind_a`, `wind_b`, `wind_c`, or the `1e6` divisor. Edinger Brady & Geyer (1974) is the most likely source. Recommend recovering and citing.
-5. **`+273.16` Kelvin offset.** Confirmed intentional ("for testing consistency with v1") or inherited typo? Schedule a `273.15` migration for v4 with a single-pass parity test?
-6. **v3 wind defaults.** Adopt v1's `0.3 / 1.5 / 3.0` defaults (matching v1 calibration) or maintain "explicit args required" for safety? This is a usability/design call.
-7. **Sign-convention bookkeeping.** Refactor v3 to match v1/Fortran's "magnitudes-only, signs-at-composition" convention, or document the v3 mixed convention?
+1. **F2 fix decision** — **Option A** (symmetric ramp+cap on sediment side).
+   Shipped in `808facb`.
+2. **TeqC equilibrium-temperature exposure** — **Implement.** Vectorized
+   Newton-Raphson, opt-in registry diagnostic. Shipped in `a00065a` as
+   `Temperature.equilibrium_temperature`.
+3. **Per-component flux outputs** — **Implement.** Seven Fortran-A pathway
+   outputs (`q_sensible`, `q_latent`, `q_longwave_up`, `q_longwave_down`,
+   `q_solar`, `q_sediment`, `q_net`) cached on the process and
+   opportunistically written to the registry when pre-registered. Shipped
+   in `a00065a` as `Temperature.flux_components`.
+4. **Wind-function provenance** — **Recover and cite.** Edinger, J.E.,
+   D.K. Brady, and J.C. Geyer (1974), *Heat exchange and transport in the
+   environment*, Report 14, Cooling Water Discharge Research Project
+   (RP-49), Electric Power Research Institute, Palo Alto, CA, 125 pp.
+   Citation added to `Temperature.__init__` and `wind_function` docstrings
+   in `a8874e7`.
+5. **`+273.16` Kelvin offset** — **Switch to 273.15** (SI canonical
+   offset; 273.16 is the triple point, the wrong reference for 0 °C).
+   v3 `utils/conversions.py` now defines `celsius_to_kelvin` locally with
+   `KELVIN_OFFSET = 273.15` rather than re-exporting v2's 273.16. v3
+   NSM1 modules already used literal 273.15 and are unchanged. v2 is
+   untouched (still 273.16 internally for v1-utility-parity tests).
+   Shipped in `a8874e7`.
+6. **v3 wind defaults** — **Adopt v1's `0.3 / 1.5 / 3.0`.** `Temperature`
+   constructor no longer requires explicit wind args; v1-aligned defaults
+   apply unless overridden. Shipped in `a8874e7`.
+7. **Sign-convention bookkeeping** — **Refactor to magnitudes-only.**
+   Shipped in `9d8ebfc` (see F-sign-convention above).
 
 ---
 
-## 4. Recommended action plan
+## 4. Action plan — **status as of 2026-05-05**
 
-### Immediate (before next sponsor demo or LimnoTech PR):
-- **Fix F2 (MAJOR):** apply depth ramp symmetrically to `sediment_temperature_change`. Add a regression test extending `test_water_sediment_energy_conservation_per_substep` to the guarded-path case.
-- **Fix F-Richardson-doc (MINOR):** reword `temperature.py:796-800` to make the GRAVITY-sign convention explicit.
-- **Fix F-flux-sediment-doc (MINOR):** rewrite `temperature.py:402-404` to match v1's correct wording.
-
-### v3 1.0.x:
-- F-sign-convention (MINOR): add docstring documenting which flux methods are pre-negated, or refactor to magnitudes-only convention.
-- Open question 1 (TeqC) — design decision; default to "ship without TeqC" unless a specific use case appears.
-- Open question 3 (per-component flux diagnostics) — small surface-area addition; useful for future calibration.
+### Immediate (shipped in this session):
+- ✅ **F2 (MAJOR):** `808facb` — symmetric ramp+cap on sediment side, 5 regression tests.
+- ✅ **F-Richardson-doc (MINOR):** `808facb` — `temperature.py` Richardson docstring rewritten.
+- ✅ **F-flux-sediment-doc (MINOR):** `808facb` — `/86400` wording corrected.
+- ✅ **F-sign-convention (MINOR):** `9d8ebfc` — flux methods refactored to v1/Fortran magnitudes-only convention; new `tests/v3/test_tsm_sign_convention_v3.py` (7 tests).
+- ✅ **Q1 (F2 fix decision):** Option A applied.
+- ✅ **Q2 (TeqC):** `a00065a` — `Temperature.equilibrium_temperature` Newton-Raphson.
+- ✅ **Q3 (per-component fluxes):** `a00065a` — `Temperature.flux_components` returns dict; cached on instance and opportunistically written to registry.
+- ✅ **Q4 (wind-function provenance):** `a8874e7` — Edinger Brady & Geyer (1974) cited.
+- ✅ **Q5 (273.16 → 273.15):** `a8874e7` — v3 SI Kelvin offset.
+- ✅ **Q6 (v1 wind defaults):** `a8874e7` — `Temperature` defaults `0.3 / 1.5 / 3.0`.
+- ✅ **Q7 (sign-convention refactor):** `9d8ebfc` (same as F-sign-convention).
 
 ### v3.x or v4:
-- 273.16 → 273.15 alongside v1-parity-test decommissioning (already deferred per Phase R-4).
-- Wind-function provenance documentation.
 - MMS energy-conservation test (was deferred at Phase R-5; an MMS test would have caught F2).
+- LimnoTech reconciliation of the 273.16 vs 273.15 convention if v2 parity is renegotiated (currently v2 retains 273.16 internally).
 
 ### Not in v3 scope:
-- Fortran-side fixes (Lv-Kelvin, Fortran-B Richardson clamp): record in the LimnoTech reviewer materials and offer to share v3's corrections back. Not v3 work.
+- **Fortran-side fixes** (Lv-Kelvin in both Fortrans, Fortran-B Richardson clamp) — out of scope for the v3 Python port. The audited Fortran files are reference snapshots, not maintained as part of this project, and may not represent current upstream state. v3 Python already has the correct forms; §2 below records the legacy defects for context only.
 
 ---
 
