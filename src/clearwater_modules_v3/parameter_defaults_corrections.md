@@ -13,7 +13,7 @@ broader Phase 0 inventory and rationale live in
 
 ---
 
-## Section 1: Critical default-value corrections (11 items, applied at port)
+## Section 1: Critical default-value corrections (12 items, applied at port)
 
 These are applied directly in the v3 `DEFAULTS` dicts. Each inline comment in
 the relevant `parameters/<group>.py` module records the v1 original. Items 1.1
@@ -211,18 +211,9 @@ non-zero reaeration on a representative stream.
   value, with no documented basis. Phase 9.C corrected v3 to `0.01` m/d to
   match Fortran/v1. Note: `vson` was migrated from `global_vars` to the
   nitrogen group in v3 because it is a nitrogen-specific settling velocity,
-  and renamed to `vson_20` for consistency with the other Arrhenius
-  rate-base parameters (`knit_20`, `kon_20`, etc.) since v3 added an
-  Arrhenius temperature correction (see also `vson_theta` below).
-
-  **v3 addition (`vson_theta=1.024`):** v1 uses `vson` raw (no Arrhenius
-  correction); Fortran also has no `vson_theta`. Phase 2.B added the
-  Arrhenius correction `vson_tc = arrhenius_correction(T, vson_20,
-  vson_theta)` for consistency with the other settling-velocity parameters.
-  At T=20 C this collapses exactly to the v1/Fortran behavior. The
-  `theta=1.024` value follows the convention used for `kah_theta`,
-  `kaw_theta` (other reaeration/settling parameters with mild temperature
-  dependence). Documented as a v3 enhancement; flagged for LimnoTech review.
+  and renamed to `vson_20` (`_20` suffix retained for naming consistency
+  with the other parameters in the nitrogen group, even though no
+  Arrhenius correction is applied — see Section 1.12 below).
 
 ### 1.9 `lambdam` — POM contribution to Beer-Lambert light extinction (Phase 9.C fix)
 - **Module:** `parameters/global_vars.py`
@@ -295,6 +286,47 @@ non-zero reaeration on a representative stream.
   tests now assert mg-C/L/d magnitudes; the
   `test_dic_co2_reaeration_matches_v1` test explicitly documents the
   v3-vs-v1 12000x relation and asserts the corrected v3 form).
+
+### 1.12 `vson_theta` removed in Phase 9.E
+- **Module:** `parameters/nitrogen.py`
+- **Pre-9.E v3 default:** `1.024` (v3-only addition)
+- **Phase 9.E:** removed
+- **Fortran:** no `vson_theta`; raw `vson` used (`modNitrogen.f90:233` —
+  `OrgN_Settling = vson(r) / depth * OrgN`)
+- **v1:** no `vson_theta`; raw `vson` used (`processes.py:1333` —
+  `return vson / depth * OrgN`)
+- **Rationale:** `vson_theta` was added by Phase 1.2's parameter-library
+  agent by analogy with the other nitrogen-group theta values (`knit_theta`,
+  `kon_theta`, etc.). Phase 2.B's `organic_nitrogen_settling` then
+  consumed it via `arrhenius_correction(T, vson_20, vson_theta)` with a
+  docstring claiming "for parity with v1" — but the parity claim was
+  false: both v1 and Fortran use raw `vson` without Arrhenius correction.
+
+  Phase 9.E researched Fortran's deliberate type distinction in
+  `modGlobalParam.f90`:
+  - **Reaction rate constants** (`kon`, `knit`, `kdnit`, `kpoc`, `kdoc`,
+    `kop`, `kpom`, `kbod`, `mu_max`, `kdp`, `krp`, ...) are declared as
+    `TempCorrectionStruct` with `%rc20` and `%theta` fields — these get
+    Arrhenius corrections.
+  - **Settling velocities** (`vson`, `vsop`, `vsoc`, `vsap`, `vsbp`,
+    `vs`, `vb`) are declared as plain `real(R8)` with no theta — these
+    do not get Arrhenius corrections.
+
+  The physical convention behind this distinction: reaction rates
+  represent biochemical / microbial activity that scales strongly with
+  temperature (Q10 ≈ 2-3, theta ≈ 1.04-1.08). Settling velocities depend
+  on particle size/density and water viscosity. Water viscosity decreases
+  ~30% over 0-30°C — settling velocity scales correspondingly with
+  theta ≈ 1.009, NOT the rate-constant-magnitude theta=1.024 that v3 had
+  applied (which overstates the temperature dependence by ~3x).
+
+  Phase 9.E removes `vson_theta` from `parameters/nitrogen.py` and
+  changes `Nitrogen.organic_nitrogen_settling` to use raw `self.vson_20`
+  directly. This restores parity with v1 and Fortran exactly. The
+  `temperature` argument is retained on the method signature for API
+  stability with other rate methods on the Process, but is no longer
+  consumed. Regression coverage in
+  `tests/test_5_nitrogen_calculations_v2.py::test_phase9e_orgn_settling_matches_v1_no_arrhenius`.
 
 ---
 
@@ -690,13 +722,14 @@ reaeration from stream hydraulics; legacy NSM1 produced a constant
 1.0 1/d (Fortran) or 0 (v3-pre-9.E) regardless of hydraulics. Full
 rationale and migration guidance in Section 1.6 above.
 
-### 4.6 `vson_theta=1.024` is a v3 addition
+### 4.6 `vson_theta` — RESOLVED in Phase 9.E (parameter removed)
 
-See Section 1.8 above. v3 added an Arrhenius temperature correction to
-the OrgN settling velocity (`vson_tc = arrhenius_correction(T, vson_20,
-vson_theta)`); v1 and Fortran apply `vson` raw with no temperature
-correction. At T=20 C v3 collapses exactly to v1/Fortran behavior; for
-other temperatures v3 differs by `theta^(T-20)`. Flagged for LimnoTech
-review; `theta=1.024` is consistent with the values used for related
-reaeration/settling parameters but is not directly traceable to a
-literature reference for OrgN settling specifically.
+(Originally flagged here in Phase 9.C as "v3-only addition pending
+LimnoTech reconciliation.") Phase 9.E researched the issue and found
+that `vson_theta` was an unjustified v3 addition: Phase 1.2's
+parameter-library agent added it by analogy with rate-constant theta
+values, and Phase 2.B's `organic_nitrogen_settling` consumed it with
+a docstring claiming "parity with v1" — but both v1 and Fortran use
+raw `vson` without Arrhenius correction. The parameter has been
+removed and the Process now uses raw `vson_20` directly, matching v1
+and Fortran exactly. Full rationale in Section 1.12 above.

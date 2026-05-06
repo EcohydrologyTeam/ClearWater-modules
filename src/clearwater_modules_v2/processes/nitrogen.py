@@ -762,13 +762,21 @@ class Nitrogen(Process):
     ) -> ArrayLike:
         """OrgN -> bed settling flux (mg-N/L/d). v1 ``OrgN_Settling``.
 
-        ``vson_tc / depth * OrgN``. ``vson_20`` carries m/d units; the
-        Arrhenius temperature correction is applied for parity with v1.
+        ``vson / depth * OrgN``. ``vson_20`` is the raw settling velocity
+        (m/d); per Phase 9.E correction, no Arrhenius temperature
+        correction is applied -- this matches both v1
+        (``processes.py:1333``) and Fortran (``modNitrogen.f90:233``)
+        which both use raw ``vson``. The deliberate Fortran/v1 design
+        distinction is that rate constants get Arrhenius corrections but
+        settling velocities do not (settling depends on water viscosity
+        with weak temperature dependence ~1.009, not on biochemical
+        Arrhenius scaling). The ``temperature`` argument is retained for
+        API stability with other rate methods on this Process; it is no
+        longer consumed.
         """
         if not getattr(self, "use_OrgN", True):
             return 0.0
-        vson_tc = arrhenius_correction(temperature, self.vson_20, self.vson_theta)
-        return vson_tc / depth * organic_nitrogen
+        return self.vson_20 / depth * organic_nitrogen
 
     def organic_nitrogen_from_floating_algae_mortality(self) -> ArrayLike:
         """Algal-mortality OrgN source (mg-N/L/d). v1 ``ApDeath_OrgN``.

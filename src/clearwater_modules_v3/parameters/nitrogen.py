@@ -9,10 +9,21 @@ Corrections applied:
   prior 0.1 was an internal v3 inconsistency: v1 GlobalVars, v3 ``global_vars``,
   and Fortran ``modGlobalParam.f90:92`` all use ``0.01`` m/d. The 0.1 in this
   module did not match any reference and was 10x the canonical value.
-* ``vson_theta=1.024`` is a v3-only addition. v1 uses ``vson`` raw (no Arrhenius
-  correction) and Fortran has no ``vson_theta``. Phase 2.B added the Arrhenius
-  correction here for consistency with the other settling-velocity Arrhenius
-  forms; the Process consumes ``arrhenius_correction(T, vson_20, vson_theta)``.
+* ``vson_theta`` removed in Phase 9.E. The parameter was originally added in
+  Phase 1.2 by analogy with rate-constant theta values. Phase 2.B's
+  ``organic_nitrogen_settling`` consumed it via
+  ``arrhenius_correction(T, vson_20, vson_theta)`` with a docstring claiming
+  "parity with v1" -- but the parity claim was false. Both v1
+  (``processes.py:1333`` ``OrgN_Settling = vson / depth * OrgN``) and Fortran
+  (``modNitrogen.f90:233`` ``OrgN_Settling = vson(r) / depth * OrgN``) use raw
+  ``vson`` without temperature correction. Fortran's deliberate type
+  distinction (rate constants are ``TempCorrectionStruct`` with ``%rc20`` and
+  ``%theta``; settling velocities are plain ``real(R8)``) reflects the
+  physical convention that biochemical reaction rates scale with Arrhenius
+  temperature dependence (Q10 approx 2-3) but settling velocities depend on
+  water viscosity (theta approx 1.009, much smaller than the 1.024 v3 had
+  applied). Phase 9.E removes the parameter; the Process now uses raw
+  ``vson_20`` directly, matching v1 and Fortran exactly.
 * **Nitrogen theta transposition fix (Phase 9.E)**. The four nitrogen Arrhenius
   theta values were transposed in pairs in v1's port from Fortran. Evidence:
   (1) Fortran ``modNitrogen.f90:82, 89, 95, 100`` initializes
@@ -47,7 +58,9 @@ DEFAULTS: dict[str, float | int | bool] = {
     'kdnit_theta': 1.045,   # unitless; denitrification Arrhenius (Phase 9.E correction; was 1.08 in v1/v3, transposed with vno3_theta during v1 port; matches Fortran kdnit%theta=1.045 modNitrogen.f90:95 and Chapra 1997)
     'rnh4_theta': 1.074,    # unitless; sediment NH4 release Arrhenius (Phase 9.E correction; was 1.047 in v1/v3, transposed with kon_theta during v1 port; matches Fortran rnh4%theta=1.074 modNitrogen.f90:82 and the rpo4_theta=1.074 phosphorus parallel)
     'vno3_theta': 1.08,     # unitless; sediment denitrification Arrhenius (Phase 9.E correction; was 1.045 in v1/v3, transposed with kdnit_theta during v1 port; matches Fortran vno3%theta=1.08 modNitrogen.f90:100)
-    'vson_theta': 1.024,    # unitless; Arrhenius coefficient for OrgN settling (v3 addition; v1 uses vson raw, no Fortran counterpart; see module docstring)
+    # Phase 9.E removed `vson_theta` (was 1.024). v1 and Fortran both use
+    # raw `vson` for OrgN settling without Arrhenius correction; the
+    # parameter was an unjustified v3 addition. See module docstring.
     'KsOxdn': 0.1,          # mg-O2/L; oxygen half-saturation for denitrification inhibition
     'PN': 0.5,              # unitless; algal preference fraction for NH4 over NO3
     'PNb': 0.5,             # unitless; benthic algal preference fraction for NH4 over NO3

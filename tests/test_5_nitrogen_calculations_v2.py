@@ -554,3 +554,89 @@ def test_phase9e_nitrogen_theta_pairs_consistent_with_phosphorus():
     assert NITROGEN_DEFAULTS["kon_theta"] == PHOSPHORUS_DEFAULTS["kop_theta"]
     # Sediment release (rnh4_theta vs rpo4_theta): must match.
     assert NITROGEN_DEFAULTS["rnh4_theta"] == PHOSPHORUS_DEFAULTS["rpo4_theta"]
+
+
+# ---------------------------------------------------------------------------
+# Phase 9.E follow-up: vson_theta removed; OrgN settling matches v1/Fortran
+# ---------------------------------------------------------------------------
+# v3 had previously applied an Arrhenius temperature correction to OrgN
+# settling (vson_tc = arrhenius_correction(T, vson_20, vson_theta), with
+# vson_theta=1.024) added by Phase 1.2 by analogy with rate-constant theta
+# values. Phase 2.B's docstring claimed "parity with v1" but the parity
+# claim was false: both v1 (processes.py:1333) and Fortran
+# (modNitrogen.f90:233) use raw `vson` without Arrhenius correction.
+# Fortran's deliberate type distinction confirms the convention: rate
+# constants are TempCorrectionStruct (get Arrhenius); settling velocities
+# are plain real (no Arrhenius). Phase 9.E removed vson_theta and changed
+# the Process to use raw vson_20. See parameter_defaults_corrections.md
+# Section 1.12.
+
+def test_phase9e_orgn_settling_matches_v1_no_arrhenius(
+    n_instance, water_temp_5cell, depth_5cell
+):
+    """Phase 9.E: v3 OrgN settling must match v1 OrgN_Settling exactly,
+    with no Arrhenius temperature correction. Verifies parity at multiple
+    temperatures (Arrhenius would have produced a temperature-varying
+    deviation; raw vson produces an exact match)."""
+    from clearwater_modules.nsm1 import processes as v1
+
+    # Set vson_20 to a non-trivial value so the settling term is non-zero.
+    n_instance.vson_20 = 0.05  # m/d
+    n_instance.use_OrgN = True
+    organic_nitrogen = xr.DataArray(np.array([0.5, 1.0, 1.5, 2.0, 3.0]))
+
+    # v3 settling at multiple water temperatures: should be invariant
+    # because the formula is vson_20 / depth * OrgN (no temperature
+    # term).
+    rate_at_5C = n_instance.organic_nitrogen_settling(
+        organic_nitrogen=organic_nitrogen,
+        temperature=xr.DataArray(np.full(5, 5.0)),
+        depth=depth_5cell,
+    )
+    rate_at_30C = n_instance.organic_nitrogen_settling(
+        organic_nitrogen=organic_nitrogen,
+        temperature=xr.DataArray(np.full(5, 30.0)),
+        depth=depth_5cell,
+    )
+    np.testing.assert_allclose(
+        np.asarray(rate_at_5C),
+        np.asarray(rate_at_30C),
+        rtol=1e-12,
+        err_msg=(
+            "Phase 9.E: OrgN settling must be temperature-invariant "
+            "(matches v1 raw-vson form, not the v3-pre-9.E "
+            "Arrhenius-corrected form)."
+        ),
+    )
+
+    # And confirm v3 == v1 OrgN_Settling exactly at any temperature.
+    v1_rate = v1.OrgN_Settling(
+        vson=n_instance.vson_20, depth=depth_5cell, OrgN=organic_nitrogen
+    )
+    np.testing.assert_allclose(
+        np.asarray(rate_at_5C),
+        np.asarray(v1_rate),
+        rtol=1e-12,
+        err_msg=(
+            "Phase 9.E: v3 OrgN settling must match v1 "
+            "OrgN_Settling(vson, depth, OrgN) exactly."
+        ),
+    )
+
+
+def test_phase9e_vson_theta_removed_from_defaults():
+    """Phase 9.E: vson_theta removed from NITROGEN_DEFAULTS (was 1.024,
+    a v3-only addition with no v1/Fortran counterpart). Pin so any future
+    re-addition requires explicit reconciliation against the Fortran/v1
+    convention that settling velocities don't get Arrhenius corrections."""
+    from clearwater_modules_v3.parameters.nitrogen import (
+        DEFAULTS as NITROGEN_DEFAULTS,
+    )
+
+    assert "vson_theta" not in NITROGEN_DEFAULTS, (
+        f"Phase 9.E removed vson_theta from NITROGEN_DEFAULTS; if a future "
+        f"phase re-adds it, document the rationale and update this test. "
+        f"Current keys: {sorted(NITROGEN_DEFAULTS.keys())}"
+    )
+    # And confirm vson_20 is still present (the actual settling velocity).
+    assert "vson_20" in NITROGEN_DEFAULTS
