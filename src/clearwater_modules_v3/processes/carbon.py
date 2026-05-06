@@ -115,6 +115,7 @@ from clearwater_modules_v3.utils.conversions import arrhenius_correction
 from clearwater_modules_v3.utils.numerics import (
     Diagnostics,
     clip_negative_state,
+    sanitize_rate,
 )
 from clearwater_modules_v3.utils.reaeration import kah_20, kaw_20, ka_tc
 
@@ -524,9 +525,9 @@ class Carbon(Process):
         )
 
         # --- NaN guards on the rates (mirrors Nitrogen) ---
-        d_poc = _nan_guard(d_poc)
-        d_doc = _nan_guard(d_doc)
-        d_dic = _nan_guard(d_dic)
+        d_poc = sanitize_rate(d_poc)
+        d_doc = sanitize_rate(d_doc)
+        d_dic = sanitize_rate(d_dic)
 
         # --- Step-scoped rate caches (Q10 GS-rates contract) ---
         # doc_dic_oxidation_rate: mg-C/L/d. DOX consumes this term as an
@@ -737,10 +738,3 @@ def _zeros_like(template: ArrayLike) -> ArrayLike:
     return 0.0
 
 
-def _nan_guard(rate: ArrayLike) -> ArrayLike:
-    """Replace NaN cells with 0 (mirrors v3 Nitrogen / N2 NaN guard)."""
-    if isinstance(rate, xr.DataArray):
-        return xr.where(rate.isnull(), 0.0, rate)
-    if isinstance(rate, np.ndarray):
-        return np.where(np.isnan(rate), 0.0, rate)
-    return rate

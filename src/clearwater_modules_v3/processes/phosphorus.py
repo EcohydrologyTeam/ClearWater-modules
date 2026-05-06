@@ -91,6 +91,7 @@ from clearwater_modules_v3.utils.conversions import arrhenius_correction
 from clearwater_modules_v3.utils.numerics import (
     Diagnostics,
     clip_negative_state,
+    sanitize_rate,
 )
 from clearwater_modules_v3.utils.partitioning import fdp as fdp_partition
 
@@ -368,8 +369,8 @@ class Phosphorus(Process):
             dorgp_dt = xr.zeros_like(orgp) if hasattr(orgp, "dims") else 0.0
 
         # NaN guard (mirrors v3 Nitrogen / FloatingAlgae pattern).
-        dtip_dt = self._nan_to_zero(dtip_dt)
-        dorgp_dt = self._nan_to_zero(dorgp_dt)
+        dtip_dt = sanitize_rate(dtip_dt)
+        dorgp_dt = sanitize_rate(dorgp_dt)
 
         # Forward Euler in days. Rates are 1/d.
         dt_days = self.time_step.total_seconds() / 86400.0
@@ -495,21 +496,3 @@ class Phosphorus(Process):
             0.0,
         )
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _nan_to_zero(rate: ArrayLike) -> ArrayLike:
-        """Replace NaN values with 0 (mirrors v3 Nitrogen pattern).
-
-        Mirrors the Phase 2.B Nitrogen NaN-guard idiom: catches NaN
-        propagated through any rate term (e.g., 0/0 in degenerate
-        depth==0 cells) and replaces with 0. Preserves the input
-        container type.
-        """
-        if isinstance(rate, xr.DataArray):
-            return xr.where(rate.isnull(), 0.0, rate)
-        if isinstance(rate, np.ndarray):
-            return np.where(np.isnan(rate), 0.0, rate)
-        return rate

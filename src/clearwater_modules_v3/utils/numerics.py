@@ -12,6 +12,15 @@ The clip target is exactly 0, not a small epsilon. Monod ratios
 ``C / (C + K)`` are well-defined at ``C = 0``; any kinetic formula that
 divides directly by a clipped state is reformulated rather than the clip
 threshold being adjusted.
+
+Defense-in-depth NaN/inf sanitization is provided by ``sanitize_rate``,
+which catches both ``NaN`` and ``inf`` cells (e.g., ``x / depth`` at
+``depth == 0`` produces ``inf``, not ``NaN``) and replaces them with 0
+before they reach the Forward Euler update. The primary defense for dry
+cells is the orchestration-layer wet-mask gating in ``Model``; the
+sanitizer is the secondary defense that protects unconfigured-wet-mask
+runs and also handles missing forcings that ``xr.DataArray`` operations
+turn into ``NaN``.
 """
 
 from dataclasses import dataclass, field
@@ -19,6 +28,8 @@ from typing import Any
 
 import numpy as np
 import xarray as xr
+
+from clearwater_data.custom_types import ArrayLike
 
 
 _DEFAULT_DETAIL_LIMIT = 10
@@ -116,3 +127,48 @@ def clip_negative_state(
         name=state.name,
         attrs=state.attrs,
     )
+
+
+def sanitize_rate(rate: ArrayLike) -> ArrayLike:
+    """Replace NaN and inf cells with 0; preserves container type.
+
+    Defense-in-depth guard for Process rate computations. Catches:
+
+    * ``NaN`` from missing forcings or from undefined arithmetic
+      (e.g., ``0 / 0`` propagated through ``xr.DataArray`` operations).
+    * ``inf`` from division by zero (e.g., ``x / depth`` at
+      ``depth == 0``).
+
+    The primary defense for dry cells is the orchestration-layer
+    wet-mask gating in ``Model.__apply_wet_mask`` (it overwrites
+    Process outputs with ``NaN`` after the Process runs at any cell
+    where the wet-mask threshold is not met). ``sanitize_rate`` is
+    the secondary defense: it protects unconfigured-wet-mask runs
+    and Tier 1 unit tests where wet-mask is not active. It also
+    means that even at wet cells, a transient ``NaN`` or ``inf``
+    in any sub-rate term cannot poison the Forward Euler update.
+
+    Handles the three input container types Process rates may
+    appear as in v3:
+
+    * ``xr.DataArray`` -- canonical Process input/output container.
+    * ``np.ndarray`` -- intermediate result of mixed numpy
+      operations or a stand-alone test invocation.
+    * native Python scalar (``float`` or ``int``) -- single-cell
+      unit-test invocations or constant-input scenarios.
+
+    Args:
+        rate | ArrayLike | per-cell rate of change to sanitize.
+
+    Returns:
+        ArrayLike | the same container type as ``rate`` with any
+        ``NaN`` or ``inf`` cells replaced by exactly 0.
+    """
+    if isinstance(rate, xr.DataArray):
+        return xr.where(rate.isnull() | np.isinf(rate), 0.0, rate)
+    if isinstance(rate, np.ndarray):
+        return np.where(np.isnan(rate) | np.isinf(rate), 0.0, rate)
+    # Native Python scalar (or any other duck-typed numeric value).
+    if np.isnan(rate) or np.isinf(rate):
+        return 0.0
+    return rate

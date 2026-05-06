@@ -82,7 +82,11 @@ from clearwater_data.variables import VariableRegistry
 from clearwater_data.custom_types import ArrayLike
 
 from clearwater_modules_v2.processes.base import Process, ProcessFactory
-from clearwater_modules_v3.utils.numerics import Diagnostics, clip_negative_state
+from clearwater_modules_v3.utils.numerics import (
+    Diagnostics,
+    clip_negative_state,
+    sanitize_rate,
+)
 
 if TYPE_CHECKING:
     from clearwater_modules_v3.model import Model
@@ -467,11 +471,11 @@ class Alkalinity(Process):
             + balgae_resp_source
         )
 
-        # NaN guard.
-        if isinstance(rate, xr.DataArray):
-            rate = xr.where(rate.isnull(), 0.0, rate)
-        elif isinstance(rate, np.ndarray):
-            rate = np.where(np.isnan(rate), 0.0, rate)
+        # NaN/inf guard (defense-in-depth; primary dry-cell defense
+        # is the orchestration-layer wet-mask in Model). Catches
+        # ``inf`` from depth divisions and ``NaN`` from missing
+        # forcings.
+        rate = sanitize_rate(rate)
 
         # --- Forward Euler integration ---
         dt_days = self.time_step.total_seconds() / 86400.0

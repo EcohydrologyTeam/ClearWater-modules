@@ -65,6 +65,7 @@ from clearwater_modules_v3.utils.light import L
 from clearwater_modules_v3.utils.numerics import (
     Diagnostics,
     clip_negative_state,
+    sanitize_rate,
 )
 
 if TYPE_CHECKING:
@@ -230,6 +231,12 @@ class Pathogen(Process):
             poc=poc,
             ap=ap,
         )
+
+        # NaN/inf guard (defense-in-depth; primary dry-cell defense
+        # is the orchestration-layer wet-mask in Model). Catches
+        # ``inf`` from ``vx / depth`` at ``depth == 0`` and ``NaN``
+        # from missing forcings (temperature, solar radiation).
+        rate = sanitize_rate(rate)
 
         # Forward Euler. Rates are 1/d; convert dt from seconds to days.
         dt_days = self.time_step.total_seconds() / 86400.0

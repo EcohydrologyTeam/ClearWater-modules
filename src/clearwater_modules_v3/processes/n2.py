@@ -52,7 +52,11 @@ from clearwater_data.variables import VariableRegistry
 from clearwater_data.custom_types import ArrayLike
 
 from clearwater_modules_v2.processes.base import Process, ProcessFactory
-from clearwater_modules_v3.utils.numerics import Diagnostics, clip_negative_state
+from clearwater_modules_v3.utils.numerics import (
+    Diagnostics,
+    clip_negative_state,
+    sanitize_rate,
+)
 from clearwater_modules_v3.utils.reaeration import kah_20, kaw_20, ka_tc
 
 if TYPE_CHECKING:
@@ -349,11 +353,11 @@ class N2(Process):
         # --- Net rate (mg-N/L/d) ---
         rate = atm_exchange + denit_source
 
-        # NaN guard.
-        if isinstance(rate, xr.DataArray):
-            rate = xr.where(rate.isnull(), 0.0, rate)
-        elif isinstance(rate, np.ndarray):
-            rate = np.where(np.isnan(rate), 0.0, rate)
+        # NaN/inf guard (defense-in-depth; primary dry-cell defense
+        # is the orchestration-layer wet-mask in Model). Catches
+        # ``inf`` from ``x / depth`` at ``depth == 0`` and ``NaN``
+        # from missing forcings.
+        rate = sanitize_rate(rate)
 
         # --- Forward Euler integration ---
         dt_days = self.time_step.total_seconds() / 86400.0
@@ -374,10 +378,7 @@ class N2(Process):
         # is available.
         with np.errstate(divide="ignore", invalid="ignore"):
             tdg = n2_new / n2_sat
-        if isinstance(tdg, xr.DataArray):
-            tdg = xr.where(tdg.isnull() | np.isinf(tdg), 0.0, tdg)
-        elif isinstance(tdg, np.ndarray):
-            tdg = np.where(np.isnan(tdg) | np.isinf(tdg), 0.0, tdg)
+        tdg = sanitize_rate(tdg)
 
         if "total_dissolved_gas" in registry:
             registry.set_at_time("total_dissolved_gas", time, tdg)
