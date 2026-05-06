@@ -352,12 +352,38 @@ class Temperature(Process):
             )
 
     # ---------- Energy-balance fluxes ----------
+    #
+    # Sign convention (audit 2026-05-05 finding F-sign-convention; v1 +
+    # Fortran-A + Fortran-B agreement). All flux methods return
+    # **magnitudes** (or signed-by-temperature-gradient values for
+    # ``flux_sensible`` and ``flux_sediment``). Signs are applied in
+    # ``flux_net`` at composition time::
+    #
+    #     q_net = (
+    #           q_sensible            # +/- by (T_air - T_water)
+    #         + q_solar               # always positive (input)
+    #         + q_sediment            # +/- by (T_sed - T_water)
+    #         + q_atmospheric_LW      # always positive (incoming)
+    #         - q_upwelling_LW        # always positive (outgoing)
+    #         - q_latent              # always positive (evaporative)
+    #     )
+    #
+    # This matches v1 ``tsm/processes.py:q_net`` and Fortran-A
+    # ``modTemperature.f90:257`` exactly. **Do not pre-negate inside
+    # any flux method** — it makes the composition asymmetric and
+    # breaks the audit invariant. (Pre-2026-05-05, ``flux_upwelling_longwave``
+    # and ``flux_latent_heat`` were pre-negated; refactored to
+    # magnitudes-only as part of audit finding F-sign-convention.)
 
     def flux_upwelling_longwave(self, water_temperature: ArrayLike) -> xr.DataArray:
-        """Upwelling longwave flux (W/m^2). Negative because energy leaves
-        the water column."""
+        """Upwelling longwave flux **magnitude** (W/m^2).
+
+        Returns a positive value (Stefan-Boltzmann black-body emission
+        from the water surface). Subtract in ``flux_net``: this energy
+        leaves the water column.
+        """
         return (
-            -constants.EMISSIVITY_WATER
+            constants.EMISSIVITY_WATER
             * constants.STEFAN_BOLTZMANN
             * conversions.celsius_to_kelvin(water_temperature) ** 4
         )
@@ -402,10 +428,17 @@ class Temperature(Process):
         atmospheric_vapor_pressure: ArrayLike,
         richardson_function: ArrayLike,
     ) -> xr.DataArray:
-        """Latent heat flux (W/m^2). Negative because evaporative heat
-        loss removes energy from the water column."""
+        """Latent heat flux **magnitude** (W/m^2).
+
+        Returns a positive value when ``e_sat > e_air`` (the typical
+        evaporative regime — water evaporates and the latent heat
+        leaves with it). Subtract in ``flux_net``. May be negative if
+        ``e_sat < e_air`` (condensation onto the surface, an energy
+        gain), in which case subtracting a negative still yields the
+        correct sign.
+        """
         return (
-            -0.622
+            0.622
             / atmospheric_pressure
             * self.latent_heat_vaporization(water_temperature)
             * self.water_density(water_temperature)
@@ -525,7 +558,12 @@ class Temperature(Process):
         )
         atmospheric = self.flux_atmospheric_longwave(air_temperature, cloudiness)
         upwelling = self.flux_upwelling_longwave(water_temperature)
-        return sensible + solar_flux + sediment + atmospheric + upwelling + latent
+        # Audit 2026-05-05 finding F-sign-convention: signs applied
+        # here (composition-time) per the magnitudes-only convention
+        # documented at the top of the energy-balance section. Matches
+        # v1 ``tsm/processes.py:q_net`` and Fortran-A
+        # ``modTemperature.f90:257``.
+        return sensible + solar_flux + sediment + atmospheric - upwelling - latent
 
     # ---------- Thermodynamic state functions ----------
 
