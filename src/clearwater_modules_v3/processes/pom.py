@@ -29,6 +29,24 @@ velocity divided by ``depth`` -- v1 has no such parameter. The v1 burial
 term ``vb / h2 * POM`` is the closest analogue and is used here. See the
 "v1/v2 ambiguities" note in the Phase 3.2 report.
 
+Conceptual note (Phase 9.F.C documentation fix, corrections doc
+Section 2.5): NSM1's POM state variable represents the **bed-sediment
+POM compartment** (Fortran ``POM2`` -- the "2" suffix denotes Di Toro's
+"layer 2", i.e. the lower anaerobic sediment layer), NOT the
+water-column POM. v1 and v3 dropped the ``2`` subscript when porting
+from Fortran, but the conceptual identity is preserved via the
+``h2`` divisor. ``h2 = 0.1`` m matches the Di Toro (2001) / QUAL2K
+v2.11 §5.6 convention for the lower anaerobic layer thickness ``H_2``
+(approx 10 cm), and ``h2`` plays the role of converting areal
+water-column fluxes (m * mg/L/d) into bed volumetric concentration
+changes (mg/L/d). The water-column algal/POC/benthic-mortality source
+terms in the equations above carry the ``/ h2`` factor for exactly
+this dimensional reason. Implementing the full two-layer Di Toro
+diagenesis (separate ``H_1`` aerobic layer, full nutrient flux model)
+is the future NSM2 sediment-diagenesis scope; v3 NSM1 1.0.0 carries
+only the ``H_2`` layer with first-order burial/dissolution kinetics,
+matching v1 and Fortran exactly.
+
 Forward-Euler integrator pattern (Phase 2.A / 2.B): rates are 1/d,
 ``dt_days = time_step.total_seconds() / 86400``, ``state_new = state +
 rate * dt_days``, then ``clip_negative_state`` with diagnostics, then

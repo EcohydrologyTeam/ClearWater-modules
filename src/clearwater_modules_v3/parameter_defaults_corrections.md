@@ -516,27 +516,62 @@ non-zero reaeration on a representative stream.
 
 ---
 
-## Section 2: Lower-priority audit findings under review (8 items)
+## Section 2: Lower-priority audit findings (8 items; 7 RESOLVED, 1 deferred)
 
 These eight items were flagged during Phase 0 as suspicious or unclear but
 left at v1 values for the v3 1.0.0 port. Each is marked with a
 `FIXME(phase1-audit):` inline comment in the relevant parameter module.
 Disposition for each is described below.
 
-### 2.1 `rnh4_20=0`, `vno3_20=0`, `rpo4_20=0` — sediment-flux release rates disabled
+### 2.1 `rnh4_20=0`, `vno3_20=0`, `rpo4_20=0` — sediment-flux release rates — RESOLVED in Phase 9.F.C
+
+(Originally flagged here in Phase 0 as "all three sediment-release/uptake
+rates are zero, which silently disables sediment-flux contributions to NH4,
+NO3, and PO4 budgets; Phase 0 could not confirm that every code path
+consuming these parameters is gated by `use_SedFlux`.")
+
 - **Modules:** `parameters/nitrogen.py` (`rnh4_20`, `vno3_20`),
-  `parameters/phosphorus.py` (`rpo4_20`).
-- **Issue:** All three sediment-release/uptake rates are zero, which silently
-  disables sediment-flux contributions to NH4, NO3, and PO4 budgets. v1 also
-  defaults `use_SedFlux=False`, which should make this moot, but Phase 0
-  could not confirm that every code path consuming these parameters is gated
-  by `use_SedFlux`.
-- **Disposition (v3 1.0.0):** Kept at zero, consistent with v1. Phase 1.3
-  Process implementation must verify that `use_SedFlux=False` gates all
-  consumers of these parameters; until that audit is complete, leaving the
-  values at zero preserves v1 behavior. If `use_SedFlux=True` is set without
-  also providing site-specific rates, results will silently exclude sediment
-  fluxes.
+  `parameters/phosphorus.py` (`rpo4_20`),
+  `clearwater_modules_v2/processes/nitrogen.py`,
+  `clearwater_modules_v3/processes/phosphorus.py`.
+
+- **Phase 9.F.1 finding (audit):** the Phase 0 concern was correct.
+  Three v3 1.0.0 bed-flux consumers run **without** `use_SedFlux`
+  gating:
+  1. `Nitrogen.ammonium_from_bed` — consumes `rnh4_20`, called
+     unconditionally from `change_ammonium`.
+  2. `Nitrogen.nitrate_bed_denitrification` — consumes `vno3_20`,
+     called unconditionally from the NO3 budget.
+  3. `Phosphorus.run` `dip_from_bed` term — consumes `rpo4_20`,
+     gated by `use_TIP` only (NOT by `use_SedFlux`).
+  Only `Carbon` correctly gates its sediment-flux contribution
+  (`JDIC`) by `if self.use_SedFlux:`.
+
+- **Resolution (Phase 9.F.C, defensive Option A + Option B):**
+  1. **Option A (framing fix).** Documented in the Section 2.1 above
+     and in the inline comments of the three parameter modules: the
+     zero defaults for `rnh4_20`, `vno3_20`, and `rpo4_20` are the
+     **de facto gate** for sediment-flux contributions in v3 1.0.0,
+     because the `use_SedFlux` boolean is only consulted in `Carbon`.
+     The value-based gate (zero rates) is intentional and correct for
+     a v1-parity port; the boolean-gated implementation belongs to
+     the future NSM2 diagenesis path.
+  2. **Option B (defensive guard).** Added `NotImplementedError`
+     guards in `Nitrogen.__init__` (v2 overlay) and
+     `Phosphorus.__init__` (v3-native) that fire if a user passes
+     `parameters={"use_SedFlux": True, ...}`. The guards explicitly
+     point users at the NSM2 path for the full sediment-flux feature
+     and at direct `rnh4_20` / `vno3_20` / `rpo4_20` overrides for
+     site-specific constant-flux calibration without `use_SedFlux`.
+     The guards prevent the historical silent-partial behavior where
+     `use_SedFlux=True` would activate Carbon's sediment-flux but
+     leave Nitrogen and Phosphorus at value-based zero, producing an
+     inconsistent budget. `Carbon` is unaffected because it correctly
+     gates by `use_SedFlux`.
+
+  Regression coverage in
+  `tests/test_phase9fc_sedflux_guard.py::test_nitrogen_use_sedflux_true_raises_notimplementederror`
+  and `test_phosphorus_use_sedflux_true_raises_notimplementederror`.
 
 ### 2.2 `kdpo4=0.0` — TIP partitioning coefficient
 - **Module:** `parameters/phosphorus.py`
@@ -547,13 +582,54 @@ Disposition for each is described below.
   NSM2 territory; v3 NSM1 1.0.0 maintains the v1 simplification. Documented
   for clarity.
 
-### 2.3 `ksbod_20=0.0` — CBOD settling rate
+### 2.3 `ksbod_20=0.0` — CBOD settling rate — RESOLVED in Phase 9.F.C
+
+(Originally flagged here in Phase 0 as "CBOD never settles in v1 because
+the settling rate is hardcoded to zero. If CBOD is conceptually fully
+dissolved this is correct; if CBOD represents a mixture including
+particulate fractions, this is a bug.")
+
 - **Module:** `parameters/cbod.py`
-- **Issue:** CBOD never settles in v1 because the settling rate is hardcoded
-  to zero. If CBOD is conceptually fully dissolved this is correct; if CBOD
-  represents a mixture including particulate fractions, this is a bug.
-- **Disposition (v3 1.0.0):** Kept at zero pending clarification from
-  LimnoTech on the intended interpretation of CBOD groups in NSM1.
+
+- **Phase 9.F research finding** (Phase 9.F.2 research record at
+  `docs/clearwater_modules_v3_nsm1_research_2_3_ksbod.md`): the zero
+  default is the **intentional, defensible modern-convention value**.
+  - **QUAL2K v2.11b8** (Chapra, Pelletier & Tao 2008), QUAL2Kw, WASP7
+    EUTRO, and CE-QUAL-W2 all treat CBOD as a **dissolved-only**
+    state variable and provide **no CBOD settling parameter at all**;
+    particulate organic matter is carried separately (detritus,
+    LPOM/RPOM) with its own settling velocity.
+  - **QUAL2E** (Brown & Barnwell 1987, EPA/600/3-87/007), the direct
+    ancestor of NSM1, defaults `K_3 = 0` for the same reason.
+  - **EPA TMDL Technical Guidance Book II** (Sample Calc B-3)
+    explicitly assumes `K_s = 0` for treated effluent.
+  - **Yamuna River QUAL2E case** (Parmar & Keshari, citing Kazmi &
+    Agrawal 2005) calibrated `K_3 = 0.9 /d` uniformly across 16
+    reaches in a heavily polluted urban stretch where particulate-
+    laden CBOD settling dominated removal — illustrating that
+    nonzero values are site-, source-, and treatment-specific
+    calibration parameters.
+
+- **Resolution (Phase 9.F.C):** FIXME cleared from
+  `parameters/cbod.py`. The zero default is documented inline with
+  the QUAL2K / Brown & Barnwell / EPA-TMDL citations. No value
+  change.
+
+- **Two related defects flagged for future audit (NOT addressed in
+  Phase 9.F.C):**
+  1. **Units form mismatch.** v3 `processes/cbod.py:240` divides
+     `ksbod_tc` by depth (`ksbod_tc / depth * cbod`), implementing it
+     as a settling velocity (m/d). Fortran NSM1
+     (`modCBOD.f90:114`) and QUAL2E both treat the parameter as a
+     1/d rate constant (no depth division). With `ksbod_20 = 0` the
+     form difference is silent; nonzero user values would diverge
+     by a factor of `1/depth`.
+  2. **Theta mismatch.** v3 `ksbod_theta = 1.047` differs from
+     Fortran/QUAL2E `1.024` (the canonical settling-coefficient
+     Arrhenius value per Bowie 1985 / QUAL2E).
+
+  Both are flagged for follow-up when CBOD settling becomes
+  actively used (e.g., by a user supplying nonzero `ksbod_20`).
 
 ### 2.4 `apx=1`, `vx=1` — pathogen placeholder values — RESOLVED in Phase 9.F.B
 
@@ -571,14 +647,52 @@ likely placeholder values inherited from v1.")
   Section 1.16 (vx); Phase 9.F research record in
   ``docs/clearwater_modules_v3_nsm1_research_2_4_pathogen.md``.
 
-### 2.5 `h2=0.1` — POM dissolution depth denominator
+### 2.5 `h2=0.1` — active sediment layer thickness — RESOLVED in Phase 9.F.C
+
+(Originally flagged here in Phase 0 as "`h2` is used as a divisor in
+burial/sedimentation terms (e.g., `vb * POM / h2`); its physical role
+is unclear, and the units (meters) do not obviously line up with the
+surrounding terms.")
+
 - **Module:** `parameters/pom.py`
-- **Issue:** `h2` is used as a divisor in burial/sedimentation terms (e.g.,
-  `vb * POM / h2`); its physical role is unclear, and the units (meters) do
-  not obviously line up with the surrounding terms. Phase 0 flagged it as
-  needing clarification.
-- **Disposition (v3 1.0.0):** Kept as-is; flagged with `FIXME(phase1-audit):`.
-  Full clarification is part of the Phase 1.3 process implementation.
+
+- **Phase 9.F.4 research finding** (research record at
+  `docs/clearwater_modules_v3_nsm1_research_2_5_pom_h2.md`): the Phase
+  0 audit's "unclear physical role" was a **documentation defect**,
+  not a substantive issue.
+  - The v1 `static_variables.py:921` declaration and Fortran
+    `modGlobalParam.f90:38` both define `h2` unambiguously as the
+    **active sediment layer thickness (m)**.
+  - `h2 = 0.1 m` matches the Di Toro (2001) / QUAL2K v2.11 §5.6
+    convention for the lower anaerobic sediment layer thickness
+    `H_2` (approx 10 cm; QUAL2K Eq. 214 uses `H_2` as the volumetric
+    divisor in the bed-POM mass balance).
+  - NSM1's POM state variable represents bed-sediment POM (Fortran
+    `POM2` -- the "2" suffix denoting Di Toro layer 2). v1 and v3
+    dropped the `2` subscript when porting from Fortran but the
+    conceptual identity is preserved via the `h2` divisor: `h2`
+    converts areal water-column fluxes (m * mg/L/d) into bed
+    volumetric concentration changes (mg/L/d) in the bed layer.
+  - All four `h2` consumers in v3 `POM.run` (`rate_burial`,
+    `rate_poc_settling`, `rate_algal_settling`,
+    `rate_benthic_mortality`) are dimensionally consistent with this
+    interpretation.
+  - Implementing the full two-layer Di Toro flux model (separate
+    `H_1` aerobic layer plus full nutrient-flux equations) is the
+    future NSM2 sediment-diagenesis scope; v3 NSM1 1.0.0 carries
+    only the `H_2` layer with first-order burial/dissolution kinetics
+    matching v1 and Fortran exactly.
+
+- **Resolution (Phase 9.F.C):** FIXME cleared from
+  `parameters/pom.py`. The parameter docstring inline-comment now
+  records the Di Toro / QUAL2K provenance. The `processes/pom.py`
+  module docstring gained a one-paragraph "Conceptual note"
+  explaining that POM represents the bed-sediment compartment
+  (Fortran `POM2`) and `h2` is the bed-layer thickness (Di Toro
+  `H_2`). No value or formula change.
+
+  Regression coverage in
+  `tests/test_phase9fc_documentation.py::test_h2_fixme_cleared`.
 
 ### 2.6 `vb` burial velocity — RESOLVED in Phase 9.F.A
 

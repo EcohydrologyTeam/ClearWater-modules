@@ -96,7 +96,27 @@ class Nitrogen(Process):
             type(self).DEFAULTS = NITROGEN_DEFAULTS
 
         user_params = parameters or {}
-        unknown_keys = set(user_params) - set(self.DEFAULTS)
+
+        # Phase 9.F.C defensive guard: v3 1.0.0 Nitrogen does NOT gate
+        # ammonium_from_bed or nitrate_bed_denitrification by
+        # ``use_SedFlux``; those terms are silenced solely by the
+        # ``rnh4_20 = 0`` and ``vno3_20 = 0`` defaults. If a user opts
+        # into ``use_SedFlux=True`` they are signaling intent to enable
+        # the full sediment-flux feature, which requires the NSM2
+        # diagenesis path that is not implemented in v3 1.0.0. Refuse
+        # explicitly rather than silently producing partial behavior.
+        # See corrections doc Section 2.1.
+        if user_params.get("use_SedFlux", False):
+            raise NotImplementedError(
+                "Nitrogen: use_SedFlux=True is not implemented in v3 1.0.0. "
+                "The full sediment-flux feature requires the NSM2 diagenesis "
+                "path. Set rnh4_20 / vno3_20 directly to specify constant "
+                "sediment release rates for site-specific calibration "
+                "(without use_SedFlux). See parameter_defaults_corrections.md "
+                "Section 2.1."
+            )
+
+        unknown_keys = set(user_params) - set(self.DEFAULTS) - {"use_SedFlux"}
         for key in sorted(unknown_keys):
             logger.warning(
                 "Nitrogen: unknown parameter %r in 'parameters' dict; "
@@ -104,6 +124,7 @@ class Nitrogen(Process):
                 key,
             )
         merged = {**self.DEFAULTS, **user_params}
+        merged.pop("use_SedFlux", None)
         for k, v in merged.items():
             setattr(self, k, v)
 

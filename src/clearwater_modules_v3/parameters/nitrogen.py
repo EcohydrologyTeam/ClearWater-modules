@@ -50,8 +50,8 @@ DEFAULTS: dict[str, float | int | bool] = {
     'knit_20': 0.1,         # 1/d; nitrification rate at 20 C
     'kon_20': 0.1,          # 1/d; organic-N hydrolysis (ammonification) rate at 20 C
     'kdnit_20': 0.002,      # 1/d; denitrification rate at 20 C
-    'rnh4_20': 0.0,         # FIXME(phase1-audit): sediment NH4 release silently disabled; verify gated by use_SedFlux. 1/d at 20 C.
-    'vno3_20': 0.0,         # FIXME(phase1-audit): sediment NO3 denitrification silently disabled; verify gated by use_SedFlux. 1/d at 20 C.
+    'rnh4_20': 0.0,         # 1/d at 20 C; sediment NH4 release rate. Held at zero by design: v2/v3 Nitrogen does NOT gate ammonium_from_bed by use_SedFlux, so the zero default is the de facto gate. Phase 9.F.C added a defensive NotImplementedError guard in Nitrogen.__init__ that fires if use_SedFlux=True is passed (sediment-flux feature requires NSM2 path). See corrections doc Section 2.1.
+    'vno3_20': 0.0,         # 1/d at 20 C; sediment NO3 denitrification rate. Same gating story as rnh4_20 (held at zero by design; ungated nitrate_bed_denitrification consumer; defensive guard added in Phase 9.F.C). See corrections doc Section 2.1.
     'vson_20': 0.01,        # m/d; OrgN settling velocity at 20 C (matches Fortran modGlobalParam.f90:92 vson=0.01 and v1 GlobalVars vson=0.01; corrected from 0.1 in Phase 9.C, see corrections doc Section 1.8)
     'knit_theta': 1.083,    # unitless; Arrhenius coefficient for nitrification (matches Fortran modNitrogen.f90)
     'kon_theta': 1.047,     # unitless; OrgN hydrolysis Arrhenius (Phase 9.E correction; was 1.074 in v1/v3, transposed with rnh4_theta during v1 port; matches Fortran kon%theta=1.047 modNitrogen.f90:89 and the universal NSM1 organic-matter convention)

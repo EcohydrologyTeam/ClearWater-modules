@@ -181,8 +181,28 @@ class Phosphorus(Process):
             type(self).DEFAULTS = PHOSPHORUS_DEFAULTS
 
         user_params = parameters or {}
+
+        # Phase 9.F.C defensive guard: v3 1.0.0 Phosphorus.run() gates
+        # ``dip_from_bed`` by ``use_TIP`` only, NOT by ``use_SedFlux``.
+        # The bed-flux term is silenced solely by the ``rpo4_20 = 0``
+        # default. If a user opts into ``use_SedFlux=True`` they are
+        # signaling intent to enable the full sediment-flux feature,
+        # which requires the NSM2 diagenesis path that is not
+        # implemented in v3 1.0.0. Refuse explicitly rather than
+        # silently producing partial behavior. See corrections doc
+        # Section 2.1.
+        if user_params.get("use_SedFlux", False):
+            raise NotImplementedError(
+                "Phosphorus: use_SedFlux=True is not implemented in v3 1.0.0. "
+                "The full sediment-flux feature requires the NSM2 diagenesis "
+                "path. Set rpo4_20 directly to specify a constant sediment "
+                "release rate for site-specific calibration (without "
+                "use_SedFlux). See parameter_defaults_corrections.md "
+                "Section 2.1."
+            )
+
         # Allowed key universe = phosphorus DEFAULTS U partitioning fallbacks.
-        allowed_keys = set(self.DEFAULTS) | set(_PARTITIONING_DEFAULTS)
+        allowed_keys = set(self.DEFAULTS) | set(_PARTITIONING_DEFAULTS) | {"use_SedFlux"}
         unknown_keys = set(user_params) - allowed_keys
         for key in sorted(unknown_keys):
             logger.warning(
@@ -192,6 +212,7 @@ class Phosphorus(Process):
                 key,
             )
         merged = {**self.DEFAULTS, **user_params}
+        merged.pop("use_SedFlux", None)
         for k, v in merged.items():
             setattr(self, k, v)
 
