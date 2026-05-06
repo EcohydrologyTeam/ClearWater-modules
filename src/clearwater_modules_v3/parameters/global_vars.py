@@ -39,7 +39,7 @@ DEFAULTS: dict[str, float | int | bool] = {
     # Generic thermal Arrhenius coefficient
     'theta': 1.047,                     # unitless; default Arrhenius coefficient for processes lacking an explicit theta
     # Burial / sediment composition
-    'vb': 0.01,                         # FIXME(phase1-audit): m/d; burial velocity, magnitude not validated
+    'vb': 6.85e-6,                      # m/d; sediment burial velocity (= 0.0025 m/yr = 0.25 cm/yr). Phase 9.F.A correction; was 0.01 m/d in v1/v3 pre-9.F, a 1460x v1 unit-conversion bug (v1 dropped Fortran's runtime /365 conversion without rescaling the numerical default from m/yr to m/d). Canonical value matches WASP7/WASP8 Appendix A, Fortran modGlobalParam.f90:138 (0.0025 m/yr / 365), and Di Toro 2001 sediment-flux model. See corrections doc Section 1.14.
     'fcom': 0.4,                        # unitless; fraction of sediment as combustible organic matter
     # Simulation control (toy placeholders; overridden at runtime)
     'dt': 1.0,                          # d; default timestep (toy value; overridden by model)
@@ -51,13 +51,13 @@ DEFAULTS: dict[str, float | int | bool] = {
     'slope': 2.0,                       # unitless; toy slope (overridden per cell)
     'shear_velocity': 4.0,              # m/s; toy shear velocity (overridden per cell)
     'wind_speed': 4.0,                  # m/s; toy wind speed (overridden per cell/time)
-    'q_solar': 500.0,                   # FIXME(phase1-audit): W/m^2 (v1 docstring says 1/d but value/usage is W/m^2)
+    'q_solar': 500.0,                   # W/m^2; total incident solar radiation at the water surface. Note: v1's docstring incorrectly labeled this parameter as 1/d, but the value (500) and the consumption pattern (Beer-Lambert PAR scaling via utils/light.py:PAR and processes/pathogen.py:_rate_light_decay) are unambiguously W/m^2. Resolved in Phase 9.F; see corrections doc Section 2.7.
     'Solid': 1,                         # mg/L; suspended solids concentration (toy; overridden per cell)
     # Light attenuation (Beer-Lambert composite extinction coefficient)
     'lambda0': 0.02,                    # 1/m; background light extinction (clear water)
     'lambda1': 0.0088,                  # (1/m)/(ug-Chla/L); linear self-shading by chlorophyll
     'lambda2': 0.054,                   # unitless; non-linear chlorophyll extinction coefficient
-    'lambdas': 0.052,                   # L/(mg*m); ISS (suspended-solids) extinction parameter; applied unconditionally in utils/light.py (matches v1 shared/processes.py:232 and Fortran modGlobalParam.f90 LightExtCoefficient). Multi-solid-class generalization out of scope for 1.0.0; see corrections doc Section 2.8.
+    'lambdas': 0.052,                   # L/(mg*m); ISS (suspended-solids) extinction parameter; active per Phase 9.C three-way audit verification: applied unconditionally in utils/light.py (matches v1 shared/processes.py:232 and Fortran modGlobalParam.f90 LightExtCoefficient). The earlier Phase 0 "commented out / defined but not used" claim was a documentation defect, corrected in Phase 9.C and Phase 9.F. Multi-solid-class generalization out of scope for 1.0.0; see corrections doc Section 2.8.
     'lambdam': 0.174,                   # L/(mg*m); POM extinction coefficient (matches Fortran modGlobalParam.f90:68 and QUAL2K Table 6; corrected from v1 typo 0.0174 in Phase 9.C, see corrections doc Section 1.9)
     'Fr_PAR': 0.47,                     # unitless; PAR fraction of total solar radiation
 }

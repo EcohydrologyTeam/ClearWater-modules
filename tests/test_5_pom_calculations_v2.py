@@ -283,3 +283,78 @@ def test_pom_benthic_mortality_input_matches_v1_POM_benthic_algae_mortality(
         np.asarray(v1_mortality),
         rtol=1e-6,
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 9.F.A regression: vb burial velocity unit-conversion fix
+# ---------------------------------------------------------------------------
+# v3's vb was inherited from v1 as 0.01 m/d but the v1 author had removed
+# Fortran's runtime /365 conversion without rescaling the magnitude from
+# m/yr to m/d. The numerical value 0.0025 (Fortran's m/yr default) got
+# silently relabeled as 0.01 m/d, making v3's vb ~1460x too high.
+# Three independent canonical sources agree on the correct value:
+#   - Fortran NSM1 modGlobalParam.f90:138: 0.0025 m/yr (/365 -> 6.85e-6 m/d)
+#   - WASP7/WASP8 Appendix A: 6.85e-6 m/d documented verbatim
+#   - Di Toro 2001 / Chesapeake Bay: ~0.25 cm/yr canonical
+# Phase 9.F.A corrected v3 to 6.85e-6 m/d.
+# See parameter_defaults_corrections.md Section 1.14.
+
+def test_phase9fa_vb_value_pinned():
+    """Phase 9.F.A: vb = 6.85e-6 m/d (= 0.0025 m/yr = 0.25 cm/yr).
+    Pin so any future change requires explicit reconciliation against
+    the WASP7/Fortran/Di Toro canonical."""
+    from clearwater_modules_v3.parameters.global_vars import (
+        DEFAULTS as GLOBAL_VAR_DEFAULTS,
+    )
+
+    vb = GLOBAL_VAR_DEFAULTS["vb"]
+
+    # Canonical value: 0.0025 m/yr / 365 days/yr = 6.849e-6 m/d
+    canonical = 0.0025 / 365.0
+    np.testing.assert_allclose(vb, canonical, rtol=1e-3, err_msg=(
+        f"vb should be ~6.85e-6 m/d (= 0.0025 m/yr; matches WASP7 "
+        f"Appendix A, Fortran NSM1 modGlobalParam.f90:138, Di Toro 2001); "
+        f"got {vb}"
+    ))
+
+    # Confirm v3 deliberately differs from the v1-inherited buggy value.
+    v1_buggy = 0.01
+    assert vb < v1_buggy / 100, (
+        f"v3 vb = {vb} should be much less than v1's buggy 0.01 m/d "
+        f"(which was a unit-conversion error from m/yr to m/d)."
+    )
+
+
+def test_phase9fa_vb_dimensional_smell_test():
+    """Phase 9.F.A: at the corrected vb, the burial timescale vb/h2 is
+    physically reasonable (~40-year e-folding), not equal to the POM
+    dissolution rate kpom_tc (which would be physically absurd)."""
+    from clearwater_modules_v3.parameters.global_vars import (
+        DEFAULTS as GLOBAL_VAR_DEFAULTS,
+    )
+    from clearwater_modules_v3.parameters.pom import (
+        DEFAULTS as POM_DEFAULTS,
+    )
+
+    vb = GLOBAL_VAR_DEFAULTS["vb"]
+    h2 = POM_DEFAULTS["h2"]
+    kpom_20 = POM_DEFAULTS["kpom_20"]
+
+    burial_rate = vb / h2  # 1/d
+    burial_timescale_d = 1.0 / burial_rate  # d
+
+    # Burial timescale should be >> 1 year (much slower than POM
+    # dissolution kpom_20 ~ 0.1 1/d = ~10-day timescale).
+    burial_timescale_yr = burial_timescale_d / 365.0
+    assert burial_timescale_yr > 5.0, (
+        f"Phase 9.F.A: burial timescale should be >> 5 yr at the "
+        f"corrected vb; got {burial_timescale_yr:.2f} yr. The pre-9.F "
+        f"v3 default of vb=0.01 produced a 10-day timescale, equal to "
+        f"kpom_20 dissolution -- physically impossible."
+    )
+
+    # Burial rate should be >> 100x slower than POM dissolution.
+    assert burial_rate < kpom_20 / 100, (
+        f"Phase 9.F.A: burial rate vb/h2 = {burial_rate:.2e} 1/d should "
+        f"be much smaller than kpom_20 dissolution rate {kpom_20} 1/d."
+    )

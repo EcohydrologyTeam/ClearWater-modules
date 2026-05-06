@@ -13,7 +13,7 @@ broader Phase 0 inventory and rationale live in
 
 ---
 
-## Section 1: Critical default-value corrections (13 items, applied at port)
+## Section 1: Critical default-value corrections (14 items, applied at port)
 
 These are applied directly in the v3 `DEFAULTS` dicts. Each inline comment in
 the relevant `parameters/<group>.py` module records the v1 original. Items 1.1
@@ -381,6 +381,56 @@ non-zero reaeration on a representative stream.
   See also Section 4.2 (audit-history record of how this got from
   "flagged for review" to "RESOLVED in 9.E keep-v1" to the harmonization).
 
+### 1.14 `vb` burial velocity unit-conversion bug (Phase 9.F.A fix)
+- **Module:** `parameters/global_vars.py` and inline fallback in `processes/pom.py`
+- **v1 default:** `0.01` m/d (likely v1 unit-conversion error)
+- **Fortran default:** `0.0025` m/yr ≡ `6.85e-6` m/d (`modGlobalParam.f90:138`)
+- **Pre-9.F v3 default:** `0.01` m/d (inherited from v1)
+- **Phase 9.F.A v3 default:** `6.85e-6` m/d (= 0.0025 m/yr = 0.25 cm/yr)
+- **Rationale:** Phase 9.F.5 research found that v3's `vb = 0.01 m/d` was
+  **1460x too high**. Three independent canonical references converge on
+  `~6.85e-6 m/d`:
+  - **Fortran NSM1** (`modGlobalParam.f90:138`): `vb = 0.0025` m/yr,
+    converted at runtime via `/365` to ~6.85e-6 m/d.
+  - **WASP7/WASP8** Appendix A parameter table: documented default
+    `6.85e-6 m/d` verbatim.
+  - **Di Toro (2001)** sediment-flux model and the Chesapeake Bay
+    calibration: `~0.25 cm/yr` is the canonical sediment burial rate
+    for stream/lake systems. Lake/stream sediment-accumulation
+    literature spans `0.05–1.3 cm/yr`.
+
+  Provenance of the v1 bug: v1's `processes.py:2293` removed Fortran's
+  runtime `/365` conversion factor with the comment `"removed 365 from
+  FORTRAN"`, but did **not** rescale the numerical default's
+  magnitude from `m/yr` to `m/d`. `0.0025 m/yr` got silently relabeled
+  as `0.01 m/d` (and rounded up). v3 inherited the broken default
+  verbatim. This is the same class of bug as `lambdam` (Section 1.9):
+  a v1 unit/typo error that v3 carried forward.
+
+  Dimensional smell test: at `vb = 0.01 m/d` the `vb / h2 = 0.1 d⁻¹`
+  burial timescale is ~10 days, accidentally matching the typical POM
+  dissolution rate `kpom_tc`. Burial cannot physically equal
+  mineralization in a well-functioning sediment model. At
+  `vb = 6.85e-6 m/d`, `vb / h2 = 6.85e-5 d⁻¹` ≈ 40-year e-folding
+  burial timescale, consistent with the Di Toro literature.
+
+  No formula change required — only the numerical default. The Phase 0
+  `FIXME(phase1-audit) magnitude not validated` flag was correct;
+  Phase 9.F.A research validates that the magnitude was wrong by
+  ~1500x and identifies the canonical replacement.
+
+  Calibration impact: at the corrected default, POM burial becomes
+  effectively negligible (40-year timescale) at typical NSM1 simulation
+  durations (days to years). v1-calibrated simulations that relied on
+  the previous fast burial may show POM accumulating in the bed
+  compartment instead of being silently buried. Users with
+  v1-calibrated configurations who want to preserve the old behavior
+  should explicitly set `vb = 0.01` in their YAML.
+
+  Regression coverage in
+  `tests/test_5_pom_calculations_v2.py::test_phase9fa_vb_value_pinned`
+  and `test_phase9fa_vb_dimensional_smell_test`.
+
 ---
 
 ## Section 2: Lower-priority audit findings under review (8 items)
@@ -440,43 +490,59 @@ Disposition for each is described below.
 - **Disposition (v3 1.0.0):** Kept as-is; flagged with `FIXME(phase1-audit):`.
   Full clarification is part of the Phase 1.3 process implementation.
 
-### 2.6 `vb=0.01` — burial velocity magnitude
-- **Module:** `parameters/global_vars.py`
-- **Issue:** Burial velocity of 0.01 m/d has no documented validation; some
-  sediment-flux literature uses values one to two orders of magnitude
-  different.
-- **Disposition (v3 1.0.0):** Kept as-is; flagged with `FIXME(phase1-audit):`.
-  Without tied-to-site sediment data, no defensible alternative default
-  exists.
+### 2.6 `vb` burial velocity — RESOLVED in Phase 9.F.A
 
-### 2.7 `q_solar=500` units mismatch
+(Originally flagged here in Phase 0 as "magnitude not validated; some
+sediment-flux literature uses values one to two orders of magnitude
+different.") Phase 9.F.5 research found the magnitude was wrong by
+**1460x** — a v1 unit-conversion error inherited verbatim. Fortran's
+0.0025 m/yr (= 6.85e-6 m/d), WASP7/WASP8's documented 6.85e-6 m/d, and
+Di Toro 2001's Chesapeake Bay calibration all agree on the canonical
+~0.25 cm/yr value. Phase 9.F.A applied the correction; full rationale
+in Section 1.14 above.
+
+### 2.7 `q_solar=500` units mismatch — RESOLVED in Phase 9.F
 - **Module:** `parameters/global_vars.py`
 - **Issue:** v1's docstring documents `q_solar` as having units of `1/d`, but
   the value 500 and its consumption pattern (Beer-Lambert PAR computation)
   are consistent with W/m^2. The docstring is wrong, not the value.
-- **Disposition (v3 1.0.0):** Value kept at 500; inline comment in
-  `global_vars.py` documents the correct units (W/m^2). Docstring will be
-  corrected in the Process docstring during Phase 1.3.
+- **Disposition (v3 1.0.0):** Value kept at 500. The inline comment in
+  `parameters/global_vars.py` now states the correct units (W/m^2) with an
+  explicit note that v1's docstring was incorrect, and the
+  `processes/pathogen.py:_rate_light_decay` docstring (where `q_solar` is
+  consumed via `utils.light.PAR`) carries a matching units note. The
+  `utils/light.py:PAR` Args block already documents `q_solar | W/m^2 |
+  total incident solar radiation at the water surface.` These three sites
+  are now consistent on W/m^2 — the only sites in v3 NSM1 that reference
+  `q_solar` semantics. The v1 docstring error is a v1-side issue and
+  does not propagate into v3. The legacy `FIXME(phase1-audit):` tag was
+  removed in Phase 9.F; the parameter is no longer flagged for follow-up.
+  Regression coverage in
+  `tests/test_5_pathogen_calculations_v2.py::test_phase9f_q_solar_units_are_w_per_m2`.
 
-### 2.8 `lambdas` — light extinction parameter (suspended-solids contribution)
+### 2.8 `lambdas` — light extinction parameter (suspended-solids contribution) — RESOLVED in Phase 9.C, FIXME cleared in Phase 9.F
 - **Module:** `parameters/global_vars.py`
 - **Issue (corrected in Phase 9.C audit):** `lambdas=0.052` represents the
-  suspended-solids contribution to Beer-Lambert light extinction. **Earlier
-  versions of this section incorrectly claimed v1's `lambdas * Solid` term
-  was "commented out / defined but not used."** The Phase 9.C three-way audit
+  suspended-solids contribution to Beer-Lambert light extinction. The
+  Phase 9.C three-way audit
   (`design/clearwater_modules_v3_nsm1_audit_utilities_params.md`) verified
   that v1's `shared/processes.py:232` applies `lambdas * Solid` unconditionally
   in the Beer-Lambert sum, matching Fortran `modGlobalParam.f90:LightExtCoefficient`
   (which loops over `nGS` solid groups summing `lambdas(i) * Solid(i)`). v3's
   `utils/light.py:13-53` also applies the term unconditionally, matching v1
-  and Fortran for the single-solid-class case. The previous "commented out"
-  claim was a documentation defect.
+  and Fortran for the single-solid-class case. The earlier Phase 0 framing
+  that v1's `lambdas * Solid` term was "commented out / defined but not
+  used" was a documentation defect; the term is and always has been active
+  in v1 `shared/processes.py:232`. That false claim has been removed from
+  this section.
 - **Disposition (v3 1.0.0):** Parameter is fully active in the v3 light
   utility; default value 0.052 matches v1, Fortran, and QUAL2K Table 6. The
-  legacy `FIXME(phase1-audit):` inline comment in `global_vars.py` is now
-  obsolete and refers to the documentation defect that has been corrected
-  here. Multi-solid-class generalization (Fortran's `nGS > 1` loop form) is
-  out of scope for v3 NSM1 1.0.0 and would require utility extension.
+  legacy `FIXME(phase1-audit):` inline comment that flagged `lambdas` as
+  suspect in `parameters/global_vars.py` was removed in Phase 9.F; the
+  inline comment now records that the parameter is active per the Phase
+  9.C verification. Multi-solid-class generalization (Fortran's `nGS > 1`
+  loop form) is out of scope for v3 NSM1 1.0.0 and would require utility
+  extension.
 
 ---
 

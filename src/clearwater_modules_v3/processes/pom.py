@@ -75,7 +75,7 @@ logger = logging.getLogger(__name__)
 _POM_GLOBAL_DEFAULTS = {
     "vsoc": 0.01,    # m/d; POC settling velocity (v3 global_vars)
     "fcom": 0.4,     # unitless; fraction of sediment as combustible OM (v3 global_vars)
-    "vb": 0.01,      # m/d; burial velocity (v3 global_vars)
+    "vb": 6.85e-6,   # m/d; sediment burial velocity (= 0.0025 m/yr = 0.25 cm/yr; matches v3 global_vars after Phase 9.F.A correction)
     "use_Algae": True,
     "use_Balgae": True,
     "use_POC": True,

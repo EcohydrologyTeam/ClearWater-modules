@@ -217,3 +217,131 @@ def test_pathogen_total_rate_matches_v1_dPXdt(
     )
 
     np.testing.assert_allclose(np.asarray(v3_rate), np.asarray(v1_rate), rtol=1e-6)
+
+
+def test_phase9f_q_solar_units_are_w_per_m2():
+    """Documentation-anchored regression: ``q_solar`` is W/m^2 in v3.
+
+    Phase 9.F resolved a v1 docstring defect that mislabeled ``q_solar``
+    as having units of ``1/d``. The v3 default value (500), the v3
+    consumption pattern (Beer-Lambert PAR scaling via
+    ``utils.light.PAR``), and the v3 documentation (inline comment in
+    ``parameters/global_vars.py``, ``utils/light.py:PAR`` Args block,
+    and ``processes/pathogen.py:_rate_light_decay`` units note) are all
+    consistent on ``W/m^2``. This test pins that consistency by:
+
+    1. Asserting the canonical W/m^2 string appears in each of the
+       three v3 documentation sites that reference ``q_solar`` units.
+    2. Asserting the legacy ``FIXME(phase1-audit)`` tag has been
+       cleared from the ``q_solar`` line in ``global_vars.py`` (Phase
+       9.F cleanup).
+    3. Numerically exercising ``utils.light.PAR`` to confirm the
+       expected ``q_solar * Fr_PAR`` scaling (the implementation that
+       cements ``q_solar``'s W/m^2 semantics in the kinetics path).
+
+    See ``parameter_defaults_corrections.md`` Section 2.7.
+    """
+    from pathlib import Path
+
+    from clearwater_modules_v3.parameters.global_vars import DEFAULTS
+    from clearwater_modules_v3.utils.light import PAR
+
+    repo_root = Path(__file__).resolve().parent.parent
+    src_root = repo_root / "src" / "clearwater_modules_v3"
+    global_vars_text = (src_root / "parameters" / "global_vars.py").read_text()
+    light_text = (src_root / "utils" / "light.py").read_text()
+    pathogen_text = (src_root / "processes" / "pathogen.py").read_text()
+
+    # 1. Documentation sites mention W/m^2.
+    assert "W/m^2" in global_vars_text, (
+        "global_vars.py inline comment should state q_solar units as W/m^2"
+    )
+    assert "W/m^2" in light_text, (
+        "utils/light.py PAR Args block should state q_solar as W/m^2"
+    )
+    assert "W/m^2" in pathogen_text, (
+        "processes/pathogen.py _rate_light_decay should mention q_solar W/m^2 units"
+    )
+
+    # 2. Phase 9.F: the FIXME on the q_solar line is cleared. The
+    #    file may still have FIXME tags on other parameters (e.g.,
+    #    vb), so this assertion narrows to the q_solar entry only.
+    q_solar_line = next(
+        line for line in global_vars_text.splitlines()
+        if line.lstrip().startswith("'q_solar'")
+    )
+    assert "FIXME" not in q_solar_line, (
+        f"q_solar line should no longer carry a FIXME tag (Phase 9.F): {q_solar_line!r}"
+    )
+    assert "W/m^2" in q_solar_line, (
+        f"q_solar inline comment should state W/m^2 explicitly: {q_solar_line!r}"
+    )
+
+    # 3. Numerical: PAR(q_solar, Fr_PAR) = q_solar * Fr_PAR. The
+    #    default q_solar (W/m^2) and Fr_PAR (dimensionless) yield a
+    #    PAR irradiance of q_solar * Fr_PAR W/m^2.
+    q_solar_default = DEFAULTS["q_solar"]
+    fr_par_default = DEFAULTS["Fr_PAR"]
+    par = PAR(
+        q_solar=xr.DataArray(np.array([q_solar_default])),
+        Fr_PAR=xr.DataArray(np.array([fr_par_default])),
+    )
+    expected = q_solar_default * fr_par_default
+    np.testing.assert_allclose(np.asarray(par), np.array([expected]), rtol=1e-12)
+
+
+def test_phase9f_lambdas_fixme_removed():
+    """Documentation-anchored regression: ``lambdas`` FIXME tag cleared.
+
+    Phase 9.C verified via three-way audit that v1
+    ``shared/processes.py:232`` applies ``lambdas * Solid``
+    unconditionally in the Beer-Lambert sum (matching Fortran
+    ``modGlobalParam.f90:LightExtCoefficient`` and v3
+    ``utils/light.py``). The earlier Phase 0 framing that the term was
+    "commented out / defined but not used" was a documentation defect.
+
+    Phase 9.F removed the now-obsolete ``FIXME(phase1-audit):`` inline
+    comment from the ``lambdas`` line in
+    ``parameters/global_vars.py``. This test pins that cleanup and
+    asserts the corrections doc Section 2.8 is marked RESOLVED.
+
+    See ``parameter_defaults_corrections.md`` Section 2.8.
+    """
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent
+    src_root = repo_root / "src" / "clearwater_modules_v3"
+    global_vars_text = (src_root / "parameters" / "global_vars.py").read_text()
+    corrections_text = (src_root / "parameter_defaults_corrections.md").read_text()
+
+    # The lambdas line in global_vars.py no longer carries a FIXME tag.
+    lambdas_line = next(
+        line for line in global_vars_text.splitlines()
+        if line.lstrip().startswith("'lambdas'")
+    )
+    assert "FIXME" not in lambdas_line, (
+        f"lambdas line should no longer carry a FIXME tag (Phase 9.F): {lambdas_line!r}"
+    )
+    # And the inline comment now affirmatively records the Phase 9.C
+    # verification ("active" / "applied unconditionally").
+    assert "applied unconditionally" in lambdas_line or "active" in lambdas_line, (
+        f"lambdas inline comment should record the Phase 9.C verification: {lambdas_line!r}"
+    )
+
+    # The corrections doc no longer carries the false "commented out"
+    # framing as a current claim. The phrase may still appear in the
+    # historical-context narrative inside Section 2.8 (the audit-history
+    # record), but only as something that was *corrected*, not as a
+    # current statement of fact. Pin the resolution markers instead.
+    assert "Section 2.8" in corrections_text or "lambdas" in corrections_text
+    section_2_8_start = corrections_text.find("### 2.8 `lambdas`")
+    assert section_2_8_start != -1, "Section 2.8 should exist in corrections doc"
+    section_2_8_end = corrections_text.find("\n### ", section_2_8_start + 1)
+    section_2_8 = corrections_text[section_2_8_start:section_2_8_end]
+    assert "RESOLVED" in section_2_8, (
+        "Section 2.8 should be marked RESOLVED"
+    )
+    assert "Phase 9.F" in section_2_8 or "Phase 9.C" in section_2_8, (
+        "Section 2.8 should reference the Phase 9.C verification "
+        "and/or Phase 9.F FIXME cleanup"
+    )

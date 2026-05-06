@@ -290,6 +290,14 @@ class Pathogen(Process):
             apx * q_solar / (KEXT * depth)
                 * (1 - exp(-KEXT * depth)) * PX
 
+        Units note: ``q_solar`` is total incident solar radiation in
+        W/m^2 (consistent with ``utils.light.PAR`` and
+        ``parameters/global_vars.py``). v1's docstring mislabeled the
+        parameter as 1/d but the value (500) and consumption pattern
+        (Beer-Lambert PAR scaling) are unambiguously W/m^2; the v3 port
+        treats it as W/m^2 throughout (Phase 9.F docstring fix; see
+        ``parameter_defaults_corrections.md`` Section 2.7).
+
         Note the original v1 form uses ``q_solar`` directly, not PAR.
         This port follows the Phase 3.1 spec instruction to compute PAR
         via ``utils.light.PAR``: I0 = q_solar * Fr_PAR. The functional
