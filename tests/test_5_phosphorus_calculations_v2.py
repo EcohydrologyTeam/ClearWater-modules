@@ -310,3 +310,54 @@ def test_fdp_unit_factor_dimensionally_correct():
     )
     assert float(v3_value.values[0]) > 0.99
     assert float(buggy_v1_value.values[0]) < 1e-3
+
+
+# ---------------------------------------------------------------------------
+# Phase 9.E regression: vsop physical-consistency with vsap
+# ---------------------------------------------------------------------------
+# OrgP in NSM1 originates predominantly from dead-algae detritus (via the
+# algal mortality routing ``algal_orgp_from_mortality_rate`` and the
+# benthic ``balgae_orgp_from_mortality_rate``). The algae from which OrgP
+# derives have a universal NSM1 settling velocity ``vsap = 0.15`` m/d
+# (Fortran/v1/v3 all agree). For internal physical consistency, OrgP
+# detritus inherited from the same algal pool should settle at a comparable
+# rate. Phase 9.E pins ``vsop = 0.1`` m/d on this physical-consistency
+# basis. Fortran's 0.01 m/d is 15x slower than the algae from which the
+# OrgP derives and is implausible as a representative default. See
+# parameter_defaults_corrections.md Section 1.1.
+
+def test_phase9e_vsop_consistent_with_vsap():
+    """Phase 9.E: ``vsop = 0.1`` m/d (mid-range of literature 0.01-1.0)
+    consistent with ``vsap = 0.15`` m/d algal settling. OrgP detritus
+    derived from dead algae should settle on the same order of magnitude
+    as the algae itself; Fortran's 0.01 m/d (15x slower) is physically
+    inconsistent with the algal-detritus origin."""
+    from clearwater_modules_v3.parameters.phosphorus import (
+        DEFAULTS as PHOSPHORUS_DEFAULTS,
+    )
+    from clearwater_modules_v3.parameters.algae import (
+        DEFAULTS as ALGAE_DEFAULTS,
+    )
+
+    vsop = PHOSPHORUS_DEFAULTS["vsop"]
+    vsap = ALGAE_DEFAULTS["vsap"]
+
+    # Pin the canonical Phase 9.E value.
+    assert vsop == 0.1, (
+        f"vsop should be 0.1 m/d (Phase 9.E physical-consistency choice); "
+        f"got {vsop}"
+    )
+    # Pin the universal NSM1 algal settling default for cross-check.
+    assert vsap == 0.15
+
+    # Physical-consistency check: vsop within an order of magnitude of
+    # vsap. Fortran's 0.01 m/d (15x slower than vsap) would fail this.
+    assert vsap / 10.0 <= vsop <= vsap * 10.0, (
+        f"vsop = {vsop} m/d should be within an order of magnitude of "
+        f"vsap = {vsap} m/d (algal detritus inheriting OrgP)"
+    )
+    # And confirm vsop > 0.05 (i.e., not at Fortran's lower-bound 0.01).
+    assert vsop > 0.05, (
+        f"vsop = {vsop} m/d should not be at Fortran's 0.01 lower bound; "
+        f"v3 deliberately chose a value consistent with algal detritus."
+    )

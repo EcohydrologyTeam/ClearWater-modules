@@ -49,12 +49,27 @@ additions (1.8, 1.9) bring v3 into closer Fortran/QUAL2K alignment.
 - **v3 default:** `0.1` m/d
 - **Rationale:** `vsop` is multiplied directly into the OrgP loss rate
   (`vsop * OrgP / depth`). At 999 m/d the water column would be entirely
-  evacuated of organic phosphorus on every timestep. Typical values for
-  organic-P settling sit in the 0.01-1.0 m/d range; v3 chose 0.1 m/d as a
-  defensible midpoint consistent with literature values for medium-sized
-  organic particles. v3's 0.1 m/d is 10x Fortran's 0.01 m/d (lower bound of
-  the literature range). Either value is defensible; the choice is flagged
-  for LimnoTech reconciliation. Users with site-specific data should override.
+  evacuated of organic phosphorus on every timestep. The literature
+  range cited for OrgP settling (Chapra 1997, QUAL2K manual section
+  5.5.16) is 0.01-1.0 m/d, but the QUAL2K manual leaves `vop` as a
+  calibration parameter without a pinned default.
+
+  **Physical-consistency basis for v3 = 0.1 m/d:** organic-P in NSM1
+  originates predominantly from dead-algae detritus (via the algal
+  mortality routing `algal_orgp_from_mortality_rate` and the benthic
+  `balgae_orgp_from_mortality_rate`). The algae from which OrgP
+  derives have a settling velocity of `vsap = 0.15` m/d (Fortran/v1/v3
+  agree on this value, the universal NSM1 default). For internal
+  consistency, OrgP detritus inherited from the same algal pool
+  should settle at a comparable rate — typical 0.1-0.2 m/d. v3's
+  `vsop = 0.1` m/d is consistent with this physical-consistency
+  argument; Fortran's 0.01 m/d is 15x slower than the algae from
+  which the OrgP derives, which is implausible for a representative
+  default. v3 deliberately deviates from Fortran here on
+  physical-consistency grounds. Users with site-specific data
+  (especially fine-detritus or colloidal organic-P regimes) should
+  override per project. Regression coverage in
+  `tests/test_5_phosphorus_calculations_v2.py::test_phase9e_vsop_consistent_with_vsap`.
 
 ### 1.2 `vs` — TIP settling velocity
 - **Module:** `parameters/phosphorus.py`
@@ -537,11 +552,21 @@ historical record of the audit-to-fix path.
   stoichiometry but the canonical QUAL2K value should be confirmed.
   Flagged for LimnoTech review.
 
-### 4.3 `vsop` value (Fortran 0.01 vs v3 0.1)
+### 4.3 `vsop` value — RESOLVED in Phase 9.E
 
-See Section 1.1 above. v3 chose mid-range (0.1 m/d) over Fortran's
-lower-bound (0.01 m/d). Both defensible from literature; flagged for
-LimnoTech review.
+(Originally flagged here in Phase 9.C as "Fortran 0.01 vs v3 0.1
+pending reconciliation.") Phase 9.E researched the canonical literature
+(Chapra 1997, QUAL2K manual section 5.5.16, EPA Bowie et al. 1985, and
+the QUAL2Kw application set) and confirmed that no published source
+pins a fixed default — `vop` is a calibration parameter in QUAL2K. The
+defensible-default question reduces to a physical-consistency argument:
+organic-P in NSM1 originates predominantly from dead-algae detritus,
+and the algal settling velocity `vsap = 0.15` m/d is the universal
+NSM1 default agreed across Fortran/v1/v3. v3's `vsop = 0.1` m/d is
+consistent with the algal-detritus origin; Fortran's 0.01 m/d is 15x
+slower than the algae from which the OrgP derives and is implausible
+as a representative default. v3 keeps 0.1; rationale and regression
+test pinned in Section 1.1 above.
 
 ### 4.4 `SOD_20` value (Fortran 0.2 vs v3 1.0)
 
