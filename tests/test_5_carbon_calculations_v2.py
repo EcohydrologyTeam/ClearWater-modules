@@ -274,17 +274,21 @@ def test_doc_oxidation_matches_v1(
 def test_dic_co2_reaeration_matches_v1(
     water_temp_5cell, depth_5cell, poc_5cell, doc_5cell, dic_5cell, dox_5cell
 ):
-    """v3 DIC CO2 atmospheric reaeration sub-term == v1 ``Atmospheric_CO2_reaeration``.
+    """v3 DIC CO2 atmospheric reaeration in mg-C/L/d.
 
-    v1 formula: ``0.923 * ka_tc * (K_H * pCO2 / 1e6 - FCO2 * DIC)`` (line
-    2698-2714, where ``K_H = Henrys_k(TwaterC)``).
-    v3 formula: same form (carbon.py line 418-421). v3 imports its own
-    ``henrys_k_co2`` (port of v1 ``Henrys_k``) which is parity-checked
-    here by reusing the v1 ``Henrys_k`` for the reference.
+    v1 formula: ``0.923 * ka_tc * (K_H * pCO2 / 1e6 - FCO2 * DIC)``
+    (line 2698-2714). The Henry's-law term ``K_H * pCO2 / 1e6`` is in
+    mol-C/L; ``FCO2 * DIC`` (with v1 DIC stored in mg-C/L) is in
+    mg-C/L. v1's formula has unit-mixed inputs producing a numerically
+    inconsistent rate.
 
-    The parity test isolates the CO2 reaeration term by zeroing every
-    other DIC source/sink, then back-calculates the integrated DIC rate
-    from the post-run DIC state.
+    Phase 9.E unit reconciliation: v3 converts the Henry's-law term
+    from mol-C/L to mg-C/L by multiplying by 12000 (= 12 g/mol-C *
+    1000 mg/g) so both terms inside the parentheses are in mg-C/L
+    and the resulting rate is mg-C/L/d. v3 = v1 * 12000 in the
+    Henry's-law-equilibrium contribution; v3 = v1 in the
+    ``-0.923 * ka_tc * FCO2 * DIC`` outflow contribution. The full
+    expected is computed manually below.
     """
     # Use a non-zero user-defined hydraulic reaeration so ka_tc != 0.
     kah_20_user = 1.0    # 1/d
@@ -318,21 +322,42 @@ def test_dic_co2_reaeration_matches_v1(
     dt_days = timedelta(minutes=5).total_seconds() / 86400.0
     v3_dic_rate = (dic_final - dic_initial) / dt_days
 
-    # v1 reference: ka_tc combined hydraulic + wind, but with wind
-    # zeroed, ka_tc == arrhenius_correction(T, kah_20, kah_theta).
+    # v3 expected (mg-C/L/d): 0.923 * ka_tc * (KH * pCO2/1e6 * 12000 - FCO2 * DIC)
+    # where ka_tc combined hydraulic+wind, but with wind zeroed,
+    # ka_tc == arrhenius_correction(T, kah_20, kah_theta).
     v1_ka_tc = v1.arrhenius_correction(water_temp_5cell, kah_20_user, 1.024)
     v1_kh = v1.Henrys_k(water_temp_5cell)
-    v1_co2_reaer = v1.Atmospheric_CO2_reaeration(
+    expected_v3_rate = (
+        0.923
+        * v1_ka_tc
+        * (v1_kh * 383.0 / 1.0e6 * 12000.0 - 0.2 * dic_5cell)
+    )
+
+    np.testing.assert_allclose(
+        np.asarray(v3_dic_rate),
+        np.asarray(expected_v3_rate),
+        rtol=1e-6,
+    )
+
+    # Cross-check: v3 = v1 * 12000 in the Henry's-law-equilibrium term
+    # alone. Compute v1's mol-C/L/d form and confirm the 12000x relation
+    # for the equilibrium-driven contribution.
+    v1_co2_reaer_legacy = v1.Atmospheric_CO2_reaeration(
         ka_tc=v1_ka_tc,
         K_H=v1_kh,
         pCO2=383.0,
         FCO2=0.2,
         DIC=dic_5cell,
     )
-
+    # v1: 0.923 * ka_tc * (KH * pCO2/1e6 - FCO2 * DIC)
+    # v3: 0.923 * ka_tc * (KH * pCO2/1e6 * 12000 - FCO2 * DIC)
+    # v3 - v1 = 0.923 * ka_tc * (KH * pCO2/1e6) * (12000 - 1)
+    delta = (
+        0.923 * v1_ka_tc * v1_kh * 383.0 / 1.0e6 * (12000.0 - 1.0)
+    )
     np.testing.assert_allclose(
-        np.asarray(v3_dic_rate),
-        np.asarray(v1_co2_reaer),
+        np.asarray(v3_dic_rate - v1_co2_reaer_legacy),
+        np.asarray(delta),
         rtol=1e-6,
     )
 
@@ -340,22 +365,22 @@ def test_dic_co2_reaeration_matches_v1(
 def test_dic_algal_respiration_source_matches_fortran_anchored(
     water_temp_5cell, depth_5cell, poc_5cell, doc_5cell, dic_5cell, dox_5cell
 ):
-    """v3 DIC algal-respiration coupling sub-term == Fortran-anchored
-    ``DIC_algal_respiration`` with ``rca = AWc / AWa``.
+    """v3 DIC algal-respiration coupling sub-term in mg-C/L/d.
 
     Fortran formula (``modCarbon.f90:247``):
         ``ApRespiration_DIC = rca * ApRespiration / 12000.0``
-    where ``rca = AWc / AWa = 40 / 1000 = 0.04 mg-C/ug-Chla`` (Fortran
-    derives the ratio per ``modAlgae.f90``; v1 derives the same via
-    ``processes.py:rca`` helper).
+    where ``rca = AWc / AWa = 40 / 1000 = 0.04 mg-C/ug-Chla``.
 
-    Phase 9.B audit C1: prior v3 used the raw ``self.AWc = 40`` instead
-    of the derived ratio, scaling the DIC algal coupling by 1000x. The
-    fix derives ``rca = AWc / AWa`` at run time. The earlier parity test
-    masked the bug by passing ``rca = AWc = 40`` to the v1 reference
-    (same wrong number on both sides). This test asserts against the
-    Fortran-anchored expected value computed manually with the correct
-    ratio.
+    The Fortran ``/ 12000.0`` produces a rate in mol-C/L/d, but Fortran
+    labels DIC's units as mg-C/L (modMain.f90:301). The mismatch was
+    flagged in Phase 9.B audit C9 and corrected in Phase 9.E: v3 now
+    integrates dDIC/dt in mg-C/L/d throughout, so this term is
+    ``rca * ApRespiration`` (no ``/ 12000``).
+
+    Phase 9.B audit C1 (rca = AWc/AWa, not raw AWc): still applies; v3
+    now derives the ratio at run time. The earlier parity test masked
+    the C1 bug by passing ``rca = AWc = 40`` to the v1 reference (same
+    wrong number on both sides).
     """
     AWc = 40.0      # mg-C raw weight
     AWa = 1000.0    # ug-Chla algal unit
@@ -404,8 +429,10 @@ def test_dic_algal_respiration_source_matches_fortran_anchored(
     dt_days = timedelta(minutes=5).total_seconds() / 86400.0
     v3_dic_rate = (dic_final - dic_initial) / dt_days
 
-    # Fortran-anchored reference: rate = rca * ApRespiration / 12000.
-    expected_rate = rca * algal_resp / 12000.0
+    # Phase 9.E expected: rate = rca * ApRespiration (mg-C/L/d). The
+    # Fortran ``/ 12000`` is dropped because v3 integrates dDIC/dt in
+    # mg-C/L/d directly.
+    expected_rate = rca * algal_resp
 
     np.testing.assert_allclose(
         np.asarray(v3_dic_rate),
@@ -413,13 +440,16 @@ def test_dic_algal_respiration_source_matches_fortran_anchored(
         rtol=1e-6,
     )
 
-    # And confirm the v1 helper agrees when fed the correct rca.
-    v1_rate_with_correct_rca = v1.DIC_algal_respiration(
+    # v1 helper still divides by 12000 (legacy mol-C/L/d form). v3
+    # produces mg-C/L/d, which equals v1's value * 12000. Confirm the
+    # 12000x relation explicitly so the divergence is documented in the
+    # test rather than masked.
+    v1_rate_legacy = v1.DIC_algal_respiration(
         ApRespiration=algal_resp, rca=rca, use_Algae=True
     )
     np.testing.assert_allclose(
         np.asarray(v3_dic_rate),
-        np.asarray(v1_rate_with_correct_rca),
+        np.asarray(v1_rate_legacy) * 12000.0,
         rtol=1e-6,
     )
 
@@ -442,9 +472,11 @@ def test_dic_algal_growth_uses_correct_rca(
     ``rca = 0.04`` mg-C/ug-Chla, not the raw ``AWc = 40``.
 
     Default-instantiated Carbon + a mock FloatingAlgae with non-zero
-    ``algal_growth_rate``. The DIC sink magnitude must equal
-    ``rca * ApGrowth / 12000`` per Fortran ``modCarbon.f90:248``, which
-    is 1000x smaller than the prior v3 (raw-AWc) magnitude.
+    ``algal_growth_rate``. After the Phase 9.E unit reconciliation
+    (DIC budget integrated in mg-C/L/d throughout, no ``/ 12000``),
+    the DIC sink magnitude is ``-rca * ApGrowth`` (mg-C/L/d), which
+    is 1000x smaller than the prior v3 (raw-AWc) magnitude but 12000x
+    larger than the legacy Fortran/v1 mol-C/L/d form.
     """
     AWc = 40.0
     AWa = 1000.0
@@ -489,7 +521,8 @@ def test_dic_algal_growth_uses_correct_rca(
     v3_dic_rate = (dic_final - dic_initial) / dt_days
 
     # Algal growth is a DIC *sink*; expected dDIC/dt is negative.
-    expected_rate = -rca * algal_growth / 12000.0
+    # Phase 9.E: mg-C/L/d (no ``/ 12000``).
+    expected_rate = -rca * algal_growth
     np.testing.assert_allclose(
         np.asarray(v3_dic_rate),
         np.asarray(expected_rate),
@@ -498,7 +531,7 @@ def test_dic_algal_growth_uses_correct_rca(
 
     # Negative regression: confirm v3 is NOT using the raw AWc (which
     # would yield 1000x larger magnitude).
-    raw_rate = -AWc * algal_growth / 12000.0
+    raw_rate = -AWc * algal_growth
     assert not np.allclose(
         np.asarray(v3_dic_rate), np.asarray(raw_rate), rtol=1e-3
     )
@@ -509,10 +542,12 @@ def test_dic_includes_cbod_oxidation(
 ):
     """Audit C3 (Phase 9.B): with CBOD wired and ``cbod_oxidation_rate``
     non-zero, v3 dDIC/dt includes the source ``cbod_oxidation_rate /
-    roc / 12000`` (Fortran ``modCarbon.f90:262-269``).
+    roc`` (Fortran ``modCarbon.f90:262-269``, Phase 9.E mg-C/L/d
+    convention without the legacy ``/ 12000`` mol-C/L/d conversion).
 
-    Prior v3 omitted the CBOD->DIC source entirely; the fix adds it via
-    the ``self.cbod_process.cbod_oxidation_rate`` cache.
+    Prior v3 omitted the CBOD->DIC source entirely; Phase 9.B added it
+    via the ``self.cbod_process.cbod_oxidation_rate`` cache. Phase 9.E
+    further removed the legacy ``/ 12000`` to align units.
     """
     roc = 32.0 / 12.0
     cbod_ox_rate = xr.DataArray(
@@ -549,8 +584,8 @@ def test_dic_includes_cbod_oxidation(
     dt_days = timedelta(minutes=5).total_seconds() / 86400.0
     v3_dic_rate = (dic_final - dic_initial) / dt_days
 
-    # Fortran-anchored expected source: cbod_ox / roc / 12000.
-    expected_rate = cbod_ox_rate / roc / 12000.0
+    # Phase 9.E expected source: cbod_ox / roc (mg-C/L/d, no /12000).
+    expected_rate = cbod_ox_rate / roc
 
     np.testing.assert_allclose(
         np.asarray(v3_dic_rate),

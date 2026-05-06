@@ -234,7 +234,13 @@ def test_default_nitrogen_uses_v3_defaults_for_denitrification(
     no3_5cell, water_temp_5cell, dox_5cell
 ):
     """Phase 9.A.2 audit finding N10: default Nitrogen() reads ``kdnit_20=0.002``
-    / ``kdnit_theta=1.08`` from NITROGEN_DEFAULTS (not legacy 1.0/1.0).
+    / ``kdnit_theta=1.045`` from NITROGEN_DEFAULTS (not legacy 1.0/1.0).
+
+    Phase 9.E correction: ``kdnit_theta`` was 1.08 in v1/v3 but the
+    Fortran-aligned canonical value is 1.045 (modNitrogen.f90:95). The
+    1.08 was transposed with ``vno3_theta`` during v1's port from
+    Fortran. Updated by Phase 9.E with regression coverage in
+    ``test_phase9e_nitrogen_theta_corrections``.
     """
     inst = Nitrogen()
     inst.use_nitrate = True
@@ -243,7 +249,7 @@ def test_default_nitrogen_uses_v3_defaults_for_denitrification(
     inst.use_benthic_algae = False
 
     assert inst.kdnit_20 == 0.002
-    assert inst.kdnit_theta == 1.08
+    assert inst.kdnit_theta == 1.045
 
     rate = inst.nitrate_denitrification(
         dissolved_oxygen=dox_5cell,
@@ -251,7 +257,7 @@ def test_default_nitrogen_uses_v3_defaults_for_denitrification(
         nitrate=no3_5cell,
         temperature=water_temp_5cell,
     )
-    kdnit_tc = 0.002 * 1.08 ** (water_temp_5cell.values - 20.0)
+    kdnit_tc = 0.002 * 1.045 ** (water_temp_5cell.values - 20.0)
     expected = (
         no3_5cell.values
         * kdnit_tc
@@ -478,3 +484,73 @@ def test_change_nitrate_no_algae_drops_to_nitrification_minus_denit_minus_bedden
 
     np.testing.assert_allclose(np.asarray(v2_rate), np.asarray(expected), rtol=1e-6)
     assert not np.any(np.isnan(np.asarray(v2_rate)))
+
+
+# ---------------------------------------------------------------------------
+# Phase 9.E regression: nitrogen Arrhenius theta transposition fix
+# ---------------------------------------------------------------------------
+# The four nitrogen Arrhenius theta values were transposed in pairs during
+# v1's port from Fortran. v3 inherited the transposition until Phase 9.E.
+# Evidence summary (full discussion in parameters/nitrogen.py module
+# docstring and parameter_defaults_corrections.md Section 1.10):
+#
+#   Parameter      v1/v3 (pre-9.E)    v3 (Phase 9.E)    Fortran modNitrogen.f90
+#   kon_theta      1.074              1.047             1.047 (line 89)
+#   rnh4_theta     1.047              1.074             1.074 (line 82)
+#   kdnit_theta    1.08               1.045             1.045 (line 95)
+#   vno3_theta     1.045              1.08              1.08  (line 100)
+#
+# Three independent lines of evidence:
+#   (1) Direct Fortran source confirms the canonical values.
+#   (2) Phosphorus parallel: kop_theta=1.047 / rpo4_theta=1.074 agree
+#       across v1/v3/Fortran; the nitrogen pair should mirror this and
+#       does in Fortran but did not in v1/v3 pre-9.E.
+#   (3) Literature convention (Chapra 1997, QUAL2K manual, EPA Bowie 1985):
+#       organic-matter hydrolysis uses theta=1.047 (universal NSM1 default,
+#       matches mu_max_theta, kdp_theta, krp_theta, kpoc_theta, kdoc_theta,
+#       kop_theta, kpom_theta, kbod_theta); sediment-water exchange
+#       velocities use ~1.074-1.08; water-column denitrification ~1.045.
+
+def test_phase9e_kon_theta_matches_fortran():
+    """Phase 9.E: kon_theta = 1.047 (matches Fortran modNitrogen.f90:89,
+    matches kop_theta phosphorus-parallel, matches universal NSM1
+    organic-matter Arrhenius convention)."""
+    inst = Nitrogen()
+    assert inst.kon_theta == 1.047
+
+
+def test_phase9e_rnh4_theta_matches_fortran():
+    """Phase 9.E: rnh4_theta = 1.074 (matches Fortran modNitrogen.f90:82,
+    matches rpo4_theta phosphorus-parallel for sediment release)."""
+    inst = Nitrogen()
+    assert inst.rnh4_theta == 1.074
+
+
+def test_phase9e_kdnit_theta_matches_fortran():
+    """Phase 9.E: kdnit_theta = 1.045 (matches Fortran modNitrogen.f90:95
+    and Chapra 1997 water-column denitrification convention)."""
+    inst = Nitrogen()
+    assert inst.kdnit_theta == 1.045
+
+
+def test_phase9e_vno3_theta_matches_fortran():
+    """Phase 9.E: vno3_theta = 1.08 (matches Fortran modNitrogen.f90:100
+    sediment-denitrification settling-velocity convention)."""
+    inst = Nitrogen()
+    assert inst.vno3_theta == 1.08
+
+
+def test_phase9e_nitrogen_theta_pairs_consistent_with_phosphorus():
+    """Phase 9.E: the kon/rnh4 nitrogen pair mirrors the kop/rpo4
+    phosphorus pair. Pre-9.E the pairs were transposed for nitrogen; this
+    test pins the corrected parallel-process consistency."""
+    from clearwater_modules_v3.parameters.phosphorus import (
+        DEFAULTS as PHOSPHORUS_DEFAULTS,
+    )
+    from clearwater_modules_v3.parameters.nitrogen import (
+        DEFAULTS as NITROGEN_DEFAULTS,
+    )
+    # Organic-matter hydrolysis (kon_theta vs kop_theta): must match.
+    assert NITROGEN_DEFAULTS["kon_theta"] == PHOSPHORUS_DEFAULTS["kop_theta"]
+    # Sediment release (rnh4_theta vs rpo4_theta): must match.
+    assert NITROGEN_DEFAULTS["rnh4_theta"] == PHOSPHORUS_DEFAULTS["rpo4_theta"]

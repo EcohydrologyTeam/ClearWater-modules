@@ -29,16 +29,16 @@ Kinetics (mirrors v1 ``processes.py:2439-2870`` and Fortran
                         0)                                   # POM hydrolysis (if POM)
               - DOX_attenuation * kdoc_tc * DOC              # DOC -> DIC oxidation
 
-    dDIC/dt = + DOX_attenuation * kdoc_tc * DOC              # DOC oxidation -> DIC
-              + 0.923 * ka_tc * (KH * pCO2 / 1e6
-                                  - FCO2 * DIC)              # CO2 reaeration (atm)
-              + rca / 12000 * (algal_respiration_rate
-                               - algal_growth_rate)          # FloatingAlgae C
-              + rcb * Fb / depth / 12000 *
+    dDIC/dt = + DOX_attenuation * kdoc_tc * DOC              # DOC oxidation -> DIC (mg-C/L/d)
+              + 0.923 * ka_tc * (KH * pCO2 / 1e6 * 12000
+                                  - FCO2 * DIC)              # CO2 reaeration (atm); Henry's law converted from mol-C/L to mg-C/L
+              + rca * (algal_respiration_rate
+                       - algal_growth_rate)                  # FloatingAlgae C
+              + rcb * Fb / depth *
                        (balgae_respiration_rate
                         - balgae_growth_rate)                # BenthicAlgae C
-              + cbod_oxidation_rate / roc / 12000            # CBOD -> DIC oxidation
-              + JDIC / depth / 12000                         # sediment release
+              + cbod_oxidation_rate / roc                    # CBOD -> DIC oxidation
+              + JDIC / depth                                 # sediment release
 
 Where:
 
@@ -439,68 +439,76 @@ class Carbon(Process):
         )
 
         # --- DIC kinetic terms (mg-C/L/d) ---
-        # CO2 atmospheric reaeration: 0.923 * ka_tc * (KH * pCO2 / 1e6 -
-        # FCO2 * DIC). KH is mol/L/atm; pCO2 is ppm (= 1e-6 atm).
+        # Phase 9.E DIC unit reconciliation: the v3 (and v1) DIC budget
+        # previously inherited Fortran ``modCarbon.f90:268``'s
+        # ``/ 12000.0`` divisions on every explicit-formula term, which
+        # produces a rate in mol-C/L/d. v1 and v3 store DIC as mg-C/L
+        # (matches Fortran's labeling at ``modMain.f90:301``: "mg-C/L"),
+        # so the mol-C/L/d rates were implicitly being added to a
+        # mg-C/L state -- a 12000x scaling error that effectively froze
+        # DIC dynamics. Phase 9.E removes the ``/ 12000.0`` from every
+        # explicit-formula DIC source/sink and converts the Henry's-law
+        # atmospheric-equilibrium term from mol-C/L to mg-C/L by
+        # multiplying by ``MG_C_PER_MOL_C = 12 g/mol * 1000 mg/g =
+        # 12000``. After the fix every dDIC/dt term is in mg-C/L/d,
+        # consistent with the mg-C/L state. This is a v3 correction
+        # over Fortran/v1; see ``parameter_defaults_corrections.md``
+        # Section 1.11 (Phase 9.E DIC unit reconciliation).
+        MG_C_PER_MOL_C = 12000.0  # 12 g-C/mol * 1000 mg-C/g = mg-C per mol-C
+
+        # CO2 atmospheric reaeration: 0.923 * ka_tc * ([CO2*]_eq - [CO2]).
+        # KH is mol/L/atm; pCO2 is ppm (= 1e-6 atm). Henry's-law product
+        # ``KH * pCO2 / 1e6`` is in mol-C/L; multiply by MG_C_PER_MOL_C
+        # to convert to mg-C/L for unit consistency with ``FCO2 * DIC``
+        # (both terms now mg-C/L; resulting rate mg-C/L/d).
         ka_tc_value = self._ka_tc(t_water_c, depth)
         kh_co2 = henrys_k_co2(t_water_c)
-        # mg-C/L/d. Note: the v1 form has ``KH * pCO2 / 1e6`` returning
-        # mol-C/L (since 1 mol of CO2 carries 1 mol of C); the v1 model
-        # treats DIC's units as mol-C/L for this term and multiplies the
-        # resulting rate by the (DIC, FCO2) pair which is already in
-        # mg/L. v3 retains the v1 numerical form for parity with the
-        # legacy NSM1 reference -- the Phase 0.2 audit flagged this for
-        # follow-up but did not change it.
         co2_reaeration = (
             0.923 * ka_tc_value
-            * (kh_co2 * self.pCO2 / 1.0e6 - self.FCO2 * dic)
+            * (kh_co2 * self.pCO2 / 1.0e6 * MG_C_PER_MOL_C - self.FCO2 * dic)
         )
 
         # Algal photosynthesis / respiration -> DIC source/sink.
         # Floating algae: rates are stored as ug-Chla/L/d on the
-        # FloatingAlgae Process; convert to mg-C/L/d via ``rca / 12000``
-        # where ``rca = AWc / AWa`` (mg-C per ug-Chla).
-        # (12000 = 12 g/mol-C * 1000 ug/mg.)
+        # FloatingAlgae Process; ``rca = AWc / AWa`` is mg-C per
+        # ug-Chla. Product is mg-C/L/d directly (no further unit
+        # conversion needed; Phase 9.E removed the ``/ 12000`` from
+        # this term).
         algae_growth = self._floating_algae_growth_rate()
         algae_respiration = self._floating_algae_respiration_rate()
-        dic_algal_resp = algae_respiration * rca / 12000.0
-        dic_algal_photo = algae_growth * rca / 12000.0
+        dic_algal_resp = algae_respiration * rca
+        dic_algal_photo = algae_growth * rca
 
         # Benthic algae: rates are g-D/m^2/d on the BenthicAlgae
-        # Process; convert to mg-C/L/d via ``rcb * Fb / depth / 12000``
-        # where ``rcb = BWc / BWd`` (mg-C per mg-D).
+        # Process; ``rcb = BWc / BWd`` is mg-C per mg-D = g-C/g-D.
+        # ``rcb * balgae * Fb / depth``: g-C/m^2/d / m = g-C/m^3/d =
+        # mg-C/L/d directly. Phase 9.E removed the ``/ 12000``.
         balgae_growth = self._benthic_algae_growth_rate()
         balgae_respiration = self._benthic_algae_respiration_rate()
-        dic_balgae_resp = (
-            balgae_respiration * rcb * self.Fb / depth / 12000.0
-        )
-        dic_balgae_photo = (
-            balgae_growth * rcb * self.Fb / depth / 12000.0
-        )
+        dic_balgae_resp = balgae_respiration * rcb * self.Fb / depth
+        dic_balgae_photo = balgae_growth * rcb * self.Fb / depth
 
-        # Sediment release (g-C/m^2/d) -> mg-C/L/d. v1 wires this
-        # through SOD; Phase 5.A exposes it as a parameter knob ``JDIC``
-        # to keep Phase 5.A self-contained.
+        # Sediment release: ``JDIC`` is g-C/m^2/d. ``JDIC / depth``:
+        # g-C/m^3/d = mg-C/L/d directly (1 g/m^3 = 1 mg/L). Phase 9.E
+        # removed the ``/ 12000`` from this term.
         if self.use_SedFlux:
-            dic_sed_release = self.JDIC / depth / 12000.0
+            dic_sed_release = self.JDIC / depth
         else:
             dic_sed_release = 0.0
 
         # CBOD oxidation -> DIC source. Per Fortran
-        # ``modCarbon.f90:262-266`` and v1 ``processes.py:2793-2814``,
-        # the oxidation of carbonaceous BOD produces CO2 which adds to
-        # the DIC pool: ``DIC_CBOD_oxidation = sum(CBOD_Oxidation) / roc
-        # / 12000``. v3 reads the cached ``cbod_oxidation_rate``
-        # (mg-O2/L/d) from the CBOD sibling Process (already wired into
-        # DOX as a sink); divide by ``roc`` to get mg-C/L/d, then
-        # ``/ 12000`` for parity with the other DIC terms (mol-C/L/d).
-        # Phase 9.B audit C3.
+        # ``modCarbon.f90:262-266`` and v1 ``processes.py:2793-2814``.
+        # ``cbod_oxidation_rate`` is mg-O2/L/d; dividing by ``roc =
+        # 32/12 g-O2/g-C`` gives mg-C/L/d directly. Phase 9.E removed
+        # the ``/ 12000``. (Phase 9.B audit C3 added the missing source
+        # term itself; Phase 9.E corrects its unit scaling.)
         if self.use_cbod and self.cbod_process is not None:
             cbod_ox_rate = getattr(
                 self.cbod_process, "cbod_oxidation_rate", 0
             )
             if cbod_ox_rate is None:
                 cbod_ox_rate = 0
-            dic_cbod_oxidation = cbod_ox_rate / self.roc / 12000.0
+            dic_cbod_oxidation = cbod_ox_rate / self.roc
         else:
             dic_cbod_oxidation = 0.0
 

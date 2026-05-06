@@ -13,7 +13,7 @@ broader Phase 0 inventory and rationale live in
 
 ---
 
-## Section 1: Critical default-value corrections (9 items, applied at port)
+## Section 1: Critical default-value corrections (11 items, applied at port)
 
 These are applied directly in the v3 `DEFAULTS` dicts. Each inline comment in
 the relevant `parameters/<group>.py` module records the v1 original. Items 1.1
@@ -183,6 +183,62 @@ additions (1.8, 1.9) bring v3 into closer Fortran/QUAL2K alignment.
   test authors recognized the v1 default as wrong). Phase 9.C corrected v3
   to `0.174` to match Fortran and QUAL2K. The same value is mirrored in
   the inline `_LIGHT_DEFAULTS` dict in `processes/pathogen.py`.
+
+### 1.10 Nitrogen Arrhenius theta transposition (Phase 9.E fix)
+- **Module:** `parameters/nitrogen.py`
+- **Pre-9.E values:** `kon_theta=1.074`, `rnh4_theta=1.047`, `kdnit_theta=1.08`, `vno3_theta=1.045`
+- **Phase 9.E values (matching Fortran):** `kon_theta=1.047`, `rnh4_theta=1.074`, `kdnit_theta=1.045`, `vno3_theta=1.08`
+- **Fortran source:** `modNitrogen.f90:82, 89, 95, 100`
+- **Rationale:** The four nitrogen Arrhenius theta values were transposed
+  in pairs during v1's port from Fortran. v3 inherited the transposition.
+  Three independent lines of evidence support the correction:
+  (1) Direct Fortran source confirms the canonical values in
+  `modNitrogen.f90` initializers. (2) Phosphorus parallel-process check:
+  Fortran/v1/v3 all agree on `kop_theta=1.047` (organic-P hydrolysis,
+  parallel to `kon`) and `rpo4_theta=1.074` (sediment-P release, parallel
+  to `rnh4`); the nitrogen pair should mirror this and does in Fortran but
+  did not in v1/v3 pre-9.E. (3) Literature convention (Chapra 1997, QUAL2K
+  manual, EPA Bowie et al. 1985): organic-matter hydrolysis universally
+  uses `theta=1.047` (matches all other v3 NSM1 organic-matter Arrhenius
+  defaults: `mu_max_theta`, `kdp_theta`, `krp_theta`, `kpoc_theta`,
+  `kdoc_theta`, `kop_theta`, `kpom_theta`, `kbod_theta`); water-column
+  denitrification uses ~1.045; sediment-water exchange velocities use
+  steeper temperature dependence (~1.074-1.08).
+  Regression coverage in
+  `tests/test_5_nitrogen_calculations_v2.py::test_phase9e_*` (5 tests
+  pinning each theta value plus the nitrogen-phosphorus parallel-process
+  consistency).
+
+### 1.11 DIC unit reconciliation (Phase 9.E fix)
+- **Module:** `processes/carbon.py`
+- **Issue:** Fortran `modCarbon.f90:268` integrates `dDICdt` in
+  mol-C/L/d (every explicit-formula term divides mass by 12000). However
+  Fortran `modMain.f90:301` labels DIC as mg-C/L. v1 inherited Fortran's
+  formula (with the `/12000` divisions) but stores DIC as mg-C/L
+  throughout — the rate is then implicitly added to a state in mg-C/L,
+  producing a 12000x scaling error that effectively freezes DIC dynamics.
+  v3 inherited v1's mixed convention.
+- **Phase 9.E correction:** v3 now integrates `dDICdt` in mg-C/L/d
+  throughout. Removed the legacy `/12000.0` divisions from every
+  explicit-formula DIC source/sink:
+  `dic_algal_resp`, `dic_algal_photo`, `dic_balgae_resp`, `dic_balgae_photo`,
+  `dic_sed_release`, `dic_cbod_oxidation`. Converted the Henry's-law
+  atmospheric equilibrium term from mol-C/L to mg-C/L by multiplying
+  `KH * pCO2 / 1e6` by `MG_C_PER_MOL_C = 12000` (= 12 g-C/mol * 1000 mg-C/g).
+  After the fix every term in the dDIC/dt sum is in mg-C/L/d, consistent
+  with the mg-C/L DIC state.
+- **Magnitude impact:** DIC dynamics are 12000x larger (i.e., physically
+  meaningful) under all kinetic conditions where the previously-scaled
+  terms were active.
+- **v3 deviates from Fortran here.** This is a deliberate v3 correction
+  over the legacy reference. Fortran is internally inconsistent (the
+  rate is mol-C/L/d but the labeled state is mg-C/L); v3 standardizes on
+  the mg-C/L convention used elsewhere in NSM1 (NH4, NO3, OrgN, POC, DOC,
+  POM, CBOD, DOX all in mg/L). Regression coverage in
+  `tests/test_5_carbon_calculations_v2.py` (the Phase 9.B audit-anchored
+  tests now assert mg-C/L/d magnitudes; the
+  `test_dic_co2_reaeration_matches_v1` test explicitly documents the
+  v3-vs-v1 12000x relation and asserts the corrected v3 form).
 
 ---
 
@@ -463,21 +519,14 @@ value is not unambiguous from the codebase alone, or because the change
 would alter long-standing v1 behavior that downstream applications may
 depend on.
 
-### 4.1 Nitrogen Arrhenius theta values — possible v1 swap with Fortran
+### 4.1 Nitrogen Arrhenius theta values — RESOLVED in Phase 9.E
 
-| Parameter | v1 / v3 | Fortran (`modNitrogen.f90`) | Comment |
-|---|---|---|---|
-| `kon_theta` | 1.074 | 1.047 (line 89) | v3/v1 differ from Fortran |
-| `kdnit_theta` | 1.08 | 1.045 (line 95) | v3/v1 differ from Fortran |
-| `rnh4_theta` | 1.047 | 1.074 (line 82) | v3/v1 swap with Fortran's `kon_theta` value |
-| `vno3_theta` | 1.045 | 1.08 (line 100) | v3/v1 swap with Fortran's `kdnit_theta` value |
-
-The pattern (v3/v1 having `1.074, 1.08, 1.047, 1.045` vs Fortran's
-`1.047, 1.045, 1.074, 1.08`) suggests a possible 4-way swap during the v1
-port from Fortran. v3 inherits the v1 values pinned by inline
-`FIXME(phase9c-audit):` comments in `parameters/nitrogen.py`. Recommend
-LimnoTech reconciliation before changing values to preserve v1 simulation
-results until the literature/Fortran preference is confirmed.
+(Originally flagged here in Phase 9.C as "possible v1 swap with Fortran"
+pending reconciliation.) Phase 9.E confirmed the transposition with
+three independent lines of evidence (direct Fortran source, phosphorus
+parallel-process check, literature convention) and applied the
+correction. See Section 1.10 above. This entry remains here as a
+historical record of the audit-to-fix path.
 
 ### 4.2 `BWa` benthic-algae chlorophyll-a stoichiometry (5000 vs 3500)
 
