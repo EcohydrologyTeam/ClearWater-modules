@@ -543,14 +543,49 @@ parallel-process check, literature convention) and applied the
 correction. See Section 1.10 above. This entry remains here as a
 historical record of the audit-to-fix path.
 
-### 4.2 `BWa` benthic-algae chlorophyll-a stoichiometry (5000 vs 3500)
+### 4.2 `BWa` benthic-algae chlorophyll-a stoichiometry — RESOLVED in Phase 9.E
 
-- **Fortran default:** `5000.0` g-D / mg-Chla (`modBenthicAlgae.f90:87`)
-- **v1 / v3 default:** `3500.0` (`parameters/balgae.py`)
-- **Comment:** v3 inherits v1's 3500. Fortran's 5000 differs by ~43%; both
-  are within the literature range for benthic algal chlorophyll
-  stoichiometry but the canonical QUAL2K value should be confirmed.
-  Flagged for LimnoTech review.
+(Originally flagged here in Phase 9.C as "Fortran 5000 vs v1/v3 3500
+pending reconciliation.") Phase 9.E researched the canonical literature
+and made the keep-v1 choice.
+
+**Parameter:** `BWa` (ug-Chla per stoichiometric unit; v1 docstring at
+`processes.py:797` confirms `BWa = Benthic algae chlorophyll-a
+(ug-Chla-a)`). Used in v1 helper `rab(BWa, BWd) = BWa / BWd` returning
+the benthic algae Chla:DW ratio in ug-Chla/mg-D = mg-Chla/g-DW.
+
+| Source | `BWa` | Chla:DW (mg-Chla/g-DW) | Comment |
+|---|---|---|---|
+| WASP7 (EPA peer model) | n/a | 10 (= 0.025 mg-Chla/mg-C / 2.5 mg-DW/mg-C) | Documented Table 1 of WASP7 Benthic Algae User's Guide |
+| Periphyton literature typical | n/a | 1-15 | Bothwell 1989, Stevenson et al. 1996 |
+| NSM1 floating (`AWa=1000`, `AWd=100`) | 1000 | 10 | Matches WASP7 / typical literature |
+| Fortran NSM1 benthic | 5000 | **50** | 5x WASP7; high |
+| v1 / v3 NSM1 benthic | 3500 | **35** | 3.5x WASP7; high |
+
+Both NSM1 benthic defaults (3500 and 5000) are HIGH relative to
+canonical literature and to WASP7 (which uses the same Chla:DW for
+benthic and floating). The NSM1 convention may reflect an "active
+photosynthesizing layer" interpretation rather than bulk biofilm
+Chla:DW (which would include heterotrophs, EPS, and detritus that
+dilute the Chla content); without authoritative documentation we treat
+this as an undocumented NSM1-specific convention rather than a
+canonical biological measurement.
+
+**v3 keeps `BWa = 3500`** (matches v1) on three grounds:
+
+1. v1's 3500 is closer to WASP7's canonical Chla:DW = 10 (35/10 = 3.5x)
+   than Fortran's 5000 is (50/10 = 5x).
+2. v1 has the calibration application history; downstream applications
+   that have been calibrated against v1 simulations will continue to
+   produce comparable results.
+3. Fortran's 5000 has no recorded rationale and no documented
+   calibration record beyond the legacy code comment.
+
+A future v3.x harmonization to WASP7-style canonical values (`BWa =
+1000`, giving Chla:DW = 10 mg/g equal to floating) would be a
+defensible direction, but is out of scope for v3 1.0.0. Regression
+coverage in
+`tests/test_5_benthic_algae_calculations_v2.py::test_phase9e_bwa_value_pinned`.
 
 ### 4.3 `vsop` value — RESOLVED in Phase 9.E
 
@@ -568,11 +603,28 @@ slower than the algae from which the OrgP derives and is implausible
 as a representative default. v3 keeps 0.1; rationale and regression
 test pinned in Section 1.1 above.
 
-### 4.4 `SOD_20` value (Fortran 0.2 vs v3 1.0)
+### 4.4 `SOD_20` value — RESOLVED in Phase 9.E
 
-See Section 1.3 above. v3 chose conservative midpoint (1.0 g-O2/m^2/d)
-over Fortran's lower-bound (0.2). Both defensible from Chapra (1997)
-Table 25.2; flagged for LimnoTech review.
+(Originally flagged here in Phase 9.C as "Fortran 0.2 vs v3 1.0
+pending reconciliation.") Phase 9.E confirms v3's `SOD_20 = 1.0`
+g-O2/m^2/d as the chosen default. Rationale:
+
+- Chapra (1997) Table 25.2 cites SOD literature range of 0.2-3.0
+  g-O2/m^2/d for typical surface waters, with values strongly
+  site-dependent (low for oligotrophic, high for eutrophic).
+- v3's 1.0 g-O2/m^2/d is a conservative midpoint that produces a
+  visible non-zero default and surfaces obvious calibration problems
+  if the user does not override.
+- Fortran's 0.2 g-O2/m^2/d is the lower-bound of the literature
+  range and silently understates SOD in moderately-loaded systems
+  (the typical NSM1 application target).
+- Users with site-specific data should override per project. The
+  conservative default keeps DOX dynamics responsive to organic
+  loading even at default settings.
+
+Regression coverage in
+`tests/test_5_dox_calculations_v2.py::test_phase9e_sod_20_value_pinned`.
+See also Section 1.3 for the sentinel-999 correction history.
 
 ### 4.5 `kah_20_user` value (Fortran 1.0 vs v3 0.0)
 

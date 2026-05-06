@@ -558,3 +558,49 @@ def test_dox_sod_attenuates_at_low_dox(
     sod_at_low_dox = np.asarray(dox_proc_low.dox_sod_rate)
     # Should be ~ DOX/KsSOD * unattenuated ~ 1e-6 * unattenuated.
     assert np.all(sod_at_low_dox < 1e-5 * unattenuated_sod)
+
+
+# ---------------------------------------------------------------------------
+# Phase 9.E regression: SOD_20 value pinned (resolved Section 4.4)
+# ---------------------------------------------------------------------------
+# SOD_20 is the sediment oxygen demand at 20 C (g-O2/m^2/d). The Phase 0
+# audit found v1's sentinel value (999) was a flaw; Phase 1 corrected v3
+# to 1.0 g-O2/m^2/d (conservative midpoint of Chapra 1997 Table 25.2
+# range 0.2-3.0). Fortran modGlobalParam.f90:122 uses 0.2 (lower bound).
+# Phase 9.E confirms v3's 1.0 as the chosen default — visible non-zero
+# value that surfaces obvious calibration problems if user does not
+# override, vs. Fortran's 0.2 which silently understates SOD in
+# moderately-loaded systems. See parameter_defaults_corrections.md
+# Section 1.3 and Section 4.4.
+
+def test_phase9e_sod_20_value_pinned():
+    """Phase 9.E: SOD_20 = 1.0 g-O2/m^2/d (conservative midpoint of
+    Chapra 1997 0.2-3.0 range; visible non-zero default; v3 deliberately
+    differs from Fortran's 0.2). Pin the value so any future change
+    requires explicit reconciliation."""
+    from clearwater_modules_v3.parameters.dox import DEFAULTS as DOX_DEFAULTS
+
+    sod_20 = DOX_DEFAULTS["SOD_20"]
+    sod_theta = DOX_DEFAULTS["SOD_theta"]
+
+    # Phase 9.E: keep v3's 1.0 (conservative midpoint).
+    assert sod_20 == 1.0, (
+        f"SOD_20 should be 1.0 g-O2/m^2/d (Phase 9.E conservative-midpoint "
+        f"choice; Chapra 1997 Table 25.2 range 0.2-3.0); got {sod_20}"
+    )
+    # And confirm SOD_theta still matches Fortran (= 1.06).
+    assert sod_theta == 1.060
+
+    # Confirm v3 deliberately differs from Fortran's 0.2 (lower bound).
+    fortran_sod_20 = 0.2
+    assert sod_20 > fortran_sod_20, (
+        f"v3 SOD_20 = {sod_20} should be greater than Fortran's "
+        f"{fortran_sod_20}; v3 chose conservative midpoint to surface "
+        f"obvious calibration problems at default settings."
+    )
+
+    # Confirm sane upper bound (within Chapra 1997 cited range).
+    assert 0.2 <= sod_20 <= 3.0, (
+        f"SOD_20 = {sod_20} g-O2/m^2/d should be within the Chapra 1997 "
+        f"Table 25.2 range of 0.2-3.0 g-O2/m^2/d."
+    )
