@@ -604,3 +604,94 @@ def test_phase9e_sod_20_value_pinned():
         f"SOD_20 = {sod_20} g-O2/m^2/d should be within the Chapra 1997 "
         f"Table 25.2 range of 0.2-3.0 g-O2/m^2/d."
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 9.E regression: hydraulic_reaeration_option default = 5 (Cover 1976)
+# ---------------------------------------------------------------------------
+# Cross-model convention research (Phase 9.E) found the peer water-quality-
+# model standard is to default to an empirical hydraulic formula rather than
+# a user-supplied constant:
+#   - QUAL2K (Chapra & Pelletier 2008 manual p56): "if no option is
+#     specified, the Internal option is the default" (= Covar 1976
+#     depth-piecewise blend; matches NSM1 option 5).
+#   - WASP7: defaults to O'Connor-Dobbins family.
+#   - CE-QUAL-W2: REAERC defaults to formula appropriate to water-body type.
+#   - Chapra (1997) textbook ch. 21: empirical hydraulic formulas as the
+#     default; user-supplied constant only as advanced calibration option.
+#
+# Pre-9.E v3 (and Fortran NSM1) defaulted to option 1 (user-supplied path)
+# with kah_20_user = 0.0 (v3) or 1.0 (Fortran), neither of which depends on
+# stream hydraulics — physically misleading and inconsistent with peer-model
+# convention. Phase 9.E corrected v3 default to option 5.
+# See parameter_defaults_corrections.md Section 1.6.
+
+def test_phase9e_default_hydraulic_reaeration_option_is_5():
+    """Phase 9.E: default hydraulic_reaeration_option = 5 (Cover 1976 /
+    Internal depth-piecewise blend), matching QUAL2K's documented
+    default. Pin so any future change requires explicit reconciliation
+    against peer-model convention."""
+    from clearwater_modules_v3.parameters.dox import DEFAULTS as DOX_DEFAULTS
+
+    option = DOX_DEFAULTS["hydraulic_reaeration_option"]
+    assert option == 5, (
+        f"hydraulic_reaeration_option default should be 5 (Cover 1976 / "
+        f"Internal; matches QUAL2K Chapra & Pelletier 2008 p56); got {option}"
+    )
+
+    # And confirm kah_20_user remains 0 (only consulted when option == 1).
+    kah_20_user = DOX_DEFAULTS["kah_20_user"]
+    assert kah_20_user == 0.0, (
+        f"kah_20_user should remain 0.0 (only consulted under option 1); "
+        f"got {kah_20_user}"
+    )
+
+
+def test_phase9e_default_dox_reaeration_uses_hydraulics():
+    """Phase 9.E: under default settings, hydraulic reaeration must be
+    computed from stream hydraulics (velocity, depth) via Cover 1976,
+    not from a user-supplied constant. Run kah_20 with representative
+    river inputs and verify the result is non-zero and depends on the
+    hydraulic inputs."""
+    import numpy as np
+    import xarray as xr
+    from clearwater_modules_v3.utils.reaeration import kah_20
+    from clearwater_modules_v3.parameters.dox import DEFAULTS as DOX_DEFAULTS
+
+    # Representative river: 0.3 m/s velocity, 2 m depth.
+    velocity = xr.DataArray(np.array([0.3, 0.5, 1.0]), dims="cell")
+    depth = xr.DataArray(np.array([2.0, 1.0, 0.5]), dims="cell")
+    flow = xr.DataArray(np.array([1.0, 1.0, 1.0]), dims="cell")
+    topwidth = xr.DataArray(np.array([10.0, 10.0, 10.0]), dims="cell")
+    slope = xr.DataArray(np.array([0.001, 0.001, 0.001]), dims="cell")
+    shear_v = xr.DataArray(np.array([0.05, 0.05, 0.05]), dims="cell")
+
+    kah_value = kah_20(
+        kah_20_user=xr.DataArray(np.array([DOX_DEFAULTS["kah_20_user"]] * 3), dims="cell"),
+        hydraulic_reaeration_option=xr.DataArray(
+            np.array([DOX_DEFAULTS["hydraulic_reaeration_option"]] * 3), dims="cell"
+        ),
+        velocity=velocity,
+        depth=depth,
+        flow=flow,
+        topwidth=topwidth,
+        slope=slope,
+        shear_velocity=shear_v,
+    )
+    kah_arr = np.asarray(kah_value)
+
+    # All cells should produce non-zero reaeration (positive hydraulic
+    # formula values for representative stream conditions).
+    assert np.all(kah_arr > 0), (
+        f"Default hydraulic_reaeration_option=5 should produce non-zero "
+        f"reaeration from stream hydraulics; got {kah_arr}"
+    )
+
+    # And the result should depend on the inputs (not a constant). The
+    # three cells have different velocity/depth so reaeration should
+    # vary across cells.
+    assert not np.allclose(kah_arr, kah_arr[0]), (
+        f"Default reaeration should depend on stream hydraulics (Cover "
+        f"1976 formula varies with velocity and depth); got constant "
+        f"{kah_arr}"
+    )

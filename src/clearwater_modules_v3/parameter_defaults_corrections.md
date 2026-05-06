@@ -118,33 +118,74 @@ additions (1.8, 1.9) bring v3 into closer Fortran/QUAL2K alignment.
   override path without supplying their own value they will see no reaeration
   rather than a runaway 999 m/d. v3 matches Fortran exactly.
 
-### 1.6 `kah_20_user` — user-override hydraulic reaeration coefficient at 20 C
-- **Module:** `parameters/dox.py`
-- **v1 default:** `999` 1/d (sentinel)
-- **Fortran default:** `1.0` 1/d (`modGlobalParam.f90:113`)
-- **v3 default:** `0.0` 1/d
-- **Rationale:** v3 chose 0.0 (disabled-by-default) over Fortran's 1.0 to make
-  the user-override branch a no-op when not configured, mirroring the
-  `kaw_20_user=0` choice. v1's sentinel of 999 was clearly a flaw; the
-  subsequent v3 vs Fortran disagreement is a deliberate v3 design choice.
+### 1.6 `kah_20_user` and `hydraulic_reaeration_option` — Phase 9.E correction
 
-  **Behavioral note (important for v3 vs Fortran side-by-side runs):** at the
-  default `hydraulic_reaeration_option=1` (user-defined path), v3's
-  `kah_20_user=0.0` produces zero atmospheric hydraulic reaeration. Fortran's
-  default of `kah_20_user=1.0` produces 1.0 1/d hydraulic reaeration at the
-  same option setting. This means side-by-side runs of v3 vs Fortran NSM1 with
-  all-default settings will show DOX recovery in Fortran but not in v3. Users
-  who want non-zero default reaeration should either:
+This section covers two related parameters: the user-override hydraulic
+reaeration coefficient (`kah_20_user`) and the menu selector that
+determines which formula computes reaeration (`hydraulic_reaeration_option`).
+Phase 9.E researched the cross-model convention and applied a coordinated
+correction.
 
-  * (a) explicitly set ``kah_20_user > 0`` (e.g., 1.0 to mimic Fortran's
-    default), or
-  * (b) select a different ``hydraulic_reaeration_option`` from the menu
-    (options 2-9 use empirical formulas based on velocity, depth, flow,
-    topwidth, slope, or shear velocity, and do not depend on
-    ``kah_20_user``).
+| Parameter | v1 default | Fortran default | v3 (pre-9.E) | v3 (Phase 9.E) |
+|---|---|---|---|---|
+| `hydraulic_reaeration_option` | 1 (user-supplied) | 1 (user-supplied) | 1 (user-supplied) | **5 (Cover 1976 / Internal)** |
+| `kah_20_user` | 999 (sentinel) | 1.0 1/d | 0.0 1/d | 0.0 1/d (unchanged) |
 
-  This behavioral divergence is mirrored in
-  `design/clearwater_modules_v3_nsm1_README.md` Section 7.
+**Cross-model convention research (Phase 9.E):**
+
+| Model | Default reaeration approach | Reference |
+|---|---|---|
+| **QUAL2K** | "**Internal**" option (Covar 1976 depth-piecewise blend of Owens-Gibbs / O'Connor-Dobbins / Churchill); explicit quote from manual p56: *"if no option is specified, the Internal option is the default."* | Chapra & Pelletier 2008 manual |
+| **WASP7** | Empirical formula (O'Connor-Dobbins family) computed from stream hydraulics | EPA WASP documentation |
+| **CE-QUAL-W2** | Empirical (REAERC switchable; defaults to formula appropriate to water-body type RIV/LAK) | ERDC/USACE manual |
+| **Chapra (1997) textbook** | Empirical hydraulic formulas (velocity, depth based) as the default; "user-supplied constant" only as an advanced calibration option | Surface Water-Quality Modeling, ch. 21 |
+
+The peer water-quality-model standard is to **default to an empirical
+hydraulic formula** based on stream hydraulics, with "user-supplied
+constant" reserved as an opt-in for advanced calibration. NSM1's
+historical default (option 1, user-supplied) plus a sentinel/zero
+`kah_20_user` produces a silent constant or zero reaeration that does
+not depend on stream hydraulics — inconsistent with peer-model
+convention and physically misleading.
+
+**Phase 9.E correction:** v3 default `hydraulic_reaeration_option`
+changed from 1 to **5** (Cover 1976 / Internal) to match QUAL2K's
+documented default. NSM1 option 5 is the same depth-piecewise blend
+that QUAL2K calls "Internal":
+
+* depth < 0.61 m → Owens-Gibbs (`(3.93 v^0.5) / d^1.5`)
+* depth > 0.61 m → O'Connor-Dobbins (`(5.32 v^0.67) / d^1.85`)
+* depth = 0.61 m → Churchill (`5.026 v / d^1.67`)
+
+Under the new default, v3 produces meaningful empirical reaeration
+based on stream hydraulics out of the box. `kah_20_user = 0.0` remains
+unchanged but is no longer on the default code path; it is consulted
+only when a user explicitly opts into option 1.
+
+This is a deliberate v3 correction over Fortran/v1; v1's sentinel 999
+was clearly a flaw, but Fortran's default of "option 1 + 1.0 1/d" was
+also non-standard relative to peer-model convention. Phase 9.E
+harmonizes v3 with QUAL2K/WASP/CE-QUAL-W2/Chapra-textbook conventions.
+
+**Side-by-side comparison with legacy NSM1:** at default settings,
+v3 now produces hydraulic reaeration computed from stream velocity and
+depth (Cover 1976 / Internal), whereas Fortran NSM1 produces 1.0 1/d
+regardless of hydraulics. The two will diverge for any stream where
+the hydraulic-formula reaeration differs from 1.0 1/d (i.e., almost
+all real streams). v3's behavior is the physically meaningful one.
+
+**Users who want to mimic Fortran NSM1's behavior:** set
+`hydraulic_reaeration_option = 1` and `kah_20_user = 1.0` explicitly.
+Users with site-specific calibration data should set their measured
+value via the same option-1 + `kah_20_user` path.
+
+Regression coverage in `tests/test_5_dox_calculations_v2.py` (the
+existing `test_dox_atmospheric_reaeration_matches_v1_with_user_kah`
+test wires the user-supplied path explicitly so the formula change is
+isolated to the default behavior); a new
+`test_phase9e_default_hydraulic_reaeration_option_is_5` pins the
+option-5 default and asserts that default-instantiated DOX produces
+non-zero reaeration on a representative stream.
 
 ### 1.7 `pressure_mb` — atmospheric pressure
 - **Module:** `parameters/global_parameters.py`
@@ -626,13 +667,28 @@ Regression coverage in
 `tests/test_5_dox_calculations_v2.py::test_phase9e_sod_20_value_pinned`.
 See also Section 1.3 for the sentinel-999 correction history.
 
-### 4.5 `kah_20_user` value (Fortran 1.0 vs v3 0.0)
+### 4.5 `kah_20_user` and hydraulic reaeration default — RESOLVED in Phase 9.E
 
-See Section 1.6 above. v3 chose 0.0 (disabled-by-default) over Fortran's
-1.0 to make the user-override branch a no-op when not configured. This is
-a deliberate v3 design choice; the resulting behavioral divergence is
-documented in detail and mirrored in
-`design/clearwater_modules_v3_nsm1_README.md` Section 7.
+(Originally flagged here in Phase 9.C as "Fortran 1.0 vs v3 0.0
+behavioral divergence pending reconciliation.") Phase 9.E researched
+the cross-model convention (QUAL2K, WASP7, CE-QUAL-W2, Chapra 1997)
+and found that the peer water-quality-model standard is to default to
+an **empirical hydraulic formula** (typically Covar 1976 / Internal,
+which is QUAL2K's documented default) rather than to a user-supplied
+constant. The original "v3 0.0 vs Fortran 1.0" disagreement was not
+the right thing to reconcile — both v3 and Fortran were defaulting to
+`hydraulic_reaeration_option = 1` (user-supplied path), which is
+itself non-standard.
+
+Phase 9.E corrected v3's default `hydraulic_reaeration_option` from 1
+to **5** (Cover 1976 / Internal), matching QUAL2K's documented
+default. Under the new default, `kah_20_user = 0.0` is no longer on
+the default code path (only consulted when the user explicitly opts
+into option 1). The behavioral divergence with legacy NSM1 (Fortran
+or v3-pre-9.E) is now *intended*: v3 produces empirically-derived
+reaeration from stream hydraulics; legacy NSM1 produced a constant
+1.0 1/d (Fortran) or 0 (v3-pre-9.E) regardless of hydraulics. Full
+rationale and migration guidance in Section 1.6 above.
 
 ### 4.6 `vson_theta=1.024` is a v3 addition
 

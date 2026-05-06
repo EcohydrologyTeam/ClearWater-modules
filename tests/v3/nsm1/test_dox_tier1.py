@@ -163,7 +163,11 @@ def test_dox_instantiates_with_defaults() -> None:
     assert dox.kaw_20_user == 0.0
     assert dox.kah_theta == 1.024
     assert dox.kaw_theta == 1.024
-    assert dox.hydraulic_reaeration_option == 1
+    # Phase 9.E: hydraulic_reaeration_option default changed from 1
+    # (user-supplied) to 5 (Cover 1976 / Internal) to match QUAL2K's
+    # documented default. See parameter_defaults_corrections.md
+    # Section 1.6.
+    assert dox.hydraulic_reaeration_option == 5
     assert dox.wind_reaeration_option == 1
     # Pulled from global_parameters
     assert dox.pressure_mb == 1013.25

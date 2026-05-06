@@ -143,7 +143,10 @@ def test_n2_instantiates_with_defaults() -> None:
     assert n2.kaw_20_user == 0.0
     assert n2.kah_theta == 1.024
     assert n2.kaw_theta == 1.024
-    assert n2.hydraulic_reaeration_option == 1
+    # Phase 9.E: hydraulic_reaeration_option default changed from 1
+    # (user-supplied) to 5 (Cover 1976 / Internal). See
+    # parameter_defaults_corrections.md Section 1.6.
+    assert n2.hydraulic_reaeration_option == 5
     assert n2.wind_reaeration_option == 1
     # Pulled from global_vars (toy hydraulic forcings)
     assert n2.velocity == 1.0
