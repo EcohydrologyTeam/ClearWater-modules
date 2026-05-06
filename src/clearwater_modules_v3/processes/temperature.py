@@ -737,11 +737,16 @@ class Temperature(Process):
 
         Audit 2026-05-05 open question 2 resolution.
         """
-        # Initial guess: T_eq = T_air. Use a copy when DataArray so
-        # we don't accidentally mutate the input registry slice on
-        # the first assignment.
+        # Initial guess: T_eq = T_air. Copy when array-like so we
+        # don't mutate the input registry slice on the first
+        # assignment; coerce to a Python float only for true scalar
+        # inputs. Earlier the ``else`` branch unconditionally called
+        # ``float()``, which crashed on multi-element ``np.ndarray``
+        # forcings (Gemini review 2026-05-05, finding 1).
         if isinstance(air_temperature, xr.DataArray):
             teq_c = air_temperature.copy()
+        elif isinstance(air_temperature, np.ndarray):
+            teq_c = air_temperature.astype(float, copy=True)
         else:
             teq_c = float(air_temperature)
 
@@ -873,17 +878,26 @@ class Temperature(Process):
             )
 
             teq_next = teq_c - qnet / d_qnet_dT
-            # Vectorized convergence check: stop when every cell is
-            # within tolerance. Fortran-A's loop uses the same test
-            # at the abs-of-difference level.
+            # Vectorized convergence check: stop when every finite
+            # cell is within tolerance. Fortran-A's loop uses the
+            # same test at the abs-of-difference level. NaN cells
+            # (dry cells, missing meteorology) are masked out of the
+            # check so they don't block early exit -- ``NaN < tol``
+            # evaluates to False, which would otherwise force the
+            # loop to run ``max_iterations`` times even when every
+            # finite cell has already converged (Gemini review
+            # 2026-05-05, finding 3).
             if isinstance(teq_next, xr.DataArray):
-                converged = bool(
-                    (np.abs(teq_next - teq_c) < tolerance_kelvin).all().item()
-                )
+                diff = np.abs(teq_next.values - np.asarray(teq_c))
             else:
-                converged = bool(
-                    np.all(np.abs(np.asarray(teq_next) - np.asarray(teq_c)) < tolerance_kelvin)
+                diff = np.abs(
+                    np.asarray(teq_next) - np.asarray(teq_c)
                 )
+            valid = ~np.isnan(diff)
+            if not np.any(valid):
+                converged = True
+            else:
+                converged = bool(np.max(diff[valid]) < tolerance_kelvin)
             teq_c = teq_next
             if converged:
                 break
@@ -900,6 +914,15 @@ class Temperature(Process):
         the ``default=4178.0`` value, masking missing-data defects.
         Wrap the result with ``xr.where`` on ``np.isnan(temperature)``
         so NaN propagates rather than being replaced by a finite value.
+
+        Note (Gemini review 2026-05-05, finding 4): ``np.select`` has
+        no dask dispatch via xarray's ufunc registry. If ``temperature``
+        is a dask-backed ``xr.DataArray``, this call materializes the
+        chunk eagerly. v3's ``Model`` currently runs in-memory per
+        chunk so this is moot, but if dask-backed temperature arrays
+        ever become the production path, replace ``np.select`` with
+        chained ``xr.where`` or ``xr.apply_ufunc(..., dask="allowed")``
+        to preserve the computational graph.
         """
         result = np.select(
             condlist=[
@@ -1255,13 +1278,32 @@ class Temperature(Process):
     def density_air_sat(
         self, water_temperature: ArrayLike, atmospheric_pressure: ArrayLike
     ) -> ArrayLike:
-        """Saturated-air density (kg/m^3) at the water-surface temperature."""
+        """Saturated-air density (kg/m^3) at the water-surface temperature.
+
+        Edge guard (Gemini review 2026-05-05, finding 2): when
+        ``atmospheric_pressure <= saturation_vapor_pressure`` the
+        denominator of the saturation mixing ratio is zero or
+        negative, producing a runaway negative mixing ratio that
+        propagates a sign-flipped or singular density through every
+        flux that depends on this quantity. This is the same C4 fix
+        already applied at :py:meth:`mixing_ratio_air`; restore
+        symmetric defense here. Trigger conditions are extreme water
+        temperatures (e.g., post-hotstart stabilization with
+        unphysically high T_water) or mis-scaled forcing (atm passed
+        in atm rather than mb). Returns a 0.0 mixing ratio for
+        degenerate cells, so the resulting density is still finite
+        (and equals ``0.348 * P_atm / T_K`` -- dry-air density at the
+        same pressure and temperature, which is the most defensible
+        fallback).
+        """
         water_temperature_kelvin = conversions.celsius_to_kelvin(water_temperature)
         saturation_vapor_pressure = self.saturation_vapor_pressure(water_temperature)
-        mixing_ratio_sat = (
-            0.622
-            * saturation_vapor_pressure
-            / (atmospheric_pressure - saturation_vapor_pressure)
+        denominator = atmospheric_pressure - saturation_vapor_pressure
+        denominator_safe = xr.where(denominator > 0.0, denominator, 1.0)
+        mixing_ratio_sat = xr.where(
+            denominator > 0.0,
+            0.622 * saturation_vapor_pressure / denominator_safe,
+            0.0,
         )
         return (
             0.348
