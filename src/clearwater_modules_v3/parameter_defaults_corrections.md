@@ -573,14 +573,28 @@ consuming these parameters is gated by `use_SedFlux`.")
   `tests/test_phase9fc_sedflux_guard.py::test_nitrogen_use_sedflux_true_raises_notimplementederror`
   and `test_phosphorus_use_sedflux_true_raises_notimplementederror`.
 
-### 2.2 `kdpo4=0.0` — TIP partitioning coefficient
+### 2.2 `kdpo4=0.0` — TIP partitioning coefficient — DEFERRED to NSM2 path
+
 - **Module:** `parameters/phosphorus.py`
 - **Issue:** Phosphorus partitioning between dissolved (DIP) and particulate
-  (sorbed) phases is governed by `kdpo4` (L/kg). At zero, no DIP adsorbs onto
-  suspended solids; the TIP partitioning feature is effectively disabled.
-- **Disposition (v3 1.0.0):** Kept at zero. Full DIP-solid partitioning is
-  NSM2 territory; v3 NSM1 1.0.0 maintains the v1 simplification. Documented
-  for clarity.
+  (sorbed) phases is governed by `kdpo4` (L/kg). At zero, no DIP adsorbs
+  onto suspended solids; the TIP partitioning feature is effectively
+  disabled. The v3 partitioning helper `fdp_partition` in
+  `utils/phosphorus.py` returns `fdp = 1.0` whenever `kdpo4 * Solid = 0`,
+  collapsing the TIP particulate fraction to zero (settling and
+  sediment-flux contributions both vanish).
+- **Disposition (v3 1.0.0):** Kept at zero by design. Full DIP-solid
+  partitioning is NSM2 territory: a proper implementation requires (1) a
+  multi-class suspended-solids model for which `Solid` (single-class) is a
+  placeholder; (2) coupling to the NSM2 sediment-diagenesis sediment-flux
+  model (paired with the Section 2.1 `use_SedFlux` work — both are gated
+  by the same NSM2 path). v3 NSM1 1.0.0 maintains the v1 simplification of
+  treating TIP as fully dissolved at the default value, matching v1 and
+  Fortran behavior exactly. The `FIXME(phase1-audit):` tag in
+  `parameters/phosphorus.py:16` and the inline `FIXME(phase1-audit)`
+  references in `processes/phosphorus.py:35,38` are retained as cross-
+  references to this NSM2-scope item; they intentionally do **not** mark
+  this as a defect to be fixed in 1.0.0.
 
 ### 2.3 `ksbod_20=0.0` — CBOD settling rate — RESOLVED in Phase 9.F.C
 
@@ -819,34 +833,52 @@ floating-point tolerance for the overwhelming majority of sub-rate terms.
   passes a Nitrogen mock whose `*_flux_rate` already includes the Monod
   factor, matching what v1 computes locally.
 
-### 3.4 Pathogen light decay — `PAR = q_solar * Fr_PAR` in v3
+### 3.4 Pathogen light decay — `PAR = q_solar * Fr_PAR` substitution — RESOLVED (reverted) in Phase 9.F.B
+
+(Originally documented here as an intentional Phase 3.1 v3 deviation:
+v3 `_rate_light_decay` substituted `I0 = q_solar * Fr_PAR` for v1's
+raw `q_solar`, on the rationale that PAR is a closer proxy than total
+shortwave for UV-mediated pathogen decay. The calibration target
+`apx` was supposed to absorb the difference.)
 
 - **Module:** `processes/pathogen.py` (light-driven decay sub-rate)
-- **v1 form:** `PathogenDecay` uses raw `q_solar` (W/m² incident).
-- **v3 form:** `_rate_light_decay` uses `PAR(q_solar, Fr_PAR) =
-  q_solar * Fr_PAR`, scaling effective surface irradiance by `Fr_PAR`
-  (default 0.47, the photosynthetically active fraction).
-- **Rationale:** Pathogen UV-driven decay is properly a function of UV
-  flux, not total shortwave; PAR is a closer proxy than raw `q_solar`.
-  The calibration target `apx` absorbs the difference for any historical
-  v1 calibration. The Phase 3.1 docstring documents this as an
-  intentional deviation.
-- **Reference test:** `tests/test_5_pathogen_calculations_v2.py::test_pathogen_light_decay_matches_v1`
-  pins `Fr_PAR=1.0` to make v3 and v1 forms exactly equivalent under the
-  fixture.
+- **Resolution (Phase 9.F.B):** the substitution was **reverted**. Phase 9.F
+  research (`docs/clearwater_modules_v3_nsm1_research_2_4_pathogen.md`) found
+  that pathogen inactivation is largely UVA/UVB-mediated, not PAR-mediated,
+  and the canonical Auer & Niehaus (1993) / Chapra (1997) / QUAL2K
+  formulation operates on **total broadband solar radiation**. Substituting
+  PAR was therefore a v3-introduced deviation away from the canonical
+  literature, not a port improvement. With Phase 9.F.B's coordinated change
+  to `apx = 0.017 (W/m²)⁻¹·d⁻¹` (Auer & Niehaus canonical, calibrated to
+  total broadband), the natural choice is to use raw `q_solar` directly in
+  the kinetics. v3 now matches v1 `PathogenDecay` exactly at the kinetics
+  level. See Section 1.15 for the coordinated `apx` correction.
+- **Reference test:** `tests/test_5_pathogen_calculations_v2.py::test_phase9fb_light_decay_uses_raw_q_solar`
+  pins the post-9.F.B behavior (rate is insensitive to `Fr_PAR`).
 
-### 3.5 CBOD sedimentation — `ksbod_tc / depth` in v3 (m/d → 1/d)
+### 3.5 CBOD sedimentation — `ksbod_tc / depth` in v3 (cross-references Section 2.3)
 
 - **Module:** `processes/cbod.py` (sedimentation sink)
-- **v1 form:** `CBOD_sedimentation = CBOD * ksbod_tc`, treating `ksbod_tc`
-  directly as a 1/d first-order rate.
+- **v1 / Fortran / QUAL2E form:** `CBOD_sedimentation = CBOD * ksbod_tc`,
+  treating `ksbod_tc` directly as a 1/d first-order rate (no depth
+  division). Confirmed in Phase 9.F.2 research: legacy Fortran
+  `modCBOD.f90:114` and QUAL2E (Brown & Barnwell 1987) both define
+  `ksbod_20` (their `K_3`) as a 1/d rate constant, with units stated as
+  "(1/day) Range {-0.36-0.36}" in the Fortran source comments.
 - **v3 form:** `CBOD * ksbod_tc / depth`, treating `ksbod_tc` as a
   settling velocity (m/d) divided by water-column depth to yield a 1/d
-  first-order rate.
-- **Rationale:** Dimensional consistency — settling-driven sedimentation
-  scales with `velocity / depth`, not with velocity alone. The v1
-  formulation requires re-interpreting `ksbod_tc` as 1/d and reconciling
-  with the velocity-style defaults documented in `parameters/cbod.py`.
+  first-order rate. This conflicts with the Fortran/QUAL2E convention
+  but matches the velocity-style units label inherited from v1's
+  `constants.py`.
+- **Status:** the form mismatch is **silent** at the canonical
+  `ksbod_20 = 0` default (both forms produce zero) but would diverge
+  by a factor of `1/depth` at any nonzero user value. Phase 9.F.C
+  (Section 2.3) documented this and the related `ksbod_theta` mismatch
+  (v3 `1.047` vs Fortran/QUAL2E `1.024`) as deferred follow-ups; both
+  become actionable only if a user activates CBOD settling. See Section
+  2.3 above for the Phase 9.F.2 research record and the
+  modern-convention rationale (QUAL2K, WASP, CE-QUAL-W2 omit the
+  parameter entirely).
 - **Reference test:** `tests/test_5_cbod_calculations_v2.py` module
   docstring (line 11) and the parity test at lines 173–200 document the
   units mismatch and pin the v3 result against the v1 form scaled
