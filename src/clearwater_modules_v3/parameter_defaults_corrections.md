@@ -385,38 +385,41 @@ floating-point tolerance for the overwhelming majority of sub-rate terms.
   units mismatch and pin the v3 result against the v1 form scaled
   through the `1/depth` factor.
 
-### 3.6 Celsius-to-Kelvin offset — 273.16 in v3 (re-export from v2) vs 273.15 in Fortran
+### 3.6 Celsius-to-Kelvin offset — v3 uses 273.15 (SI); v2 uses 273.16 (triple point)
 
-- **Module:** `utils/conversions.py` (re-exports `celsius_to_kelvin` from v2)
-- **Fortran form:** `T_K = T_C + 273.15` (modern SI definition; matches v1
-  NSM1's `nsm1/processes.py:9-10`).
-- **v1 form (in two places):** `T_K = T_C + 273.15` in `nsm1/processes.py:9-10`
-  (matching Fortran), but historical v1 utility code elsewhere uses
-  `T_C + 273.16`. v2 chose +273.16 for v1-utility-parity.
-- **v3 form:** v3's `utils/conversions.py` re-exports `celsius_to_kelvin`
-  from v2's `utils/conversions.py`, which uses `T_K = T_C + 273.16` with the
-  inline comment "for testing consistency with v1". The +0.01 K offset is
-  the historical SI triple-point definition of the Kelvin offset, retained
-  to keep v2-parity tests numerically stable.
-- **Rationale:** Modern SI convention is `+273.15`, used by Fortran NSM1 and
-  v1 NSM1's `nsm1/processes.py`. v3 inherits v2's `+273.16` convention for
-  v2-parity test stability; changing v2's `celsius_to_kelvin` to `+273.15`
-  would break the existing v2 parity test fixtures. The `+0.01` K offset
-  propagates weakly into Henry's-law saturation calculations (`O2sat`,
-  `N2sat`, `Henrys_k`) but is well below the ~1% tolerance of typical
-  aquatic measurements. v3's standalone N2 saturation and similar
-  recently-added utilities use `+273.15` directly (matching Fortran/v1
-  NSM1).
-- **Disposition:** Documented as a known convention divergence between
-  the v3 `utils/conversions.py` re-export (273.16) and the canonical
-  reference value (273.15). Production usage should prefer the canonical
-  273.15 in any new code; legacy v2 parity tests rely on 273.16. This is
-  the proper documentation of actual v3 behavior; an earlier draft of
-  this section incorrectly claimed v3 used +273.15.
-- **Reference test:** `tests/test_5_n2_calculations_v2.py` lines 13–18
-  (module docstring) document the convention difference; tests use the
-  v1 +273.16 convention internally to isolate kinetics-formula
-  parity from the offset.
+- **Module:** `clearwater_modules_v3/utils/conversions.py` (v3-native;
+  no longer a re-export from v2).
+- **SI canonical form:** `T_K = T_C + 273.15`. 273.15 K is the absolute
+  temperature of 0 deg C; 273.16 K is the triple point of water (a
+  separate, slightly higher reference). The 0-deg-C-to-Kelvin offset
+  is 273.15.
+- **Fortran-A (HEC-RAS-WQ) and Fortran-B (WQM1D):** `T_K = T_C + 273.16`
+  in all four sites (audit 2026-05-05 finding — both Fortrans pick the
+  triple point as their offset).
+- **v1 form:** mixed. `clearwater_modules.shared.processes.celsius_to_kelvin`
+  uses 273.16 (for TSM); `clearwater_modules.nsm1.processes.celsius_to_kelvin`
+  uses 273.15 (for NSM1).
+- **v2 form:** `clearwater_modules_v2.utils.conversions.celsius_to_kelvin`
+  uses 273.16, with inline comment "for testing consistency with v1".
+- **v3 form (audit 2026-05-05 resolution):** v3's
+  `utils/conversions.py` defines `celsius_to_kelvin` locally as
+  `T_C + KELVIN_OFFSET` where `KELVIN_OFFSET = 273.15` (in
+  `utils/constants.py`). Companion `kelvin_to_celsius` uses the same
+  offset. v3 NSM1 modules (`carbon.py`, `dox.py`, `n2.py`) already
+  used the literal `+273.15` and are unchanged. v3 TSM
+  (`processes/temperature.py`) now picks up 273.15 via the
+  `conversions.celsius_to_kelvin` import.
+- **Rationale:** the user goal is correct units. 273.15 is the right
+  Kelvin offset for 0 deg C; 273.16 is wrong by 0.01 K. The bias was
+  small in absolute terms (~3.4e-5 relative at 293 K) but was the
+  wrong unit choice for SI temperature physics. Fixed in audit 2026-05-05
+  open question 5 resolution.
+- **Test impact:** v1-parity tests in `tests/v3/test_5_tsm_calculations_v3.py`
+  that were pinned against v1's 273.16-based outputs were re-derived
+  at 273.15 (option (b) per user direction). v2-direct-parity tests
+  in `tests/test_5_*_calculations_v2.py` are unaffected because they
+  exercise v2's `clearwater_modules_v2.utils.conversions.celsius_to_kelvin`
+  (still 273.16 there).
 
 ### 3.7 Pressure mb→atm conversion — `1.0 / 1013.25` in v3 vs `0.000986923` in v1
 

@@ -87,9 +87,9 @@ class Temperature(Process):
 
     def __init__(
         self,
-        wind_a: float,
-        wind_b: float,
-        wind_c: float,
+        wind_a: float = 0.3,
+        wind_b: float = 1.5,
+        wind_c: float = 3.0,
         sediment_density: ArrayLike = 1600.0,
         sediment_specific_heat: float = 1673.0,
         air_diffusivity_ratio: float = 1.0,
@@ -103,7 +103,25 @@ class Temperature(Process):
         """Initialize the temperature process.
 
         Args:
-            wind_a, wind_b, wind_c: Wind-function parameters.
+            wind_a, wind_b, wind_c: Wind-function parameters in the
+                Edinger, Brady & Geyer (1974) form
+                ``f(W) = (a + b * W^c) / 1e6`` (multiplied internally
+                by the Richardson stability function in
+                :py:meth:`wind_function`). Defaults are ``a = 0.3``,
+                ``b = 1.5``, ``c = 3.0`` — the calibration values
+                inherited from v1 ``clearwater_modules.tsm.constants``,
+                used across QUAL2K, CE-QUAL-W2, and HEC-RAS-WQ
+                derivatives. Pass any subset to override per-instance;
+                YAML configs may also override via the ``wind_a /
+                wind_b / wind_c`` keys at ``init_from_file`` time.
+
+                Reference: Edinger, J.E., D.K. Brady, and J.C. Geyer
+                (1974), *Heat exchange and transport in the
+                environment*, Report 14, Cooling Water Discharge
+                Research Project (RP-49), Electric Power Research
+                Institute, Palo Alto, CA, 125 pp. (Audit 2026-05-05
+                open question 4: prior code lineage carried no
+                citation; recovered and added here.)
             sediment_density: Sediment bulk density (kg/m^3). Fortran
                 default ``pb = 1600``; matches v1.
             sediment_specific_heat: Sediment specific heat (J/kg/C).
@@ -139,8 +157,9 @@ class Temperature(Process):
                 is clipped to ``+/- dTdt_max_per_hour * dt_hours``. Set to
                 ``float("inf")`` to disable.
         """
-        # Wind-function parameters: physical interpretation under review;
-        # legacy values come from the original NSM/TSM implementation.
+        # Wind-function parameters (Edinger, Brady & Geyer 1974). v3
+        # defaults are ``0.3 / 1.5 / 3.0`` per the constructor docstring;
+        # callers may override per-instance or via YAML at config time.
         self.wind_a = wind_a
         self.wind_b = wind_b
         self.wind_c = wind_c
@@ -786,7 +805,16 @@ class Temperature(Process):
     ) -> ArrayLike:
         """Wind function: stability-corrected coefficient relating wind
         speed to bulk transfer coefficients in the latent and sensible
-        heat parameterizations."""
+        heat parameterizations.
+
+        The form is ``f(W) = Ri_function * (a + b * W^c) / 1e6``,
+        Edinger, Brady & Geyer (1974). The ``1e6`` divisor places the
+        coefficients in convenient O(1) magnitudes; ``a, b, c`` are
+        ``self.wind_a, self.wind_b, self.wind_c`` (defaults
+        ``0.3, 1.5, 3.0`` from the v1 calibration; see
+        :py:meth:`__init__` docstring for the citation and override
+        path).
+        """
         return richardson_function * (
             (self.wind_a / 1_000_000)
             + (self.wind_b / 1_000_000) * (wind_speed**self.wind_c)
