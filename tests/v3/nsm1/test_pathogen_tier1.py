@@ -123,8 +123,8 @@ def test_pathogen_instantiates_with_defaults() -> None:
     # Spot-check a few merged DEFAULTS keys.
     assert pathogen.kdx_20 == 0.8
     assert pathogen.kdx_theta == 1.07
-    assert pathogen.apx == 1.0
-    assert pathogen.vx == 1.0
+    assert pathogen.apx == 0.017
+    assert pathogen.vx == 1.38
 
 
 def test_pathogen_accepts_parameter_override() -> None:
@@ -134,5 +134,5 @@ def test_pathogen_accepts_parameter_override() -> None:
     assert pathogen.kdx_20 == 0.5
     # Others unchanged
     assert pathogen.kdx_theta == 1.07
-    assert pathogen.apx == 1.0
-    assert pathogen.vx == 1.0
+    assert pathogen.apx == 0.017
+    assert pathogen.vx == 1.38

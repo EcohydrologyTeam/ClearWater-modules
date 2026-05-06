@@ -13,14 +13,15 @@ exercised in ``tests/v3/nsm1/test_pathogen_tier1.py``.
 v1 reference: ``clearwater_modules.nsm1.processes`` ``kdx_tc``,
 ``PathogenDeath``, ``PathogenDecay``, ``PathogenSettling``, ``dPXdt``.
 
-v3 deviation note (``_rate_light_decay``): v1 ``PathogenDecay`` uses
-raw ``q_solar`` (W/m^2 incident). v3 ``_rate_light_decay`` uses
-``PAR(q_solar, Fr_PAR) = q_solar * Fr_PAR`` so the effective rate is
-scaled by ``Fr_PAR`` relative to v1. The Phase 3.1 docstring documents
-this as an intentional deviation absorbed into the calibration target
-``apx``. The light-decay parity test below pins ``Fr_PAR=1.0`` to make
-the v3 formula exactly equivalent to v1 at the kinetics level. With
-``Fr_PAR=1.0`` v3 should match v1 to roundoff.
+v3 light-decay note: Phase 3.1 originally substituted
+``I0 = q_solar * Fr_PAR`` for the surface irradiance in
+``_rate_light_decay``. Phase 9.F.B reverted that substitution because
+pathogen inactivation is largely UVA/UVB-mediated (not PAR-mediated)
+and the canonical Auer & Niehaus (1993) / Chapra (1997) calibration
+operates on total broadband solar radiation. v3 now uses raw
+``q_solar`` directly, matching v1 ``PathogenDecay`` exactly at the
+kinetics level. The fixture below still pins ``Fr_PAR=1.0`` for
+defensive consistency (it is now a no-op in ``_rate_light_decay``).
 
 Synthetic mesh: 5-cell numpy arrays, single time step.
 """
@@ -72,10 +73,17 @@ def ap_5cell():
 
 @pytest.fixture(scope="function")
 def pathogen_instance():
-    """Pathogen instance with v1-aligned defaults and Fr_PAR=1.0.
+    """Pathogen instance with v1-aligned defaults.
 
-    Fr_PAR=1.0 makes ``_rate_light_decay`` exactly equivalent to v1's
-    ``PathogenDecay`` (which uses raw ``q_solar`` rather than PAR).
+    Pins ``apx=1.0`` and ``vx=1.0`` (v1 placeholder values) so the
+    parity tests compare like-with-like against v1 helper outputs at
+    those same placeholder values. The Phase 9.F.B canonical defaults
+    (``apx=0.017``, ``vx=1.38``) are exercised in their own pinning
+    tests at the bottom of this module.
+
+    ``Fr_PAR=1.0`` is set defensively; Phase 9.F.B reverted the
+    Phase 3.1 PAR substitution in ``_rate_light_decay``, so this is
+    now a no-op.
     """
     return Pathogen(
         parameters={
@@ -83,7 +91,7 @@ def pathogen_instance():
             "kdx_theta": 1.07,
             "apx": 1.0,
             "vx": 1.0,
-            "Fr_PAR": 1.0,  # remove the PAR scaling so v3 form == v1 form
+            "Fr_PAR": 1.0,
         },
         time_step=timedelta(minutes=5),
     )
@@ -344,4 +352,156 @@ def test_phase9f_lambdas_fixme_removed():
     assert "Phase 9.F" in section_2_8 or "Phase 9.C" in section_2_8, (
         "Section 2.8 should reference the Phase 9.C verification "
         "and/or Phase 9.F FIXME cleanup"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 9.F.B regression tests — apx, vx canonical values + Fr_PAR revert
+# ---------------------------------------------------------------------------
+# Phase 9.F.B replaced the v1 placeholder defaults apx=1.0 and vx=1.0
+# with the canonical Auer & Niehaus (1993) / Chapra (1997) literature
+# values, and reverted the Phase 3.1 substitution
+# I0 = q_solar * Fr_PAR in _rate_light_decay so that the v3 kinetics
+# tie directly to the canonical broadband-solar calibration.
+#
+#   Source                                      apx    vx (m/d)
+#   ----                                        ---    --------
+#   Auer & Niehaus 1993 (Onondaga Lake)         0.017  1.38
+#     (alpha = 0.00824 cm^2/cal in cgs ->
+#      0.017 (W/m^2)^-1 d^-1 in SI)
+#   Chapra 1997, Surface Water-Quality          ~0.017 ~1
+#     Modeling, McGraw-Hill, Ch. 33 (cites
+#     Auer & Niehaus 1993)
+#   QUAL2K v2.11b8 (Chapra et al. 2008)         "user" "user"
+#     §5.5.20.1 (formulation only)
+#   Bowie et al. 1985 (compilation range)       --     0.5-2.5
+#   v1 / Fortran / pre-9.F.B v3 (placeholder)   1.0    1.0
+#   Phase 9.F.B v3                              0.017  1.38
+
+def test_phase9fb_apx_canonical_value_pinned():
+    """Phase 9.F.B: apx = 0.017 (W/m^2)^-1 d^-1 (Auer & Niehaus 1993
+    canonical via Chapra 1997 / QUAL2K). Pin so any future change
+    requires explicit reconciliation against the literature."""
+    from clearwater_modules_v3.parameters.pathogen import (
+        DEFAULTS as PATHOGEN_DEFAULTS,
+    )
+
+    apx = PATHOGEN_DEFAULTS["apx"]
+    np.testing.assert_allclose(
+        apx, 0.017, rtol=1e-6,
+        err_msg=(
+            "Phase 9.F.B canonical: apx = 0.017 (W/m^2)^-1 d^-1 "
+            "(Auer & Niehaus 1993; cited by Chapra 1997 Ch. 33)"
+        ),
+    )
+    # And confirm the value is no longer the v1/Fortran placeholder.
+    assert apx != 1.0
+
+
+def test_phase9fb_vx_canonical_value_pinned():
+    """Phase 9.F.B: vx = 1.38 m/d (Auer & Niehaus 1993 sediment-trap
+    canonical via Chapra 1997). Pin so any future change requires
+    explicit reconciliation against the literature."""
+    from clearwater_modules_v3.parameters.pathogen import (
+        DEFAULTS as PATHOGEN_DEFAULTS,
+    )
+
+    vx = PATHOGEN_DEFAULTS["vx"]
+    np.testing.assert_allclose(
+        vx, 1.38, rtol=1e-6,
+        err_msg=(
+            "Phase 9.F.B canonical: vx = 1.38 m/d "
+            "(Auer & Niehaus 1993; cited by Chapra 1997 Ch. 33)"
+        ),
+    )
+    # And confirm the value is no longer the v1/Fortran placeholder.
+    assert vx != 1.0
+    # Bowie et al. 1985 typical range 0.5 - 2.5 m/d.
+    assert 0.5 <= vx <= 2.5
+
+
+def test_phase9fb_light_decay_uses_raw_q_solar():
+    """Phase 9.F.B: ``_rate_light_decay`` uses raw broadband ``q_solar``
+    rather than ``q_solar * Fr_PAR``.
+
+    Constructs two pathogen instances with the same ``apx`` and
+    ``q_solar`` but different ``Fr_PAR`` values. Pre-9.F.B the
+    light-decay rate scaled with Fr_PAR; Phase 9.F.B reverted that
+    substitution, so the two instances should now produce identical
+    rates.
+    """
+    pa = Pathogen(
+        parameters={
+            "apx": 0.017, "vx": 1.38, "kdx_20": 0.8, "kdx_theta": 1.07,
+            "Fr_PAR": 0.47,  # default
+        },
+        time_step=timedelta(minutes=5),
+    )
+    pb = Pathogen(
+        parameters={
+            "apx": 0.017, "vx": 1.38, "kdx_20": 0.8, "kdx_theta": 1.07,
+            "Fr_PAR": 1.0,  # pre-9.F.B test trick
+        },
+        time_step=timedelta(minutes=5),
+    )
+
+    px = xr.DataArray(np.array([1.0e3, 5.0e3, 1.0e4, 5.0e4, 1.0e5]))
+    depth = xr.DataArray(np.array([0.5, 1.0, 1.5, 2.0, 3.0]))
+    q_solar = xr.DataArray(np.array([200.0, 250.0, 300.0, 350.0, 400.0]))
+    solid = xr.DataArray(np.array([10.0, 12.0, 15.0, 18.0, 20.0]))
+    poc = xr.DataArray(np.array([1.0, 1.2, 1.4, 1.6, 1.8]))
+    ap = xr.DataArray(np.array([5.0, 6.0, 7.0, 8.0, 10.0]))
+
+    rate_a = pa._rate_light_decay(
+        px=px, depth=depth, q_solar=q_solar,
+        solid=solid, poc=poc, ap=ap,
+    )
+    rate_b = pb._rate_light_decay(
+        px=px, depth=depth, q_solar=q_solar,
+        solid=solid, poc=poc, ap=ap,
+    )
+    np.testing.assert_allclose(
+        np.asarray(rate_a), np.asarray(rate_b), rtol=1e-12,
+        err_msg=(
+            "Phase 9.F.B: _rate_light_decay should be insensitive to "
+            "Fr_PAR after the PAR substitution was reverted"
+        ),
+    )
+
+
+def test_phase9fb_light_decay_matches_v1_with_canonical_apx():
+    """Phase 9.F.B: with apx=0.017 (canonical) and raw q_solar, the v3
+    light-decay rate should match v1 ``PathogenDecay`` exactly,
+    confirming the Phase 9.F.B revert restored kinetics-level parity
+    with the canonical broadband formulation."""
+    p = Pathogen(
+        parameters={
+            "apx": 0.017, "vx": 1.38, "kdx_20": 0.8, "kdx_theta": 1.07,
+        },
+        time_step=timedelta(minutes=5),
+    )
+
+    px = xr.DataArray(np.array([1.0e3, 5.0e3, 1.0e4, 5.0e4, 1.0e5]))
+    depth = xr.DataArray(np.array([0.5, 1.0, 1.5, 2.0, 3.0]))
+    q_solar = xr.DataArray(np.array([200.0, 250.0, 300.0, 350.0, 400.0]))
+    solid = xr.DataArray(np.array([10.0, 12.0, 15.0, 18.0, 20.0]))
+    poc = xr.DataArray(np.array([1.0, 1.2, 1.4, 1.6, 1.8]))
+    ap = xr.DataArray(np.array([5.0, 6.0, 7.0, 8.0, 10.0]))
+
+    v3_rate = p._rate_light_decay(
+        px=px, depth=depth, q_solar=q_solar,
+        solid=solid, poc=poc, ap=ap,
+    )
+
+    kext = L(
+        lambda0=p.lambda0, lambda1=p.lambda1, lambda2=p.lambda2,
+        lambdas=p.lambdas, lambdam=p.lambdam,
+        Solid=solid, POC=poc, fcom=p.fcom, Ap=ap,
+        use_Algae=p.use_Algae, use_POC=p.use_POC,
+    )
+    v1_rate = v1.PathogenDecay(
+        apx=0.017, q_solar=q_solar, L=kext, depth=depth, PX=px,
+    )
+    np.testing.assert_allclose(
+        np.asarray(v3_rate), np.asarray(v1_rate), rtol=1e-6,
     )

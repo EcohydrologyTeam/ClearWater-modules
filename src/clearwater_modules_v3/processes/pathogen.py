@@ -19,17 +19,24 @@ Where:
 
 * ``kdx_tc = arrhenius_correction(kdx_20, kdx_theta, T)`` — temperature-
   corrected natural decay rate (1/d).
-* ``apx`` — pathogen sunlight-inactivation efficiency. v3 DEFAULT
-  ``apx=1.0`` is a placeholder (FIXME(phase1-audit) in
-  ``parameters/pathogen.py``); literature-based value is a follow-up.
-* ``I0`` — surface PAR (W/m^2), computed via ``utils.light.PAR``.
+* ``apx`` — pathogen sunlight-inactivation efficiency
+  ((W/m^2)^-1 d^-1). v3 default ``apx = 0.017`` is the Auer & Niehaus
+  (1993) / Chapra (1997) canonical value (Phase 9.F.B; was a 1.0
+  placeholder in v1/v3 pre-9.F.B).
+* ``I0`` — surface broadband solar irradiance ``q_solar`` (W/m^2).
+  Phase 9.F.B reverted the earlier Phase 3.1 substitution
+  ``I0 = q_solar * Fr_PAR`` because pathogen inactivation is largely
+  UVA/UVB-mediated rather than PAR-mediated; the canonical
+  Auer/Niehaus/Chapra/QUAL2K formulation operates on total broadband
+  ``q_solar``.
 * ``KEXT`` — Beer-Lambert composite extinction coefficient (1/m),
   computed via ``utils.light.L``. Inputs (``Solid``, ``POC``, ``Ap``)
   are read from the registry when present; missing inputs default to
   zero with a one-time warning so the Pathogen Process can run
   stand-alone for the Tier 1 conservation harness.
-* ``vx`` — pathogen net settling velocity (m/d). v3 DEFAULT ``vx=1.0``
-  is also a placeholder (FIXME(phase1-audit) in parameter library).
+* ``vx`` — pathogen net settling velocity (m/d). v3 default
+  ``vx = 1.38`` is the Auer & Niehaus (1993) / Chapra (1997) canonical
+  value (Phase 9.F.B; was a 1.0 placeholder in v1/v3 pre-9.F.B).
 
 State variable name: ``pathogen`` (matches Tier 1 conftest fixture and
 constituent diff Section 4 / Appendix A).
@@ -54,7 +61,7 @@ from clearwater_data.variables import VariableRegistry
 
 from clearwater_modules_v2.utils.conversions import arrhenius_correction
 from clearwater_modules_v3.processes.base import Process, ProcessFactory
-from clearwater_modules_v3.utils.light import PAR, L
+from clearwater_modules_v3.utils.light import L
 from clearwater_modules_v3.utils.numerics import (
     Diagnostics,
     clip_negative_state,
@@ -294,21 +301,24 @@ class Pathogen(Process):
         W/m^2 (consistent with ``utils.light.PAR`` and
         ``parameters/global_vars.py``). v1's docstring mislabeled the
         parameter as 1/d but the value (500) and consumption pattern
-        (Beer-Lambert PAR scaling) are unambiguously W/m^2; the v3 port
+        (Beer-Lambert scaling) are unambiguously W/m^2; the v3 port
         treats it as W/m^2 throughout (Phase 9.F docstring fix; see
         ``parameter_defaults_corrections.md`` Section 2.7).
 
-        Note the original v1 form uses ``q_solar`` directly, not PAR.
-        This port follows the Phase 3.1 spec instruction to compute PAR
-        via ``utils.light.PAR``: I0 = q_solar * Fr_PAR. The functional
-        form is identical aside from the constant factor Fr_PAR
-        absorbed into the effective ``apx``. With the v3 default
-        ``apx=1.0`` (a placeholder), the absolute magnitude of light
-        decay is already a calibration target, so this Fr_PAR
-        substitution does not introduce a regression versus v1 at
-        production-relevant ``apx`` values.
+        Phase 9.F.B reverted the Phase 3.1 substitution
+        ``I0 = q_solar * Fr_PAR`` and now passes total broadband
+        ``q_solar`` directly into the depth-averaged Beer-Lambert
+        integral, matching v1, Fortran, and the canonical
+        Auer & Niehaus (1993) / Chapra (1997) / QUAL2K formulation.
+        Pathogen inactivation is largely UVA/UVB-mediated, not
+        PAR-mediated, so the PAR substitution was a v3-introduced
+        deviation rather than a port improvement (the v3 default
+        ``apx = 0.017`` is the Auer/Niehaus canonical value tied to
+        broadband irradiance, so reverting the substitution restores
+        the canonical literature calibration). See
+        ``parameter_defaults_corrections.md`` Section 1.15.
         """
-        i0 = PAR(q_solar=q_solar, Fr_PAR=self.Fr_PAR)
+        i0 = q_solar
         kext = L(
             lambda0=self.lambda0,
             lambda1=self.lambda1,

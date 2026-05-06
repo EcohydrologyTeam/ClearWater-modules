@@ -13,7 +13,7 @@ broader Phase 0 inventory and rationale live in
 
 ---
 
-## Section 1: Critical default-value corrections (14 items, applied at port)
+## Section 1: Critical default-value corrections (16 items, applied at port)
 
 These are applied directly in the v3 `DEFAULTS` dicts. Each inline comment in
 the relevant `parameters/<group>.py` module records the v1 original. Items 1.1
@@ -431,6 +431,89 @@ non-zero reaeration on a representative stream.
   `tests/test_5_pom_calculations_v2.py::test_phase9fa_vb_value_pinned`
   and `test_phase9fa_vb_dimensional_smell_test`.
 
+### 1.15 `apx` pathogen sunlight-inactivation efficiency (Phase 9.F.B fix)
+- **Module:** `parameters/pathogen.py`
+- **v1 default:** `1.0` placeholder (no literature basis)
+- **Fortran default:** `1.0` placeholder (same; no literature basis)
+- **Pre-9.F.B v3 default:** `1.0` (inherited from v1)
+- **Phase 9.F.B v3 default:** `0.017` (W/m^2)^-1 d^-1
+- **Rationale:** Phase 9.F research (`docs/clearwater_modules_v3_nsm1_research_2_4_pathogen.md`)
+  identified Auer & Niehaus (1993, *Wat. Res.* 27(4):693-701) as the
+  canonical literature anchor for pathogen sunlight inactivation:
+  alpha = 0.00824 cm^2/cal in cgs units, equivalent to **0.017
+  (W/m^2)^-1 d^-1** in SI. This is the value Chapra (1997, *Surface
+  Water-Quality Modeling*, McGraw-Hill, Ch. 33) cites in the chapter
+  that the legacy NSM1 Fortran source (`modPathogen.f90:90`)
+  explicitly references; QUAL2K v2.11b8 §5.5.20.1 inherits the same
+  formulation. Mancini (1978) reports a ~5x higher composite value
+  (~0.085 (W/m^2)^-1 d^-1) from a multi-study synthesis; both Auer
+  /Niehaus and Mancini are within plausible literature scatter.
+
+  The v1 docstring claim that `apx` is "dimensionless" was
+  dimensionally incorrect: the rate-balance
+  ``[1/d] = apx * q_solar * (dimensionless optical factor)`` requires
+  ``apx`` to carry units ``(W/m^2)^-1 d^-1`` because v3 (and v1, and
+  Fortran) consume `q_solar` in W/m^2. The placeholder
+  ``apx = 1.0`` masked this dimensional inconsistency.
+
+  Coordinated change: Phase 9.F.B also reverts the Phase 3.1
+  substitution ``I0 = q_solar * Fr_PAR`` in
+  ``processes/pathogen.py:_rate_light_decay`` and uses total broadband
+  ``q_solar`` directly. Pathogen inactivation is largely UVA/UVB-
+  mediated, not PAR-mediated, so the PAR substitution was a
+  v3-introduced deviation from the canonical formulation. With the
+  PAR substitution removed, the new default ``apx = 0.017`` ties
+  directly to the canonical Auer/Niehaus calibration without any
+  ``1/Fr_PAR`` pre-multiplication.
+
+  Calibration impact: at the corrected default, the magnitude of the
+  light-induced decay term changes substantially from the placeholder
+  baseline (the magnitude of the placeholder rate was effectively
+  unbounded by literature; users of v1-calibrated configurations
+  likely already overrode ``apx`` to reasonable values for their
+  site). v1-calibrated simulations that explicitly set ``apx`` will
+  continue to work; users who relied on the unphysical ``apx = 1.0``
+  default should expect light-decay rates to drop by ~60x at typical
+  surface irradiances (500 W/m^2).
+
+  Regression coverage in
+  `tests/test_5_pathogen_calculations_v2.py::test_phase9fb_apx_canonical_value_pinned`
+  and `test_phase9fb_light_decay_uses_raw_q_solar`.
+
+### 1.16 `vx` pathogen settling velocity (Phase 9.F.B fix)
+- **Module:** `parameters/pathogen.py`
+- **v1 default:** `1.0` placeholder (no literature basis); also
+  carries an incorrect "(m)" units docstring (should be m/d)
+- **Fortran default:** `1.0` placeholder (same)
+- **Pre-9.F.B v3 default:** `1.0` (inherited from v1)
+- **Phase 9.F.B v3 default:** `1.38` m/d
+- **Rationale:** Phase 9.F research identified Auer & Niehaus (1993)
+  as the canonical literature anchor: ``vx = 1.38 m/d``, sediment-trap
+  measurement of particle-associated fecal coliform in Onondaga Lake.
+  This is the value cited by Chapra (1997, Ch. 33), QUAL2K v2.11b8,
+  and adopted in subsequent modeling studies (Steets & Holden 2003
+  range: 1.0-1.6 m/d). Bowie et al. (1985) compilation reports a
+  0.5-2.5 m/d typical range across studies, bracketing the canonical
+  1.38 m/d value. Garcia-Armisen & Servais (2009) particle-class
+  settling rates (1.17 m/d small, 2.40 m/d large) further bracket the
+  composite value.
+
+  No formula change required, only the numerical default and a
+  docstring fix (the v3 parameter library already labeled units as
+  m/d correctly, but the v1 ``processes.py:3196`` docstring's "(m)"
+  typo was carried into early v3 docstring drafts and is now
+  corrected).
+
+  Calibration impact: at the corrected default, the settling-loss
+  term ``vx / depth * PX`` increases by ~38% relative to the
+  placeholder baseline (`1.38 / 1.0`). v1-calibrated simulations that
+  explicitly set ``vx`` are unaffected; users who relied on the
+  ``vx = 1.0`` default should expect a modest increase in pathogen
+  loss at all depths.
+
+  Regression coverage in
+  `tests/test_5_pathogen_calculations_v2.py::test_phase9fb_vx_canonical_value_pinned`.
+
 ---
 
 ## Section 2: Lower-priority audit findings under review (8 items)
@@ -472,14 +555,21 @@ Disposition for each is described below.
 - **Disposition (v3 1.0.0):** Kept at zero pending clarification from
   LimnoTech on the intended interpretation of CBOD groups in NSM1.
 
-### 2.4 `apx=1`, `vx=1` — pathogen placeholder values
+### 2.4 `apx=1`, `vx=1` — pathogen placeholder values — RESOLVED in Phase 9.F.B
+
+(Originally flagged here in Phase 0 as "no documented literature basis;
+likely placeholder values inherited from v1.")
+
 - **Module:** `parameters/pathogen.py`
-- **Issue:** Both pathogen production/coupling (`apx`) and settling velocity
-  (`vx`) are set to 1.0 with no documented literature basis. Likely
-  placeholder values inherited from v1.
-- **Disposition (v3 1.0.0):** Kept as-is; updating defaults to literature-
-  backed values is deferred to a future audit pending site-specific
-  pathogen-tracer studies.
+- **Resolution (Phase 9.F.B):** Replaced both placeholders with the
+  canonical Auer & Niehaus (1993) / Chapra (1997) values cited by
+  QUAL2K and the Fortran source. ``apx = 0.017 (W/m^2)^-1 d^-1`` and
+  ``vx = 1.38 m/d``. Coordinated with reverting the Phase 3.1
+  substitution ``I0 = q_solar * Fr_PAR`` in ``_rate_light_decay`` so
+  that ``apx`` ties directly to the canonical calibration on total
+  broadband solar radiation. Full rationale in Section 1.15 (apx) and
+  Section 1.16 (vx); Phase 9.F research record in
+  ``docs/clearwater_modules_v3_nsm1_research_2_4_pathogen.md``.
 
 ### 2.5 `h2=0.1` — POM dissolution depth denominator
 - **Module:** `parameters/pom.py`
