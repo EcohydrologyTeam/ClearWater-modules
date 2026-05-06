@@ -372,7 +372,7 @@ def test_F2_helper_returns_correct_ramp_when_active():
     )
     # Shallow cell: depth = 0.05 m, ramp_ref = 0.3 m -> ramp = 1/6
     inputs = _method_kwargs(volume=5.0, surface_area=100.0)  # depth = 0.05 m
-    delta, ramp, clip_ratio = t._temperature_change_with_factors(**inputs)
+    delta, ramp, clip_ratio, _components = t._temperature_change_with_factors(**inputs)
     expected_ramp = 0.05 / 0.3
     assert _scalar(ramp) == pytest.approx(expected_ramp, rel=1e-12)
     # Cap disabled -> clip_ratio is 1.0 everywhere.
@@ -390,7 +390,7 @@ def test_F2_helper_returns_ramp_one_when_disabled_or_deep():
         dTdt_max_per_hour=float("inf"),
     )
     inputs = _method_kwargs(volume=5.0, surface_area=100.0)  # would be shallow if active
-    _, ramp, _ = t_disabled._temperature_change_with_factors(**inputs)
+    _, ramp, _, _components = t_disabled._temperature_change_with_factors(**inputs)
     assert _scalar(ramp) == pytest.approx(1.0)
 
     # Deep cell with ramp enabled
@@ -401,7 +401,7 @@ def test_F2_helper_returns_ramp_one_when_disabled_or_deep():
         dTdt_max_per_hour=float("inf"),
     )
     deep = _method_kwargs(volume=1000.0, surface_area=100.0)  # depth = 10 m, ramp clamped to 1
-    _, ramp, _ = t_active._temperature_change_with_factors(**deep)
+    _, ramp, _, _components = t_active._temperature_change_with_factors(**deep)
     assert _scalar(ramp) == pytest.approx(1.0)
 
 
@@ -419,7 +419,7 @@ def test_F2_helper_returns_clip_ratio_when_cap_fires():
         dTdt_max_per_hour=0.01,             # very tight cap
     )
     inputs = _method_kwargs(T_water=10.0, T_sed=30.0, volume=100.0, surface_area=100.0)
-    delta, ramp, clip_ratio = t._temperature_change_with_factors(**inputs)
+    delta, ramp, clip_ratio, _components = t._temperature_change_with_factors(**inputs)
     cap_value = 0.01 * (5.0 / 60.0)
     delta_v = _scalar(delta)
     clip_v = _scalar(clip_ratio)
@@ -586,7 +586,7 @@ def test_F2_sediment_delta_scales_by_ramp_and_clip_ratio_in_run():
         T_water=T_water, T_sed=T_sed,
         surface_area=surface_area, volume=volume, h2=h2,
     )
-    _, ramp, clip_ratio = t._temperature_change_with_factors(**method_inputs)
+    _, ramp, clip_ratio, _components = t._temperature_change_with_factors(**method_inputs)
     expected_scaled_delta_T_sed = (
         delta_T_sed_unguarded * _scalar(ramp) * _scalar(clip_ratio)
     )

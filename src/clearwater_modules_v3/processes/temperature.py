@@ -266,6 +266,7 @@ class Temperature(Process):
             delta_water_temperature,
             ramp_factor,
             cap_clip_ratio,
+            components,
         ) = self._temperature_change_with_factors(
             water_temperature=water_temperature,
             surface_area=surface_area,
@@ -349,6 +350,52 @@ class Temperature(Process):
             )
             registry.set_at_time(
                 "sediment_temperature", time, updated_sediment_temperature
+            )
+
+        # Per-component flux diagnostics (audit 2026-05-05 open
+        # question 3). Cache on the process instance for sibling
+        # consumers, and write to the registry for any of these names
+        # the user has pre-registered. Matching N2.run's "only written
+        # when the registry knows the variable" pattern.
+        self.q_sensible = components["q_sensible"]
+        self.q_latent = components["q_latent"]
+        self.q_longwave_up = components["q_longwave_up"]
+        self.q_longwave_down = components["q_longwave_down"]
+        self.q_solar = components["q_solar"]
+        self.q_sediment = components["q_sediment"]
+        self.q_net = components["q_net"]
+        for diagnostic_name in (
+            "q_sensible",
+            "q_latent",
+            "q_longwave_up",
+            "q_longwave_down",
+            "q_solar",
+            "q_sediment",
+            "q_net",
+        ):
+            if diagnostic_name in registry:
+                registry.set_at_time(
+                    diagnostic_name, time, components[diagnostic_name]
+                )
+
+        # Equilibrium-temperature diagnostic (audit 2026-05-05 open
+        # question 2). Computed only when the user has pre-registered
+        # ``equilibrium_temperature`` in the registry, so the
+        # Newton-Raphson cost stays off the hot path otherwise. Cached
+        # on the process when computed.
+        if "equilibrium_temperature" in registry:
+            self.equilibrium_temperature_c = self.equilibrium_temperature(
+                cloudiness=cloudiness,
+                air_temperature=air_temperature,
+                solar_flux=solar_flux,
+                wind_speed=wind_speed,
+                atmospheric_pressure=atmospheric_pressure,
+                atmospheric_vapor_pressure=atmospheric_vapor_pressure,
+                sediment_temperature=sediment_temperature,
+                sediment_thickness=sediment_thickness,
+            )
+            registry.set_at_time(
+                "equilibrium_temperature", time, self.equilibrium_temperature_c
             )
 
     # ---------- Energy-balance fluxes ----------
@@ -517,7 +564,7 @@ class Temperature(Process):
         )
         return xr.where(sediment_thickness > 0.0, flux, 0.0)
 
-    def flux_net(
+    def flux_components(
         self,
         water_temperature: ArrayLike,
         cloudiness: ArrayLike,
@@ -528,8 +575,37 @@ class Temperature(Process):
         atmospheric_vapor_pressure: ArrayLike,
         sediment_temperature: ArrayLike,
         sediment_thickness: ArrayLike,
-    ) -> ArrayLike:
-        """Net heat flux (W/m^2)."""
+    ) -> dict:
+        """Return all per-component fluxes plus the net (W/m^2).
+
+        Audit 2026-05-05 open question 3 resolution. Returns a dict
+        with the seven Fortran-A pathway outputs (matching
+        ``modTemperature.f90`` ``q_*`` variables, the
+        ``TempPathwayOutput`` set):
+
+        * ``q_sensible``: sensible heat flux, signed by
+          ``T_air - T_water`` (positive = air heats water).
+        * ``q_latent``: latent heat flux **magnitude**, signed by
+          ``e_sat - e_air`` (positive = evaporation cools water).
+          Subtracted in ``q_net``.
+        * ``q_longwave_up``: upwelling longwave **magnitude**.
+          Subtracted in ``q_net``.
+        * ``q_longwave_down``: downwelling atmospheric longwave
+          **magnitude**. Added in ``q_net``.
+        * ``q_solar``: solar input (passthrough of the registry
+          forcing).
+        * ``q_sediment``: sediment heat flux, signed by
+          ``T_sed - T_water`` (positive = sediment heats water).
+        * ``q_net``: composition
+          ``q_sensible + q_solar + q_sediment + q_longwave_down -
+          q_longwave_up - q_latent``.
+
+        Useful for calibration and validation diagnostics. The values
+        are also cached on the process instance after each
+        ``Temperature.run`` substep (``self.q_sensible``,
+        ``self.q_latent``, etc.) and are written to the registry by
+        ``run`` for any of these names that the user has pre-registered.
+        """
         mixing_ratio_air = self.mixing_ratio_air(
             atmospheric_vapor_pressure, atmospheric_pressure
         )
@@ -556,14 +632,263 @@ class Temperature(Process):
         sediment = self.flux_sediment(
             water_temperature, sediment_temperature, sediment_thickness
         )
-        atmospheric = self.flux_atmospheric_longwave(air_temperature, cloudiness)
-        upwelling = self.flux_upwelling_longwave(water_temperature)
+        longwave_down = self.flux_atmospheric_longwave(air_temperature, cloudiness)
+        longwave_up = self.flux_upwelling_longwave(water_temperature)
         # Audit 2026-05-05 finding F-sign-convention: signs applied
         # here (composition-time) per the magnitudes-only convention
         # documented at the top of the energy-balance section. Matches
         # v1 ``tsm/processes.py:q_net`` and Fortran-A
         # ``modTemperature.f90:257``.
-        return sensible + solar_flux + sediment + atmospheric - upwelling - latent
+        net = (
+            sensible + solar_flux + sediment + longwave_down - longwave_up - latent
+        )
+        return {
+            "q_sensible": sensible,
+            "q_latent": latent,
+            "q_longwave_up": longwave_up,
+            "q_longwave_down": longwave_down,
+            "q_solar": solar_flux,
+            "q_sediment": sediment,
+            "q_net": net,
+        }
+
+    def flux_net(
+        self,
+        water_temperature: ArrayLike,
+        cloudiness: ArrayLike,
+        air_temperature: ArrayLike,
+        solar_flux: ArrayLike,
+        wind_speed: ArrayLike,
+        atmospheric_pressure: ArrayLike,
+        atmospheric_vapor_pressure: ArrayLike,
+        sediment_temperature: ArrayLike,
+        sediment_thickness: ArrayLike,
+    ) -> ArrayLike:
+        """Net heat flux (W/m^2). Backward-compat thin wrapper.
+
+        Returns the ``q_net`` value of :py:meth:`flux_components`. New
+        code wanting per-component diagnostics should call
+        ``flux_components`` directly.
+        """
+        components = self.flux_components(
+            water_temperature=water_temperature,
+            cloudiness=cloudiness,
+            air_temperature=air_temperature,
+            solar_flux=solar_flux,
+            wind_speed=wind_speed,
+            atmospheric_pressure=atmospheric_pressure,
+            atmospheric_vapor_pressure=atmospheric_vapor_pressure,
+            sediment_temperature=sediment_temperature,
+            sediment_thickness=sediment_thickness,
+        )
+        return components["q_net"]
+
+    # ---------- Equilibrium temperature (diagnostic) ----------
+
+    def equilibrium_temperature(
+        self,
+        cloudiness: ArrayLike,
+        air_temperature: ArrayLike,
+        solar_flux: ArrayLike,
+        wind_speed: ArrayLike,
+        atmospheric_pressure: ArrayLike,
+        atmospheric_vapor_pressure: ArrayLike,
+        sediment_temperature: ArrayLike,
+        sediment_thickness: ArrayLike,
+        max_iterations: int = 10,
+        tolerance_kelvin: float = 0.01,
+    ) -> ArrayLike:
+        """Equilibrium water temperature (deg C) for the current met
+        conditions.
+
+        Newton-Raphson root-finding for ``q_net(T_eq) = 0``: the
+        water temperature at which the surface net heat flux vanishes
+        under the current meteorological forcing and sediment state.
+        Diagnostic only — does not affect the model state.
+
+        Mirrors Fortran-A
+        ``modTemperature.f90:209-263``: starts from ``T_eq = T_air``
+        and iterates ``T_eq_next = T_eq - q_net / dq_net/dT`` for up
+        to ``max_iterations`` iterations or until the per-iteration
+        change satisfies ``|T_eq_next - T_eq| < tolerance_kelvin`` for
+        every cell. Per-iteration cost is one full flux evaluation
+        plus four analytic derivative evaluations
+        (``dq_longwave_up/dT``, ``dq_latent/dT``, ``dq_sensible/dT``,
+        ``dq_sediment/dT``). At default ``max_iterations = 10`` the
+        loop converges to machine precision for any realistic forcing
+        from the air-temperature initial guess.
+
+        Args:
+            cloudiness, air_temperature, solar_flux, wind_speed,
+            atmospheric_pressure, atmospheric_vapor_pressure,
+            sediment_temperature, sediment_thickness:
+                Same forcing variables consumed by
+                :py:meth:`flux_components`. ``solar_flux`` enters as
+                a constant in the equilibrium balance (independent of
+                ``T_eq``).
+            max_iterations: Newton-Raphson iteration cap. Default 10
+                matches Fortran-A.
+            tolerance_kelvin: Per-cell convergence threshold on the
+                iterate change. Default 0.01 K matches Fortran-A.
+
+        Returns:
+            Equilibrium temperature in deg C, same shape as the
+            forcing inputs.
+
+        Audit 2026-05-05 open question 2 resolution.
+        """
+        # Initial guess: T_eq = T_air. Use a copy when DataArray so
+        # we don't accidentally mutate the input registry slice on
+        # the first assignment.
+        if isinstance(air_temperature, xr.DataArray):
+            teq_c = air_temperature.copy()
+        else:
+            teq_c = float(air_temperature)
+
+        # Pre-compute air-side quantities that do NOT depend on T_eq.
+        # density_air uses air_temperature, so it is constant across
+        # iterations. We keep mixing_ratio_air and density_air outside
+        # the loop.
+        mixing_ratio_air = self.mixing_ratio_air(
+            atmospheric_vapor_pressure, atmospheric_pressure
+        )
+        density_air = self.density_air(
+            atmospheric_pressure, air_temperature, mixing_ratio_air
+        )
+        atmospheric_lw = self.flux_atmospheric_longwave(
+            air_temperature, cloudiness
+        )
+
+        for _ in range(max_iterations):
+            teq_k = conversions.celsius_to_kelvin(teq_c)
+            density_water = self.water_density(teq_c)
+            esat = self.saturation_vapor_pressure(teq_c)
+
+            # Sat-air density and Richardson are recomputed each
+            # iteration because they depend on teq_c.
+            density_air_sat = self.density_air_sat(teq_c, atmospheric_pressure)
+            _, ri_function = self.richardson_number(
+                wind_speed,
+                density_air_sat=density_air_sat,
+                density_air=density_air,
+            )
+            wind_fn = self.wind_function(wind_speed, ri_function)
+
+            # Flux components at the current iterate.
+            upwelling_lw = (
+                constants.EMISSIVITY_WATER * constants.STEFAN_BOLTZMANN * teq_k**4
+            )
+            sensible = (
+                self.air_diffusivity_ratio
+                * constants.AIR_SPECIFIC_HEAT
+                * density_water
+                * wind_fn
+                * (
+                    conversions.celsius_to_kelvin(air_temperature) - teq_k
+                )
+            )
+            lv = self.latent_heat_vaporization(teq_c)
+            latent = (
+                0.622
+                / atmospheric_pressure
+                * lv
+                * density_water
+                * wind_fn
+                * (esat - atmospheric_vapor_pressure)
+            )
+            sediment = self.flux_sediment(teq_c, sediment_temperature, sediment_thickness)
+
+            qnet = (
+                sensible
+                + solar_flux
+                + sediment
+                + atmospheric_lw
+                - upwelling_lw
+                - latent
+            )
+
+            # Analytic derivatives w.r.t. T_eq_K. Mirrors Fortran-A
+            # ``modTemperature.f90:225-249``. Approximations matching
+            # Fortran: ``Lv`` and ``density_water`` are taken as
+            # weakly T-dependent and their T-derivatives are dropped
+            # in ``d_latent_dT`` and ``d_sensible_dT``.
+            d_upwelling_dT = (
+                4.0
+                * constants.EMISSIVITY_WATER
+                * constants.STEFAN_BOLTZMANN
+                * teq_k**3
+            )
+            d_sensible_dT = (
+                -self.air_diffusivity_ratio
+                * constants.AIR_SPECIFIC_HEAT
+                * density_water
+                * wind_fn
+            )
+            # de_sat/dT_K — derivative of the Brutsaert polynomial.
+            d_esat_dT = (
+                self.__A1
+                + 2.0 * self.__A2 * teq_k
+                + 3.0 * self.__A3 * teq_k**2
+                + 4.0 * self.__A4 * teq_k**3
+                + 5.0 * self.__A5 * teq_k**4
+                + 6.0 * self.__A6 * teq_k**5
+            )
+            d_latent_dT = (
+                ri_function
+                * (0.622 / atmospheric_pressure)
+                * lv
+                * density_water
+                * (
+                    (self.wind_a / 1_000_000)
+                    + (self.wind_b / 1_000_000) * (wind_speed**self.wind_c)
+                )
+                * d_esat_dT
+            )
+            # Sediment derivative gated on use_sediment_temperature so
+            # disabled sediment runs see d_sediment/dT = 0 (matches
+            # Fortran's ``if (use_SedTemp)`` branch).
+            if self.use_sediment_temperature:
+                safe_thickness = xr.where(
+                    sediment_thickness > 0.0, sediment_thickness, 1.0
+                )
+                d_sediment_dT_active = -(
+                    self.sediment_density
+                    * self.sediment_specific_heat
+                    * self.sediment_diffusivity
+                    / 0.5
+                    / safe_thickness
+                    / 86400.0
+                )
+                d_sediment_dT = xr.where(
+                    sediment_thickness > 0.0, d_sediment_dT_active, 0.0
+                )
+            else:
+                d_sediment_dT = 0.0
+
+            d_qnet_dT = (
+                -d_upwelling_dT
+                - d_latent_dT
+                + d_sensible_dT
+                + d_sediment_dT
+            )
+
+            teq_next = teq_c - qnet / d_qnet_dT
+            # Vectorized convergence check: stop when every cell is
+            # within tolerance. Fortran-A's loop uses the same test
+            # at the abs-of-difference level.
+            if isinstance(teq_next, xr.DataArray):
+                converged = bool(
+                    (np.abs(teq_next - teq_c) < tolerance_kelvin).all().item()
+                )
+            else:
+                converged = bool(
+                    np.all(np.abs(np.asarray(teq_next) - np.asarray(teq_c)) < tolerance_kelvin)
+                )
+            teq_c = teq_next
+            if converged:
+                break
+
+        return teq_c
 
     # ---------- Thermodynamic state functions ----------
 
@@ -632,18 +957,20 @@ class Temperature(Process):
         (audit 2026-05-05 finding F2), see
         ``_temperature_change_with_factors`` and ``Temperature.run``.
         """
-        delta, _ramp, _clip_ratio = self._temperature_change_with_factors(
-            water_temperature=water_temperature,
-            surface_area=surface_area,
-            volume=volume,
-            cloudiness=cloudiness,
-            air_temperature=air_temperature,
-            solar_flux=solar_flux,
-            wind_speed=wind_speed,
-            sediment_temperature=sediment_temperature,
-            sediment_thickness=sediment_thickness,
-            atmospheric_pressure=atmospheric_pressure,
-            atmospheric_vapor_pressure=atmospheric_vapor_pressure,
+        delta, _ramp, _clip_ratio, _components = (
+            self._temperature_change_with_factors(
+                water_temperature=water_temperature,
+                surface_area=surface_area,
+                volume=volume,
+                cloudiness=cloudiness,
+                air_temperature=air_temperature,
+                solar_flux=solar_flux,
+                wind_speed=wind_speed,
+                sediment_temperature=sediment_temperature,
+                sediment_thickness=sediment_thickness,
+                atmospheric_pressure=atmospheric_pressure,
+                atmospheric_vapor_pressure=atmospheric_vapor_pressure,
+            )
         )
         return delta
 
@@ -663,7 +990,7 @@ class Temperature(Process):
     ) -> tuple:
         """Internal helper for ``Temperature.run`` (audit 2026-05-05 F2).
 
-        Returns ``(delta_water, ramp, clip_ratio)``:
+        Returns ``(delta_water, ramp, clip_ratio, components)``:
 
         - ``delta_water`` — the guarded per-substep water-T delta
           (Celsius), identical to ``temperature_change``'s public return.
@@ -675,6 +1002,11 @@ class Temperature(Process):
           imposed by the rate cap. ``1.0`` for cells where the cap did
           not fire; ``cap / |delta_unclipped|`` for cells where it did;
           always in ``[0, 1]``.
+        - ``components`` — the dict of per-component fluxes from
+          :py:meth:`flux_components` (audit 2026-05-05 open question
+          3). Returned alongside the delta/factors so ``run`` can
+          cache and optionally write them to the registry without
+          recomputing.
 
         The ``ramp`` and ``clip_ratio`` factors are exposed so
         ``Temperature.run`` can apply the same scaling to the
@@ -684,7 +1016,7 @@ class Temperature(Process):
         a one-way energy sink in shallow cells (audit finding F2,
         2026-05-05).
         """
-        flux_net = self.flux_net(
+        components = self.flux_components(
             water_temperature=water_temperature,
             cloudiness=cloudiness,
             air_temperature=air_temperature,
@@ -695,6 +1027,7 @@ class Temperature(Process):
             atmospheric_pressure=atmospheric_pressure,
             atmospheric_vapor_pressure=atmospheric_vapor_pressure,
         )
+        flux_net = components["q_net"]
 
         # Depth ramp.
         depth = xr.where(surface_area > 0.0, volume / surface_area, 0.0)
@@ -744,7 +1077,7 @@ class Temperature(Process):
             1.0,
         )
 
-        return delta_clipped, ramp, clip_ratio
+        return delta_clipped, ramp, clip_ratio, components
 
     def sediment_temperature_change(
         self,

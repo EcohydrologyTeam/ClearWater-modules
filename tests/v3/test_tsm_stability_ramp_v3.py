@@ -79,18 +79,37 @@ def _stub_temperature_change_inputs(
 
 
 def _patch_flux_net(temp: Temperature, monkeypatch, flux_w_per_m2):
-    """Replace ``flux_net`` with a stub that returns a known W/m^2 value
-    broadcast over the input cells. ``flux_w_per_m2`` may be a scalar
-    or a 1-D array matching the per-cell shape.
+    """Replace ``flux_components`` (and ``flux_net``) with stubs that
+    return a known W/m^2 value broadcast over the input cells.
+
+    ``_temperature_change_with_factors`` calls ``flux_components`` (audit
+    2026-05-05 open question 3 refactor). ``flux_net`` is a thin
+    wrapper kept for backward compat; we patch both so direct callers
+    of either method see the controlled value.
     """
 
-    def _stub(self, **kwargs):
+    def _stub_net(self, **kwargs):
         # Use water_temperature's shape as the broadcast template so the
         # output has matching dims for the downstream xr.where calls.
         wt = kwargs["water_temperature"]
         return xr.zeros_like(wt) + np.asarray(flux_w_per_m2)
 
-    monkeypatch.setattr(Temperature, "flux_net", _stub, raising=True)
+    def _stub_components(self, **kwargs):
+        wt = kwargs["water_temperature"]
+        zeros = xr.zeros_like(wt)
+        net = zeros + np.asarray(flux_w_per_m2)
+        return {
+            "q_sensible": zeros,
+            "q_latent": zeros,
+            "q_longwave_up": zeros,
+            "q_longwave_down": zeros,
+            "q_solar": zeros,
+            "q_sediment": zeros,
+            "q_net": net,
+        }
+
+    monkeypatch.setattr(Temperature, "flux_net", _stub_net, raising=True)
+    monkeypatch.setattr(Temperature, "flux_components", _stub_components, raising=True)
 
 
 # ---------------------------------------------------------------------------
