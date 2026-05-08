@@ -47,7 +47,7 @@ from clearwater_data.variables import Variable, VariableRegistry
 # been forked into v3). The process-construction and data-source-wiring
 # helpers were ported in-tree by the v3-self-sufficient refactor; see
 # the module-private functions further down in this file.
-from clearwater_modules_v2.config.read import read_config
+from clearwater_modules_v3.config.read import read_config
 
 from clearwater_modules_v3.model import Model
 from clearwater_modules_v3.processes.base import Process, ProcessFactory

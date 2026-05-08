@@ -6,6 +6,6 @@ and ``wet_mask``) without breaking backward compatibility with v2 configs.
 """
 
 from clearwater_modules_v3.config.init import init_from_file
-from clearwater_modules_v2.config.read import read_config
+from clearwater_modules_v3.config.read import read_config
 
 __all__ = ["init_from_file", "read_config"]

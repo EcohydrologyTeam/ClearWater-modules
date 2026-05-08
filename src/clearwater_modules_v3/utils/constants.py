@@ -1,20 +1,30 @@
 """v3 physical constants.
 
-Most constants re-export from v2. ``KELVIN_OFFSET`` is v3-native and
-follows the SI convention (273.15 K = 0 deg C); v2's
-``celsius_to_kelvin`` uses 273.16 (the triple point of water) for
-historical v1-utility-parity. v3 uses the SI value canonically. See
-``utils/conversions.py:celsius_to_kelvin`` for the C-to-K conversion
-function and ``design/clearwater_modules_v3_tsm_audit_2026-05-05.md``
-section 5 for the rationale.
+Constants are defined in-place. ``KELVIN_OFFSET`` follows the SI
+convention (273.15 K = 0 deg C); historical v1/v2 utilities used
+273.16 (the triple point of water) for v1-utility-parity. v3 uses the
+SI value canonically. See ``utils/conversions.py:celsius_to_kelvin``
+for the C-to-K conversion function and
+``design/clearwater_modules_v3_tsm_audit_2026-05-05.md`` section 5 for
+the rationale.
+
+The other physical constants (GRAVITY, STEFAN_BOLTZMANN,
+EMISSIVITY_WATER, AIR_SPECIFIC_HEAT) were originally inherited from v2
+by re-export; the v2-retirement refactor moved them in-tree.
 """
 
-from clearwater_modules_v2.utils.constants import (
-    AIR_SPECIFIC_HEAT,
-    EMISSIVITY_WATER,
-    GRAVITY,
-    STEFAN_BOLTZMANN,
-)
+GRAVITY: float = -9.806
+"""m/s^2; sign-convention is downward-positive in the TSM/NSM kinetics."""
+
+STEFAN_BOLTZMANN: float = 5.67e-8
+"""W/m^2/K^4. Note this is the truncated v1-parity value; the SI value
+is 5.670374e-8."""
+
+EMISSIVITY_WATER: float = 0.97
+"""Dimensionless. Used in the upwelling-longwave term."""
+
+AIR_SPECIFIC_HEAT: float = 1005.0
+"""J/(kg*K). Used in the sensible-heat flux term."""
 
 KELVIN_OFFSET: float = 273.15
 """SI definition of the absolute-temperature offset for 0 deg C.

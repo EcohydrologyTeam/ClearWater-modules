@@ -1,14 +1,13 @@
 """Shared pytest fixtures.
 
 Path shim: prepend the streaming-repo ``src/`` to ``sys.path`` so the
-local ``clearwater_modules_v2`` (with Phase 2.A/2.B fixes) and
-``clearwater_modules_v3`` are preferred over the conda env's editable
-install of ``clearwater_modules``, which points at a vendor copy
-elsewhere on disk that does NOT carry the streaming-repo work. This
-must run before any ``clearwater_modules_v2`` / ``clearwater_modules_v3``
-import in tests; placing it at the top of the root ``tests/conftest.py``
-ensures the path is in place before pytest collects any test file that
-imports from those packages.
+local ``clearwater_modules_v3`` is preferred over the conda env's
+editable install of ``clearwater_modules``, which points at a vendor
+copy elsewhere on disk that does NOT carry the streaming-repo work.
+This must run before any ``clearwater_modules_v3`` import in tests;
+placing it at the top of the root ``tests/conftest.py`` ensures the
+path is in place before pytest collects any test file that imports
+from the package.
 """
 import sys
 from pathlib import Path
