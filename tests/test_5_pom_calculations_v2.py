@@ -23,8 +23,8 @@ import pytest
 import xarray as xr
 
 from clearwater_modules.nsm1 import processes as v1
-from clearwater_modules_v2.processes.benthic_algae import BenthicAlgae
-from clearwater_modules_v2.processes.floating_algae import FloatingAlgae
+from clearwater_modules_v3.processes.benthic_algae import BenthicAlgae
+from clearwater_modules_v3.processes.floating_algae import FloatingAlgae
 from clearwater_modules_v3.processes.pom import POM
 
 
