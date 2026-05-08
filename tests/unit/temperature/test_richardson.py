@@ -1,5 +1,5 @@
 import pytest
-from clearwater_modules_v2.processes import Temperature
+from clearwater_modules_v3.processes.temperature import Temperature
 
 import xarray as xr
 
