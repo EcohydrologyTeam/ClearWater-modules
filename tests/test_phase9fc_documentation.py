@@ -103,7 +103,7 @@ def test_ksbod_fixme_cleared():
 def test_nitrogen_use_sedflux_true_raises_notimplementederror():
     """Section 2.1 / Option B: Nitrogen(parameters={'use_SedFlux': True})
     raises NotImplementedError to prevent silent partial behavior."""
-    from clearwater_modules_v2.processes.nitrogen import Nitrogen
+    from clearwater_modules_v3.processes.nitrogen import Nitrogen
 
     with pytest.raises(NotImplementedError) as excinfo:
         Nitrogen(parameters={"use_SedFlux": True})
@@ -116,7 +116,7 @@ def test_nitrogen_use_sedflux_false_constructs_normally():
     """Section 2.1: Nitrogen(parameters={'use_SedFlux': False}) and
     Nitrogen() with no params should both construct without raising
     (the guard fires only on the True opt-in)."""
-    from clearwater_modules_v2.processes.nitrogen import Nitrogen
+    from clearwater_modules_v3.processes.nitrogen import Nitrogen
 
     Nitrogen(parameters={"use_SedFlux": False})
     Nitrogen()
