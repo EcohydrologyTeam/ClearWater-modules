@@ -16,10 +16,14 @@ wet_mask:                     # optional
 When neither key is present, v3 behavior matches v2 exactly: every
 existing v2 configuration runs against v3 unchanged.
 
-Implementation reuses v2's helper functions (process construction, data
-source construction, variable map parsing) so v3 inherits any changes
-LimnoTech makes to those helpers. v3 only owns the entry-point wrapper
-and the construction of v3 ``Model``.
+Implementation. v3 owns the process and data-source wiring directly via
+the module-private helpers ``_init_processes``, ``_init_model_data``,
+``_init_data_sources``, ``_parse_variable_map``, and
+``_rename_parameter``. These were originally lifted from v2 and v3
+reused them by attribute lookup; the v3-self-sufficient refactor moved
+them in-tree so the v3 config layer is independent of
+``clearwater_modules_v2.config.init``. Process instantiation goes
+through ``clearwater_modules_v3.processes.base.ProcessFactory``.
 """
 
 from __future__ import annotations
@@ -31,18 +35,22 @@ from pathlib import Path
 import pandas as pd
 import xarray as xr
 
+from clearwater_data.custom_types import ArrayLike
 from clearwater_data.io.base import ChunkedDataSource, DataSource
+from clearwater_data.io.csv import CSVDataSource
+from clearwater_data.io.float import FloatDataSource
 from clearwater_data.io.pathing import resolve_path
-from clearwater_data.io.zarr import ZarrDataSource
-from clearwater_data.variables import VariableRegistry
+from clearwater_data.io.zarr import ZarrDataSource, ZarrDataStore
+from clearwater_data.variables import Variable, VariableRegistry
 
-# v2 helpers are still authoritative for process construction, data-source
-# wiring, and variable-map parsing. v3 reuses them so it inherits any
-# upstream improvements without forking the implementation.
-from clearwater_modules_v2.config import init as _v2_init
+# read_config is still reused from v2 (YAML parsing helper that has not
+# been forked into v3). The process-construction and data-source-wiring
+# helpers were ported in-tree by the v3-self-sufficient refactor; see
+# the module-private functions further down in this file.
 from clearwater_modules_v2.config.read import read_config
 
 from clearwater_modules_v3.model import Model
+from clearwater_modules_v3.processes.base import Process, ProcessFactory
 
 
 def init_from_file(file_path: Path | str) -> Model:
@@ -135,21 +143,14 @@ def init_from_config(config: dict) -> Model:
 
     variable_registry = VariableRegistry()
 
-    # Process and data-source wiring through v2's helpers. v2's helpers are
-    # double-underscore-prefixed at module level (private by convention,
-    # but module-level dunder names are NOT class-mangled, so they are
-    # accessible from here via direct attribute access). v3 reuses them
-    # rather than forking so any LimnoTech changes to those helpers flow
-    # through to v3 unchanged. See finding C9 in
-    # design/clearwater_modules_v3_review_findings.md for context.
-    init_processes = _resolve_v2_helper("__init_processes")
-    init_model_data = _resolve_v2_helper("__init_model_data")
-
-    processes = init_processes(
+    # Process and data-source wiring through v3-native helpers. These were
+    # originally reused from v2 via attribute lookup; the v3-self-sufficient
+    # refactor ported them in-tree (see the module-private helpers below).
+    processes = _init_processes(
         config, variable_registry, default_time_step=time_step
     )
     variables = {v for p in processes for v in p.variables}
-    variable_data_sources = init_model_data(
+    variable_data_sources = _init_model_data(
         config=config,
         variables=variables,
         start_time=start_time,
@@ -311,26 +312,189 @@ def _resolve_wet_mask(
     return (variable, threshold)
 
 
-def _resolve_v2_helper(name: str):
-    """Resolve a helper function on the v2 init module by exact name.
+def _init_processes(
+    config: dict,
+    variable_registry: VariableRegistry,
+    default_time_step: timedelta,
+) -> list[Process]:
+    """Construct Process instances from the YAML ``processes:`` block.
 
-    v2's helpers use leading double-underscore names at module scope.
-    Python name-mangling applies only inside class bodies, so module-level
-    ``__init_processes`` is exposed under that exact attribute name. v3
-    looks the helper up directly so any rename or removal upstream
-    surfaces as a loud, descriptive ``AttributeError`` at startup rather
-    than as a silent failure mid-simulation. See finding C9 in
-    design/clearwater_modules_v3_review_findings.md.
+    Routes through ``ProcessFactory.from_config`` keyed on the process
+    name. ``riverine`` is special-cased to receive the model-level
+    ``start_datetime`` / ``end_datetime`` because the underlying
+    ``ClearwaterRiverine`` is a standalone solver that needs the time
+    range up front; all other Process classes derive time information
+    from the registry and the per-substep ``time`` argument to ``run``.
+
+    Originally lifted verbatim from
+    ``clearwater_modules_v2.config.init.__init_processes``; the
+    v3-self-sufficient refactor moved it in-tree and changed
+    ``ProcessFactory`` to come from
+    ``clearwater_modules_v3.processes.base`` so v3 owns its own factory
+    registry.
     """
-    try:
-        return getattr(_v2_init, name)
-    except AttributeError as exc:
-        raise AttributeError(
-            f"v3 expected `{name}` on clearwater_modules_v2.config.init; "
-            f"if v2 has been refactored, update v3's reuse contract in "
-            f"clearwater_modules_v3/config/init.py and "
-            f"tests/v3/test_v2_helper_contract.py."
-        ) from exc
+    process_instances: list[Process] = []
+    for process_spec in config["processes"]:
+        process_name, process_config = (
+            *process_spec.keys(),
+            *process_spec.values(),
+        )
+
+        process_config = process_config if process_config is not None else {}
+        if "time_step" not in process_config:
+            process_config["time_step"] = default_time_step
+        if not isinstance(process_config["time_step"], timedelta):
+            process_config["time_step"] = pd.to_timedelta(
+                process_config["time_step"]
+            )
+
+        # riverine is a standalone solver and needs the datetime range
+        # from the model config.
+        if process_name.lower() == "riverine":
+            process_config["start_datetime"] = pd.to_datetime(
+                config["model"]["start_datetime"]
+            )
+            process_config["end_datetime"] = pd.to_datetime(
+                config["model"]["end_datetime"]
+            )
+
+        process_instance = ProcessFactory.from_config(
+            process_name, process_config, variable_registry
+        )
+        process_instances.append(process_instance)
+
+    return process_instances
+
+
+def _init_model_data(
+    config: dict,
+    variables: set[str],
+    start_time: datetime,
+    end_time: datetime,
+    time_step: timedelta,
+) -> dict[str, DataSource | ChunkedDataSource]:
+    """Wire raw data sources into a model-input zarr store and per-variable
+    DataSource handles.
+
+    For each variable consumed by any Process, locate its source in the
+    YAML ``data_sources:`` block, read the raw values, resample to the
+    model time step, and write into a per-simulation zarr store. The
+    result is a dict mapping variable names to DataSource instances that
+    the Model uses for time-indexed reads at run time.
+
+    Float data sources bypass the zarr store and are passed through as
+    direct DataSource objects (constants don't need resampling).
+
+    Originally lifted verbatim from
+    ``clearwater_modules_v2.config.init.__init_model_data``.
+    """
+    sources = _init_data_sources(config)
+    source_variable_map = _parse_variable_map(config["variable_map"])
+
+    data_store = ZarrDataStore(
+        store_path=config["model"]["simulation_directory"] / "model_inputs.zarr",
+        start_date=start_time,
+        end_date=end_time,
+        time_step=time_step,
+        variables=variables,
+    )
+
+    model_input_data_source = ZarrDataSource(store_path=data_store.store_path)
+
+    variable_data_sources: dict[str, DataSource | ChunkedDataSource] = {}
+
+    for source_name, variable_parameter_map in source_variable_map.items():
+        if source_name not in sources:
+            raise KeyError(f"Source {source_name} not found in configuration")
+
+        source = sources[source_name]
+        if isinstance(source, FloatDataSource):
+            variable_data_sources[source_name] = source
+            continue
+
+        for variable_name, parameter_name in variable_parameter_map.items():
+            if variable_name not in variables:
+                warnings.warn(
+                    f"Variable not required for any processes: {variable_name} "
+                    f"will not be written to the data store"
+                )
+                continue
+
+            data = source.read(parameter_name)
+            data.subset_time(start_time, end_time)
+            data.resample(new_time_frequency=time_step)
+            data = _rename_parameter(
+                variable=data,
+                parameter_name=parameter_name,
+                variable_name=variable_name,
+            )
+            data_store.write(data, variable_name)
+            variable_data_sources[variable_name] = model_input_data_source
+
+    return variable_data_sources
+
+
+def _parse_variable_map(
+    variable_map: dict[str, str],
+) -> dict[str, dict[str, str | None]]:
+    """Convert the user-facing ``variable_map`` block to a source-keyed dict.
+
+    The YAML's ``variable_map`` is keyed by variable name and values
+    are ``"source_name|parameter_name"`` strings (or just ``"source_name"``
+    if the source uses the same name for the parameter). This helper
+    inverts the mapping so the caller can iterate by source.
+    """
+    parsed_map: dict[str, dict[str, str | None]] = {}
+    for variable_name, source_specification in variable_map.items():
+        if len(source_specification.split("|")) == 2:
+            source_name, parameter_name = source_specification.split("|")
+        else:
+            source_name, parameter_name = source_specification, None
+
+        if parsed_map.get(source_name) is None:
+            parsed_map[source_name] = {}
+        parsed_map[source_name][variable_name] = parameter_name
+
+    return parsed_map
+
+
+def _init_data_sources(config: dict) -> dict[str, DataSource]:
+    """Instantiate the DataSource subclasses listed in ``data_sources:``.
+
+    Currently supports ``csv`` and ``float`` providers. Source names
+    cannot contain ``|`` (that character is reserved for the
+    ``variable_map`` parser).
+    """
+    data_source: dict[str, DataSource] = {}
+    for source_name, source_config in config["data_sources"].items():
+        provider_name = source_config["provider"]
+        if "|" in source_name:
+            raise ValueError(
+                f"Invalid source name: {source_name}. Source names cannot "
+                f"contain the '|' character."
+            )
+        if provider_name.lower() == "csv":
+            data_source[source_name] = CSVDataSource(**source_config["data"])
+        elif provider_name.lower() == "float":
+            data_source[source_name] = FloatDataSource(**source_config["data"])
+        else:
+            raise ValueError(
+                f"Unknown data or unsupported data provider type: "
+                f"`{provider_name}` for data_source {source_name}"
+            )
+    return data_source
+
+
+def _rename_parameter(
+    variable: Variable,
+    parameter_name: str,
+    variable_name: str,
+) -> ArrayLike:
+    """Rename a raw variable's data to the canonical model-side name."""
+    if isinstance(variable.get(), xr.Dataset):
+        return variable.get().rename({parameter_name: variable_name})
+    elif isinstance(variable.get(), xr.DataArray):
+        return variable.get().rename(variable_name)
 
 
 __all__ = ["init_from_file", "init_from_config"]
