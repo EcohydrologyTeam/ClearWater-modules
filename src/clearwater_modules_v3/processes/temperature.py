@@ -22,6 +22,7 @@ References:
 """
 
 from datetime import datetime, timedelta
+import warnings
 
 import numpy as np
 import xarray as xr
@@ -89,7 +90,10 @@ class Temperature(Process):
         self,
         wind_a: float = 0.3,
         wind_b: float = 1.5,
-        wind_c: float = 3.0,
+        wind_c: float = 2.0,
+        wind_input_height: float = 2.0,
+        surface_z0: float = 0.001,
+        wind_shelter: float = 1.0,
         sediment_density: ArrayLike = 1600.0,
         sediment_specific_heat: float = 1673.0,
         air_diffusivity_ratio: float = 1.0,
@@ -107,21 +111,93 @@ class Temperature(Process):
                 Edinger, Brady & Geyer (1974) form
                 ``f(W) = (a + b * W^c) / 1e6`` (multiplied internally
                 by the Richardson stability function in
-                :py:meth:`wind_function`). Defaults are ``a = 0.3``,
-                ``b = 1.5``, ``c = 3.0`` — the calibration values
-                inherited from v1 ``clearwater_modules.tsm.constants``,
-                used across QUAL2K, CE-QUAL-W2, and HEC-RAS-WQ
-                derivatives. Pass any subset to override per-instance;
-                YAML configs may also override via the ``wind_a /
-                wind_b / wind_c`` keys at ``init_from_file`` time.
+                :py:meth:`wind_function`). Defaults are
+                ``a = 0.3, b = 1.5, c = 2.0``.
 
-                Reference: Edinger, J.E., D.K. Brady, and J.C. Geyer
-                (1974), *Heat exchange and transport in the
-                environment*, Report 14, Cooling Water Discharge
-                Research Project (RP-49), Electric Power Research
-                Institute, Palo Alto, CA, 125 pp. (Audit 2026-05-05
-                open question 4: prior code lineage carried no
-                citation; recovered and added here.)
+                The exponent ``c = 2.0`` (quadratic in wind) matches the
+                explicit default in the CE-QUAL-W2 user manual
+                (``AFW / BFW / CFW = 9.2 / 0.46 / 2.0``) and the
+                QUAL2K Brady-Graves-Geyer default
+                (``19.0 / 0.95 / 2.0``, different unit system, same
+                exponent). All seven example case studies shipped with
+                CE-QUAL-W2 — including Spokane River, Columbia Slough
+                Estuary, Detroit, DeGray, Long Lake, Bonneville Dam,
+                and Berlin Milton — use ``CFW = 2.0`` regardless of
+                waterbody type. River-specific tuning in W2 is done
+                via the per-segment wind shelter coefficient
+                (``WSC(I)``), not via different wind-function
+                exponents.
+
+                The v3 magnitude coefficients ``a = 0.3, b = 1.5`` are
+                inherited from v1's ``clearwater_modules.tsm.constants``
+                and use the v3 ``/1e6`` normalisation. They are **not**
+                directly interchangeable with W2's SI values
+                (``9.2 / 0.46``) — the units bake the normalisation
+                into the coefficients. A focused calibration study to
+                revisit ``a`` and ``b`` against observation is tracked
+                as future work.
+
+                ``wind_c`` is validated: values not in ``{1.0, 2.0}``
+                emit a ``UserWarning``, and values outside
+                ``(0.0, 3.0]`` raise ``ValueError``. ``c = 3.0`` is
+                allowed at the upper bound for back-compat with
+                explicit opt-ins from runs that have already been
+                calibrated against the prior v3 default.
+
+                Pass any subset to override per-instance; YAML configs
+                may also override via ``wind_a / wind_b / wind_c`` keys
+                at ``init_from_file`` time.
+
+                References:
+
+                * Edinger, J.E., D.K. Brady, and J.C. Geyer (1974),
+                  *Heat exchange and transport in the environment*,
+                  Report 14, Cooling Water Discharge Research Project
+                  (RP-49), Electric Power Research Institute, Palo
+                  Alto, CA, 125 pp.
+                * Brady, D.K., W.L. Graves, and J.C. Geyer (1969),
+                  *Surface heat exchange at power plant cooling
+                  lakes*, Cooling Water Discharge Research Project
+                  Report 5, Edison Electric Institute, New York.
+                * CE-QUAL-W2 User Manual, AFW/BFW/CFW default entries.
+                * Chapra, S.C. (2008), *QUAL2K User Manual*,
+                  §4.1.4 wind function ``f(Uw)``.
+                * ``design/clearwater_modules_v3_tsm_wind_function_specification.md``
+                  in this repo (full spec with W2 source citations and
+                  case-study sensitivity sweep).
+            wind_input_height: Height (m) above the water surface at
+                which the application's ``wind_speed`` registry
+                variable was measured. Default ``2.0`` (no correction),
+                matching the Edinger 1974 / CE-QUAL-W2 convention. Set
+                to ``10.0`` when registering raw ASOS / METAR /
+                GridMET / NLDAS wind without external pre-correction.
+                The log-law conversion uses ``surface_z0`` (default
+                ``0.001`` m, typical for open water) per
+                ``U_2 / U_z = ln(2 / z0) / ln(z / z0)``. For ASOS
+                over a flat airfield (i.e., not over the water
+                surface itself) the user should additionally apply an
+                airfield-to-water roughness correction at the
+                application layer; the in-module log-law assumes the
+                wind was measured above the same surface as the
+                receiving water.
+            surface_z0: Roughness length (m) of the water surface,
+                used by the in-module log-law height correction when
+                ``wind_input_height != 2.0``. Default ``0.001`` m.
+                Larger values (e.g., ``0.003`` m) are sometimes used
+                for smoother-water regimes; sensitivity is small.
+            wind_shelter: Scalar wind shelter coefficient applied to
+                ``wind_speed`` before the Edinger formula and before
+                any height correction. Default ``1.0`` (no shelter).
+                Values < 1 represent canopy or topographic wind
+                reduction; typical W2 values are ``1.0`` (open lake),
+                ``0.85-0.90`` (open river / reservoir), ``0.5-0.85``
+                (narrow channel with riparian canopy), ``0.3-0.5``
+                (heavily shaded backwater). Mirrors CE-QUAL-W2's
+                ``WSC(I)`` per-segment shelter coefficient (see
+                ``w2_4_unix.f90:480``). For per-cell shelter,
+                register ``wind_shelter_coefficient`` as an optional
+                forcing variable in the registry; the registry value
+                overrides this constructor scalar when present.
             sediment_density: Sediment bulk density (kg/m^3). Fortran
                 default ``pb = 1600``; matches v1.
             sediment_specific_heat: Sediment specific heat (J/kg/C).
@@ -158,11 +234,30 @@ class Temperature(Process):
                 ``float("inf")`` to disable.
         """
         # Wind-function parameters (Edinger, Brady & Geyer 1974). v3
-        # defaults are ``0.3 / 1.5 / 3.0`` per the constructor docstring;
-        # callers may override per-instance or via YAML at config time.
+        # defaults are ``0.3 / 1.5 / 2.0`` per the constructor docstring;
+        # ``c = 2.0`` matches the CE-QUAL-W2 manual default and the
+        # QUAL2K Brady-Graves-Geyer default. Callers may override
+        # per-instance or via YAML at config time. See
+        # design/clearwater_modules_v3_tsm_wind_function_specification.md.
         self.wind_a = wind_a
         self.wind_b = wind_b
         self.wind_c = wind_c
+        # Wind input transforms: log-law height correction +
+        # wind-shelter scalar. Mirrors CE-QUAL-W2's
+        # ``WIND2(I) = WIND(JW) * WSC(I) * log_law`` pre-correction
+        # at ``w2_4_unix.f90:480``. The composition
+        # ``raw_wind * shelter * height_factor`` is applied in
+        # :py:meth:`wind_function` (and in the equilibrium-temperature
+        # Newton-Raphson iteration which also goes through that
+        # method). Default values (``input_height=2.0``,
+        # ``z0=0.001``, ``shelter=1.0``) make the transforms a no-op.
+        self.wind_input_height = wind_input_height
+        self.surface_z0 = surface_z0
+        self.wind_shelter = wind_shelter
+        # Per-cell shelter cache populated in :py:meth:`run` if the
+        # registry has a ``wind_shelter_coefficient`` forcing variable;
+        # ``None`` means "fall back to the scalar ``self.wind_shelter``".
+        self._cached_shelter: ArrayLike | None = None
         self.sediment_density = sediment_density
         self.sediment_specific_heat = sediment_specific_heat
         self.air_diffusivity_ratio = air_diffusivity_ratio
@@ -191,6 +286,83 @@ class Temperature(Process):
             raise ValueError(
                 f"dTdt_max_per_hour must be > 0.0 (set float('inf') to disable); "
                 f"got {dTdt_max_per_hour!r}"
+            )
+
+        # Validate ``wind_c`` against the literature reference family.
+        # CE-QUAL-W2's manual default is ``CFW = 2.0`` and the source
+        # supports ``CFW in {1.0, 2.0}`` (``heat-exchange.f90:78``
+        # comment "CFW not determined for other values of CFW"). v3
+        # defaults to ``2.0`` and warns outside ``{1.0, 2.0}``; values
+        # outside ``(0.0, 3.0]`` are physically indefensible and are
+        # rejected. ``c = 3.0`` is allowed at the upper bound for
+        # back-compat with explicit opt-ins from runs calibrated
+        # against the prior v3 default.
+        if not (0.0 < wind_c <= 3.0):
+            raise ValueError(
+                f"wind_c must be in (0.0, 3.0]; got {wind_c!r}"
+            )
+        if wind_c not in (1.0, 2.0):
+            warnings.warn(
+                f"wind_c = {wind_c} is outside the values supported by "
+                f"the Edinger family of wind-function parameterisations. "
+                f"CE-QUAL-W2 explicitly defaults to CFW = 2.0 and "
+                f"supports CFW = 1.0; the v3 default is c = 2.0. "
+                f"QUAL2K's Brady-Graves-Geyer default is also c = 2.0. "
+                f"Other values are flagged as 'CFW not determined' "
+                f"(W2 heat-exchange.f90:78). Coefficient `b` is "
+                f"unit-coupled to `c`; using a non-standard exponent "
+                f"without re-calibrating `b` will produce unphysical "
+                f"heat fluxes.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        # Validate ``wind_input_height`` and ``surface_z0``. The log-law
+        # correction ``log(2 / z0) / log(input_height / z0)`` requires
+        # both ``z0 > 0`` and ``input_height > z0`` (otherwise the
+        # logarithm denominators are non-positive or zero). Default
+        # ``input_height = 2.0`` makes the correction a no-op.
+        if not (np.isfinite(wind_input_height) and wind_input_height > 0.0):
+            raise ValueError(
+                f"wind_input_height must be > 0.0 and finite (m); "
+                f"got {wind_input_height!r}"
+            )
+        if not (np.isfinite(surface_z0) and surface_z0 > 0.0):
+            raise ValueError(
+                f"surface_z0 must be > 0.0 and finite (m); "
+                f"got {surface_z0!r}"
+            )
+        if surface_z0 >= wind_input_height:
+            raise ValueError(
+                f"surface_z0 must be strictly less than wind_input_height; "
+                f"got z0 = {surface_z0!r}, input_height = "
+                f"{wind_input_height!r}. The log-law correction "
+                f"log(2/z0) / log(input_height/z0) requires z0 < "
+                f"input_height for both logarithms to be finite and "
+                f"positive."
+            )
+
+        # Validate ``wind_shelter``. Must be > 0 (zero shuts off all
+        # wind-driven flux including the wind-independent ``a`` term
+        # via the ``wind_speed * shelter`` multiplication). Values >> 1
+        # are physically unusual but possible for funneled flow regimes
+        # so we warn rather than reject. CE-QUAL-W2 manual typical
+        # range: 0.3 (heavy shelter) to 1.0 (no shelter).
+        if not (np.isfinite(wind_shelter) and wind_shelter > 0.0):
+            raise ValueError(
+                f"wind_shelter must be > 0.0 and finite (set 1.0 for "
+                f"no sheltering); got {wind_shelter!r}"
+            )
+        if wind_shelter > 1.0:
+            warnings.warn(
+                f"wind_shelter = {wind_shelter} is greater than 1.0. "
+                f"CE-QUAL-W2 manual typical range is 0.3-1.0 "
+                f"(0.3 heavy shelter, 1.0 no shelter). Values above "
+                f"1.0 correspond to wind acceleration (e.g., funneled "
+                f"flow) and are physically unusual; verify this is "
+                f"intended.",
+                UserWarning,
+                stacklevel=2,
             )
 
         # v1's coupling protocol skipped step 1 and started kinetics on step
@@ -250,6 +422,18 @@ class Temperature(Process):
         air_temperature = registry.get_at_time("air_temperature", time)
         solar_flux = registry.get_at_time("solar_radiation", time)
         wind_speed = registry.get_at_time("wind_speed", time)
+        # Cache the per-cell wind-shelter forcing (if registered) so
+        # ``wind_function`` and the equilibrium-T Newton-Raphson loop
+        # see the same shelter value across a substep. ``None`` here
+        # signals to fall back to the constructor scalar
+        # ``self.wind_shelter`` -- this preserves back-compat for
+        # applications that don't register the optional forcing.
+        if "wind_shelter_coefficient" in registry:
+            self._cached_shelter = registry.get_at_time(
+                "wind_shelter_coefficient", time
+            )
+        else:
+            self._cached_shelter = None
         atmospheric_pressure = registry.get_at_time("atmospheric_pressure", time)
         atmospheric_vapor_pressure = registry.get_at_time(
             "atmospheric_vapor_pressure", time
@@ -838,15 +1022,17 @@ class Temperature(Process):
                 + 5.0 * self.__A5 * teq_k**4
                 + 6.0 * self.__A6 * teq_k**5
             )
+            # Use ``wind_function`` (which applies the same shelter +
+            # log-law transforms as the latent-heat flux itself) so
+            # the derivative stays consistent with f(W) inside this
+            # Newton-Raphson loop. ``wind_function`` returns
+            # ``Ri * (a + b * effective_W^c) / 1e6`` so we get the
+            # ri_function multiplication folded in here.
             d_latent_dT = (
-                ri_function
-                * (0.622 / atmospheric_pressure)
+                (0.622 / atmospheric_pressure)
                 * lv
                 * density_water
-                * (
-                    (self.wind_a / 1_000_000)
-                    + (self.wind_b / 1_000_000) * (wind_speed**self.wind_c)
-                )
+                * self.wind_function(wind_speed, ri_function)
                 * d_esat_dT
             )
             # Sediment derivative gated on use_sediment_temperature so
@@ -1194,6 +1380,39 @@ class Temperature(Process):
             )
         )
 
+    def _compute_effective_wind(self, wind_speed: ArrayLike) -> ArrayLike:
+        """Apply wind shelter and log-law height correction to raw wind.
+
+        The composition ``raw_wind * shelter * height_factor`` mirrors
+        CE-QUAL-W2's pre-correction at ``w2_4_unix.f90:480``:
+        ``WIND2(I) = WIND(JW) * WSC(I) * log(2/Z0) / log(WINDH/Z0)``.
+
+        * ``shelter`` is ``self._cached_shelter`` (per-cell registry
+          forcing) when populated by :py:meth:`run`, else
+          ``self.wind_shelter`` (constructor scalar).
+        * ``height_factor = log(2 / surface_z0) / log(wind_input_height
+          / surface_z0)`` when ``self.wind_input_height != 2.0``,
+          else 1.0.
+
+        Default constructor values (``wind_input_height=2.0``,
+        ``wind_shelter=1.0``, no registry forcing) make this an
+        identity transform.
+        """
+        if self._cached_shelter is not None:
+            shelter = self._cached_shelter
+        else:
+            shelter = self.wind_shelter
+
+        if self.wind_input_height != 2.0:
+            height_factor = (
+                np.log(2.0 / self.surface_z0)
+                / np.log(self.wind_input_height / self.surface_z0)
+            )
+        else:
+            height_factor = 1.0
+
+        return wind_speed * shelter * height_factor
+
     def wind_function(
         self, wind_speed: ArrayLike, richardson_function: ArrayLike
     ) -> ArrayLike:
@@ -1205,13 +1424,22 @@ class Temperature(Process):
         Edinger, Brady & Geyer (1974). The ``1e6`` divisor places the
         coefficients in convenient O(1) magnitudes; ``a, b, c`` are
         ``self.wind_a, self.wind_b, self.wind_c`` (defaults
-        ``0.3, 1.5, 3.0`` from the v1 calibration; see
-        :py:meth:`__init__` docstring for the citation and override
-        path).
+        ``0.3, 1.5, 2.0``; see :py:meth:`__init__` docstring for the
+        full reference and override path).
+
+        ``wind_speed`` is treated as the raw wind magnitude registered
+        by the application. Before evaluating the Edinger formula,
+        :py:meth:`_compute_effective_wind` applies the wind-shelter
+        coefficient and the log-law height correction, mirroring
+        W2's ``WIND2(I)`` pre-correction at
+        ``w2_4_unix.f90:480``. With default constructor values the
+        composition reduces to the identity transform and the formula
+        evaluates as ``Ri * (a + b * wind_speed^c) / 1e6`` exactly.
         """
+        effective_wind = self._compute_effective_wind(wind_speed)
         return richardson_function * (
             (self.wind_a / 1_000_000)
-            + (self.wind_b / 1_000_000) * (wind_speed**self.wind_c)
+            + (self.wind_b / 1_000_000) * (effective_wind**self.wind_c)
         )
 
     def mixing_ratio_air(
