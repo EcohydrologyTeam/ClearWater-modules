@@ -2,11 +2,18 @@
 
 Tier-1 anchored tests for FloatingAlgae and BenthicAlgae:
 
-- Default-instantiated rates must match the v1 / Fortran-aligned defaults
-  (kdp_20=0.15, krp_20=0.2, vsap=0.15, mu_max_20=1.0, mu_max_theta=1.047
-  for FA; kdb_20=0.3, krb_20=0.2, mub_max_20=0.4, krb_theta=1.06 for BA).
-  Pre-fix, default instantiation produced 0 rates due to the legacy-kwarg
-  shadow on DEFAULTS.
+- Default-instantiated rates must match v1's reference rate functions
+  evaluated at the v3 ALGAE_DEFAULTS / BALGAE_DEFAULTS values. The tests
+  parameterize v1's reference functions with the current default
+  constants (read from ALGAE_DEFAULTS) so updates to the defaults toward
+  literature consensus do not require synchronized hand-edits to the
+  hardcoded values in this file. The original purpose of these tests is
+  to verify *wiring* — i.e., that the default-instantiated Process reads
+  from the DEFAULTS dict rather than being shadowed to 0/1 by legacy
+  kwargs (audit F1-F4 / B1-B3, B7-B9). The reference function comes
+  from v1 because v1's per-rate kinetic formulas are the canonical
+  reference implementation; the constants come from ALGAE_DEFAULTS
+  because that is the v3 contract.
 
 - FloatingAlgae limit_light option 1 (half-saturation) must equal v1 FL
   (audit F5: parenthesization fix).
@@ -30,6 +37,7 @@ import xarray as xr
 from clearwater_modules.nsm1 import processes as v1
 from clearwater_modules_v2.processes.floating_algae import FloatingAlgae
 from clearwater_modules_v2.processes.benthic_algae import BenthicAlgae
+from clearwater_modules_v3.parameters.algae import DEFAULTS as ALGAE_DEFAULTS
 
 
 # ----- Fixtures shared across audit tests --------------------------------
@@ -61,31 +69,42 @@ def par_5cell():
 
 # ----- F1-F4 wiring: default-instantiated FloatingAlgae rates match v1 ----
 
-class TestFloatingAlgaeDefaultsAreV1Aligned:
-    """Audit F1-F4: default-instantiated FloatingAlgae() must read the
-    v3 ALGAE_DEFAULTS values (mu_max_20=1.0/mu_max_theta=1.047,
-    kdp_20=0.15/kdp_theta=1.047, krp_20=0.2/krp_theta=1.047, vsap=0.15)
-    rather than the legacy-kwarg defaults (which previously shadowed
-    DEFAULTS to 0 / 1)."""
+class TestFloatingAlgaeDefaultsAreLiteratureAligned:
+    """Audit F1-F4: default-instantiated FloatingAlgae() must read the v3
+    ALGAE_DEFAULTS values rather than the legacy-kwarg defaults (which
+    previously shadowed DEFAULTS to 0 / 1).
+
+    The reference rates are computed via v1's per-rate kinetic functions
+    (the canonical reference implementation) parameterized with the
+    current default constants pulled from ALGAE_DEFAULTS. The defaults
+    themselves are central within published literature ranges (Bowie
+    1985 EPA/600/3-85/040; QUAL2K v2.11; CE-QUAL-W2 v4.5) — see
+    ``parameters/algae.py`` for the source citations. Reading from
+    ALGAE_DEFAULTS keeps these tests in sync if the defaults move within
+    the literature range in a future update."""
 
     def test_default_respiration_matches_v1(self, algae_5cell, water_temp_5cell):
         fa = FloatingAlgae()
         v2_rate = fa.rate_respiration(algae_5cell, water_temp_5cell)
-        krp_tc = v1.krp_tc(water_temp_5cell, 0.2, 1.047)
+        krp_tc = v1.krp_tc(
+            water_temp_5cell, ALGAE_DEFAULTS["krp_20"], ALGAE_DEFAULTS["krp_theta"]
+        )
         v1_rate = v1.ApRespiration(krp_tc, algae_5cell)
         np.testing.assert_allclose(v2_rate.values, v1_rate.values, rtol=1e-6)
 
     def test_default_death_matches_v1(self, algae_5cell, water_temp_5cell):
         fa = FloatingAlgae()
         v2_rate = fa.rate_death(algae_5cell, water_temp_5cell)
-        kdp_tc = v1.kdp_tc(water_temp_5cell, 0.15, 1.047)
+        kdp_tc = v1.kdp_tc(
+            water_temp_5cell, ALGAE_DEFAULTS["kdp_20"], ALGAE_DEFAULTS["kdp_theta"]
+        )
         v1_rate = v1.ApDeath(kdp_tc, algae_5cell)
         np.testing.assert_allclose(v2_rate.values, v1_rate.values, rtol=1e-6)
 
     def test_default_settling_matches_v1(self, algae_5cell, depth_5cell):
         fa = FloatingAlgae()
         v2_rate = fa.rate_settling(algae_5cell, depth_5cell)
-        v1_rate = v1.ApSettling(0.15, algae_5cell, depth_5cell)
+        v1_rate = v1.ApSettling(ALGAE_DEFAULTS["vsap"], algae_5cell, depth_5cell)
         np.testing.assert_allclose(v2_rate.values, v1_rate.values, rtol=1e-6)
 
     def test_default_KsN_KsP_match_v3_defaults(self):
@@ -96,7 +115,7 @@ class TestFloatingAlgaeDefaultsAreV1Aligned:
         assert fa.nitrogen_michaelis_menton_constant == 0.04
         assert fa.phosphorus_michaelis_menton_constant == 0.0012
 
-    def test_default_growth_rate_uses_v1_aligned_constants(
+    def test_default_growth_rate_uses_default_constants(
         self, algae_5cell, water_temp_5cell
     ):
         fa = FloatingAlgae()
@@ -105,7 +124,11 @@ class TestFloatingAlgaeDefaultsAreV1Aligned:
         v2_rate = fa.rate_growth(
             algae_5cell, water_temp_5cell, ones, ones, ones
         )
-        mu_max_tc_val = v1.mu_max_tc(water_temp_5cell, 1.0, 1.047)
+        mu_max_tc_val = v1.mu_max_tc(
+            water_temp_5cell,
+            ALGAE_DEFAULTS["mu_max_20"],
+            ALGAE_DEFAULTS["mu_max_theta"],
+        )
         v1_rate = v1.ApGrowth(mu_max_tc_val, algae_5cell)
         np.testing.assert_allclose(v2_rate.values, np.asarray(v1_rate), rtol=1e-6)
 
@@ -227,7 +250,11 @@ class TestFloatingAlgaeHarmonicGrowthGuard:
         half = xr.full_like(algae_5cell, 0.5)
         # FN=0.5, FP=1.0, FL=1.0 -> mu = mu_max_tc * 1 * 2 / (1/0.5 + 1/1) = mu_max_tc * 2/3.
         v2_rate = fa.rate_growth(algae_5cell, water_temp_5cell, ones, half, ones)
-        mu_max_tc_val = v1.mu_max_tc(water_temp_5cell, 1.0, 1.047)
+        mu_max_tc_val = v1.mu_max_tc(
+            water_temp_5cell,
+            ALGAE_DEFAULTS["mu_max_20"],
+            ALGAE_DEFAULTS["mu_max_theta"],
+        )
         v1_mu = v1.mu(
             mu_max_tc=mu_max_tc_val, growth_rate_option=3,
             FL=ones, FP=ones, FN=half,
