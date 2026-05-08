@@ -22,6 +22,7 @@ References:
 """
 
 from datetime import datetime, timedelta
+import warnings
 
 import numpy as np
 import xarray as xr
@@ -89,7 +90,7 @@ class Temperature(Process):
         self,
         wind_a: float = 0.3,
         wind_b: float = 1.5,
-        wind_c: float = 3.0,
+        wind_c: float = 1.0,
         sediment_density: ArrayLike = 1600.0,
         sediment_specific_heat: float = 1673.0,
         air_diffusivity_ratio: float = 1.0,
@@ -108,20 +109,47 @@ class Temperature(Process):
                 ``f(W) = (a + b * W^c) / 1e6`` (multiplied internally
                 by the Richardson stability function in
                 :py:meth:`wind_function`). Defaults are ``a = 0.3``,
-                ``b = 1.5``, ``c = 3.0`` — the calibration values
-                inherited from v1 ``clearwater_modules.tsm.constants``,
-                used across QUAL2K, CE-QUAL-W2, and HEC-RAS-WQ
-                derivatives. Pass any subset to override per-instance;
-                YAML configs may also override via the ``wind_a /
-                wind_b / wind_c`` keys at ``init_from_file`` time.
+                ``b = 1.5``, ``c = 1.0`` — ``c = 1.0`` (linear in
+                wind) is the consensus default across the legacy
+                Fortran TSM (placeholders ``1.0 / 1.0 / 1.0``),
+                QUAL2K (``f(W) = vw_a + vw_b * W``), and the
+                CE-QUAL-W2 Ryan-Harleman alternative. CE-QUAL-W2's
+                Edinger formulation supports both ``CFW=1`` (linear)
+                and ``CFW=2`` (quadratic). The earlier v3 default
+                ``c = 3.0`` was a v1 Python-port artefact with no
+                primary literature citation; CE-QUAL-W2's
+                ``heat-exchange.f90:78`` flags non-1/non-2 values as
+                "CFW not determined" and provides no British-to-SI
+                unit-conversion path for ``c=3``.
 
-                Reference: Edinger, J.E., D.K. Brady, and J.C. Geyer
-                (1974), *Heat exchange and transport in the
-                environment*, Report 14, Cooling Water Discharge
-                Research Project (RP-49), Electric Power Research
-                Institute, Palo Alto, CA, 125 pp. (Audit 2026-05-05
-                open question 4: prior code lineage carried no
-                citation; recovered and added here.)
+                Pass any subset to override per-instance; YAML configs
+                may also override via the ``wind_a / wind_b / wind_c``
+                keys at ``init_from_file`` time. ``wind_c`` is
+                validated: values not in ``(1.0, 2.0)`` emit a
+                ``UserWarning``, and values outside ``(0.0, 3.0]``
+                raise ``ValueError`` (``c = 3.0`` is allowed for
+                back-compat with explicit opt-ins).
+
+                **Wind reference height.** The ``wind_speed`` registered
+                into the v3 registry is assumed to be at **2 m above
+                the water surface**, matching the Edinger 1974 /
+                CE-QUAL-W2 convention. If the application's
+                meteorological source reports wind at a different
+                height (e.g., 10 m for ASOS / METAR / GridMET / NLDAS),
+                the application is responsible for converting before
+                registering. Standard log-law correction over open
+                water (``z0 ~ 0.001 m``): ``U_2m / U_10m ~ 0.78``.
+
+                References:
+                * Edinger, J.E., D.K. Brady, and J.C. Geyer (1974),
+                  *Heat exchange and transport in the environment*,
+                  Report 14, Cooling Water Discharge Research Project
+                  (RP-49), Electric Power Research Institute, Palo
+                  Alto, CA, 125 pp.
+                * ``design/edinger_wind_exponent_audit.md`` and
+                  ``design/v3_tsm_wind_function_improvements.md`` in
+                  this repo for the CE-QUAL-W2 source check that
+                  establishes ``c = 1.0`` as the consensus default.
             sediment_density: Sediment bulk density (kg/m^3). Fortran
                 default ``pb = 1600``; matches v1.
             sediment_specific_heat: Sediment specific heat (J/kg/C).
@@ -158,7 +186,7 @@ class Temperature(Process):
                 ``float("inf")`` to disable.
         """
         # Wind-function parameters (Edinger, Brady & Geyer 1974). v3
-        # defaults are ``0.3 / 1.5 / 3.0`` per the constructor docstring;
+        # defaults are ``0.3 / 1.5 / 1.0`` per the constructor docstring;
         # callers may override per-instance or via YAML at config time.
         self.wind_a = wind_a
         self.wind_b = wind_b
@@ -191,6 +219,37 @@ class Temperature(Process):
             raise ValueError(
                 f"dTdt_max_per_hour must be > 0.0 (set float('inf') to disable); "
                 f"got {dTdt_max_per_hour!r}"
+            )
+
+        # Validate wind_c against the literature reference family. The
+        # CE-QUAL-W2 source supports CFW=1 (linear) and CFW=2 (quadratic);
+        # other values are flagged as "CFW not determined" and have no
+        # defined British-to-SI unit-conversion path. The Edinger family
+        # coefficient `b` is unit-coupled to `c`, so a non-standard
+        # exponent without re-calibrating `b` produces unphysical heat
+        # fluxes. We warn outside (1.0, 2.0) and reject outside
+        # (0.0, 3.0]; c = 3.0 is allowed at the upper bound for back-
+        # compat with explicit opt-ins from prior v3 / v1 inheritance.
+        # See design/edinger_wind_exponent_audit.md and
+        # design/v3_tsm_wind_function_improvements.md.
+        if not (0.0 < wind_c <= 3.0):
+            raise ValueError(
+                f"wind_c must be in (0.0, 3.0]; got {wind_c!r}"
+            )
+        if wind_c not in (1.0, 2.0):
+            warnings.warn(
+                f"wind_c = {wind_c} is outside the values supported by "
+                f"the reference family. CE-QUAL-W2 Edinger explicitly "
+                f"supports CFW=1.0 (linear, the consensus default across "
+                f"legacy Fortran TSM, QUAL2K, and W2 Ryan-Harleman) and "
+                f"CFW=2.0 (quadratic, also valid). Other values are "
+                f"flagged as 'CFW not determined' (W2 heat-exchange.f90:78). "
+                f"Coefficient `b` is unit-coupled to `c`; using a "
+                f"non-standard exponent without re-calibrating `b` will "
+                f"produce unphysical heat fluxes. See "
+                f"design/edinger_wind_exponent_audit.md.",
+                UserWarning,
+                stacklevel=2,
             )
 
         # v1's coupling protocol skipped step 1 and started kinetics on step
