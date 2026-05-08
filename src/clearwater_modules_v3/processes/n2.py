@@ -60,7 +60,7 @@ from clearwater_modules_v3.utils.numerics import (
 from clearwater_modules_v3.utils.reaeration import kah_20, kaw_20, ka_tc
 
 if TYPE_CHECKING:
-    from clearwater_modules_v2.model import Model
+    from clearwater_modules_v3.model import Model
 
 
 logger = logging.getLogger(__name__)

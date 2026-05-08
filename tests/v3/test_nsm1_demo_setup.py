@@ -219,7 +219,7 @@ def test_nsm1_default_yaml_declares_all_11_processes():
     from pathlib import Path
 
     import clearwater_modules_v3
-    from clearwater_modules_v2.config.read import read_config
+    from clearwater_modules_v3.config.read import read_config
 
     yaml_path = (
         Path(clearwater_modules_v3.__file__).parent / "config" / "nsm1_default.yml"
