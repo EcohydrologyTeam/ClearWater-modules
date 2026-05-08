@@ -57,6 +57,32 @@ from clearwater_data.custom_types import ArrayLike
 
 from clearwater_modules_v2.utils.conversions import arrhenius_correction
 
+
+def _sanitize_cache(value):
+    """Replace NaN cells with 0 in a downstream-consumer cache.
+
+    Cached rate variables (``algal_growth_rate``, ``algal_respiration_rate``,
+    etc.) are read by sibling processes (DOX, Nitrogen, Phosphorus, Carbon)
+    that sum many sub-fluxes into a per-cell rate. A NaN in one sub-flux
+    poisons the entire cell's rate via the final NaN-guard sanitization,
+    which zeroes the cell rather than just the bad term — freezing the
+    cell's state at IC indefinitely (observed at newly-wet cells whose
+    inputs were NaN at earlier dry steps).
+
+    The semantically correct value when the rate computation produces NaN
+    is 0 (mass conservation: ``rate * 0 algae = 0`` regardless of what
+    upstream computations produced). Sanitizing at the cache source ensures
+    all downstream consumers receive a finite contribution.
+    """
+    if isinstance(value, xr.DataArray):
+        return xr.where(value.isnull(), 0, value)
+    if isinstance(value, np.ndarray):
+        return np.where(np.isnan(value), 0, value)
+    if isinstance(value, (int, float)):
+        if value != value:  # NaN
+            return 0
+    return value
+
 # Defer v3 imports to break a circular-import chain that fires when v2
 # is imported FIRST (test path) or via v3.processes:
 #   v2.processes.__init__ imports BenthicAlgae early in RUN_ORDER
@@ -533,6 +559,9 @@ class FloatingAlgae(Process):
 
         result = rate * algae
         # Cache for downstream consumers (Q10 GS-rates pattern).
+        # Sanitize NaN at the cache source — see ``_sanitize_cache`` docstring
+        # for rationale (NaN here poisons DOX/Nitrogen/Phosphorus rate sums).
+        result = _sanitize_cache(result)
         self.algal_growth_rate = result
         return result
 
@@ -543,7 +572,7 @@ class FloatingAlgae(Process):
             self.death_rate,
             self.death_rate_correction_factor,
         )
-        return algae * corrected_death_rate
+        return _sanitize_cache(algae * corrected_death_rate)
 
     def rate_respiration(
         self, algae: ArrayLike, water_temperature: ArrayLike
@@ -555,13 +584,14 @@ class FloatingAlgae(Process):
             self.repiration_rate_correction_factor,
         )
         result = algae * corrected_respiration_rate
-        # Cache for downstream consumers (Q10 GS-rates pattern).
+        # See ``rate_growth`` — sanitize NaN at the cache source.
+        result = _sanitize_cache(result)
         self.algal_respiration_rate = result
         return result
 
     def rate_settling(self, algae: ArrayLike, depth: ArrayLike) -> ArrayLike:
         """Compute the rate of settling of floating algae."""
-        result = algae / depth * self.settling_velocity
+        result = _sanitize_cache(algae / depth * self.settling_velocity)
         self.algal_settling_rate = result
         return result
 

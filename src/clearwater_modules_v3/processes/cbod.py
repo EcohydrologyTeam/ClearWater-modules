@@ -243,6 +243,18 @@ class CBOD(Process):
         # (Q10 GS-rates contract). cbod_oxidation_rate is the sink term
         # DOX adds to its integrator; cbod_settling_rate is exposed for
         # diagnostic / future sediment coupling.
+        # Sanitize NaN at the cache source: a NaN here propagates via DOX's
+        # rate sum and zeroes the entire cell's DOX rate after sanitize_rate,
+        # freezing the cell at IC. When CBOD is 0 the contribution is 0
+        # regardless, so NaN -> 0 is the semantically correct value.
+        if isinstance(oxidation_rate, xr.DataArray):
+            oxidation_rate = xr.where(oxidation_rate.isnull(), 0, oxidation_rate)
+        elif isinstance(oxidation_rate, np.ndarray):
+            oxidation_rate = np.where(np.isnan(oxidation_rate), 0, oxidation_rate)
+        if isinstance(settling_rate, xr.DataArray):
+            settling_rate = xr.where(settling_rate.isnull(), 0, settling_rate)
+        elif isinstance(settling_rate, np.ndarray):
+            settling_rate = np.where(np.isnan(settling_rate), 0, settling_rate)
         self.cbod_oxidation_rate = oxidation_rate
         self.cbod_settling_rate = settling_rate
 

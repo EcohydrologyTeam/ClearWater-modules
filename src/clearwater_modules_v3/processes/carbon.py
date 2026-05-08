@@ -532,8 +532,11 @@ class Carbon(Process):
         # --- Step-scoped rate caches (Q10 GS-rates contract) ---
         # doc_dic_oxidation_rate: mg-C/L/d. DOX consumes this term as an
         # O2 sink: ``DOX_sink = roc * doc_dic_oxidation_rate``.
-        self.doc_dic_oxidation_rate = doc_oxidation
-        self.poc_hydrolysis_rate = poc_hydrolysis
+        # Sanitize NaN at the cache source: a NaN here propagates via DOX's
+        # rate sum and zeroes the entire cell's DOX rate, freezing the cell
+        # at IC. When DOC/POC are 0 the contribution is 0 regardless.
+        self.doc_dic_oxidation_rate = sanitize_rate(doc_oxidation)
+        self.poc_hydrolysis_rate = sanitize_rate(poc_hydrolysis)
 
         # --- Forward Euler in days ---
         dt_days = self.time_step.total_seconds() / 86400.0
