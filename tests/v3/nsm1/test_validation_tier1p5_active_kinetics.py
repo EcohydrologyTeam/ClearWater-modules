@@ -139,8 +139,21 @@ from clearwater_modules_v3.parameters.balgae import DEFAULTS as BALGAE_DEFAULTS
 
 AP_N_PER_CHLA: float = float(ALGAE_DEFAULTS["AWn"])    # mg-N per ug-Chla
 AP_C_PER_CHLA: float = float(ALGAE_DEFAULTS["AWc"])    # mg-C per ug-Chla
-AB_N_PER_GD:   float = float(BALGAE_DEFAULTS["BWn"])   # mg-N per g-D
-AB_C_PER_GD:   float = float(BALGAE_DEFAULTS["BWc"])   # mg-C per g-D
+
+# Benthic-algae stoichiometric / coupling constants used by the
+# benthic-algae areal -> volumetric conversion in the conservation
+# helpers below. The volumetric factor applied to ``benthic_algae``
+# is ``(BWn / BWd) * Fb / depth`` for nitrogen (``(BWc / BWd) * Fb / depth``
+# for carbon). This matches the Fortran NSM1 / v1 / v3 NSM1
+# water-column flux convention
+# ``rnb * Fb * AbGrowth / depth`` where ``rnb = BWn / BWd``, and
+# closes the closed-system mass balance with the ``Fb`` partial-
+# coupling factor on both sides. See the discussion at the top of
+# this module and ``design/clearwater_modules_v3_nsm1_audit_*.md``
+# (algae) for the architectural rationale.
+AB_N_PER_GD:   float = float(BALGAE_DEFAULTS["BWn"]) / float(BALGAE_DEFAULTS["BWd"])  # mg-N/mg-D (mass fraction)
+AB_C_PER_GD:   float = float(BALGAE_DEFAULTS["BWc"]) / float(BALGAE_DEFAULTS["BWd"])  # mg-C/mg-D (mass fraction)
+AB_FB:         float = float(BALGAE_DEFAULTS["Fb"])                                  # active-fraction coupling factor
 
 # CBOD <-> DIC oxidation stoichiometry (mg-O2 / mg-C; v3 carbon.DEFAULTS).
 ROC: float = 32.0 / 12.0
@@ -234,15 +247,25 @@ def total_n_active_kinetics(registry: Any) -> float:
     Floating algae N (chlorophyll-volumetric):
         algae_floating [ug-Chla/L] * AWn [mg-N/ug-Chla] = mg-N/L
 
-    Benthic algae N (dry-weight-areal -> volumetric):
-        benthic_algae [g-D/m^2] * BWn [mg-N/g-D] / depth [m] / 1000
-        = (mg-N/m^2) / m / 1000  = mg-N/m^3 / 1000  = mg-N/L
+    Benthic algae N (areal -> volumetric, NSM1 convention):
+        benthic_algae [g-D/m^2] * (BWn/BWd) [mg-N/mg-D] * Fb / depth [m]
 
-    The benthic-algae depth conversion is required because the state pool
-    is areal (g-D/m^2) while the water-column pools are volumetric
-    (mg-N/L). Without the ``/depth/1000`` factor, the sum is dimensionally
-    inconsistent and produces apparent mass-balance violations that scale
-    with depth and benthic-algae kinetic rate magnitude.
+    The benthic-algae conversion uses the same implicit "1 g/m^3 == 1 mg/L"
+    identity that the Fortran NSM1 / v1 / v3 water-column flux formulas
+    use (``NH4_AbGrowth = AbUptakeFr_NH4 * rnb * Fb * AbGrowth / depth``,
+    where ``rnb = BWn/BWd``). The ``Fb`` factor reflects the partial-
+    coupling architectural choice in NSM1: only the ``Fb`` fraction of
+    the bed area exchanges with the water column (the ``(1-Fb)`` portion
+    is intentionally open-coupled).
+
+    Mass balance closes exactly with this convention: the volumetric N
+    rate of change of the benthic state ``Ab * (BWn/BWd) * Fb / depth``
+    equals the water-column ``rnb * Fb * AbGrowth / depth`` flux, so
+    total-N is conserved across algal growth-uptake transfers.
+
+    See ``design/v3_tsm_wind_function_improvements.md``-adjacent
+    discussion in PR review and the CE-QUAL-W2 cross-check
+    (``water-quality.f90:1517, 2342``) for the unit-identity rationale.
     """
     pieces: list[float] = []
     for name in ("ammonium", "nitrate", "organic_nitrogen", "n2"):
@@ -262,7 +285,7 @@ def total_n_active_kinetics(registry: Any) -> float:
                 "no 'depth'; cannot convert areal benthic-algae N to "
                 "volumetric. The Tier-1.5 fixture should provide both."
             )
-        pieces.append(_sum_over_cells(ab * AB_N_PER_GD / depth / 1000.0))
+        pieces.append(_sum_over_cells(ab * AB_N_PER_GD * AB_FB / depth))
 
     return sum(pieces)
 
@@ -280,11 +303,11 @@ def total_c_active_kinetics(registry: Any) -> float:
     Floating algae C (chlorophyll-volumetric):
         algae_floating [ug-Chla/L] * AWc [mg-C/ug-Chla] = mg-C/L
 
-    Benthic algae C (dry-weight-areal -> volumetric):
-        benthic_algae [g-D/m^2] * BWc [mg-C/g-D] / depth [m] / 1000
-        = mg-C/L
+    Benthic algae C (areal -> volumetric, NSM1 convention):
+        benthic_algae [g-D/m^2] * (BWc/BWd) [mg-C/mg-D] * Fb / depth [m]
 
-    See ``total_n_active_kinetics`` for the depth-conversion rationale.
+    See ``total_n_active_kinetics`` for the unit-identity and ``Fb``
+    coupling rationale; the carbon side uses the same conversion form.
     """
     pieces: list[float] = []
     for name in ("poc", "doc", "dic"):
@@ -308,7 +331,7 @@ def total_c_active_kinetics(registry: Any) -> float:
                 "no 'depth'; cannot convert areal benthic-algae C to "
                 "volumetric. The Tier-1.5 fixture should provide both."
             )
-        pieces.append(_sum_over_cells(ab * AB_C_PER_GD / depth / 1000.0))
+        pieces.append(_sum_over_cells(ab * AB_C_PER_GD * AB_FB / depth))
 
     return sum(pieces)
 
@@ -341,16 +364,23 @@ def tier1p5_demo():
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "Residual ~1000 mg-N drift over 100 substeps remains after the "
-        "benthic-algae areal->volumetric unit fix (commit landed in this "
-        "branch). The fix removed the dominant noise source (~860 mg-N "
-        "from the prior areal-vs-volumetric mismatch), but the absolute "
-        "drift is similar in magnitude before and after, indicating a "
-        "real mass-balance question in the kinetic coupling — most likely "
-        "the algae-growth-uptake vs algae-state-increment stoichiometric "
-        "balance and/or benthic-algae N uptake from the water column. "
-        "Diagnosing that requires its own focused investigation; flip "
-        "xfail off when the kinetic-coupling residual is resolved."
+        "Residual ~1095 mg-N drift over 100 substeps remains after the "
+        "benthic-algae helper unit-identity fix (commit landed in this "
+        "branch: areal -> volumetric now uses the same `1 g/m^3 == 1 mg/L` "
+        "implicit identity Fortran NSM1 / v1 / v3 use, with the partial "
+        "coupling Fb factor on both sides). The benthic-algae contribution "
+        "to the total N inventory is <1% in this fixture, so the helper "
+        "fix did not change the total drift. The remaining drift is "
+        "dominated by water-column pools and points at one or more of: "
+        "(a) the (1-Fw)=10% open-system N flux from benthic algae death "
+        "routed to 'elsewhere' under NSM1's partial-coupling architecture, "
+        "(b) the algae growth-uptake / respiration / death loop where "
+        "rate-cache reads decoupled from state increments may introduce "
+        "a discretization-amplified residual at the new mu_max=2.0 "
+        "literature default, (c) N2 generation from denitrification if "
+        "the unit convention for N2 differs from mg-N/L. Diagnosing "
+        "(a)-(c) requires further focused work; flip xfail off when the "
+        "kinetic-coupling residual is resolved."
     ),
 )
 def test_tier1p5_total_n_conservation_active_kinetics(tier1p5_demo) -> None:
@@ -405,12 +435,12 @@ def test_tier1p5_total_n_conservation_active_kinetics(tier1p5_demo) -> None:
     strict=True,
     reason=(
         "Same residual kinetic-coupling drift as total-N (see "
-        "test_tier1p5_total_n_conservation_active_kinetics). For total-C "
-        "there is also a known approximation: POM is in mg-D/L (dry "
-        "weight) but the helper sums it into the same pool as DOC "
-        "(mg-C/L); the POM dissolution pathway is dimensionally "
-        "approximate. Both issues will be resolved in the kinetic-"
-        "coupling investigation; flip xfail off at that point."
+        "test_tier1p5_total_n_conservation_active_kinetics for the "
+        "primary diagnosis). For total-C there is also a known "
+        "approximation: POM is in mg-D/L (dry weight) but the helper "
+        "sums it into the same pool as DOC (mg-C/L); the POM "
+        "dissolution pathway is dimensionally approximate. Flip xfail "
+        "off when the kinetic-coupling residual is resolved."
     ),
 )
 def test_tier1p5_total_c_conservation_active_kinetics(tier1p5_demo) -> None:
