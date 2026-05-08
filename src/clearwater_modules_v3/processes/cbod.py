@@ -50,7 +50,7 @@ import xarray as xr
 from clearwater_data.custom_types import ArrayLike
 from clearwater_data.variables import VariableRegistry
 
-from clearwater_modules_v2.processes.base import Process, ProcessFactory
+from clearwater_modules_v3.processes.base import Process, ProcessFactory
 from clearwater_modules_v3.parameters.cbod import DEFAULTS as CBOD_DEFAULTS
 from clearwater_modules_v3.utils.conversions import arrhenius_correction
 from clearwater_modules_v3.utils.numerics import (

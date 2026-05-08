@@ -81,7 +81,7 @@ import xarray as xr
 from clearwater_data.variables import VariableRegistry
 from clearwater_data.custom_types import ArrayLike
 
-from clearwater_modules_v2.processes.base import Process, ProcessFactory
+from clearwater_modules_v3.processes.base import Process, ProcessFactory
 from clearwater_modules_v3.utils.numerics import (
     Diagnostics,
     clip_negative_state,
