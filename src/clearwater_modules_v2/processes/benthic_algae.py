@@ -32,6 +32,33 @@ from .floating_algae import FloatingAlgae
 
 from clearwater_modules_v2.utils.conversions import arrhenius_correction
 
+
+def _sanitize_cache(value):
+    """Replace NaN cells with 0 in a downstream-consumer cache.
+
+    Cached rate variables (``balgae_growth_rate``, ``balgae_respiration_rate``)
+    are read by sibling processes (DOX, Nitrogen, Phosphorus) that sum many
+    sub-fluxes into a per-cell rate. A NaN in one sub-flux poisons the entire
+    cell's rate via the final ``where(isnull, 0, rate)`` sanitization, which
+    zeroes the cell rather than just the bad term — freezing the cell's
+    state at IC indefinitely.
+
+    The semantically correct value when the rate computation produces NaN
+    (typically at cells whose inputs were NaN at an earlier dry step, or
+    where ``algae == 0`` makes the rate mathematically 0) is 0, not NaN.
+    Sanitizing at the cache source ensures all downstream consumers receive
+    a finite contribution.
+    """
+    if isinstance(value, xr.DataArray):
+        return xr.where(value.isnull(), 0, value)
+    if isinstance(value, np.ndarray):
+        return np.where(np.isnan(value), 0, value)
+    if isinstance(value, (int, float)):
+        if value != value:  # NaN
+            return 0
+    return value
+
+
 # Defer v3 imports to first use; see floating_algae.py for the full
 # discussion of the v2 <-> v3 circular-import chain.
 
@@ -424,6 +451,13 @@ class BenthicAlgae(FloatingAlgae):
 
         result = rate * algae
         # Cache for downstream consumers (Q10 GS-rates pattern).
+        # Sanitize NaN at the cache source: a per-cell NaN here propagates
+        # via DOX / Nitrogen / Phosphorus rate sums and zeroes the *entire*
+        # cell's rate after their final ``sanitize_rate`` step, freezing the
+        # state at IC indefinitely. When ``algae == 0`` the contribution is
+        # mathematically 0 regardless of upstream computation, so NaN -> 0
+        # is the semantically correct value at dry / never-wet cells.
+        result = _sanitize_cache(result)
         self.balgae_growth_rate = result
         return result
 
@@ -442,6 +476,8 @@ class BenthicAlgae(FloatingAlgae):
             self.repiration_rate_correction_factor,
         )
         result = algae * corrected_respiration_rate
+        # See ``rate_growth`` — sanitize NaN at the cache source.
+        result = _sanitize_cache(result)
         self.balgae_respiration_rate = result
         return result
 

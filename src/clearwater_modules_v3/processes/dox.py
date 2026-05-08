@@ -686,15 +686,24 @@ class DOX(Process):
             )
 
         # --- Compute per-source / per-sink fluxes (mg/L/d) ---
-        atm_reaer = self._atm_reaeration_flux(dox, dox_sat, ka_tc_value)
-        algal_grow = self._floating_algae_growth_flux()
-        algal_resp = self._floating_algae_respiration_flux()
-        balgae_grow = self._benthic_algae_growth_flux(depth)
-        balgae_resp = self._benthic_algae_respiration_flux(depth)
-        nitr_sink = self._nitrification_flux(ammonium, t_water_c, dox)
-        doc_sink = self._doc_oxidation_flux()
-        cbod_sink = self._cbod_oxidation_flux()
-        sod_sink = self._sod_flux(t_water_c, depth, dox)
+        # Each sub-flux is individually sanitized so that a NaN at a single
+        # cell in one term cannot poison the entire ``rate`` array via the
+        # subsequent sum. Without this, a stale NaN in (e.g.) the cached
+        # ``balgae_growth_rate`` at a newly-wet cell — where benthic algae
+        # density is 0 and the rate should be 0 — produces ``0 + ... + NaN
+        # = NaN`` for the whole cell, which ``sanitize_rate`` then drops to
+        # 0, leaving DOX integration as ``dox + 0 = dox`` and freezing the
+        # cell at IC indefinitely. Sanitizing per sub-flux preserves the
+        # contributions of the well-behaved terms.
+        atm_reaer  = sanitize_rate(self._atm_reaeration_flux(dox, dox_sat, ka_tc_value))
+        algal_grow = sanitize_rate(self._floating_algae_growth_flux())
+        algal_resp = sanitize_rate(self._floating_algae_respiration_flux())
+        balgae_grow = sanitize_rate(self._benthic_algae_growth_flux(depth))
+        balgae_resp = sanitize_rate(self._benthic_algae_respiration_flux(depth))
+        nitr_sink  = sanitize_rate(self._nitrification_flux(ammonium, t_water_c, dox))
+        doc_sink   = sanitize_rate(self._doc_oxidation_flux())
+        cbod_sink  = sanitize_rate(self._cbod_oxidation_flux())
+        sod_sink   = sanitize_rate(self._sod_flux(t_water_c, depth, dox))
 
         # --- Net rate (mg/L/d). Mirrors v1 ``dDOXdt`` (line 3119) ---
         rate = (
@@ -709,10 +718,8 @@ class DOX(Process):
             - sod_sink
         )
 
-        # NaN/inf guard (defense-in-depth; primary dry-cell defense
-        # is the orchestration-layer wet-mask in Model). Catches
-        # ``inf`` from ``x / depth`` at ``depth == 0`` and ``NaN``
-        # from missing forcings.
+        # NaN/inf guard (final defense-in-depth, in addition to per-sub-flux
+        # sanitization above). Catches any residual NaN from the sum.
         rate = sanitize_rate(rate)
 
         # --- Forward Euler integration ---
