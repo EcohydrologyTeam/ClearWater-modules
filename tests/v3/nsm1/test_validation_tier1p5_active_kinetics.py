@@ -225,12 +225,24 @@ def _sum_over_cells(da: xr.DataArray) -> float:
 def total_n_active_kinetics(registry: Any) -> float:
     """Total nitrogen across NH4, NO3, OrgN, N2, and algal N-equivalents.
 
-    Sums (cell-summed):
+    All terms are reported in mg-N/L for consistency with the water-column
+    pools, then summed per-cell.
+
+    Water-column terms (already in mg-N/L):
         ammonium + nitrate + organic_nitrogen + n2
-        + algae_floating * AWn      (ug-Chla * mg-N/ug-Chla = mg-N/L)
-        + benthic_algae  * BWn      (g-D/m^2 * mg-N/g-D = mg-N/m^2;
-                                     unit-mismatched with water-column
-                                     pools, see module docstring)
+
+    Floating algae N (chlorophyll-volumetric):
+        algae_floating [ug-Chla/L] * AWn [mg-N/ug-Chla] = mg-N/L
+
+    Benthic algae N (dry-weight-areal -> volumetric):
+        benthic_algae [g-D/m^2] * BWn [mg-N/g-D] / depth [m] / 1000
+        = (mg-N/m^2) / m / 1000  = mg-N/m^3 / 1000  = mg-N/L
+
+    The benthic-algae depth conversion is required because the state pool
+    is areal (g-D/m^2) while the water-column pools are volumetric
+    (mg-N/L). Without the ``/depth/1000`` factor, the sum is dimensionally
+    inconsistent and produces apparent mass-balance violations that scale
+    with depth and benthic-algae kinetic rate magnitude.
     """
     pieces: list[float] = []
     for name in ("ammonium", "nitrate", "organic_nitrogen", "n2"):
@@ -243,7 +255,14 @@ def total_n_active_kinetics(registry: Any) -> float:
         pieces.append(_sum_over_cells(ap * AP_N_PER_CHLA))
     ab = _get(registry, "benthic_algae")
     if ab is not None:
-        pieces.append(_sum_over_cells(ab * AB_N_PER_GD))
+        depth = _get(registry, "depth")
+        if depth is None:
+            raise ValueError(
+                "total_n_active_kinetics: registry has 'benthic_algae' but "
+                "no 'depth'; cannot convert areal benthic-algae N to "
+                "volumetric. The Tier-1.5 fixture should provide both."
+            )
+        pieces.append(_sum_over_cells(ab * AB_N_PER_GD / depth / 1000.0))
 
     return sum(pieces)
 
@@ -251,13 +270,21 @@ def total_n_active_kinetics(registry: Any) -> float:
 def total_c_active_kinetics(registry: Any) -> float:
     """Total carbon across POC, DOC, DIC, CBOD-as-C, and algal C-equivalents.
 
-    Sums (cell-summed):
-        poc + doc + dic
-        + cbod / ROC                (mg-O2/L * 12/32 -> mg-C/L)
-        + algae_floating * AWc      (ug-Chla * mg-C/ug-Chla = mg-C/L)
-        + benthic_algae  * BWc      (g-D/m^2 * mg-C/g-D = mg-C/m^2;
-                                     unit-mismatched with water-column
-                                     pools, see module docstring)
+    All terms are reported in mg-C/L for consistency with the water-column
+    pools, then summed per-cell.
+
+    Water-column terms:
+        poc + doc + dic                              (mg-C/L)
+        cbod / ROC                                   (mg-O2/L -> mg-C/L)
+
+    Floating algae C (chlorophyll-volumetric):
+        algae_floating [ug-Chla/L] * AWc [mg-C/ug-Chla] = mg-C/L
+
+    Benthic algae C (dry-weight-areal -> volumetric):
+        benthic_algae [g-D/m^2] * BWc [mg-C/g-D] / depth [m] / 1000
+        = mg-C/L
+
+    See ``total_n_active_kinetics`` for the depth-conversion rationale.
     """
     pieces: list[float] = []
     for name in ("poc", "doc", "dic"):
@@ -274,7 +301,14 @@ def total_c_active_kinetics(registry: Any) -> float:
         pieces.append(_sum_over_cells(ap * AP_C_PER_CHLA))
     ab = _get(registry, "benthic_algae")
     if ab is not None:
-        pieces.append(_sum_over_cells(ab * AB_C_PER_GD))
+        depth = _get(registry, "depth")
+        if depth is None:
+            raise ValueError(
+                "total_c_active_kinetics: registry has 'benthic_algae' but "
+                "no 'depth'; cannot convert areal benthic-algae C to "
+                "volumetric. The Tier-1.5 fixture should provide both."
+            )
+        pieces.append(_sum_over_cells(ab * AB_C_PER_GD / depth / 1000.0))
 
     return sum(pieces)
 
@@ -307,15 +341,16 @@ def tier1p5_demo():
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "v2 multiplicative-integrator bug in the FloatingAlgae / BenthicAlgae "
-        "overlays amplifies under faster algal kinetics. After moving "
-        "ALGAE_DEFAULTS toward published literature consensus (mu_max_20=2.0 "
-        "vs prior v1 1.0), the per-step integrator bias roughly doubles, "
-        "pushing the empirical drift over the rtol=1e-1 threshold. The "
-        "underlying defect is documented in the module docstring above and "
-        "tracked by the v3-native algae rewrite (Phase 2.A). When that lands "
-        "the integrator becomes additive Forward Euler in days and this test "
-        "should pass with rtol=1e-3 — flip xfail off at that point."
+        "Residual ~1000 mg-N drift over 100 substeps remains after the "
+        "benthic-algae areal->volumetric unit fix (commit landed in this "
+        "branch). The fix removed the dominant noise source (~860 mg-N "
+        "from the prior areal-vs-volumetric mismatch), but the absolute "
+        "drift is similar in magnitude before and after, indicating a "
+        "real mass-balance question in the kinetic coupling — most likely "
+        "the algae-growth-uptake vs algae-state-increment stoichiometric "
+        "balance and/or benthic-algae N uptake from the water column. "
+        "Diagnosing that requires its own focused investigation; flip "
+        "xfail off when the kinetic-coupling residual is resolved."
     ),
 )
 def test_tier1p5_total_n_conservation_active_kinetics(tier1p5_demo) -> None:
@@ -369,10 +404,13 @@ def test_tier1p5_total_n_conservation_active_kinetics(tier1p5_demo) -> None:
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "Same v2 multiplicative-integrator amplification as total-N (see "
-        "test_tier1p5_total_n_conservation_active_kinetics for the full "
-        "rationale). Flip xfail off when Phase 2.A v3-native algae rewrite "
-        "lands."
+        "Same residual kinetic-coupling drift as total-N (see "
+        "test_tier1p5_total_n_conservation_active_kinetics). For total-C "
+        "there is also a known approximation: POM is in mg-D/L (dry "
+        "weight) but the helper sums it into the same pool as DOC "
+        "(mg-C/L); the POM dissolution pathway is dimensionally "
+        "approximate. Both issues will be resolved in the kinetic-"
+        "coupling investigation; flip xfail off at that point."
     ),
 )
 def test_tier1p5_total_c_conservation_active_kinetics(tier1p5_demo) -> None:
