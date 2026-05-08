@@ -20,7 +20,7 @@ import pytest
 import xarray as xr
 
 from clearwater_modules.nsm1 import processes as v1
-from clearwater_modules_v2.processes.floating_algae import FloatingAlgae
+from clearwater_modules_v3.processes.floating_algae import FloatingAlgae
 
 
 @pytest.fixture(scope="module")
