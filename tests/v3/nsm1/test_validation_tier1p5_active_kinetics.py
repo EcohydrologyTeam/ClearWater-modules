@@ -72,47 +72,75 @@ are zero. The fixture builds the demo with these per-process overrides:
 Tolerance discussion
 --------------------
 
-The dominant residual under default kinetics is the v2
-multiplicative-integrator bug in the FloatingAlgae / BenthicAlgae /
-Nitrogen overlays (design spec Section 6, ``nitrogen.py:101`` and
-``floating_algae.py``). The v2 algae update applies
-``Ap_new = Ap * exp(growth_rate * dt)`` rather than the correct
-forward-Euler ``Ap_new = Ap + (growth_rate * Ap - mortality * Ap) * dt``,
-which inflates algal biomass faster than the corresponding NH4 / NO3
-draw-down and decouples algal growth from water-column nutrients. The
-empirical drift on the Tier-1.5 fixture (5-cell synthetic mesh,
-default IC, 100 substeps of 5 min = 8.3 h):
+The conservation helpers convert algae state (in ug-Chla/L) to
+water-column N or C concentration (mg-N/L or mg-C/L) using the
+*ratios* ``rna = AWn/AWa`` and ``rca = AWc/AWa``, matching the v3
+kinetics in ``nitrogen.py`` (``rna = self.floating_algae_nitrogen_weight
+/ self.algal_chlorophyll``) and ``carbon.py`` (``rca = self.AWc /
+self.AWa``). The Fortran v1 NSM1 and CE-QUAL-W2
+(``water-quality.f90:1505, 1579`` -- ``ALG * AN`` with state in
+mg-DW/L) follow the same dimensional pattern. Earlier revisions of
+this helper used the raw weights ``AWn`` / ``AWc`` directly, which
+inflated the reported algae N/C contribution by AWa = 1000x and
+masked the actual conservation behavior.
 
-    d(total-N) / total-N  =  +7.3e-2
-    d(total-C) / total-C  =  +7.4e-2
+Empirical drift on the Tier-1.5 fixture (5-cell synthetic mesh,
+default IC, 5-minute substeps):
 
-The drift grows roughly linearly in step count (3.2% at 50 steps; 7.3%
-at 100 steps; 12% at 144 steps; 31% at 288 steps), consistent with a
-per-step integrator bias rather than a stochastic numerical error.
+    50 steps:  d(total-N)/total-N = -0.057%   d(total-C)/total-C = -0.16%
+    100 steps: d(total-N)/total-N = -0.110%   d(total-C)/total-C = -0.30%
+    144 steps: d(total-N)/total-N = -0.153%   d(total-C)/total-C = +3.08%
+    288 steps: d(total-N)/total-N = -0.273%   d(total-C)/total-C = +16.09%
+
+Total-N drift is small and roughly linear in step count, consistent
+with a per-step Forward-Euler discretization residual at the
+literature-aligned ``mu_max=2.0`` 1/d default. The small negative N
+sign comes from the documented benthic-algae partial-coupling N leak:
+a fraction ``Fb * (1 - Fw) = 9%`` of the areal benthic-algae mortality
+is routed to the bed-sediment POM pool (Fortran ``POM2``), which v3
+tracks only as dry-mass (no PON tracking), so the corresponding N is
+silently dropped from the closed-system inventory. This matches
+Fortran NSM1's architectural choice (Fortran's POM is a diagnostic
+``POC / focm`` and similarly does not carry an explicit N pool); a
+full PON/PIN sediment compartment is NSM2 sediment-diagenesis scope.
+
+Total-C drift is small at short horizons (~0.3% at 100 substeps
+after the Phase 9.G POM->DOC unit-correction fix; previously +3% at
+the same horizon due to a missing ``fcom * h2 / depth`` multiplier on
+the POM dissolution -> DOC pathway in ``carbon.py``). Drift grows
+super-linearly at very long horizons because of (a) Forward-Euler
+discretization error compounding with the literature-aligned
+``mu_max=2.0`` 1/d algal growth, which doubles biomass several times
+in the 24-h test window without negative-feedback equilibration, and
+(b) the same partial-coupling routing that leaks N to POM also leaks
+C to POM (in mg-C terms via ``fcom``). For real-world simulations
+this is mitigated by ecosystem feedbacks (light limitation, nutrient
+depletion, equilibrating mortality) that prevent biomass from doubling
+unboundedly; the 288-step test is a worst-case stress measurement.
 
 A secondary residual is the volumetric/areal unit conversion between
 benthic-algae state (g-D/m^2) and water-column N/C pools (mg/L). The
-v1 NSM1 formula routes benthic-algae mortality to water-column OrgN /
-POC / DOC at ``rnb * fw * fb * ab_death / depth`` in mg/L/d; the
-benthic-algae state pool itself is ``BWn * Ab`` in mg-N/m^2 with no
-implicit depth conversion. Tier-1.5 sums both pools without an explicit
-depth scaling, so part of the apparent drift is unit-mismatch noise
-rather than true non-conservation.
+helper converts via ``Ab * (BWn/BWd) * Fb / depth`` to mg-N/L,
+matching the Fortran NSM1 / v1 / v3 water-column flux convention
+``rnb * Fb * AbGrowth / depth`` (where ``rnb = BWn/BWd``). The benthic
+contribution to the total-N inventory in this fixture is ~12% so the
+conversion choice does not dominate the residual.
 
-Tolerance: ``rtol=1.0e-1`` (10%) over 100 substeps. This is
-deliberately loose because the underlying integrator bug is documented
-and tracked by Phase 2.A of the NSM1 v3 plan, which replaces the v2
-overlays with v3-native Processes that fix the integrator and pin the
-benthic/water-column unit convention. When Phase 2.A lands, this test's
-tolerance can tighten to rtol=1e-3 (the audit's target). For now the
-test serves as a regression-detection floor: a future change that
-*increases* the drift to >10% over 100 substeps signals a wiring
-regression that should be investigated before Phase 2.A lands.
+Tolerance: ``rtol=1.0e-2`` for total-N (1% over 100 substeps; current
+empirical drift is ~0.11%, leaving 9x headroom) and ``rtol=1.0e-1``
+for total-C (10%, preserved to absorb the documented N/C leak via the
+benthic-algae -> POM partial-coupling routing and any super-linear
+Forward-Euler residual at literature-aligned default rates). The N
+tolerance was tightened from rtol=1e-1 in Phase 9.G after the POM->DOC
+unit-correction fix landed; the C tolerance is preserved at 1e-1 to
+allow the (1-Fw)*Fb partial-coupling C leak through without flagging
+it as a regression.
 
-Total-C is closed up to the same residuals and the CBOD <-> DIC
-oxidation pathway. CBOD is in mg-O2/L; 1 mg-CBOD oxidized produces
-``1 / roc`` mg-C/L of DIC, where ``roc = 32/12``. The total-C helper
-sums ``cbod / roc`` to absorb this exchange.
+Total-C is closed up to the same Forward-Euler residual plus the
+POM <-> DOC dimensional conflation and the CBOD <-> DIC oxidation
+pathway. CBOD is in mg-O2/L; 1 mg-CBOD oxidized produces ``1 / roc``
+mg-C/L of DIC, where ``roc = 32/12``. The total-C helper sums
+``cbod / roc`` to absorb this exchange.
 """
 
 from __future__ import annotations
@@ -137,8 +165,25 @@ from clearwater_modules_v3.parameters.balgae import DEFAULTS as BALGAE_DEFAULTS
 # Stoichiometric ratios for default-instantiated mass bookkeeping
 # ---------------------------------------------------------------------------
 
-AP_N_PER_CHLA: float = float(ALGAE_DEFAULTS["AWn"])    # mg-N per ug-Chla
-AP_C_PER_CHLA: float = float(ALGAE_DEFAULTS["AWc"])    # mg-C per ug-Chla
+# Floating-algae stoichiometric ratios. AWn / AWc / AWa carry the
+# stoichiometric-unit convention used throughout v3 NSM1 (and the
+# Fortran v1 NSM1 / W2 conventions): AWn = 7.2 (mg-N per stoichiometric
+# unit), AWc = 40 (mg-C per stoichiometric unit), AWa = 1000 (ug-Chla
+# per stoichiometric unit). Converting algae state (in ug-Chla/L) to
+# water-column N or C concentration uses the *ratios* ``rna = AWn/AWa``
+# and ``rca = AWc/AWa``, NOT ``AWn`` / ``AWc`` directly. The v3 kinetics
+# match this:
+#
+#   nitrogen.py:675     rna = self.floating_algae_nitrogen_weight / self.algal_chlorophyll
+#                           = AWn / AWa     (mg-N / ug-Chla)
+#   carbon.py:402       rca = self.AWc / self.AWa
+#                           = AWc / AWa     (mg-C / ug-Chla)
+#
+# Cross-check vs CE-QUAL-W2 (water-quality.f90:1505, 1579): W2 stores
+# algae in mg-DW/L and uses ``ALG * AN`` (mg-DW/L * mg-N/mg-DW = mg-N/L);
+# the NSM1 ug-Chla/L analog reduces to ``Ap * (AWn/AWa) = Ap * rna``.
+AP_N_PER_CHLA: float = float(ALGAE_DEFAULTS["AWn"]) / float(ALGAE_DEFAULTS["AWa"])  # mg-N per ug-Chla = rna
+AP_C_PER_CHLA: float = float(ALGAE_DEFAULTS["AWc"]) / float(ALGAE_DEFAULTS["AWa"])  # mg-C per ug-Chla = rca
 
 # Benthic-algae stoichiometric / coupling constants used by the
 # benthic-algae areal -> volumetric conversion in the conservation
@@ -361,28 +406,6 @@ def tier1p5_demo():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Residual ~1095 mg-N drift over 100 substeps remains after the "
-        "benthic-algae helper unit-identity fix (commit landed in this "
-        "branch: areal -> volumetric now uses the same `1 g/m^3 == 1 mg/L` "
-        "implicit identity Fortran NSM1 / v1 / v3 use, with the partial "
-        "coupling Fb factor on both sides). The benthic-algae contribution "
-        "to the total N inventory is <1% in this fixture, so the helper "
-        "fix did not change the total drift. The remaining drift is "
-        "dominated by water-column pools and points at one or more of: "
-        "(a) the (1-Fw)=10% open-system N flux from benthic algae death "
-        "routed to 'elsewhere' under NSM1's partial-coupling architecture, "
-        "(b) the algae growth-uptake / respiration / death loop where "
-        "rate-cache reads decoupled from state increments may introduce "
-        "a discretization-amplified residual at the new mu_max=2.0 "
-        "literature default, (c) N2 generation from denitrification if "
-        "the unit convention for N2 differs from mg-N/L. Diagnosing "
-        "(a)-(c) requires further focused work; flip xfail off when the "
-        "kinetic-coupling residual is resolved."
-    ),
-)
 def test_tier1p5_total_n_conservation_active_kinetics(tier1p5_demo) -> None:
     """Total nitrogen is conserved across ~12 hours of default kinetics.
 
@@ -399,13 +422,12 @@ def test_tier1p5_total_n_conservation_active_kinetics(tier1p5_demo) -> None:
     * OrgN hydrolysis (``kon_20`` = 0.1 1/d): OrgN -> NH4
 
     All of these are mass-conserving within the total-N pool *in
-    principle*. The empirical residual drift comes from (a) the v2
-    multiplicative-integrator artifact in the Nitrogen / FloatingAlgae /
-    BenthicAlgae overlays and (b) the volumetric/areal unit mismatch
-    between benthic-algae N and water-column N (see module docstring).
-    With the literature-aligned defaults, the integrator-bug residual
-    exceeds rtol=1e-1 over 100 substeps; see the @pytest.mark.xfail above
-    for context on when this test is expected to flip back to passing.
+    principle*. The empirical residual drift (~0.11% at 100 substeps)
+    is consistent with the documented benthic-algae -> POM partial-
+    coupling N leak ((1-Fw)*Fb fraction) plus a per-step Forward-Euler
+    discretization residual at the literature-aligned ``mu_max=2.0``
+    1/d default; see the module docstring for the post-fix tolerance
+    discussion. Tolerance: ``rtol=1e-2`` (1%).
     """
     n_initial = total_n_active_kinetics(tier1p5_demo.registry)
 
@@ -421,7 +443,7 @@ def test_tier1p5_total_n_conservation_active_kinetics(tier1p5_demo) -> None:
     np.testing.assert_allclose(
         n_final,
         n_initial,
-        rtol=1.0e-1,
+        rtol=1.0e-2,
         err_msg=(
             "Tier-1.5 active-kinetics total-N conservation failed. "
             f"initial={n_initial!r}, final={n_final!r}, "
@@ -431,18 +453,6 @@ def test_tier1p5_total_n_conservation_active_kinetics(tier1p5_demo) -> None:
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Same residual kinetic-coupling drift as total-N (see "
-        "test_tier1p5_total_n_conservation_active_kinetics for the "
-        "primary diagnosis). For total-C there is also a known "
-        "approximation: POM is in mg-D/L (dry weight) but the helper "
-        "sums it into the same pool as DOC (mg-C/L); the POM "
-        "dissolution pathway is dimensionally approximate. Flip xfail "
-        "off when the kinetic-coupling residual is resolved."
-    ),
-)
 def test_tier1p5_total_c_conservation_active_kinetics(tier1p5_demo) -> None:
     """Total carbon is conserved across ~12 hours of default kinetics.
 
@@ -461,9 +471,11 @@ def test_tier1p5_total_c_conservation_active_kinetics(tier1p5_demo) -> None:
     * CBOD oxidation (``kbod_20`` = 0.12 1/d): CBOD -> DIC. The C total
       includes ``cbod / roc`` to absorb this exchange.
 
-    Tolerance: rtol=1e-1 (~7% empirical drift at OLD v1 defaults; with the
-    literature-aligned defaults the residual exceeds rtol — see
-    @pytest.mark.xfail above).
+    Tolerance: rtol=1e-1. The empirical drift is ~0.3% at 100
+    substeps after the Phase 9.G POM->DOC unit-correction fix landed;
+    the looser 10% tolerance is preserved to absorb the documented
+    benthic-algae -> POM partial-coupling C leak (analogous to the
+    N leak; see the module docstring).
     """
     c_initial = total_c_active_kinetics(tier1p5_demo.registry)
 

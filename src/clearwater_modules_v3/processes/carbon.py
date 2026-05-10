@@ -25,8 +25,8 @@ Kinetics (mirrors v1 ``processes.py:2439-2870`` and Fortran
     dDOC/dt = + kpoc_tc * POC                                # POC hydrolysis source
               + algal_doc_from_mortality_rate                # FloatingAlgae
               + balgae_doc_from_mortality_rate               # BenthicAlgae
-              + getattr(pom_process, "pom_hydrolysis_rate",
-                        0)                                   # POM hydrolysis (if POM)
+              + getattr(pom_process, "pom_doc_source_rate",
+                        0)                                   # POM dissolution -> DOC (if POM); mg-C/L_water/d
               - DOX_attenuation * kdoc_tc * DOC              # DOC -> DIC oxidation
 
     dDIC/dt = + DOX_attenuation * kdoc_tc * DOC              # DOC oxidation -> DIC (mg-C/L/d)
@@ -421,21 +421,27 @@ class Carbon(Process):
         doc_oxidation = kdoc_tc_value * doc * dox_attenuation
         doc_algal_mortality = self._doc_algal_mortality(doc)
         doc_balgae_mortality = self._doc_balgae_mortality(depth, doc)
-        # POM hydrolysis source (rate cached on POM Process; absent ->
-        # zero). The naming contract is ``pom_hydrolysis_rate`` per the
-        # Phase 5 inter-process contract.
+        # POM dissolution -> DOC source (mg-C/L_water/d). The cache
+        # ``pom_doc_source_rate`` on POM Process is in water-column
+        # volumetric mg-C/L/d, with ``fcom`` (mg-C/mg-D) and ``h2/depth``
+        # (sediment->water-column volume) already applied -- consumer-
+        # ready for direct addition to dDOC/dt. Without those factors
+        # the v3 implementation produces a closed-system C conservation
+        # leak proportional to ``(1 - fcom * h2 / depth)`` per dissolved
+        # mg-D of POM (about 25x overcount at default depth=1 m / h2=0.1
+        # m / fcom=0.4). Defaults to 0 when POM is absent.
         if self.use_pom and self.pom_process is not None:
-            pom_hydrolysis = getattr(
-                self.pom_process, "pom_hydrolysis_rate", 0
+            pom_doc_source = getattr(
+                self.pom_process, "pom_doc_source_rate", 0
             )
         else:
-            pom_hydrolysis = 0
+            pom_doc_source = 0
 
         d_doc = (
             poc_hydrolysis
             + doc_algal_mortality
             + doc_balgae_mortality
-            + pom_hydrolysis
+            + pom_doc_source
             - doc_oxidation
         )
 
