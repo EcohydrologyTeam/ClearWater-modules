@@ -61,8 +61,17 @@ BenthicAlgae Processes now cache:
 
 so POM.run reads them via ``getattr(...)`` (consumer-ready fluxes,
 already in mg/L/d). POM also caches its own ``pom_hydrolysis_rate``
-(= ``kpom_tc * pom``, mg/L/d) for the Phase 5.A Carbon consumer to read
-as a DOC source term.
+for the Phase 5.A Carbon consumer to read as a DOC source term. The
+cache is in **mg-C/L/d (water-column volumetric)**, computed as
+``fcom * kpom_tc * pom * h2 / depth``: the raw POM-mass dissolution
+rate (``kpom_tc * pom``, mg-D/L_sed/d) is multiplied by ``fcom`` (mg-C
+per mg-D, the carbon mass fraction of organic dry weight) and by
+``h2 / depth`` (sediment-volume to water-column-volume conversion).
+This matches the symmetric ``poc_hydrolysis_rate`` cache on Carbon
+(mg-C/L/d) and ensures the POM dissolution pathway is mass-conserving
+in carbon terms. Without these factors, every mg of dry POM dissolved
+would produce 1 mg of DOC at default depth=1 m / h2=0.1 m / fcom=0.4
+-- a 25x overcount that fails closed-system C conservation.
 """
 
 from datetime import datetime, timedelta
@@ -180,10 +189,11 @@ class POM(Process):
 
         # Phase 3.5 inter-process coupling: step-scoped rate cache
         # (Q10 GS-rates contract). Carbon consumes this as a DOC source
-        # term (POM hydrolysis -> DOC). Initialized to 0 so a Carbon
-        # consumer that reads this attribute before POM.run is ever
-        # called gets a defined value.
-        self.pom_hydrolysis_rate: ArrayLike = 0.0
+        # term (POM hydrolysis -> DOC). Units: **mg-C/L/d** (water-column
+        # volumetric), with ``fcom`` and ``h2/depth`` already applied.
+        # Initialized to 0 so a Carbon consumer that reads this attribute
+        # before POM.run is ever called gets a defined value.
+        self.pom_doc_source_rate: ArrayLike = 0.0
 
     @ProcessFactory.register("pom")
     @staticmethod
@@ -272,12 +282,21 @@ class POM(Process):
             water_temperature, self.kpom_20, self.kpom_theta
         )
 
-        # Sink: dissolution to DOC. Cache as the consumer-ready flux for
-        # the Phase 5.A Carbon Process (Q10 GS-rates contract). Carbon
-        # reads this as a DOC source term:
-        # ``getattr(pom_process, "pom_hydrolysis_rate", 0)``.
+        # Sink: dissolution. POM mass loss is in mg-D/L_sed/d (POM state
+        # is dry-mass-per-sediment-volume). Used as a sink in dPOM/dt.
         rate_dissolution = kpom_tc * pom
-        self.pom_hydrolysis_rate = rate_dissolution
+
+        # Phase 5.A consumer-ready DOC source rate (mg-C/L_water/d).
+        # The raw POM dissolution rate (mg-D/L_sed/d) becomes a DOC
+        # source by (1) converting dry mass to carbon mass via
+        # ``fcom`` (mg-C/mg-D) and (2) converting sediment volumetric
+        # to water-column volumetric via ``h2 / depth``. Matches the
+        # convention of ``poc_hydrolysis_rate`` on Carbon (mg-C/L/d
+        # water-column). Required for closed-system C conservation.
+        depth = registry.get_at_time("depth", time)
+        self.pom_doc_source_rate = (
+            self.fcom * rate_dissolution * self.h2 / depth
+        )
 
         # Sink: burial.
         rate_burial = self.vb * pom / self.h2

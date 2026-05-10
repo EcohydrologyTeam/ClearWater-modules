@@ -87,18 +87,36 @@ masked the actual conservation behavior.
 Empirical drift on the Tier-1.5 fixture (5-cell synthetic mesh,
 default IC, 5-minute substeps):
 
-    50 steps:  d(total-N)/total-N = -0.057%   d(total-C)/total-C = +0.43%
-    100 steps: d(total-N)/total-N = -0.110%   d(total-C)/total-C = +3.07%
-    144 steps: d(total-N)/total-N = -0.153%   d(total-C)/total-C = +7.61%
-    288 steps: d(total-N)/total-N = -0.273%   d(total-C)/total-C = +21.65%
+    50 steps:  d(total-N)/total-N = -0.057%   d(total-C)/total-C = -0.16%
+    100 steps: d(total-N)/total-N = -0.110%   d(total-C)/total-C = -0.30%
+    144 steps: d(total-N)/total-N = -0.153%   d(total-C)/total-C = +3.08%
+    288 steps: d(total-N)/total-N = -0.273%   d(total-C)/total-C = +16.09%
 
 Total-N drift is small and roughly linear in step count, consistent
 with a per-step Forward-Euler discretization residual at the
-literature-aligned ``mu_max=2.0`` 1/d default. Total-C drift is larger
-and grows super-linearly because POM is in mg-D/L (dry weight) and
-exits the C bookkeeping when it dissolves to DOC (mg-C/L); the POM
-dissolution pathway is dimensionally approximate. With ``vb=0`` the
-exchange is closed in dry-weight terms but not in C terms.
+literature-aligned ``mu_max=2.0`` 1/d default. The small negative N
+sign comes from the documented benthic-algae partial-coupling N leak:
+a fraction ``Fb * (1 - Fw) = 9%`` of the areal benthic-algae mortality
+is routed to the bed-sediment POM pool (Fortran ``POM2``), which v3
+tracks only as dry-mass (no PON tracking), so the corresponding N is
+silently dropped from the closed-system inventory. This matches
+Fortran NSM1's architectural choice (Fortran's POM is a diagnostic
+``POC / focm`` and similarly does not carry an explicit N pool); a
+full PON/PIN sediment compartment is NSM2 sediment-diagenesis scope.
+
+Total-C drift is small at short horizons (~0.3% at 100 substeps
+after the Phase 9.G POM->DOC unit-correction fix; previously +3% at
+the same horizon due to a missing ``fcom * h2 / depth`` multiplier on
+the POM dissolution -> DOC pathway in ``carbon.py``). Drift grows
+super-linearly at very long horizons because of (a) Forward-Euler
+discretization error compounding with the literature-aligned
+``mu_max=2.0`` 1/d algal growth, which doubles biomass several times
+in the 24-h test window without negative-feedback equilibration, and
+(b) the same partial-coupling routing that leaks N to POM also leaks
+C to POM (in mg-C terms via ``fcom``). For real-world simulations
+this is mitigated by ecosystem feedbacks (light limitation, nutrient
+depletion, equilibrating mortality) that prevent biomass from doubling
+unboundedly; the 288-step test is a worst-case stress measurement.
 
 A secondary residual is the volumetric/areal unit conversion between
 benthic-algae state (g-D/m^2) and water-column N/C pools (mg/L). The
@@ -108,10 +126,15 @@ matching the Fortran NSM1 / v1 / v3 water-column flux convention
 contribution to the total-N inventory in this fixture is ~12% so the
 conversion choice does not dominate the residual.
 
-Tolerance: ``rtol=1.0e-1`` (10%) over 100 substeps. The total-N
-residual is well within this floor (~0.1% at 100 steps); the looser
-tolerance is preserved to absorb the documented POM-dry-weight-as-C
-approximation in the total-C helper.
+Tolerance: ``rtol=1.0e-2`` for total-N (1% over 100 substeps; current
+empirical drift is ~0.11%, leaving 9x headroom) and ``rtol=1.0e-1``
+for total-C (10%, preserved to absorb the documented N/C leak via the
+benthic-algae -> POM partial-coupling routing and any super-linear
+Forward-Euler residual at literature-aligned default rates). The N
+tolerance was tightened from rtol=1e-1 in Phase 9.G after the POM->DOC
+unit-correction fix landed; the C tolerance is preserved at 1e-1 to
+allow the (1-Fw)*Fb partial-coupling C leak through without flagging
+it as a regression.
 
 Total-C is closed up to the same Forward-Euler residual plus the
 POM <-> DOC dimensional conflation and the CBOD <-> DIC oxidation
@@ -399,10 +422,12 @@ def test_tier1p5_total_n_conservation_active_kinetics(tier1p5_demo) -> None:
     * OrgN hydrolysis (``kon_20`` = 0.1 1/d): OrgN -> NH4
 
     All of these are mass-conserving within the total-N pool *in
-    principle*. The empirical residual drift (~0.1% at 100 substeps)
-    is consistent with a per-step Forward-Euler discretization
-    residual at the literature-aligned ``mu_max=2.0`` 1/d default;
-    see the module docstring for the post-fix tolerance discussion.
+    principle*. The empirical residual drift (~0.11% at 100 substeps)
+    is consistent with the documented benthic-algae -> POM partial-
+    coupling N leak ((1-Fw)*Fb fraction) plus a per-step Forward-Euler
+    discretization residual at the literature-aligned ``mu_max=2.0``
+    1/d default; see the module docstring for the post-fix tolerance
+    discussion. Tolerance: ``rtol=1e-2`` (1%).
     """
     n_initial = total_n_active_kinetics(tier1p5_demo.registry)
 
@@ -418,7 +443,7 @@ def test_tier1p5_total_n_conservation_active_kinetics(tier1p5_demo) -> None:
     np.testing.assert_allclose(
         n_final,
         n_initial,
-        rtol=1.0e-1,
+        rtol=1.0e-2,
         err_msg=(
             "Tier-1.5 active-kinetics total-N conservation failed. "
             f"initial={n_initial!r}, final={n_final!r}, "
@@ -446,9 +471,11 @@ def test_tier1p5_total_c_conservation_active_kinetics(tier1p5_demo) -> None:
     * CBOD oxidation (``kbod_20`` = 0.12 1/d): CBOD -> DIC. The C total
       includes ``cbod / roc`` to absorb this exchange.
 
-    Tolerance: rtol=1e-1. The empirical drift is ~3% at 100 substeps,
-    dominated by the documented POM-dry-weight-as-C approximation
-    rather than a true non-conservation; see the module docstring.
+    Tolerance: rtol=1e-1. The empirical drift is ~0.3% at 100
+    substeps after the Phase 9.G POM->DOC unit-correction fix landed;
+    the looser 10% tolerance is preserved to absorb the documented
+    benthic-algae -> POM partial-coupling C leak (analogous to the
+    N leak; see the module docstring).
     """
     c_initial = total_c_active_kinetics(tier1p5_demo.registry)
 
