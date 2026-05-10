@@ -23,10 +23,16 @@ Corrections applied:
 """
 
 DEFAULTS: dict[str, float | int | bool] = {
-    'BWd': 100.0,                       # mg-D/g-D; benthic algae dry weight ratio
-    'BWc': 40.0,                        # mg-C/g-D; benthic algae carbon content
-    'BWn': 7.2,                         # mg-N/g-D; benthic algae nitrogen content
-    'BWp': 1.0,                         # mg-P/g-D; benthic algae phosphorus content
+    # BWd/BWc/BWn/BWp: raw stoichiometric weights "per stoichiometric
+    # unit". Mass-fraction ratios are the *quotients* rdb = BWd/BWd = 1,
+    # rcb = BWc/BWd, rnb = BWn/BWd, rpb = BWp/BWd (mg-X per mg-D);
+    # see ``benthic_algae.py:336`` and ``carbon.py:403``. With BWd = 100
+    # these give rcb = 0.4 mg-C/mg-D = 40% C, rnb = 0.072 mg-N/mg-D =
+    # 7.2% N, rpb = 0.01 mg-P/mg-D = 1% P (typical algal mass fractions).
+    'BWd': 100.0,                       # mg-D per stoichiometric unit (denominator for rcb/rnb/rpb; produces 100% dry-weight mass fraction by definition)
+    'BWc': 40.0,                        # mg-C per stoichiometric unit (rcb = BWc/BWd = 0.4 mg-C/mg-D)
+    'BWn': 7.2,                         # mg-N per stoichiometric unit (rnb = BWn/BWd = 0.072 mg-N/mg-D)
+    'BWp': 1.0,                         # mg-P per stoichiometric unit (rpb = BWp/BWd = 0.01 mg-P/mg-D)
     'BWa': 1000.0,                      # ug-Chla per stoichiometric unit; gives rab = BWa/BWd = 10 mg-Chla/g-DW (matches WASP7 canonical and NSM1 floating-algae AWa/AWd; was 3500 in v1/v3 pre-Phase-9.E and 5000 in Fortran, both above canonical)
     'KLb': 10.0,                        # W/m^2; benthic light limitation half-saturation
     'KsNb': 0.25,                       # mg-N/L; nitrogen half-saturation for benthic algae

@@ -216,9 +216,17 @@ class Nitrogen(Process):
         # and tests; do NOT rename it. A future v3.x can deprecate it.
         from clearwater_modules_v3.parameters.algae import DEFAULTS as ALGAE_DEFAULTS
         from clearwater_modules_v3.parameters.balgae import DEFAULTS as BALGAE_DEFAULTS
-        self.floating_algae_nitrogen_weight = ALGAE_DEFAULTS["AWn"]      # mg-N/ug-Chla
-        self.benthic_algae_nitrogen_weight = BALGAE_DEFAULTS["BWn"]      # mg-N/g-D
-        self.algal_chlorophyll = ALGAE_DEFAULTS["AWa"]                   # ug-Chla/ug-Chla
+        # AWn / BWn / AWa are raw stoichiometric weights "per stoichiometric
+        # unit", NOT concentration ratios. The actual mg-N/ug-Chla ratio
+        # is rna = AWn/AWa (computed at line 729 below); the actual
+        # mg-N/mg-D mass fraction is rnb = BWn/BWd. Treating AWn / BWn
+        # directly as mg-N/ug-Chla / mg-N/g-D (as some test helpers and
+        # earlier comments did) overstates the algal-N stoichiometry by
+        # AWa = 1000x and was the source of a closed-system N
+        # conservation bug (Phase 9.G commit ee31218).
+        self.floating_algae_nitrogen_weight = ALGAE_DEFAULTS["AWn"]      # mg-N per stoichiometric unit
+        self.benthic_algae_nitrogen_weight = BALGAE_DEFAULTS["BWn"]      # mg-N per stoichiometric unit
+        self.algal_chlorophyll = ALGAE_DEFAULTS["AWa"]                   # ug-Chla per stoichiometric unit
         self.benthic_algea_faction_uptake_from_nitrate = 0.5             # legacy "algea" typo (preserved)
         self.fraction_bottom_area = 1.0                                  # unitless
 
