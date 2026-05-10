@@ -40,6 +40,8 @@ import numpy as np
 import pytest
 import xarray as xr
 
+from clearwater_modules_v3.processes.cbod import CBOD
+from clearwater_modules_v3.processes.dox import DOX
 from clearwater_modules_v3.processes.nitrogen import Nitrogen
 from clearwater_modules_v3.utils.numerics import Diagnostics, clip_negative_state
 
@@ -363,21 +365,119 @@ def test_tier1_cbod_conservation_closed_system_loss_disabled(
         assert cached_rate == 0.0
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Phase 5: DOX-coupled CBOD+DOX closed-system conservation "
-        "(reaeration disabled) requires the v3 DOX Process, which is "
-        "not yet implemented. This xfail flips to passing the moment "
-        "Phase 5 lands."
-    ),
-    strict=True,
-)
-def test_tier1_cbod_dox_coupled_conservation_phase5_pending() -> None:
-    """Placeholder for the Phase 5 CBOD+DOX coupled conservation test.
+def test_tier1_cbod_dox_coupled_stoichiometry(
+    in_memory_registry: InMemoryRegistry,
+    closed_system_time_window: tuple[datetime, datetime, timedelta],
+) -> None:
+    """Closed-system CBOD+DOX 1:1 oxidation stoichiometry across 100 substeps.
 
-    When the v3 DOX Process lands, this test should be replaced with
-    a real Tier 1 assertion that ``total_o2_equivalents`` is invariant
-    under a closed system where CBOD oxidation transfers oxygen demand
-    from CBOD to DOX (i.e., 1 mg-CBOD oxidized -> 1 mg-O2 consumed).
+    CBOD oxidation in a closed system is a *consumption*, not a
+    transfer: 1 mg-CBOD oxidized AND 1 mg-O2 (from DOX) consumed at the
+    same time. Both pools decrease at the same rate; neither
+    individually is conserved. The Tier 1 invariant is therefore:
+
+        Delta(CBOD) == Delta(DOX)   (cell-wise, to floating-point roundoff)
+
+    encoding the 1:1 stoichiometric identity that ``CBOD`` is in
+    mg-O2-demand units (1 mg-CBOD == 1 mg-O2 by definition) and that the
+    DOX integrator's ``- cbod_sink`` term reads CBOD's
+    ``cbod_oxidation_rate`` cache verbatim
+    (``processes/dox.py:_cbod_oxidation_flux``).
+
+    Setup:
+    * 5-cell mesh, ``initial_state_5cell`` initial conditions (CBOD =
+      2.0-4.0 mg-O2/L, DOX = 8.0-10.0 mg-O2/L).
+    * CBOD with ``kbod_20 = 0.12 1/d`` (default; drives oxidation),
+      ``ksbod_20 = 0`` (no settling, closed in CBOD pool).
+    * DOX with all non-CBOD source/sink terms disabled:
+      ``kah_20_user = kaw_20_user = 0`` (no atmospheric reaeration),
+      ``SOD_20 = 0`` (no sediment oxygen demand). The coupling flags
+      ``use_floating_algae``, ``use_benthic_algae``, ``use_nitrogen``,
+      and ``use_carbon`` are left at their default ``False`` so the
+      respective fluxes (algal photosynthesis/respiration, NH4
+      nitrification, DOC oxidation) all return zero — see
+      ``processes/dox.py`` per-flux helpers.
+    * Manual wiring: ``dox.use_cbod = True`` and
+      ``dox.cbod_process = cbod`` so DOX reads CBOD's
+      ``cbod_oxidation_rate`` cache as a sink.
+
+    Expected:
+    * ``Delta(CBOD)[i] == Delta(DOX)[i]`` for every cell ``i`` to
+      roundoff (rtol=1e-12), and total mass loss is non-zero
+      (otherwise the test trivially passes against zero rates).
+    * No clip events fired on either CBOD or DOX state.
     """
-    raise NotImplementedError("Phase 5 DOX coupling pending.")
+    start, end, time_step = closed_system_time_window
+
+    cbod = CBOD(
+        parameters={
+            "kbod_20": 0.12,    # 1/d; default oxidation rate (drives mass transfer)
+            "ksbod_20": 0.0,    # no settling (closed system)
+        },
+        time_step=time_step,
+    )
+
+    dox = DOX(
+        parameters={
+            # Disable atmospheric reaeration (closed system)
+            "kah_20_user": 0.0,
+            "kaw_20_user": 0.0,
+            "hydraulic_reaeration_option": 1,
+            "wind_reaeration_option": 1,
+            # Disable sediment oxygen demand (closed system)
+            "SOD_20": 0.0,
+        },
+        time_step=time_step,
+    )
+    # Manual cross-process wiring (no Model in unit-test mode).
+    dox.use_cbod = True
+    dox.cbod_process = cbod
+
+    cbod_initial = in_memory_registry.get("cbod").copy()
+    dox_initial = in_memory_registry.get("oxygen_dissolved").copy()
+
+    cbod_diagnostics = Diagnostics()
+    dox_diagnostics = Diagnostics()
+    cbod.diagnostics = cbod_diagnostics
+    dox.diagnostics = dox_diagnostics
+
+    current_time = start
+    while current_time < end:
+        # CBOD must run before DOX so cbod_oxidation_rate is populated
+        # for DOX to consume in the same substep.
+        cbod.run(current_time, in_memory_registry)
+        dox.run(current_time, in_memory_registry)
+        current_time += time_step
+
+    cbod_final = in_memory_registry.get("cbod")
+    dox_final = in_memory_registry.get("oxygen_dissolved")
+
+    delta_cbod = (cbod_final - cbod_initial).values
+    delta_dox = (dox_final - dox_initial).values
+
+    # Tier 1 invariant: 1:1 oxidation stoichiometry, cell-wise.
+    np.testing.assert_allclose(
+        delta_cbod,
+        delta_dox,
+        rtol=1e-12,
+        atol=1e-15,
+        err_msg=(
+            "Closed-system CBOD+DOX 1:1 stoichiometry failed. "
+            f"delta_cbod={delta_cbod!r}, delta_dox={delta_dox!r}"
+        ),
+    )
+
+    # Sanity check: oxidation actually happened (otherwise the test
+    # passes trivially against identically-zero rates).
+    assert (delta_cbod < 0).all(), (
+        "CBOD did not oxidize over 100 substeps; test is meaningless. "
+        f"delta_cbod={delta_cbod!r}"
+    )
+
+    # No clip events fired on either state.
+    assert cbod_diagnostics.clip_events == {}, (
+        f"CBOD clip events fired: {cbod_diagnostics.clip_events!r}"
+    )
+    assert dox_diagnostics.clip_events == {}, (
+        f"DOX clip events fired: {dox_diagnostics.clip_events!r}"
+    )
