@@ -13,11 +13,18 @@ the published consensus midpoint (see comment block below).
 """
 
 DEFAULTS: dict[str, float | int | bool] = {
-    'AWd': 100.0,                   # mg-D/ug-Chla; algal dry weight ratio (stoichiometry)
-    'AWc': 40.0,                    # mg-C/ug-Chla; algal carbon ratio
-    'AWn': 7.2,                     # mg-N/ug-Chla; algal nitrogen ratio
-    'AWp': 1.0,                     # mg-P/ug-Chla; algal phosphorus ratio
-    'AWa': 1000.0,                  # ug-Chla/ug-Chla; chlorophyll per algal unit (rda = AWd/AWa)
+    # AWd/AWc/AWn/AWp/AWa: raw stoichiometric weights "per stoichiometric
+    # unit". Concentration ratios are the *quotients* rda = AWd/AWa,
+    # rca = AWc/AWa, rna = AWn/AWa, rpa = AWp/AWa (mg-X per ug-Chla);
+    # see ``floating_algae.py:459-461`` and the v3 nitrogen / carbon /
+    # phosphorus consumers. With AWa = 1000 these give rda = 0.1
+    # mg-D/ug-Chla, rca = 0.04 mg-C/ug-Chla, rna = 0.0072 mg-N/ug-Chla,
+    # rpa = 0.001 mg-P/ug-Chla.
+    'AWd': 100.0,                   # mg-D per stoichiometric unit (rda = AWd/AWa = 0.1 mg-D/ug-Chla)
+    'AWc': 40.0,                    # mg-C per stoichiometric unit (rca = AWc/AWa = 0.04 mg-C/ug-Chla)
+    'AWn': 7.2,                     # mg-N per stoichiometric unit (rna = AWn/AWa = 0.0072 mg-N/ug-Chla)
+    'AWp': 1.0,                     # mg-P per stoichiometric unit (rpa = AWp/AWa = 0.001 mg-P/ug-Chla)
+    'AWa': 1000.0,                  # ug-Chla per stoichiometric unit (matches benthic BWa; rda/rca/rna/rpa derived above)
     'KL': 10.0,                     # W/m^2; light limitation half-saturation
     'KsN': 0.04,                    # mg-N/L; nitrogen half-saturation for algal growth
     'KsP': 0.0012,                  # mg-P/L; phosphorus half-saturation for algal growth
