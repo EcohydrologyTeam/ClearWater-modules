@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC = REPO_ROOT / "src" / "clearwater_modules_v3"
 CORRECTIONS_DOC = SRC / "parameter_defaults_corrections.md"
 
