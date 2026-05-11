@@ -62,14 +62,22 @@ def dummy_time() -> datetime:
 
 @pytest.fixture(scope="module")
 def dummy_registry():
-    """A trivial dummy registry; POM.rate does not consult it when the
-    floating/benthic algae coupling is disabled and POC is supplied
-    directly as a kwarg."""
+    """A dummy registry that supplies ``depth`` for the Phase 9.G
+    POM-to-DOC consumer-ready rate conversion in ``pom.py:rate``. The
+    other coupling reads (floating-algae cache, benthic-algae cache)
+    are routed via ``self.floating_algae_process`` / ``benthic_algae_process``
+    refs that the test fixtures leave at ``None``, so the registry only
+    needs to provide ``depth``."""
     class _Stub:
         def __contains__(self, name: str) -> bool:
-            return False
+            return name == "depth"
 
         def get_at_time(self, name, time):
+            if name == "depth":
+                # No explicit dims — matches the convention of pom_5cell,
+                # water_temp_5cell, poc_5cell so the rate computation
+                # broadcasts cleanly.
+                return xr.DataArray(np.full(5, 1.0, dtype=float))
             raise KeyError(name)
     return _Stub()
 
@@ -113,10 +121,15 @@ def test_pom_dissolution_matches_v1_POM_dissolution(
     """v3 POM dissolution term matches v1 ``POM_dissolution = POM * kpom_tc``.
 
     Setup: enable dissolution only; vb=vsoc=0, no algal coupling. The
-    lumped ``rate`` then equals ``-POM_dissolution`` (negative, since
-    dissolution is a sink). The cached ``pom_hydrolysis_rate`` is the
-    *positive* dissolution flux (mg/L/d), which is what we assert
-    against v1.
+    lumped ``rate`` then equals ``-POM_dissolution`` (mg-D/L_sed/d, the
+    raw POM-mass loss; matches v1 exactly).
+
+    Phase 9.G change: the cached consumer-ready rate is renamed from
+    ``pom_hydrolysis_rate`` (mg-D/L_sed/d) to ``pom_doc_source_rate``
+    (mg-C/L_water/d, with ``fcom * h2 / depth`` applied so Carbon can
+    consume it directly as a DOC source). The raw POM-mass loss
+    behavior in ``rate()`` is unchanged; only the cache contract is
+    different. Both checks below reflect the post-9.G contract.
     """
     pom = _make_pom(kpom_20=0.1, kpom_theta=1.047)
     v3_rate = pom.rate(
@@ -130,14 +143,20 @@ def test_pom_dissolution_matches_v1_POM_dissolution(
     kpom_tc = v1.kpom_tc(water_temp_5cell, 0.1, 1.047)
     v1_dissolution = v1.POM_dissolution(POM=pom_5cell, kpom_tc=kpom_tc)
 
-    # The lumped v3 rate is -POM_dissolution under this configuration.
+    # The lumped v3 rate is -POM_dissolution (mg-D/L_sed/d) under this
+    # configuration; matches v1 exactly.
     np.testing.assert_allclose(
         np.asarray(v3_rate), -np.asarray(v1_dissolution), rtol=1e-6
     )
-    # And the cached hydrolysis rate is the positive flux.
+    # And the cached consumer-ready DOC source rate is
+    # ``fcom * v1_dissolution * h2 / depth`` (mg-C/L_water/d).
+    fcom = float(pom.fcom)
+    h2 = float(pom.h2)
+    depth = 1.0  # from dummy_registry
+    expected_doc_source = np.asarray(v1_dissolution) * fcom * h2 / depth
     np.testing.assert_allclose(
-        np.asarray(pom.pom_hydrolysis_rate),
-        np.asarray(v1_dissolution),
+        np.asarray(pom.pom_doc_source_rate),
+        expected_doc_source,
         rtol=1e-6,
     )
 
