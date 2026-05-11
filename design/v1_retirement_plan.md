@@ -96,18 +96,30 @@ Convert each `test_5_*_v2.py` to assert v3's own kinetic helpers against analyti
 
 ## 4. Proposed sequence
 
-### Phase 1 — clean the deck (this PR or a follow-up)
+### Phase 1 — clean the deck (DONE)
 
 - [x] Fix the 3 immediate POM test failures from PR #17's `pom_doc_source_rate` rename
 - [x] Delete the broken `test_5_tsm_calculations_v2.py` orphan (collection error, no test functions)
 - [x] Write this plan
 
-### Phase 2 — migrate parity tests (1-2 days)
+### Phase 2 — migrate parity tests (DONE)
 
-- [ ] Create `tests/v3/fixtures/v1_reference/` directory
-- [ ] For each `test_5_*_v2.py`: run it under v1, capture v1 reference arrays to npz, rewrite the test to load from npz
-- [ ] Move the rewritten files into `tests/v3/nsm1/` with the `_v3` suffix convention
-- [ ] Delete the originals
+Chose **Option A** (inline snapshot literals, no external fixture files). For each of the 11 `test_5_*_v2.py` files, captured v1 reference values by running v1 once against the fixture inputs, then wrote a new file at `tests/v3/nsm1/test_<module>_v1_parity_v3.py` with the v1 reference arrays as numpy literals.
+
+- [x] cbod (3 tests) → `test_cbod_v1_parity_v3.py`
+- [x] alkalinity (4 tests) → `test_alkalinity_v1_parity_v3.py`
+- [x] n2 (5 tests) → `test_n2_v1_parity_v3.py`
+- [x] benthic_algae (5 tests) → `test_benthic_algae_v1_parity_v3.py`
+- [x] floating_algae (6 tests) → `test_floating_algae_v1_parity_v3.py`
+- [x] phosphorus (6 tests) → `test_phosphorus_v1_parity_v3.py`
+- [x] pom (7 tests) → `test_pom_v1_parity_v3.py`
+- [x] carbon (9 tests) → `test_carbon_v1_parity_v3.py`
+- [x] dox (10 tests) → `test_dox_v1_parity_v3.py`
+- [x] pathogen (10 tests) → `test_pathogen_v1_parity_v3.py`
+- [x] nitrogen (21 tests) → `test_nitrogen_v1_parity_v3.py`
+- [x] Delete the 11 originals from `tests/`
+
+**Total: 86 parity tests migrated; v3 suite now at 370 passing tests (was 284).** All migrated tests assert v3 vs. frozen v1 references at `rtol=1e-6` and are independent of `src/clearwater_modules/` source.
 
 ### Phase 3 — move pure-v3 tests
 
