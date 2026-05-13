@@ -180,6 +180,23 @@ class Carbon(Process):
     # ratios used in the algal-coupling terms).
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
+    # surface Carbon exposes via the opportunistic-write loop in
+    # ``run``. Each name maps to a ``self.<name>`` cache attribute set
+    # inside ``_change_with_components`` and matches the inventory in
+    # ``design/clearwater_modules_v3_nsm1_appendix_a_diff.md`` §3.
+    REGISTRY_DIAGNOSTICS: tuple[str, ...] = (
+        "poc_hydrolysis_rate",
+        "doc_dic_oxidation_rate",
+        "dic_atm_exchange_rate",
+        "dic_sed_release_rate",
+        "carbon_algal_resp_rate",
+        "carbon_balgae_resp_rate",
+        "carbon_algal_photo_rate",
+        "carbon_balgae_photo_rate",
+        "carbon_cbod_oxidation_rate",
+    )
+
     def __init__(
         self,
         parameters: dict | None = None,
@@ -353,11 +370,17 @@ class Carbon(Process):
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Advance POC, DOC, DIC by one substep using Forward Euler.
 
-        Reads state at ``t = time`` and writes the updated state back at
-        the same key. Caches ``self.doc_dic_oxidation_rate`` for
-        downstream DOX consumption.
+        Pattern-alignment spec §3 patterns A–J: reads forcings at top
+        (A); delegates rate composition to ``_change_with_components``
+        (B); applies Forward Euler with unconditional clip-with-log (C,
+        D); persists primary outputs (E); caches step-scoped rates on
+        ``self.<name>`` (F); opportunistically writes diagnostics (G).
+
+        See ``_change_legacy_inline`` for the pre-refactor inline
+        composition (retained through Phase 10 for the helper-vs-inline
+        parity test under §11.3).
         """
-        # --- State reads ---
+        # --- State reads (pattern A) ---
         poc = registry.get_at_time("poc", time)
         doc = registry.get_at_time("doc", time)
         dic = registry.get_at_time("dic", time)
@@ -379,6 +402,76 @@ class Carbon(Process):
         else:
             dox = _dox_from_registry(registry, time, poc)
 
+        # --- Fused rate composition (pattern B) ---
+        d_poc, d_doc, d_dic, components = self._change_with_components(
+            poc=poc,
+            doc=doc,
+            dic=dic,
+            t_water_c=t_water_c,
+            depth=depth,
+            dox=dox,
+        )
+
+        # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
+        # Names match the REGISTRY_DIAGNOSTICS tuple and the spec §4
+        # inventory. Preserved attribute names: ``doc_dic_oxidation_rate``
+        # and ``poc_hydrolysis_rate`` were already published by Carbon
+        # for DOX consumption; do not rename.
+        for name in self.REGISTRY_DIAGNOSTICS:
+            setattr(self, name, components[name])
+
+        # --- Forward Euler in days (pattern C) ---
+        dt_days = self.time_step.total_seconds() / 86400.0
+        poc_new = poc + d_poc * dt_days
+        doc_new = doc + d_doc * dt_days
+        dic_new = dic + d_dic * dt_days
+
+        # --- Clip-with-log per the resolved Q7 contract (pattern D) ---
+        poc_new = clip_negative_state(poc_new, "poc", self.diagnostics)
+        doc_new = clip_negative_state(doc_new, "doc", self.diagnostics)
+        dic_new = clip_negative_state(dic_new, "dic", self.diagnostics)
+
+        # --- Persist primary outputs (pattern E) ---
+        registry.set_at_time("poc", time, poc_new)
+        registry.set_at_time("doc", time, doc_new)
+        registry.set_at_time("dic", time, dic_new)
+
+        # --- Opportunistic diagnostic registry writes (pattern G) ---
+        # Each Appendix-A name is written ONLY if the user has
+        # pre-registered it. Zero cost when not subscribed; lets
+        # calibration / validation runs subscribe to any subset.
+        for name in self.REGISTRY_DIAGNOSTICS:
+            if name in registry:
+                registry.set_at_time(name, time, components[name])
+
+    # ------------------------------------------------------------------
+    # Rate-composition helpers
+    # ------------------------------------------------------------------
+
+    def _change_with_components(
+        self,
+        *,
+        poc: ArrayLike,
+        doc: ArrayLike,
+        dic: ArrayLike,
+        t_water_c: ArrayLike,
+        depth: ArrayLike,
+        dox: ArrayLike,
+    ) -> tuple[ArrayLike, ArrayLike, ArrayLike, dict]:
+        """Compute ``(d_poc, d_doc, d_dic, components)``.
+
+        Code-motion-only refactor of ``run``'s former inline composition
+        (§11.6): operand order, intermediate names, and arithmetic are
+        preserved verbatim from the pre-refactor body. The ``components``
+        dict is populated from the same intermediates the integrator
+        consumes (no recomputation).
+
+        Phase 2 pattern-alignment spec §6 deliverable. The companion
+        shadow ``_change_legacy_inline`` returns just the deltas and is
+        used by ``tests/v3/nsm1/test_carbon_helper_vs_inline.py`` to
+        verify this helper produces bit-identical deltas through
+        Phase 10.
+        """
         # --- Temperature-corrected rate constants (Arrhenius / van't Hoff) ---
         kpoc_tc_value = arrhenius_correction(
             t_water_c, self.kpoc_20, self.kpoc_theta
@@ -535,40 +628,158 @@ class Carbon(Process):
         d_doc = sanitize_rate(d_doc)
         d_dic = sanitize_rate(d_dic)
 
-        # --- Step-scoped rate caches (Q10 GS-rates contract) ---
-        # doc_dic_oxidation_rate: mg-C/L/d. DOX consumes this term as an
-        # O2 sink: ``DOX_sink = roc * doc_dic_oxidation_rate``.
-        # Sanitize NaN at the cache source: a NaN here propagates via DOX's
-        # rate sum and zeroes the entire cell's DOX rate, freezing the cell
-        # at IC. When DOC/POC are 0 the contribution is 0 regardless.
-        self.doc_dic_oxidation_rate = sanitize_rate(doc_oxidation)
-        self.poc_hydrolysis_rate = sanitize_rate(poc_hydrolysis)
+        # --- Components dict (pattern G + F single source of truth) ---
+        # Each name matches REGISTRY_DIAGNOSTICS and the spec §4
+        # inventory. Preserved attribute names ``doc_dic_oxidation_rate``
+        # and ``poc_hydrolysis_rate`` carry the same sanitize_rate
+        # treatment as in the pre-refactor code so DOX (sibling consumer)
+        # reads identical values.
+        #
+        # Sanitize NaN at the cache source: a NaN here propagates via
+        # DOX's rate sum and zeroes the entire cell's DOX rate, freezing
+        # the cell at IC. When DOC/POC are 0 the contribution is 0
+        # regardless.
+        components = {
+            "poc_hydrolysis_rate": sanitize_rate(poc_hydrolysis),
+            "doc_dic_oxidation_rate": sanitize_rate(doc_oxidation),
+            "dic_atm_exchange_rate": sanitize_rate(co2_reaeration),
+            "dic_sed_release_rate": sanitize_rate(dic_sed_release),
+            "carbon_algal_resp_rate": sanitize_rate(dic_algal_resp),
+            "carbon_balgae_resp_rate": sanitize_rate(dic_balgae_resp),
+            "carbon_algal_photo_rate": sanitize_rate(dic_algal_photo),
+            "carbon_balgae_photo_rate": sanitize_rate(dic_balgae_photo),
+            "carbon_cbod_oxidation_rate": sanitize_rate(dic_cbod_oxidation),
+        }
 
-        # --- Forward Euler in days ---
-        dt_days = self.time_step.total_seconds() / 86400.0
-        poc_new = poc + d_poc * dt_days
-        doc_new = doc + d_doc * dt_days
-        dic_new = dic + d_dic * dt_days
+        return d_poc, d_doc, d_dic, components
 
-        # --- Clip-with-log per the resolved Q7 contract ---
-        poc_new = self._clip(poc_new, "poc")
-        doc_new = self._clip(doc_new, "doc")
-        dic_new = self._clip(dic_new, "dic")
+    def _change_legacy_inline(
+        self,
+        *,
+        poc: ArrayLike,
+        doc: ArrayLike,
+        dic: ArrayLike,
+        t_water_c: ArrayLike,
+        depth: ArrayLike,
+        dox: ArrayLike,
+    ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
+        """Pre-Phase-2 inline rate composition. **Verbatim copy** of the
+        body that used to live inside ``run`` before Phase 2 of the
+        pattern-alignment spec landed.
 
-        # --- Persist updated state ---
-        registry.set_at_time("poc", time, poc_new)
-        registry.set_at_time("doc", time, doc_new)
-        registry.set_at_time("dic", time, dic_new)
+        Retained through Phase 10 of the pattern-alignment spec for the
+        helper-vs-inline parity test
+        (``tests/v3/nsm1/test_carbon_helper_vs_inline.py``) per §11.3.
+        Deleted in Phase 10 alongside its parity test once the final
+        end-to-end baseline parity passes.
+
+        Returns ``(d_poc, d_doc, d_dic)`` — no ``components`` dict, no
+        registry exposure, no clip / Euler / persist. Caller is
+        responsible for the integrator step.
+        """
+        # --- Temperature-corrected rate constants (Arrhenius / van't Hoff) ---
+        kpoc_tc_value = arrhenius_correction(
+            t_water_c, self.kpoc_20, self.kpoc_theta
+        )
+        kdoc_tc_value = arrhenius_correction(
+            t_water_c, self.kdoc_20, self.kdoc_theta
+        )
+
+        # --- DOX-Monod attenuation (DOC -> DIC oxidation only) ---
+        dox_attenuation = dox / (self.KsOxmc + dox)
+
+        # --- Stoichiometric C-to-Chla / C-to-D ratios ---
+        rca = self.AWc / self.AWa     # mg-C / ug-Chla
+        rcb = self.BWc / self.BWd     # mg-C / mg-D
+
+        # --- POC kinetic terms (mg-C/L/d) ---
+        poc_hydrolysis = kpoc_tc_value * poc
+        poc_settling = self.vsoc / depth * poc
+        poc_algal_mortality = self._poc_algal_mortality(poc)
+        poc_balgae_mortality = self._poc_balgae_mortality(depth, poc)
+
+        d_poc = (
+            poc_algal_mortality
+            + poc_balgae_mortality
+            - poc_hydrolysis
+            - poc_settling
+        )
+
+        # --- DOC kinetic terms (mg-C/L/d) ---
+        doc_oxidation = kdoc_tc_value * doc * dox_attenuation
+        doc_algal_mortality = self._doc_algal_mortality(doc)
+        doc_balgae_mortality = self._doc_balgae_mortality(depth, doc)
+        if self.use_pom and self.pom_process is not None:
+            pom_doc_source = getattr(
+                self.pom_process, "pom_doc_source_rate", 0
+            )
+        else:
+            pom_doc_source = 0
+
+        d_doc = (
+            poc_hydrolysis
+            + doc_algal_mortality
+            + doc_balgae_mortality
+            + pom_doc_source
+            - doc_oxidation
+        )
+
+        # --- DIC kinetic terms (mg-C/L/d) ---
+        MG_C_PER_MOL_C = 12000.0
+
+        ka_tc_value = self._ka_tc(t_water_c, depth)
+        kh_co2 = henrys_k_co2(t_water_c)
+        co2_reaeration = (
+            0.923 * ka_tc_value
+            * (kh_co2 * self.pCO2 / 1.0e6 * MG_C_PER_MOL_C - self.FCO2 * dic)
+        )
+
+        algae_growth = self._floating_algae_growth_rate()
+        algae_respiration = self._floating_algae_respiration_rate()
+        dic_algal_resp = algae_respiration * rca
+        dic_algal_photo = algae_growth * rca
+
+        balgae_growth = self._benthic_algae_growth_rate()
+        balgae_respiration = self._benthic_algae_respiration_rate()
+        dic_balgae_resp = balgae_respiration * rcb * self.Fb / depth
+        dic_balgae_photo = balgae_growth * rcb * self.Fb / depth
+
+        if self.use_SedFlux:
+            dic_sed_release = self.JDIC / depth
+        else:
+            dic_sed_release = 0.0
+
+        if self.use_cbod and self.cbod_process is not None:
+            cbod_ox_rate = getattr(
+                self.cbod_process, "cbod_oxidation_rate", 0
+            )
+            if cbod_ox_rate is None:
+                cbod_ox_rate = 0
+            dic_cbod_oxidation = cbod_ox_rate / self.roc
+        else:
+            dic_cbod_oxidation = 0.0
+
+        d_dic = (
+            doc_oxidation
+            + co2_reaeration
+            + dic_algal_resp
+            - dic_algal_photo
+            + dic_balgae_resp
+            - dic_balgae_photo
+            + dic_cbod_oxidation
+            + dic_sed_release
+        )
+
+        # --- NaN guards on the rates ---
+        d_poc = sanitize_rate(d_poc)
+        d_doc = sanitize_rate(d_doc)
+        d_dic = sanitize_rate(d_dic)
+
+        return d_poc, d_doc, d_dic
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    def _clip(self, state: ArrayLike, name: str) -> ArrayLike:
-        """Apply v3 clip-with-log if available; fall back to xr.where."""
-        if isinstance(state, xr.DataArray) and self.diagnostics is not None:
-            return clip_negative_state(state, name, self.diagnostics, step=0)
-        return xr.where(state < 0, 0, state)
 
     def _ka_tc(self, t_water_c: ArrayLike, depth: ArrayLike) -> ArrayLike:
         """Effective reaeration coefficient (1/d), temperature-corrected.
