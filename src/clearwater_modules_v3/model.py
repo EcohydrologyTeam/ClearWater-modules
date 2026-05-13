@@ -644,6 +644,11 @@ class Model:
         step_index = 0
         while current_time < self.__end_time:
             LOGGER.info("Running timestep: %s", current_time)
+            # Resolves pattern-alignment spec §10 Q1: ``Diagnostics``
+            # carries the current substep index so ``clip_negative_state``
+            # log records can attribute clips to a step without
+            # threading ``step=`` through every Process.run signature.
+            self.diagnostics.current_step = step_index
             firing = self.__process_schedule[step_index]
             wet_mask = self.__compute_wet_mask(current_time) if firing else None
             for process in firing:
@@ -738,6 +743,9 @@ class Model:
                 current_chunk_start = current_time
 
             LOGGER.info("Running timestep: %s", current_time)
+            # Pattern-alignment spec §10 Q1 — same step-index propagation
+            # as in __process_loop_full above.
+            self.diagnostics.current_step = step_index
             firing = self.__process_schedule[step_index]
             wet_mask = self.__compute_wet_mask(current_time) if firing else None
             for process in firing:

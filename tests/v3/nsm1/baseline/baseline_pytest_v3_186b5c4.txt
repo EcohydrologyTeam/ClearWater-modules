@@ -1,0 +1,626 @@
+ WARN the lock file is up-to-date but uses an older format (v6), run `pixi lock` to upgrade to v7 for improved reproducibility
+============================= test session starts ==============================
+platform darwin -- Python 3.13.5, pytest-8.4.1, pluggy-1.6.0 -- /opt/homebrew/Caskroom/miniconda/base/envs/clearwater/bin/python3.13
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=1270580021
+rootdir: /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming
+configfile: pyproject.toml
+plugins: anyio-4.12.1, benchmark-5.2.3, timeout-2.4.0, randomly-4.1.0, zarr-3.1.5, cov-7.0.0
+collecting ... collected 392 items
+
+tests/v3/nsm1/test_phosphorus_v1_parity_v3.py::test_fdp_unit_factor_dimensionally_correct PASSED [  0%]
+tests/v3/nsm1/test_phosphorus_v1_parity_v3.py::test_tip_partitioning_fdp_matches_fortran PASSED [  0%]
+tests/v3/nsm1/test_phosphorus_v1_parity_v3.py::test_orgp_hydrolysis_matches_v1 PASSED [  0%]
+tests/v3/nsm1/test_phosphorus_v1_parity_v3.py::test_phase9e_vsop_consistent_with_vsap PASSED [  1%]
+tests/v3/nsm1/test_phosphorus_v1_parity_v3.py::test_tip_settling_matches_fortran_anchored PASSED [  1%]
+tests/v3/nsm1/test_phosphorus_v1_parity_v3.py::test_orgp_settling_matches_v1 PASSED [  1%]
+tests/v3/test_sanitize_rate.py::test_process_module_imports_sanitize_rate[clearwater_modules_v3.processes.alkalinity] PASSED [  1%]
+tests/v3/test_sanitize_rate.py::test_process_module_imports_sanitize_rate[clearwater_modules_v3.processes.phosphorus] PASSED [  2%]
+tests/v3/test_sanitize_rate.py::test_process_module_imports_sanitize_rate[clearwater_modules_v3.processes.n2] PASSED [  2%]
+tests/v3/test_sanitize_rate.py::test_sanitize_rate_dataarray_replaces_nan_and_inf_with_zero PASSED [  2%]
+tests/v3/test_sanitize_rate.py::test_sanitize_rate_dataarray_preserves_coords_and_dims PASSED [  2%]
+tests/v3/test_sanitize_rate.py::test_process_module_imports_sanitize_rate[clearwater_modules_v3.processes.pathogen] PASSED [  3%]
+tests/v3/test_sanitize_rate.py::test_sanitize_rate_ndarray_replaces_nan_and_inf_with_zero PASSED [  3%]
+tests/v3/test_sanitize_rate.py::test_sanitize_rate_catches_division_by_zero_depth PASSED [  3%]
+tests/v3/test_sanitize_rate.py::test_process_module_imports_sanitize_rate[clearwater_modules_v3.processes.dox] PASSED [  3%]
+tests/v3/test_sanitize_rate.py::test_process_module_imports_sanitize_rate[clearwater_modules_v3.processes.carbon] PASSED [  4%]
+tests/v3/test_sanitize_rate.py::test_sanitize_rate_scalar_float_handles_nan_inf_and_finite PASSED [  4%]
+tests/v3/nsm1/test_dry_cell_robustness.py::test_dry_cell_dox_does_not_corrupt_state PASSED [  4%]
+tests/v3/nsm1/test_dry_cell_robustness.py::test_dry_cell_n2_does_not_corrupt_state PASSED [  4%]
+tests/v3/nsm1/test_dry_cell_robustness.py::test_dry_cell_phosphorus_does_not_corrupt_state PASSED [  5%]
+tests/v3/nsm1/test_dry_cell_robustness.py::test_dry_cell_pathogen_does_not_corrupt_state PASSED [  5%]
+tests/v3/nsm1/test_carbon_tier1.py::test_carbon_instantiates_from_defaults PASSED [  5%]
+tests/v3/nsm1/test_carbon_tier1.py::test_tier1_carbon_conservation_closed_system_loss_disabled PASSED [  5%]
+tests/v3/nsm1/test_carbon_tier1.py::test_carbon_run_caches_doc_dic_oxidation_rate PASSED [  6%]
+tests/v3/nsm1/test_pom_v1_parity_v3.py::test_phase9fa_vb_value_pinned PASSED [  6%]
+tests/v3/nsm1/test_pom_v1_parity_v3.py::test_pom_benthic_mortality_input_matches_v1_POM_benthic_algae_mortality PASSED [  6%]
+tests/v3/nsm1/test_pom_v1_parity_v3.py::test_pom_dissolution_matches_v1_POM_dissolution PASSED [  6%]
+tests/v3/nsm1/test_pom_v1_parity_v3.py::test_pom_poc_settling_matches_v1_POM_POC_settling PASSED [  7%]
+tests/v3/nsm1/test_pom_v1_parity_v3.py::test_phase9fa_vb_dimensional_smell_test PASSED [  7%]
+tests/v3/nsm1/test_pom_v1_parity_v3.py::test_pom_burial_matches_v1_POM_burial PASSED [  7%]
+tests/v3/nsm1/test_pom_v1_parity_v3.py::test_pom_algal_settling_input_matches_v1_POM_algal_settling PASSED [  7%]
+tests/v3/test_model_orchestration_v3.py::test_c6_schedule_multiple_cadences_fires_correctly PASSED [  8%]
+tests/v3/test_model_orchestration_v3.py::test_c1_simulation_directory_explicit_path_passes_through PASSED [  8%]
+tests/v3/test_model_orchestration_v3.py::test_c6_schedule_with_non_aligned_start_time PASSED [  8%]
+tests/v3/test_model_orchestration_v3.py::test_c1_simulation_directory_default_is_path PASSED [  8%]
+tests/v3/test_model_orchestration_v3.py::test_c7_interior_chunk_step_indices_correct PASSED [  9%]
+tests/v3/test_model_orchestration_v3.py::test_c6_schedule_is_timezone_independent_for_naive_datetime PASSED [  9%]
+tests/v3/test_model_orchestration_v3.py::test_c7_chunk_size_must_be_integer_multiple_of_time_step PASSED [  9%]
+tests/v3/test_model_orchestration_v3.py::test_c1_path_truediv_no_longer_crashes PASSED [  9%]
+tests/v3/test_model_orchestration_v3.py::test_c2_finalize_model_skips_processes_without_finalize_process PASSED [ 10%]
+tests/v3/test_model_orchestration_v3.py::test_c6_schedule_validation_rejects_non_divisor_cadence PASSED [ 10%]
+tests/v3/test_model_orchestration_v3.py::test_c7_no_spurious_boundary_at_start_or_end PASSED [ 10%]
+tests/v3/test_model_orchestration_v3.py::test_c2_finalize_model_invoked_in_full_mode PASSED [ 10%]
+tests/v3/test_model_orchestration_v3.py::test_c1_simulation_directory_explicit_str_is_promoted_to_path PASSED [ 11%]
+tests/v3/test_tsm_robustness_v3.py::TestM2SedimentThicknessGuard::test_flux_sediment_negative_thickness_returns_zero PASSED [ 11%]
+tests/v3/test_tsm_robustness_v3.py::TestM2SedimentThicknessGuard::test_flux_sediment_multicell_mixed_thickness PASSED [ 11%]
+tests/v3/test_tsm_robustness_v3.py::TestM2SedimentThicknessGuard::test_sediment_temperature_change_multicell_mixed_thickness PASSED [ 11%]
+tests/v3/test_tsm_robustness_v3.py::TestM2SedimentThicknessGuard::test_flux_sediment_zero_thickness_returns_zero PASSED [ 12%]
+tests/v3/test_tsm_robustness_v3.py::TestM2SedimentThicknessGuard::test_sediment_temperature_change_negative_thickness_returns_zero PASSED [ 12%]
+tests/v3/test_tsm_robustness_v3.py::TestM2SedimentThicknessGuard::test_sediment_temperature_change_zero_thickness_returns_zero PASSED [ 12%]
+tests/v3/test_tsm_robustness_v3.py::TestM2SedimentThicknessGuard::test_flux_sediment_positive_thickness_returns_formula PASSED [ 13%]
+tests/v3/test_tsm_robustness_v3.py::TestM3RichardsonRobustness::test_zero_wind_with_buoyancy_clamps_to_minus_one PASSED [ 13%]
+tests/v3/test_tsm_robustness_v3.py::TestM3RichardsonRobustness::test_nan_wind_propagates_visibly PASSED [ 13%]
+tests/v3/test_tsm_robustness_v3.py::TestM3RichardsonRobustness::test_zero_and_nan_wind_do_not_raise PASSED [ 13%]
+tests/v3/test_tsm_robustness_v3.py::TestM3RichardsonRobustness::test_zero_wind_no_runtime_warning PASSED [ 14%]
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_dTdt_max_per_hour_nan_rejected PASSED [ 14%]
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_dTdt_max_per_hour_default_accepted PASSED [ 14%]
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_dTdt_max_per_hour_negative_rejected PASSED [ 14%]
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_q_net_depth_ramp_ref_default_accepted PASSED [ 15%]
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_q_net_depth_ramp_ref_nan_rejected PASSED [ 15%]
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_q_net_depth_ramp_ref_zero_disables PASSED [ 15%]
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_dTdt_max_per_hour_inf_disables PASSED [ 15%]
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_dTdt_max_per_hour_zero_rejected PASSED [ 16%]
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_q_net_depth_ramp_ref_inf_rejected PASSED [ 16%]
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_q_net_depth_ramp_ref_negative_rejected PASSED [ 16%]
+tests/v3/test_tsm_sign_convention_v3.py::test_latent_heat_can_be_negative_for_condensation PASSED [ 16%]
+tests/v3/test_tsm_sign_convention_v3.py::test_sediment_signed_by_sed_minus_water PASSED [ 17%]
+tests/v3/test_tsm_sign_convention_v3.py::test_latent_heat_returns_positive_when_evaporative PASSED [ 17%]
+tests/v3/test_tsm_sign_convention_v3.py::test_flux_net_uses_subtraction_for_upwelling_and_latent PASSED [ 17%]
+tests/v3/test_tsm_sign_convention_v3.py::test_upwelling_longwave_returns_positive_magnitude PASSED [ 17%]
+tests/v3/test_tsm_sign_convention_v3.py::test_atmospheric_longwave_returns_positive_magnitude PASSED [ 18%]
+tests/v3/test_tsm_sign_convention_v3.py::test_sensible_signed_by_air_minus_water PASSED [ 18%]
+tests/v3/nsm1/test_pom_tier1.py::test_tier1_pom_conservation_closed_system_loss_disabled PASSED [ 18%]
+tests/v3/nsm1/test_pom_tier1.py::test_pom_instantiates_from_defaults PASSED [ 18%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_to_hotstart_default_state PASSED [ 19%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_from_hotstart_honors_explicit_false PASSED [ 19%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_from_hotstart_honors_explicit_true PASSED [ 19%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_to_from_hotstart_roundtrip PASSED [ 19%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_model_to_hotstart_collects_state_from_each_process PASSED [ 20%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_model_restore_process_hotstart_invokes_opt_in_processes PASSED [ 20%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_model_seed_from_hotstart_with_explicit_integer_index PASSED [ 20%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_model_seed_from_hotstart_overwrites_registry PASSED [ 20%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_model_restore_temperature_hotstart_resets_skip_flag PASSED [ 21%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_model_restore_process_hotstart_with_empty_attrs PASSED [ 21%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_model_to_hotstart_includes_temperature_state PASSED [ 21%]
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_from_hotstart_default_value_is_false PASSED [ 21%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_shelter_above_one_warns PASSED [ 22%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_function_applies_combined_transforms PASSED [ 22%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_c_out_of_range_raises[-1.0] PASSED [ 22%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_surface_z0_must_be_positive PASSED [ 22%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_c_out_of_range_raises[3.5] PASSED [ 23%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_default_constructor_wind_input_height_is_2_m PASSED [ 23%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_input_height_10m_to_2m_log_law_factor PASSED [ 23%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_c_supported_values_no_warning[2.0] PASSED [ 23%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_input_height_2m_is_no_op PASSED [ 24%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_c_in_range_but_nonstandard_warns[1.5] PASSED [ 24%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_c_out_of_range_raises[0.0] PASSED [ 24%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_c_supported_values_no_warning[1.0] PASSED [ 25%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_input_height_must_be_positive PASSED [ 25%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_c_in_range_but_nonstandard_warns[2.5] PASSED [ 25%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_c_out_of_range_raises[inf] PASSED [ 25%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_registry_shelter_per_cell_array PASSED [ 26%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_c_3_is_back_compat_opt_in_only_warns PASSED [ 26%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_unset_cached_shelter_falls_back_to_scalar PASSED [ 26%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_shelter_must_be_positive PASSED [ 26%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_surface_z0_must_be_less_than_input_height PASSED [ 27%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_shelter_unity_no_warning PASSED [ 27%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_c_in_range_but_nonstandard_warns[3.0] PASSED [ 27%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_shelter_unity_is_no_op PASSED [ 27%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_function_default_no_op PASSED [ 28%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_default_constructor_surface_z0_is_001_m PASSED [ 28%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_default_constructor_wind_c_is_2 PASSED [ 28%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_composition_shelter_and_height_correction PASSED [ 28%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_shelter_scalar_attenuation_at_c2 PASSED [ 29%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_registry_shelter_overrides_scalar PASSED [ 29%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_c_in_range_but_nonstandard_warns[0.5] PASSED [ 29%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_default_constructor_wind_shelter_is_unity PASSED [ 29%]
+tests/v3/test_tsm_wind_function_spec_v3.py::test_wind_input_height_quadratic_attenuation_at_c2 PASSED [ 30%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_default_nitrogen_uses_v3_defaults_for_denitrification PASSED [ 30%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_nitrification_inhibition_matches_v1 PASSED [ 30%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_legacy_kwargs_still_override_defaults PASSED [ 30%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_nitrate_uptake_floating_algae_uses_dynamic_split PASSED [ 31%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_ammonium_nitrification_matches_v1 PASSED [ 31%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_default_nitrogen_sediment_rates_zero_at_v3_defaults PASSED [ 31%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_change_nitrate_no_algae_drops_to_nitrification_minus_denit_minus_beddenit PASSED [ 31%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_change_ammonium_no_algae_drops_to_minus_nitrification_plus_bed PASSED [ 32%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_phase9e_rnh4_theta_matches_fortran PASSED [ 32%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_phase9e_vson_theta_removed_from_defaults PASSED [ 32%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_phase9e_vno3_theta_matches_fortran PASSED [ 32%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_phase9e_nitrogen_theta_pairs_consistent_with_phosphorus PASSED [ 33%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_nitrate_denitrification_water_column_matches_v1 PASSED [ 33%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_ammonium_from_bed_matches_v1 PASSED [ 33%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_nitrate_bed_denitrification_matches_v1 PASSED [ 33%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_phantom_ammonium_decay_term_dropped_from_change_ammonium PASSED [ 34%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_phase9e_kon_theta_matches_fortran PASSED [ 34%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_phase9e_kdnit_theta_matches_fortran PASSED [ 34%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_phase9e_orgn_settling_matches_v1_no_arrhenius PASSED [ 34%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_nitrate_uptake_benthic_algae_uses_dynamic_split_and_correct_units PASSED [ 35%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py::test_default_nitrogen_uses_v3_defaults_for_nitrification PASSED [ 35%]
+tests/v3/test_tsm_diagnostics_v3.py::test_flux_net_matches_flux_components_q_net PASSED [ 35%]
+tests/v3/test_tsm_diagnostics_v3.py::test_flux_components_q_net_matches_manual_composition PASSED [ 35%]
+tests/v3/test_tsm_diagnostics_v3.py::test_density_air_sat_unchanged_in_normal_regime PASSED [ 36%]
+tests/v3/test_tsm_diagnostics_v3.py::test_equilibrium_temperature_accepts_multielement_ndarray PASSED [ 36%]
+tests/v3/test_tsm_diagnostics_v3.py::test_flux_components_returns_seven_keys_plus_net PASSED [ 36%]
+tests/v3/test_tsm_diagnostics_v3.py::test_run_caches_q_components_on_process PASSED [ 36%]
+tests/v3/test_tsm_diagnostics_v3.py::test_equilibrium_temperature_short_circuits_with_mixed_finite_and_nan PASSED [ 37%]
+tests/v3/test_tsm_diagnostics_v3.py::test_equilibrium_temperature_dataarray_and_ndarray_agree PASSED [ 37%]
+tests/v3/test_tsm_diagnostics_v3.py::test_density_air_sat_finite_when_e_sat_exceeds_pressure PASSED [ 37%]
+tests/v3/test_tsm_diagnostics_v3.py::test_equilibrium_temperature_zero_q_net_at_solution PASSED [ 38%]
+tests/v3/test_tsm_diagnostics_v3.py::test_flux_components_q_solar_passthrough PASSED [ 38%]
+tests/v3/test_tsm_diagnostics_v3.py::test_run_writes_q_diagnostics_only_when_registered PASSED [ 38%]
+tests/v3/test_tsm_diagnostics_v3.py::test_equilibrium_temperature_writes_to_registry_when_registered PASSED [ 38%]
+tests/v3/test_tsm_diagnostics_v3.py::test_equilibrium_temperature_warmer_when_solar_higher PASSED [ 39%]
+tests/v3/test_wet_mask_scope_v3.py::test_c5_fallback_to_variables_when_output_variables_undeclared PASSED [ 39%]
+tests/v3/test_wet_mask_scope_v3.py::test_c5_no_op_when_wet_mask_is_none PASSED [ 39%]
+tests/v3/test_wet_mask_scope_v3.py::test_c5_temperature_declares_output_variables PASSED [ 39%]
+tests/v3/test_wet_mask_scope_v3.py::test_c5_wet_mask_respects_output_variables_only PASSED [ 40%]
+tests/v3/test_wet_mask_scope_v3.py::test_c5_temperature_output_variables_is_subset_of_variables PASSED [ 40%]
+tests/v3/test_wet_mask_scope_v3.py::test_c5_temperature_output_variables_excludes_forcings PASSED [ 40%]
+tests/v3/nsm1/test_pathogen_tier1.py::test_pathogen_accepts_parameter_override PASSED [ 40%]
+tests/v3/nsm1/test_pathogen_tier1.py::test_pathogen_instantiates_with_defaults PASSED [ 41%]
+tests/v3/nsm1/test_pathogen_tier1.py::test_tier1_pathogen_conservation_closed_system_decay_disabled PASSED [ 41%]
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_arraylike_input_works PASSED [ 41%]
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_matches_reference_at_known_temps[30.0-2429800.0] PASSED [ 41%]
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_matches_reference_at_known_temps[25.0-2441700.0] PASSED [ 42%]
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_monotonic_decreasing_with_temperature PASSED [ 42%]
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_not_prefix_v2_value PASSED  [ 42%]
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_matches_reference_at_known_temps[10.0-2477300.0] PASSED [ 42%]
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_documented_expected_values PASSED [ 43%]
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_matches_reference_at_known_temps[0.0-2500900.0] PASSED [ 43%]
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_matches_reference_at_known_temps[100.0-2257000.0] PASSED [ 43%]
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_matches_reference_at_known_temps[20.0-2453500.0] PASSED [ 43%]
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_celsius_input_no_kelvin_offset PASSED [ 44%]
+tests/v3/nsm1/test_validation_tier1_conservation.py::test_total_c_helper_returns_finite_positive PASSED [ 44%]
+tests/v3/nsm1/test_validation_tier1_conservation.py::test_total_n_helper_returns_finite_positive PASSED [ 44%]
+tests/v3/nsm1/test_validation_tier1_conservation.py::test_helpers_silently_skip_missing_reservoirs PASSED [ 44%]
+tests/v3/nsm1/test_validation_tier1_conservation.py::test_tier1_cbod_conservation_closed_system_loss_disabled PASSED [ 45%]
+tests/v3/nsm1/test_validation_tier1_conservation.py::test_tier1_total_n_conservation_closed_system_nitrogen_only PASSED [ 45%]
+tests/v3/nsm1/test_validation_tier1_conservation.py::test_total_o2_equivalents_helper_returns_finite_positive PASSED [ 45%]
+tests/v3/nsm1/test_validation_tier1_conservation.py::test_diagnostics_import_smoke PASSED [ 45%]
+tests/v3/nsm1/test_validation_tier1_conservation.py::test_tier1_cbod_dox_coupled_stoichiometry PASSED [ 46%]
+tests/v3/nsm1/test_validation_tier1_conservation.py::test_total_p_helper_returns_finite_positive PASSED [ 46%]
+tests/v3/nsm1/test_validation_tier1_conservation.py::test_total_alkalinity_helper_returns_finite_positive PASSED [ 46%]
+tests/v3/nsm1/test_carbon_v1_parity_v3.py::test_dic_algal_growth_uses_correct_rca PASSED [ 46%]
+tests/v3/nsm1/test_carbon_v1_parity_v3.py::test_poc_hydrolysis_matches_v1 PASSED [ 47%]
+tests/v3/nsm1/test_carbon_v1_parity_v3.py::test_poc_settling_matches_v1 PASSED [ 47%]
+tests/v3/nsm1/test_carbon_v1_parity_v3.py::test_doc_oxidation_matches_v1 PASSED [ 47%]
+tests/v3/nsm1/test_carbon_v1_parity_v3.py::test_poc_hydrolysis_no_longer_dox_attenuated PASSED [ 47%]
+tests/v3/nsm1/test_carbon_v1_parity_v3.py::test_dic_co2_reaeration_matches_v1 PASSED [ 48%]
+tests/v3/nsm1/test_carbon_v1_parity_v3.py::test_dic_algal_respiration_source_matches_fortran_anchored PASSED [ 48%]
+tests/v3/nsm1/test_carbon_v1_parity_v3.py::test_dic_includes_cbod_oxidation PASSED [ 48%]
+tests/v3/nsm1/test_carbon_v1_parity_v3.py::test_henrys_k_co2_matches_v1 PASSED [ 48%]
+tests/v3/test_nsm1_demo_setup.py::test_build_nsm1_demo_custom_process_parameters PASSED [ 49%]
+tests/v3/test_nsm1_demo_setup.py::test_default_initial_conditions_covers_all_nsm1_states PASSED [ 49%]
+tests/v3/test_nsm1_demo_setup.py::test_nitrogen_legacy_attributes_seeded_from_v3_defaults PASSED [ 49%]
+tests/v3/test_nsm1_demo_setup.py::test_build_nsm1_demo_returns_runnable_handle PASSED [ 50%]
+tests/v3/test_nsm1_demo_setup.py::test_build_nsm1_demo_step_advances_without_attribute_error PASSED [ 50%]
+tests/v3/test_nsm1_demo_setup.py::test_default_process_parameters_covers_all_11_processes PASSED [ 50%]
+tests/v3/test_nsm1_demo_setup.py::test_build_nsm1_demo_run_60_substeps_stable PASSED [ 50%]
+tests/v3/test_nsm1_demo_setup.py::test_build_nsm1_demo_phosphorus_persists_to_tip PASSED [ 51%]
+tests/v3/test_nsm1_demo_setup.py::test_nsm1_default_yaml_exists PASSED   [ 51%]
+tests/v3/test_nsm1_demo_setup.py::test_default_initial_conditions_no_legacy_phosphorus_name PASSED [ 51%]
+tests/v3/test_nsm1_demo_setup.py::test_default_initial_conditions_n_cells_param PASSED [ 51%]
+tests/v3/test_nsm1_demo_setup.py::test_build_nsm1_demo_custom_initial_conditions PASSED [ 52%]
+tests/v3/test_nsm1_demo_setup.py::test_nsm1_default_yaml_declares_all_11_processes PASSED [ 52%]
+tests/v3/test_nan_propagation_e2e_v3.py::test_nan_wind_speed_propagates_to_water_temperature PASSED [ 52%]
+tests/v3/test_nan_propagation_e2e_v3.py::test_all_finite_forcings_produce_finite_output PASSED [ 52%]
+tests/v3/test_nan_propagation_e2e_v3.py::test_nan_air_temperature_propagates_to_water_temperature PASSED [ 53%]
+tests/v3/test_nan_propagation_e2e_v3.py::test_nan_solar_radiation_propagates_to_water_temperature PASSED [ 53%]
+tests/v3/nsm1/test_validation_tier1p5_active_kinetics.py::test_tier1p5_no_clip_events_under_active_kinetics PASSED [ 53%]
+tests/v3/nsm1/test_validation_tier1p5_active_kinetics.py::test_tier1p5_total_c_conservation_active_kinetics PASSED [ 53%]
+tests/v3/nsm1/test_validation_tier1p5_active_kinetics.py::test_total_n_active_kinetics_helper_returns_finite_positive PASSED [ 54%]
+tests/v3/nsm1/test_validation_tier1p5_active_kinetics.py::test_total_c_active_kinetics_helper_returns_finite_positive PASSED [ 54%]
+tests/v3/nsm1/test_validation_tier1p5_active_kinetics.py::test_tier1p5_state_variables_finite_and_positive PASSED [ 54%]
+tests/v3/nsm1/test_validation_tier1p5_active_kinetics.py::test_tier1p5_total_n_conservation_active_kinetics PASSED [ 54%]
+tests/v3/nsm1/test_pathogen_v1_parity_v3.py::test_phase9f_lambdas_fixme_removed PASSED [ 55%]
+tests/v3/nsm1/test_pathogen_v1_parity_v3.py::test_phase9fb_light_decay_uses_raw_q_solar PASSED [ 55%]
+tests/v3/nsm1/test_pathogen_v1_parity_v3.py::test_pathogen_settling_matches_v1_PathogenSettling PASSED [ 55%]
+tests/v3/nsm1/test_pathogen_v1_parity_v3.py::test_phase9fb_light_decay_matches_v1_with_canonical_apx PASSED [ 55%]
+tests/v3/nsm1/test_pathogen_v1_parity_v3.py::test_pathogen_total_rate_matches_v1_dPXdt PASSED [ 56%]
+tests/v3/nsm1/test_pathogen_v1_parity_v3.py::test_pathogen_natural_decay_matches_v1_PathogenDeath PASSED [ 56%]
+tests/v3/nsm1/test_pathogen_v1_parity_v3.py::test_phase9f_q_solar_units_are_w_per_m2 PASSED [ 56%]
+tests/v3/nsm1/test_pathogen_v1_parity_v3.py::test_phase9fb_vx_canonical_value_pinned PASSED [ 56%]
+tests/v3/nsm1/test_pathogen_v1_parity_v3.py::test_phase9fb_apx_canonical_value_pinned PASSED [ 57%]
+tests/v3/nsm1/test_pathogen_v1_parity_v3.py::test_pathogen_light_decay_matches_v1_PathogenDecay PASSED [ 57%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_wind_a PASSED       [ 57%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_air_temp_c PASSED   [ 57%]
+tests/v3/test_5_tsm_calculations_v3.py::test_use_sed_temp PASSED         [ 58%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_volume PASSED       [ 58%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_water_temp_c PASSED [ 58%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_surface_area PASSED [ 58%]
+tests/v3/test_5_tsm_calculations_v3.py::test_defaults PASSED             [ 59%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_cloudiness PASSED   [ 59%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_q_solar PASSED      [ 59%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_sed_temp_c PASSED   [ 59%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_pressure_mb PASSED  [ 60%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_wind_b PASSED       [ 60%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_wind_kh_kw PASSED   [ 60%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_wind_c PASSED       [ 60%]
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_eair_mb PASSED      [ 61%]
+tests/v3/nsm1/test_phosphorus_tier1.py::test_phosphorus_accepts_parameter_override PASSED [ 61%]
+tests/v3/nsm1/test_phosphorus_tier1.py::test_tier1_phosphorus_conservation_closed_system_loss_disabled PASSED [ 61%]
+tests/v3/nsm1/test_phosphorus_tier1.py::test_phosphorus_instantiates_with_defaults PASSED [ 61%]
+tests/v3/nsm1/test_benthic_algae_v1_parity_v3.py::test_rate_respiration_matches_v1_AbRespiration PASSED [ 62%]
+tests/v3/nsm1/test_benthic_algae_v1_parity_v3.py::test_limit_density_matches_v1_FSb PASSED [ 62%]
+tests/v3/nsm1/test_benthic_algae_v1_parity_v3.py::test_rate_growth_multiplicative_matches_v1_mub_times_Ab PASSED [ 62%]
+tests/v3/nsm1/test_benthic_algae_v1_parity_v3.py::test_phase9e_bwa_harmonized_to_wasp7_canonical PASSED [ 63%]
+tests/v3/nsm1/test_benthic_algae_v1_parity_v3.py::test_rate_death_matches_v1_AbDeath PASSED [ 63%]
+tests/v3/nsm1/test_n2_v1_parity_v3.py::test_khn2_tc_matches_v1_KHN2_tc PASSED [ 63%]
+tests/v3/nsm1/test_n2_v1_parity_v3.py::test_pwv_matches_v1_pwv PASSED    [ 63%]
+tests/v3/nsm1/test_n2_v1_parity_v3.py::test_n2_sat_cached_matches_v1_N2sat_at_run_time PASSED [ 64%]
+tests/v3/nsm1/test_n2_v1_parity_v3.py::test_n2sat_henry_matches_v1_N2sat PASSED [ 64%]
+tests/v3/nsm1/test_n2_v1_parity_v3.py::test_n2_atmospheric_exchange_matches_v1_dN2dt PASSED [ 64%]
+tests/v3/test_model_minor_v3.py::test_m11_step_index_helper_is_deleted PASSED [ 64%]
+tests/v3/test_model_minor_v3.py::test_m18_minor_run_order_not_exposed PASSED [ 65%]
+tests/v3/test_model_minor_v3.py::test_m12_explicit_nonempty_path_is_preserved PASSED [ 65%]
+tests/v3/test_model_minor_v3.py::test_m12_empty_simulation_directory_falls_back_to_cwd[empty_str] PASSED [ 65%]
+tests/v3/test_model_minor_v3.py::test_m16_process_base_docstring_no_longer_lists_5_step_contract PASSED [ 65%]
+tests/v3/test_model_minor_v3.py::test_m15_processes_accepts_generator PASSED [ 66%]
+tests/v3/test_model_minor_v3.py::test_m12_empty_simulation_directory_falls_back_to_cwd[none] PASSED [ 66%]
+tests/v3/test_model_minor_v3.py::test_m12_empty_simulation_directory_falls_back_to_cwd[empty_path] PASSED [ 66%]
+tests/v3/test_model_minor_v3.py::test_m12_explicit_dot_path_is_preserved PASSED [ 66%]
+tests/v3/test_model_minor_v3.py::test_m15_processes_accepts_plain_list_and_stores_tuple PASSED [ 67%]
+tests/v3/test_config_init_robustness_v3.py::test_init_from_config_missing_process_spec_mentions_index PASSED [ 67%]
+tests/v3/test_config_init_robustness_v3.py::test_resolve_hotstart_unsupported_suffix_lists_supported_options PASSED [ 67%]
+tests/v3/test_config_init_robustness_v3.py::test_resolve_hotstart_supported_suffix_missing_file_names_yaml_key PASSED [ 67%]
+tests/v3/test_config_init_robustness_v3.py::test_init_from_config_missing_data_sources_data_block_names_source PASSED [ 68%]
+tests/v3/test_config_init_robustness_v3.py::test_resolve_hotstart_unsupported_suffix_names_yaml_key PASSED [ 68%]
+tests/v3/test_config_init_robustness_v3.py::test_resolve_hotstart_integer_timestep_passes_through PASSED [ 68%]
+tests/v3/test_config_init_robustness_v3.py::test_init_from_config_missing_model_start_datetime_names_path PASSED [ 68%]
+tests/v3/test_config_init_robustness_v3.py::test_resolve_hotstart_happy_path_valid_nc PASSED [ 69%]
+tests/v3/test_config_init_robustness_v3.py::test_resolve_hotstart_invalid_timestep_string_names_yaml_key PASSED [ 69%]
+tests/v3/test_phase9fc_documentation.py::test_section_2_header_records_resolution_count PASSED [ 69%]
+tests/v3/test_phase9fc_documentation.py::test_section_2_3_marked_resolved_in_phase9fc PASSED [ 69%]
+tests/v3/test_phase9fc_documentation.py::test_phosphorus_use_sedflux_true_raises_notimplementederror PASSED [ 70%]
+tests/v3/test_phase9fc_documentation.py::test_section_2_5_marked_resolved_in_phase9fc PASSED [ 70%]
+tests/v3/test_phase9fc_documentation.py::test_ksbod_fixme_cleared PASSED [ 70%]
+tests/v3/test_phase9fc_documentation.py::test_h2_fixme_cleared PASSED    [ 70%]
+tests/v3/test_phase9fc_documentation.py::test_pom_process_docstring_explains_h2_role PASSED [ 71%]
+tests/v3/test_phase9fc_documentation.py::test_nitrogen_use_sedflux_true_raises_notimplementederror PASSED [ 71%]
+tests/v3/test_phase9fc_documentation.py::test_phosphorus_use_sedflux_false_constructs_normally PASSED [ 71%]
+tests/v3/test_phase9fc_documentation.py::test_nitrogen_use_sedflux_false_constructs_normally PASSED [ 71%]
+tests/v3/test_phase9fc_documentation.py::test_section_2_1_marked_resolved_in_phase9fc PASSED [ 72%]
+tests/v3/nsm1/test_alkalinity_v1_parity_v3.py::test_alk_algal_respiration_source_matches_v1 PASSED [ 72%]
+tests/v3/nsm1/test_alkalinity_v1_parity_v3.py::test_alk_denitrification_source_matches_v1 PASSED [ 72%]
+tests/v3/nsm1/test_alkalinity_v1_parity_v3.py::test_alk_nitrification_sink_matches_v1 PASSED [ 72%]
+tests/v3/nsm1/test_alkalinity_v1_parity_v3.py::test_alk_algal_growth_term_matches_v1 PASSED [ 73%]
+tests/v3/nsm1/test_floating_algae_v1_parity_v3.py::test_rate_death_matches_v1_ApDeath PASSED [ 73%]
+tests/v3/nsm1/test_floating_algae_v1_parity_v3.py::test_rate_respiration_matches_v1_ApRespiration PASSED [ 73%]
+tests/v3/nsm1/test_floating_algae_v1_parity_v3.py::test_rate_settling_matches_v1_ApSettling PASSED [ 73%]
+tests/v3/nsm1/test_floating_algae_v1_parity_v3.py::test_rate_growth_multiplicative_matches_v1_mu_times_Ap PASSED [ 74%]
+tests/v3/nsm1/test_floating_algae_v1_parity_v3.py::test_limit_nitrogen_matches_v1_FN PASSED [ 74%]
+tests/v3/nsm1/test_floating_algae_v1_parity_v3.py::test_limit_phosphorus_matches_v1_FP PASSED [ 74%]
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_sign_drives_toward_water PASSED [ 75%]
+tests/v3/test_tsm_sediment_v3.py::test_evolve_sediment_temperature_can_be_disabled PASSED [ 75%]
+tests/v3/test_tsm_sediment_v3.py::test_sediment_diffusivity_default_matches_fortran PASSED [ 75%]
+tests/v3/test_tsm_sediment_v3.py::test_F2_helper_returns_clip_ratio_when_cap_fires PASSED [ 75%]
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_relaxation_time_constant PASSED [ 76%]
+tests/v3/test_tsm_sediment_v3.py::test_flux_sediment_matches_fortran_formula_at_realistic_inputs PASSED [ 76%]
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_works_on_multi_cell_dataarray PASSED [ 76%]
+tests/v3/test_tsm_sediment_v3.py::test_sediment_density_and_specific_heat_match_fortran PASSED [ 76%]
+tests/v3/test_tsm_sediment_v3.py::test_F2_helper_returns_ramp_one_when_disabled_or_deep PASSED [ 77%]
+tests/v3/test_tsm_sediment_v3.py::test_F2_sediment_delta_scales_by_ramp_and_clip_ratio_in_run PASSED [ 77%]
+tests/v3/test_tsm_sediment_v3.py::test_water_sediment_energy_conservation_per_substep PASSED [ 77%]
+tests/v3/test_tsm_sediment_v3.py::test_F2_helper_returns_correct_ramp_when_active PASSED [ 77%]
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_zero_when_water_equals_sediment PASSED [ 78%]
+tests/v3/test_tsm_sediment_v3.py::test_evolve_sediment_temperature_default_is_true PASSED [ 78%]
+tests/v3/test_tsm_sediment_v3.py::test_F2_water_sediment_conservation_under_depth_ramp PASSED [ 78%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestFloatingAlgaeDefaultsAreLiteratureAligned::test_default_death_matches_v1 PASSED [ 78%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestFloatingAlgaeDefaultsAreLiteratureAligned::test_default_KsN_KsP_match_v3_defaults PASSED [ 79%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestFloatingAlgaeDefaultsAreLiteratureAligned::test_default_respiration_matches_v1 PASSED [ 79%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestFloatingAlgaeDefaultsAreLiteratureAligned::test_default_settling_matches_v1 PASSED [ 79%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestFloatingAlgaeDefaultsAreLiteratureAligned::test_default_growth_rate_uses_default_constants PASSED [ 79%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestFloatingAlgaeHarmonicGrowthGuard::test_harmonic_mean_FP_zero_zeros_growth PASSED [ 80%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestFloatingAlgaeHarmonicGrowthGuard::test_harmonic_mean_FP_one_does_not_zero_growth PASSED [ 80%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::test_floating_algae_limit_light_option1_matches_v1_FL PASSED [ 80%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::test_benthic_algae_limit_light_option3_steele_matches_v1 PASSED [ 80%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestBenthicAlgaeDefaultsAreV1Aligned::test_default_limit_density_matches_v1_FSb PASSED [ 81%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestBenthicAlgaeDefaultsAreV1Aligned::test_default_limit_nitrogen_uses_KsNb PASSED [ 81%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestBenthicAlgaeDefaultsAreV1Aligned::test_default_growth_rate_uses_v1_aligned_constants PASSED [ 81%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestBenthicAlgaeDefaultsAreV1Aligned::test_default_limit_phosphorus_uses_KsPb PASSED [ 81%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestBenthicAlgaeDefaultsAreV1Aligned::test_default_KsNb_KsPb_Ksb_match_v3_defaults PASSED [ 82%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestBenthicAlgaeDefaultsAreV1Aligned::test_default_respiration_matches_v1 PASSED [ 82%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py::TestBenthicAlgaeDefaultsAreV1Aligned::test_default_death_matches_v1 PASSED [ 82%]
+tests/v3/nsm1/test_phase9c_parameter_corrections.py::test_lambdam_matches_fortran_and_qual2k PASSED [ 82%]
+tests/v3/nsm1/test_phase9c_parameter_corrections.py::test_lambdam_smoke_via_L_utility PASSED [ 83%]
+tests/v3/nsm1/test_phase9c_parameter_corrections.py::test_vson_20_matches_global_vars_vson PASSED [ 83%]
+tests/v3/nsm1/test_phase9c_parameter_corrections.py::test_vson_20_matches_fortran_and_v1 PASSED [ 83%]
+tests/v3/nsm1/test_phase9c_parameter_corrections.py::test_lambdas_active_in_light_extinction PASSED [ 83%]
+tests/v3/nsm1/test_phase9c_parameter_corrections.py::test_pathogen_inline_lambdam_matches_global_vars PASSED [ 84%]
+tests/v3/nsm1/test_dox_v1_parity_v3.py::test_phase9e_default_hydraulic_reaeration_option_is_5 PASSED [ 84%]
+tests/v3/nsm1/test_dox_v1_parity_v3.py::test_phase9e_sod_20_value_pinned PASSED [ 84%]
+tests/v3/nsm1/test_dox_v1_parity_v3.py::test_atmospheric_reaeration_matches_v1 PASSED [ 84%]
+tests/v3/nsm1/test_dox_v1_parity_v3.py::test_o2sat_full_apha_matches_v1 PASSED [ 85%]
+tests/v3/nsm1/test_dox_v1_parity_v3.py::test_dox_nitrification_sink_matches_v1 PASSED [ 85%]
+tests/v3/nsm1/test_dox_v1_parity_v3.py::test_dox_sod_sink_matches_v1_with_attenuation PASSED [ 85%]
+tests/v3/nsm1/test_dox_v1_parity_v3.py::test_dox_sod_attenuates_at_low_dox PASSED [ 85%]
+tests/v3/nsm1/test_dox_v1_parity_v3.py::test_dox_algal_photosynthesis_uses_correct_rca PASSED [ 86%]
+tests/v3/nsm1/test_dox_v1_parity_v3.py::test_dox_algal_photosynthesis_source_matches_fortran_anchored PASSED [ 86%]
+tests/v3/nsm1/test_dox_v1_parity_v3.py::test_phase9e_default_dox_reaeration_uses_hydraulics PASSED [ 86%]
+tests/v3/nsm1/test_n2_tier1.py::test_n2_instantiates_with_defaults PASSED [ 86%]
+tests/v3/nsm1/test_n2_tier1.py::test_tier1_n2_conservation_closed_system_loss_disabled PASSED [ 87%]
+tests/v3/nsm1/test_n2_tier1.py::test_n2_run_computes_tdg_diagnostic PASSED [ 87%]
+tests/v3/nsm1/test_n2_tier1.py::test_n2_accepts_parameter_override PASSED [ 87%]
+tests/v3/nsm1/test_n2_tier1.py::test_tier1_n2_with_nitrogen_zeroed_kinetics PASSED [ 88%]
+tests/v3/test_tsm_stability_ramp_v3.py::test_t3_ramp_inactive_on_deep_cell PASSED [ 88%]
+tests/v3/test_tsm_stability_ramp_v3.py::test_t4_cap_activates_on_extreme_flux PASSED [ 88%]
+tests/v3/test_tsm_stability_ramp_v3.py::test_t4b_cap_activates_on_extreme_negative_flux PASSED [ 88%]
+tests/v3/test_tsm_stability_ramp_v3.py::test_t2_ramp_activates_on_shallow_cell PASSED [ 89%]
+tests/v3/test_tsm_stability_ramp_v3.py::test_t5_cap_disabled_passes_extreme_flux PASSED [ 89%]
+tests/v3/test_tsm_stability_ramp_v3.py::test_t6b_mixed_depths_with_cap PASSED [ 89%]
+tests/v3/test_tsm_stability_ramp_v3.py::test_t6_mixed_depths_round_trip PASSED [ 89%]
+tests/v3/test_tsm_stability_ramp_v3.py::test_t1_disabled_matches_legacy_arithmetic PASSED [ 90%]
+tests/v3/test_schedule_non_integer_v3.py::test_integer_second_non_divisor_rejected_by_init_model PASSED [ 90%]
+tests/v3/test_schedule_non_integer_v3.py::test_integer_second_non_divisor_rejected_by_build_schedule_directly PASSED [ 90%]
+tests/v3/test_schedule_non_integer_v3.py::test_zero_time_step_constructor_does_not_validate PASSED [ 90%]
+tests/v3/test_schedule_non_integer_v3.py::test_zero_time_step_raises_zero_division_error PASSED [ 91%]
+tests/v3/test_schedule_non_integer_v3.py::test_sub_second_three_to_one_ratio_documents_m18_residual_gap PASSED [ 91%]
+tests/v3/test_schedule_non_integer_v3.py::test_sub_second_two_point_five_to_one_ratio_rejected PASSED [ 91%]
+tests/v3/test_model_robustness_v3.py::test_m7_chunked_simulation_uses_chunk_window PASSED [ 91%]
+tests/v3/test_model_robustness_v3.py::test_m14_known_wet_mask_variable_passes_validation PASSED [ 92%]
+tests/v3/test_model_robustness_v3.py::test_m7_non_chunked_with_chunked_source_reads_full_window PASSED [ 92%]
+tests/v3/test_model_robustness_v3.py::test_m10_run_twice_raises_runtime_error PASSED [ 92%]
+tests/v3/test_model_robustness_v3.py::test_m8_no_time_dim_with_none_timestep_uses_dataset_as_is PASSED [ 92%]
+tests/v3/test_model_robustness_v3.py::test_m8_no_time_dim_with_explicit_timestep_raises_value_error PASSED [ 93%]
+tests/v3/test_model_robustness_v3.py::test_m5_ordering_contract_documented_on_process_base_module PASSED [ 93%]
+tests/v3/test_model_robustness_v3.py::test_m14_unknown_wet_mask_variable_raises_key_error_at_init PASSED [ 93%]
+tests/v3/test_model_robustness_v3.py::test_m5_ordering_contract_documented_on_init_model PASSED [ 93%]
+tests/v3/test_model_robustness_v3.py::test_m10_first_run_completes_successfully PASSED [ 94%]
+tests/v3/nsm1/test_dox_tier1.py::test_dox_accepts_parameter_override PASSED [ 94%]
+tests/v3/nsm1/test_dox_tier1.py::test_tier1_dox_with_nitrogen_zeroed_kinetics PASSED [ 94%]
+tests/v3/nsm1/test_dox_tier1.py::test_dox_instantiates_with_defaults PASSED [ 94%]
+tests/v3/nsm1/test_dox_tier1.py::test_tier1_dox_conservation_closed_system_loss_disabled PASSED [ 95%]
+tests/v3/test_temperature_minor_v3.py::test_flux_sediment_disabled_returns_dataarray_zeros PASSED [ 95%]
+tests/v3/test_temperature_minor_v3.py::test_temperature_change_no_longer_self_guards_zero_volume PASSED [ 95%]
+tests/v3/test_temperature_minor_v3.py::test_water_specific_heat_propagates_nan PASSED [ 95%]
+tests/v3/test_temperature_minor_v3.py::test_mixing_ratio_air_simplified_form_preserves_c4_cases PASSED [ 96%]
+tests/v3/nsm1/test_alkalinity_tier1.py::test_alkalinity_accepts_parameter_override PASSED [ 96%]
+tests/v3/nsm1/test_alkalinity_tier1.py::test_tier1_alk_with_nitrogen_zeroed_kinetics PASSED [ 96%]
+tests/v3/nsm1/test_alkalinity_tier1.py::test_alkalinity_instantiates_with_defaults PASSED [ 96%]
+tests/v3/nsm1/test_alkalinity_tier1.py::test_tier1_alkalinity_conservation_closed_system_loss_disabled PASSED [ 97%]
+tests/v3/nsm1/test_cbod_v1_parity_v3.py::test_cbod_oxidation_no_dox_matches_v1_first_order PASSED [ 97%]
+tests/v3/nsm1/test_cbod_v1_parity_v3.py::test_cbod_settling_matches_v1_CBOD_sedimentation_per_depth PASSED [ 97%]
+tests/v3/nsm1/test_cbod_v1_parity_v3.py::test_cbod_oxidation_matches_v1_CBOD_oxidation PASSED [ 97%]
+tests/v3/test_wet_dry_transition_v3.py::test_dry_throughout_cell_stays_nan_every_substep PASSED [ 98%]
+tests/v3/test_wet_dry_transition_v3.py::test_wet_dry_wet_trajectory_with_wet_mask PASSED [ 98%]
+tests/v3/test_wet_dry_transition_v3.py::test_dry_cell_without_wet_mask_produces_nan_or_inf PASSED [ 98%]
+tests/v3/test_wet_dry_transition_v3.py::test_dry_cell_with_wet_mask_produces_clean_nan PASSED [ 98%]
+tests/v3/test_mixing_ratio_air_v3.py::test_mixing_ratio_vectorized_mixed_case PASSED [ 99%]
+tests/v3/test_mixing_ratio_air_v3.py::test_mixing_ratio_negative_denominator PASSED [ 99%]
+tests/v3/test_mixing_ratio_air_v3.py::test_mixing_ratio_normal_case PASSED [ 99%]
+tests/v3/test_mixing_ratio_air_v3.py::test_mixing_ratio_equality_case PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../opt/homebrew/Caskroom/miniconda/base/envs/clearwater/lib/python3.13/site-packages/pyct/__init__.py:8
+  /opt/homebrew/Caskroom/miniconda/base/envs/clearwater/lib/python3.13/site-packages/pyct/__init__.py:8: FutureWarning: param.version.Version has been deprecated and will be removed in a future version.
+    __version__ = str(param.version.Version(fpath=__file__, archive_commit="$Format:%h$",
+
+../../../../../opt/homebrew/Caskroom/miniconda/base/envs/clearwater/lib/python3.13/site-packages/param/version.py:200
+  /opt/homebrew/Caskroom/miniconda/base/envs/clearwater/lib/python3.13/site-packages/param/version.py:200: FutureWarning: param.version.run_cmd has been deprecated and will be removed in a future version.
+    remotes = run_cmd([cmd, 'remote', '-v'],
+
+tests/v3/test_tsm_robustness_v3.py::TestM2SedimentThicknessGuard::test_flux_sediment_negative_thickness_returns_zero
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_robustness_v3.py:51: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    return Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_dTdt_max_per_hour_default_accepted
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_robustness_v3.py:125: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_q_net_depth_ramp_ref_default_accepted
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_robustness_v3.py:79: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_q_net_depth_ramp_ref_zero_disables
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_robustness_v3.py:72: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_dTdt_max_per_hour_inf_disables
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_robustness_v3.py:118: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_to_hotstart_default_state
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:49: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_from_hotstart_honors_explicit_false
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:68: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_from_hotstart_honors_explicit_true
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:62: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_to_from_hotstart_roundtrip
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:79: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_model_restore_temperature_hotstart_resets_skip_flag
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:325: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_model_to_hotstart_includes_temperature_state
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:202: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_from_hotstart_default_value_is_false
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:56: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_diagnostics_v3.py::test_equilibrium_temperature_accepts_multielement_ndarray
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/src/clearwater_modules_v3/processes/temperature.py:1633: RuntimeWarning: invalid value encountered in power
+    (1.0 + 34.0 * richardson_number) ** (-0.80),
+
+tests/v3/test_tsm_diagnostics_v3.py::test_equilibrium_temperature_warmer_when_solar_higher
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_water_temp_c
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/src/clearwater_modules_v3/processes/temperature.py:1633: RuntimeWarning: invalid value encountered in scalar power
+    (1.0 + 34.0 * richardson_number) ** (-0.80),
+
+tests/v3/test_wet_mask_scope_v3.py::test_c5_no_op_when_wet_mask_is_none
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_wet_mask_scope_v3.py:263: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_wet_mask_scope_v3.py::test_c5_wet_mask_respects_output_variables_only
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_wet_mask_scope_v3.py:144: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_arraylike_input_works
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_latent_heat_v3.py:59: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    return Temperature(0.3, 1.5, 3.0)
+
+tests/v3/test_nan_propagation_e2e_v3.py::test_nan_wind_speed_propagates_to_water_temperature
+tests/v3/test_nan_propagation_e2e_v3.py::test_all_finite_forcings_produce_finite_output
+tests/v3/test_nan_propagation_e2e_v3.py::test_nan_air_temperature_propagates_to_water_temperature
+tests/v3/test_nan_propagation_e2e_v3.py::test_nan_solar_radiation_propagates_to_water_temperature
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_nan_propagation_e2e_v3.py:63: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_air_temp_c
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/src/clearwater_modules_v3/processes/temperature.py:1621: RuntimeWarning: invalid value encountered in scalar power
+    (1.0 - 22.0 * richardson_number) ** 0.80,
+
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_wind_c
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_5_tsm_calculations_v3.py:127: UserWarning: wind_c = 0.5 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(**temperature_kwargs)
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_sign_drives_toward_water
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:147: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_evolve_sediment_temperature_can_be_disabled
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:218: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_diffusivity_default_matches_fortran
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:61: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_helper_returns_clip_ratio_when_cap_fires
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:415: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_relaxation_time_constant
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:131: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_flux_sediment_matches_fortran_formula_at_realistic_inputs
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:88: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_works_on_multi_cell_dataarray
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:243: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_density_and_specific_heat_match_fortran
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:68: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_helper_returns_ramp_one_when_disabled_or_deep
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:386: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t_disabled = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_helper_returns_ramp_one_when_disabled_or_deep
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:397: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t_active = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_sediment_delta_scales_by_ramp_and_clip_ratio_in_run
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:570: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_water_sediment_energy_conservation_per_substep
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:176: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_helper_returns_correct_ramp_when_active
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:367: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_zero_when_water_equals_sediment
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:109: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_evolve_sediment_temperature_default_is_true
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:213: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_water_sediment_conservation_under_depth_ramp
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:505: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t_on = Temperature(**common, use_sediment_temperature=True)
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_water_sediment_conservation_under_depth_ramp
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:513: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t_off = Temperature(**common, use_sediment_temperature=False)
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t3_ramp_inactive_on_deep_cell
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:228: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t4_cap_activates_on_extreme_flux
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:271: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t4b_cap_activates_on_extreme_negative_flux
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:306: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t2_ramp_activates_on_shallow_cell
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:184: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t5_cap_disabled_passes_extreme_flux
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:338: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t6b_mixed_depths_with_cap
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:465: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t6_mixed_depths_round_trip
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:387: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp_ramp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t6_mixed_depths_round_trip
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:396: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp_legacy = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t1_disabled_matches_legacy_arithmetic
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:144: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_temperature_minor_v3.py::test_flux_sediment_disabled_returns_dataarray_zeros
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_temperature_minor_v3.py:29: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    return Temperature(0.3, 1.5, 3.0)
+
+tests/v3/test_temperature_minor_v3.py::test_flux_sediment_disabled_returns_dataarray_zeros
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_temperature_minor_v3.py:151: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    disabled = Temperature(0.3, 1.5, 3.0, use_sediment_temperature=False)
+
+tests/v3/test_temperature_minor_v3.py::test_temperature_change_no_longer_self_guards_zero_volume
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_temperature_minor_v3.py:195: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    process = Temperature(0.3, 1.5, 3.0, use_sediment_temperature=False)
+
+tests/v3/test_wet_dry_transition_v3.py::test_dry_throughout_cell_stays_nan_every_substep
+tests/v3/test_wet_dry_transition_v3.py::test_wet_dry_wet_trajectory_with_wet_mask
+tests/v3/test_wet_dry_transition_v3.py::test_dry_cell_without_wet_mask_produces_nan_or_inf
+tests/v3/test_wet_dry_transition_v3.py::test_dry_cell_with_wet_mask_produces_clean_nan
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_wet_dry_transition_v3.py:95: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_mixing_ratio_air_v3.py::test_mixing_ratio_vectorized_mixed_case
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_mixing_ratio_air_v3.py:44: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    return Temperature(0.3, 1.5, 3.0)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/nsm1/baseline/baseline_junit_186b5c4.xml -
+====================== 392 passed, 60 warnings in 11.89s =======================

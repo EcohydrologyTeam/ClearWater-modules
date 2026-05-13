@@ -1,0 +1,317 @@
+ WARN the lock file is up-to-date but uses an older format (v6), run `pixi lock` to upgrade to v7 for improved reproducibility
+============================= test session starts ==============================
+platform darwin -- Python 3.13.5, pytest-8.4.1, pluggy-1.6.0
+benchmark: 5.2.3 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+Using --randomly-seed=113431725
+rootdir: /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming
+configfile: pyproject.toml
+plugins: anyio-4.12.1, benchmark-5.2.3, timeout-2.4.0, randomly-4.1.0, zarr-3.1.5, cov-7.0.0
+collected 807 items
+
+tests/test_12_nsm_alkalinity_calculations.py ........................... [  3%]
+......................                                                   [  6%]
+tests/v3/nsm1/test_validation_tier1_conservation.py ..........           [  7%]
+tests/test_16_nsm_PX_calculations.py .........                           [  8%]
+tests/test_tsm_latent_heat.py .........                                  [  9%]
+tests/test_8_nsm_balgae_calculations.py ................................ [ 13%]
+.                                                                        [ 13%]
+tests/unit/temperature/test_richardson.py ..                             [ 13%]
+tests/v3/test_5_tsm_calculations_v3.py ...............                   [ 15%]
+tests/test_5_tsm_calculations.py ...............                         [ 17%]
+tests/v3/test_nsm1_demo_setup.py .............                           [ 19%]
+tests/test_9_nsm_nitrogen_calculations.py ...........................    [ 22%]
+tests/v3/nsm1/test_pathogen_tier1.py ...                                 [ 22%]
+tests/v3/nsm1/test_cbod_v1_parity_v3.py ...                              [ 23%]
+tests/test_7_nsm_algae_calculations.py ................................  [ 27%]
+tests/test_13_nsm_CBOD_calculations.py .......x..                        [ 28%]
+tests/test_4_tsm_module.py ....                                          [ 28%]
+tests/v3/test_tsm_wind_function_spec_v3.py ............................. [ 32%]
+...                                                                      [ 32%]
+tests/v3/nsm1/test_phase9a1_algae_wiring.py ................             [ 34%]
+tests/v3/nsm1/test_pom_v1_parity_v3.py .......                           [ 35%]
+tests/test_10_nsm_carbon_calculations.py ............................... [ 39%]
+...........................x..............                               [ 44%]
+tests/test_11_nsm_DOX_calculations.py .................................. [ 49%]
+...........................                                              [ 52%]
+tests/test_17_nsm_N2_calculations.py ..............................      [ 56%]
+tests/v3/nsm1/test_n2_tier1.py .....                                     [ 56%]
+tests/v3/nsm1/test_alkalinity_v1_parity_v3.py ....                       [ 57%]
+tests/v3/test_phase9fc_documentation.py ...........                      [ 58%]
+tests/v3/nsm1/test_pom_tier1.py ..                                       [ 58%]
+tests/v3/nsm1/test_validation_tier1p5_active_kinetics.py ......          [ 59%]
+tests/v3/test_hotstart_roundtrip_v3.py ............                      [ 61%]
+tests/v3/test_tsm_latent_heat_v3.py ...........                          [ 62%]
+tests/v3/nsm1/test_carbon_tier1.py ...                                   [ 62%]
+tests/v3/test_mixing_ratio_air_v3.py ....                                [ 63%]
+tests/v3/test_tsm_stability_ramp_v3.py ........                          [ 64%]
+tests/v3/test_tsm_sediment_v3.py ...............                         [ 66%]
+tests/v3/test_model_robustness_v3.py ..........                          [ 67%]
+tests/v3/nsm1/test_phase9c_parameter_corrections.py ......               [ 68%]
+tests/v3/test_tsm_diagnostics_v3.py ..............                       [ 69%]
+tests/v3/nsm1/test_floating_algae_v1_parity_v3.py ......                 [ 70%]
+tests/test_tsm_stability_ramp.py ......                                  [ 71%]
+tests/v3/nsm1/test_dox_v1_parity_v3.py ..........                        [ 72%]
+tests/test_6_nsm_module.py ...                                           [ 72%]
+tests/v3/test_nan_propagation_e2e_v3.py ....                             [ 73%]
+tests/v3/test_wet_dry_transition_v3.py ....                              [ 73%]
+tests/v3/nsm1/test_alkalinity_tier1.py ....                              [ 74%]
+tests/v3/test_tsm_robustness_v3.py .....................                 [ 77%]
+tests/v3/test_temperature_minor_v3.py ....                               [ 77%]
+tests/v3/nsm1/test_dry_cell_robustness.py ....                           [ 78%]
+tests/test_1_imports.py .                                                [ 78%]
+tests/v3/nsm1/test_dox_tier1.py ....                                     [ 78%]
+tests/v3/nsm1/test_benthic_algae_v1_parity_v3.py .....                   [ 79%]
+tests/v3/test_sanitize_rate.py ...........                               [ 80%]
+tests/v3/test_schedule_non_integer_v3.py ......                          [ 81%]
+tests/v3/nsm1/test_phosphorus_tier1.py ...                               [ 81%]
+tests/v3/test_wet_mask_scope_v3.py ......                                [ 82%]
+tests/v3/nsm1/test_nitrogen_v1_parity_v3.py .....................        [ 85%]
+tests/test_14_nsm_phosphrous_calculations.py ...............             [ 86%]
+tests/test_15_nsm_POM_calculations.py ................                   [ 88%]
+tests/v3/test_config_init_robustness_v3.py .........                     [ 90%]
+tests/test_hotstart_roundtrip.py ....                                    [ 90%]
+tests/test_2_equation_sort.py ...                                        [ 90%]
+tests/v3/nsm1/test_phosphorus_v1_parity_v3.py ......                     [ 91%]
+tests/v3/test_model_orchestration_v3.py .............                    [ 93%]
+tests/v3/nsm1/test_n2_v1_parity_v3.py .....                              [ 93%]
+tests/v3/test_tsm_sign_convention_v3.py .......                          [ 94%]
+tests/v3/test_model_minor_v3.py ..........                               [ 96%]
+tests/v3/nsm1/test_carbon_v1_parity_v3.py .........                      [ 97%]
+tests/v3/nsm1/test_pathogen_v1_parity_v3.py ..........                   [ 98%]
+tests/test_3_model.py .............                                      [100%]
+
+=============================== warnings summary ===============================
+../../../../../opt/homebrew/Caskroom/miniconda/base/envs/clearwater/lib/python3.13/site-packages/pyct/__init__.py:8
+  /opt/homebrew/Caskroom/miniconda/base/envs/clearwater/lib/python3.13/site-packages/pyct/__init__.py:8: FutureWarning: param.version.Version has been deprecated and will be removed in a future version.
+    __version__ = str(param.version.Version(fpath=__file__, archive_commit="$Format:%h$",
+
+../../../../../opt/homebrew/Caskroom/miniconda/base/envs/clearwater/lib/python3.13/site-packages/param/version.py:200
+  /opt/homebrew/Caskroom/miniconda/base/envs/clearwater/lib/python3.13/site-packages/param/version.py:200: FutureWarning: param.version.run_cmd has been deprecated and will be removed in a future version.
+    remotes = run_cmd([cmd, 'remote', '-v'],
+
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_wind_c
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_5_tsm_calculations_v3.py:127: UserWarning: wind_c = 0.5 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(**temperature_kwargs)
+
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_water_temp_c
+tests/v3/test_tsm_diagnostics_v3.py::test_equilibrium_temperature_warmer_when_solar_higher
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/src/clearwater_modules_v3/processes/temperature.py:1633: RuntimeWarning: invalid value encountered in scalar power
+    (1.0 + 34.0 * richardson_number) ** (-0.80),
+
+tests/v3/test_5_tsm_calculations_v3.py::test_changed_air_temp_c
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/src/clearwater_modules_v3/processes/temperature.py:1621: RuntimeWarning: invalid value encountered in scalar power
+    (1.0 - 22.0 * richardson_number) ** 0.80,
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_from_hotstart_default_value_is_false
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:56: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_model_to_hotstart_includes_temperature_state
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:202: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_from_hotstart_honors_explicit_true
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:62: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_to_hotstart_default_state
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:49: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_model_restore_temperature_hotstart_resets_skip_flag
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:325: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_to_from_hotstart_roundtrip
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:79: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_hotstart_roundtrip_v3.py::test_temperature_from_hotstart_honors_explicit_false
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_hotstart_roundtrip_v3.py:68: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_latent_heat_v3.py::test_lv_matches_reference_at_known_temps[0.0-2500900.0]
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_latent_heat_v3.py:59: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    return Temperature(0.3, 1.5, 3.0)
+
+tests/v3/test_mixing_ratio_air_v3.py::test_mixing_ratio_vectorized_mixed_case
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_mixing_ratio_air_v3.py:44: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    return Temperature(0.3, 1.5, 3.0)
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t4b_cap_activates_on_extreme_negative_flux
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:306: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t4_cap_activates_on_extreme_flux
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:271: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t1_disabled_matches_legacy_arithmetic
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:144: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t6b_mixed_depths_with_cap
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:465: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t2_ramp_activates_on_shallow_cell
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:184: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t3_ramp_inactive_on_deep_cell
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:228: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t6_mixed_depths_round_trip
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:387: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp_ramp = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t6_mixed_depths_round_trip
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:396: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp_legacy = Temperature(
+
+tests/v3/test_tsm_stability_ramp_v3.py::test_t5_cap_disabled_passes_extreme_flux
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_stability_ramp_v3.py:338: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    temp = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_water_sediment_energy_conservation_per_substep
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:176: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_density_and_specific_heat_match_fortran
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:68: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_flux_sediment_matches_fortran_formula_at_realistic_inputs
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:88: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_helper_returns_ramp_one_when_disabled_or_deep
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:386: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t_disabled = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_helper_returns_ramp_one_when_disabled_or_deep
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:397: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t_active = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_works_on_multi_cell_dataarray
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:243: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_evolve_sediment_temperature_default_is_true
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:213: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_zero_when_water_equals_sediment
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:109: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_relaxation_time_constant
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:131: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_evolve_sediment_temperature_can_be_disabled
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:218: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_sediment_delta_scales_by_ramp_and_clip_ratio_in_run
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:570: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_water_sediment_conservation_under_depth_ramp
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:505: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t_on = Temperature(**common, use_sediment_temperature=True)
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_water_sediment_conservation_under_depth_ramp
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:513: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t_off = Temperature(**common, use_sediment_temperature=False)
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_temperature_change_sign_drives_toward_water
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:147: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_helper_returns_clip_ratio_when_cap_fires
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:415: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_sediment_v3.py::test_sediment_diffusivity_default_matches_fortran
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:61: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_sediment_v3.py::test_F2_helper_returns_correct_ramp_when_active
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_sediment_v3.py:367: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_diagnostics_v3.py::test_equilibrium_temperature_accepts_multielement_ndarray
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/src/clearwater_modules_v3/processes/temperature.py:1633: RuntimeWarning: invalid value encountered in power
+    (1.0 + 34.0 * richardson_number) ** (-0.80),
+
+tests/v3/test_nan_propagation_e2e_v3.py::test_nan_solar_radiation_propagates_to_water_temperature
+tests/v3/test_nan_propagation_e2e_v3.py::test_all_finite_forcings_produce_finite_output
+tests/v3/test_nan_propagation_e2e_v3.py::test_nan_wind_speed_propagates_to_water_temperature
+tests/v3/test_nan_propagation_e2e_v3.py::test_nan_air_temperature_propagates_to_water_temperature
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_nan_propagation_e2e_v3.py:63: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_wet_dry_transition_v3.py::test_wet_dry_wet_trajectory_with_wet_mask
+tests/v3/test_wet_dry_transition_v3.py::test_dry_cell_with_wet_mask_produces_clean_nan
+tests/v3/test_wet_dry_transition_v3.py::test_dry_throughout_cell_stays_nan_every_substep
+tests/v3/test_wet_dry_transition_v3.py::test_dry_cell_without_wet_mask_produces_nan_or_inf
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_wet_dry_transition_v3.py:95: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_dTdt_max_per_hour_inf_disables
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_robustness_v3.py:118: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_q_net_depth_ramp_ref_default_accepted
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_robustness_v3.py:79: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_dTdt_max_per_hour_default_accepted
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_robustness_v3.py:125: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_robustness_v3.py::TestM1ConstructorValidation::test_q_net_depth_ramp_ref_zero_disables
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_robustness_v3.py:72: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(
+
+tests/v3/test_tsm_robustness_v3.py::TestM2SedimentThicknessGuard::test_flux_sediment_multicell_mixed_thickness
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_tsm_robustness_v3.py:51: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    return Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_temperature_minor_v3.py::test_flux_sediment_disabled_returns_dataarray_zeros
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_temperature_minor_v3.py:29: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    return Temperature(0.3, 1.5, 3.0)
+
+tests/v3/test_temperature_minor_v3.py::test_flux_sediment_disabled_returns_dataarray_zeros
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_temperature_minor_v3.py:151: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    disabled = Temperature(0.3, 1.5, 3.0, use_sediment_temperature=False)
+
+tests/v3/test_temperature_minor_v3.py::test_temperature_change_no_longer_self_guards_zero_volume
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_temperature_minor_v3.py:195: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    process = Temperature(0.3, 1.5, 3.0, use_sediment_temperature=False)
+
+tests/v3/test_wet_mask_scope_v3.py::test_c5_no_op_when_wet_mask_is_none
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_wet_mask_scope_v3.py:263: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/v3/test_wet_mask_scope_v3.py::test_c5_wet_mask_respects_output_variables_only
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/test_wet_mask_scope_v3.py:144: UserWarning: wind_c = 3.0 is outside the values supported by the Edinger family of wind-function parameterisations. CE-QUAL-W2 explicitly defaults to CFW = 2.0 and supports CFW = 1.0; the v3 default is c = 2.0. QUAL2K's Brady-Graves-Geyer default is also c = 2.0. Other values are flagged as 'CFW not determined' (W2 heat-exchange.f90:78). Coefficient `b` is unit-coupled to `c`; using a non-standard exponent without re-calibrating `b` will produce unphysical heat fluxes.
+    t = Temperature(wind_a=0.3, wind_b=1.5, wind_c=3.0)
+
+tests/test_hotstart_roundtrip.py: 38 warnings
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/src/clearwater_modules/nsm1/processes.py:1437: RuntimeWarning: overflow encountered in exp
+    return xr.where (use_DOX, 1.0 - np.exp(-KNR * DOX), 1.0)
+
+tests/test_hotstart_roundtrip.py: 38 warnings
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/src/clearwater_modules/nsm1/processes.py:2997: RuntimeWarning: overflow encountered in exp
+    da: xr.DataArray = xr.where(use_NH4 == True, (1.0 - np.exp(-KNR * DOX)) * ron * knit_tc * NH4, 0)
+
+tests/test_hotstart_roundtrip.py: 38 warnings
+  /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/src/clearwater_modules/nsm1/processes.py:3312: RuntimeWarning: overflow encountered in exp
+    r_alkn * (1 - np.exp(-KNR * DOX)) * knit_tc * NH4 * 50000,
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /Users/todd/GitHub/ecohydrology/ClearWater-modules-streaming/tests/v3/nsm1/baseline/baseline_junit_full_186b5c4.xml -
+=========== 805 passed, 2 xfailed, 174 warnings in 71.37s (0:01:11) ============

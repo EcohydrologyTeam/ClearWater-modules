@@ -1,0 +1,215 @@
+{
+  "commit": "186b5c4",
+  "date_utc": "2026-05-13",
+  "tier": 1,
+  "scope": "tests/v3/nsm1/test_*tier1*.py",
+  "tests_total": 40,
+  "tests_passed": 40,
+  "tests_failed": 0,
+  "tests_errors": 0,
+  "wall_time_seconds": 8.686,
+  "asserted_tolerance_rtol": 1e-12,
+  "asserted_clip_events": {},
+  "tests": [
+    {
+      "test": "tests.v3.nsm1.test_pathogen_tier1::test_pathogen_instantiates_with_defaults",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_pathogen_tier1::test_tier1_pathogen_conservation_closed_system_decay_disabled",
+      "status": "passed",
+      "seconds": 0.098
+    },
+    {
+      "test": "tests.v3.nsm1.test_pathogen_tier1::test_pathogen_accepts_parameter_override",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1p5_active_kinetics::test_tier1p5_total_n_conservation_active_kinetics",
+      "status": "passed",
+      "seconds": 1.672
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1p5_active_kinetics::test_tier1p5_state_variables_finite_and_positive",
+      "status": "passed",
+      "seconds": 1.69
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1p5_active_kinetics::test_total_c_active_kinetics_helper_returns_finite_positive",
+      "status": "passed",
+      "seconds": 0.001
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1p5_active_kinetics::test_tier1p5_no_clip_events_under_active_kinetics",
+      "status": "passed",
+      "seconds": 1.666
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1p5_active_kinetics::test_total_n_active_kinetics_helper_returns_finite_positive",
+      "status": "passed",
+      "seconds": 0.001
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1p5_active_kinetics::test_tier1p5_total_c_conservation_active_kinetics",
+      "status": "passed",
+      "seconds": 1.681
+    },
+    {
+      "test": "tests.v3.nsm1.test_dox_tier1::test_tier1_dox_with_nitrogen_zeroed_kinetics",
+      "status": "passed",
+      "seconds": 0.341
+    },
+    {
+      "test": "tests.v3.nsm1.test_dox_tier1::test_dox_instantiates_with_defaults",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_dox_tier1::test_dox_accepts_parameter_override",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_dox_tier1::test_tier1_dox_conservation_closed_system_loss_disabled",
+      "status": "passed",
+      "seconds": 0.132
+    },
+    {
+      "test": "tests.v3.nsm1.test_n2_tier1::test_n2_instantiates_with_defaults",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_n2_tier1::test_n2_run_computes_tdg_diagnostic",
+      "status": "passed",
+      "seconds": 0.001
+    },
+    {
+      "test": "tests.v3.nsm1.test_n2_tier1::test_tier1_n2_with_nitrogen_zeroed_kinetics",
+      "status": "passed",
+      "seconds": 0.264
+    },
+    {
+      "test": "tests.v3.nsm1.test_n2_tier1::test_tier1_n2_conservation_closed_system_loss_disabled",
+      "status": "passed",
+      "seconds": 0.073
+    },
+    {
+      "test": "tests.v3.nsm1.test_n2_tier1::test_n2_accepts_parameter_override",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_carbon_tier1::test_tier1_carbon_conservation_closed_system_loss_disabled",
+      "status": "passed",
+      "seconds": 0.231
+    },
+    {
+      "test": "tests.v3.nsm1.test_carbon_tier1::test_carbon_instantiates_from_defaults",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_carbon_tier1::test_carbon_run_caches_doc_dic_oxidation_rate",
+      "status": "passed",
+      "seconds": 0.003
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1_conservation::test_total_c_helper_returns_finite_positive",
+      "status": "passed",
+      "seconds": 0.001
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1_conservation::test_total_n_helper_returns_finite_positive",
+      "status": "passed",
+      "seconds": 0.001
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1_conservation::test_helpers_silently_skip_missing_reservoirs",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1_conservation::test_tier1_total_n_conservation_closed_system_nitrogen_only",
+      "status": "passed",
+      "seconds": 0.187
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1_conservation::test_tier1_cbod_dox_coupled_stoichiometry",
+      "status": "passed",
+      "seconds": 0.204
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1_conservation::test_diagnostics_import_smoke",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1_conservation::test_tier1_cbod_conservation_closed_system_loss_disabled",
+      "status": "passed",
+      "seconds": 0.05
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1_conservation::test_total_p_helper_returns_finite_positive",
+      "status": "passed",
+      "seconds": 0.001
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1_conservation::test_total_alkalinity_helper_returns_finite_positive",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1_conservation::test_total_o2_equivalents_helper_returns_finite_positive",
+      "status": "passed",
+      "seconds": 0.001
+    },
+    {
+      "test": "tests.v3.nsm1.test_phosphorus_tier1::test_phosphorus_accepts_parameter_override",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_phosphorus_tier1::test_tier1_phosphorus_conservation_closed_system_loss_disabled",
+      "status": "passed",
+      "seconds": 0.077
+    },
+    {
+      "test": "tests.v3.nsm1.test_phosphorus_tier1::test_phosphorus_instantiates_with_defaults",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_pom_tier1::test_pom_instantiates_from_defaults",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_pom_tier1::test_tier1_pom_conservation_closed_system_loss_disabled",
+      "status": "passed",
+      "seconds": 0.035
+    },
+    {
+      "test": "tests.v3.nsm1.test_alkalinity_tier1::test_tier1_alk_with_nitrogen_zeroed_kinetics",
+      "status": "passed",
+      "seconds": 0.218
+    },
+    {
+      "test": "tests.v3.nsm1.test_alkalinity_tier1::test_alkalinity_accepts_parameter_override",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_alkalinity_tier1::test_alkalinity_instantiates_with_defaults",
+      "status": "passed",
+      "seconds": 0.0
+    },
+    {
+      "test": "tests.v3.nsm1.test_alkalinity_tier1::test_tier1_alkalinity_conservation_closed_system_loss_disabled",
+      "status": "passed",
+      "seconds": 0.001
+    }
+  ]
+}

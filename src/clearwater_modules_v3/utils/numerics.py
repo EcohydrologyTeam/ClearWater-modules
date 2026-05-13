@@ -51,19 +51,29 @@ class Diagnostics:
         detail_limit_per_call: maximum number of structured detail records
             emitted per call to ``clip_negative_state``; defaults to 10 per
             the Q7 contract.
+        current_step: integrator substep counter maintained by ``Model``;
+            ``clip_negative_state`` reads this as the default value for
+            the ``step`` field of every log record. Resolves
+            pattern-alignment spec §10 Q1: the step index source is the
+            ``Diagnostics`` field set by ``Model``'s substep loop, not
+            a per-Process counter or a kwarg passed through every
+            ``run`` signature. ``-1`` is the "no step set" sentinel; the
+            log record then reads ``step=None`` for back-compat with the
+            1.0.0 ``step=None`` convention.
     """
 
     clip_events: dict[str, int] = field(default_factory=dict)
     clip_log: list[dict[str, Any]] = field(default_factory=list)
     detail_limit_per_call: int = _DEFAULT_DETAIL_LIMIT
+    current_step: int = -1
 
 
 def clip_negative_state(
-    state: xr.DataArray,
+    state: ArrayLike,
     name: str,
-    diagnostics: Diagnostics,
+    diagnostics: "Diagnostics | None" = None,
     step: int | None = None,
-) -> xr.DataArray:
+) -> ArrayLike:
     """Clip negative values of a state variable to exactly zero.
 
     Implements the v3 NSM1 clip-with-log contract. Negative cells are
@@ -73,60 +83,128 @@ def clip_negative_state(
     single aggregate ``clipped_aggregate`` record. The clip target is
     exactly 0.
 
+    Resolves pattern-alignment spec §10 Q2 (graceful no-op when
+    ``diagnostics is None``) and Q1 (default step index comes from
+    ``diagnostics.current_step``):
+
+    * Callers may pass ``diagnostics=None`` to clip without
+      counting/logging. The container-type return contract is preserved
+      (``xr.DataArray`` in → ``xr.DataArray`` out; ``np.ndarray`` in →
+      ``np.ndarray`` out; scalar in → scalar out). This lets every
+      ``Process.run`` invoke ``clip_negative_state(state, name,
+      self.diagnostics)`` without an ``isinstance`` / ``is not None``
+      guard branch.
+    * Callers may omit ``step``; when ``diagnostics`` is provided and
+      ``step is None``, the default is taken from
+      ``diagnostics.current_step`` (sentinel ``-1`` is normalised to
+      ``None`` to match the 1.0.0 log convention). ``Model``'s substep
+      loop sets ``current_step`` on every iteration.
+
     Args:
-        state | DataArray | post-Forward-Euler state variable to clip.
+        state | ArrayLike | post-Forward-Euler state variable to clip.
+            Accepts ``xr.DataArray``, ``np.ndarray``, or Python scalar.
         name | str | state-variable name used as the diagnostics key.
-        diagnostics | Diagnostics | run-level diagnostics container,
-            mutated in place.
-        step | int or None | optional integrator step index for log records.
+        diagnostics | Diagnostics or None | run-level diagnostics
+            container, mutated in place. ``None`` skips counting/logging
+            but still clips.
+        step | int or None | optional integrator step index for log
+            records. ``None`` defers to ``diagnostics.current_step``.
 
     Returns:
-        DataArray | clipped state with negative cells replaced by 0.
+        Same container type as ``state``, with negative cells replaced
+        by ``0``.
     """
-    values = state.values
-    negative_mask = values < 0.0
-    n_clipped = int(negative_mask.sum())
+    # Container-type-aware negative-mask + clip.
+    if isinstance(state, xr.DataArray):
+        values = state.values
+        negative_mask = values < 0.0
+    elif isinstance(state, np.ndarray):
+        values = state
+        negative_mask = state < 0.0
+    else:
+        # Python scalar path.
+        if state < 0.0:
+            if diagnostics is not None:
+                diagnostics.clip_events[name] = (
+                    diagnostics.clip_events.get(name, 0) + 1
+                )
+                effective_step = (
+                    step
+                    if step is not None
+                    else (
+                        diagnostics.current_step
+                        if diagnostics.current_step >= 0
+                        else None
+                    )
+                )
+                diagnostics.clip_log.append(
+                    {
+                        "name": name,
+                        "cell_index": (),
+                        "value_before": float(state),
+                        "step": effective_step,
+                    }
+                )
+            return type(state)(0.0)
+        return state
 
+    n_clipped = int(negative_mask.sum())
     if n_clipped == 0:
         return state
 
-    diagnostics.clip_events[name] = diagnostics.clip_events.get(name, 0) + n_clipped
-
-    detail_limit = diagnostics.detail_limit_per_call
-    flat_indices = np.flatnonzero(negative_mask.ravel())
-    detail_indices = flat_indices[:detail_limit]
-    multi_index = np.unravel_index(detail_indices, values.shape)
-    flat_values = values.ravel()
-    for record_position, flat_index in enumerate(detail_indices):
-        cell_index = tuple(int(axis[record_position]) for axis in multi_index)
-        diagnostics.clip_log.append(
-            {
-                "name": name,
-                "cell_index": cell_index,
-                "value_before": float(flat_values[flat_index]),
-                "step": step,
-            }
+    if diagnostics is not None:
+        diagnostics.clip_events[name] = (
+            diagnostics.clip_events.get(name, 0) + n_clipped
         )
 
-    if n_clipped > detail_limit:
-        diagnostics.clip_log.append(
-            {
-                "name": name,
-                "cell_index": "clipped_aggregate",
-                "value_before": None,
-                "step": step,
-                "n_suppressed": n_clipped - detail_limit,
-            }
+        effective_step = (
+            step
+            if step is not None
+            else (
+                diagnostics.current_step
+                if diagnostics.current_step >= 0
+                else None
+            )
         )
+
+        detail_limit = diagnostics.detail_limit_per_call
+        flat_indices = np.flatnonzero(negative_mask.ravel())
+        detail_indices = flat_indices[:detail_limit]
+        multi_index = np.unravel_index(detail_indices, values.shape)
+        flat_values = values.ravel()
+        for record_position, flat_index in enumerate(detail_indices):
+            cell_index = tuple(int(axis[record_position]) for axis in multi_index)
+            diagnostics.clip_log.append(
+                {
+                    "name": name,
+                    "cell_index": cell_index,
+                    "value_before": float(flat_values[flat_index]),
+                    "step": effective_step,
+                }
+            )
+
+        if n_clipped > detail_limit:
+            diagnostics.clip_log.append(
+                {
+                    "name": name,
+                    "cell_index": "clipped_aggregate",
+                    "value_before": None,
+                    "step": effective_step,
+                    "n_suppressed": n_clipped - detail_limit,
+                }
+            )
 
     clipped_values = np.where(negative_mask, 0.0, values)
-    return xr.DataArray(
-        clipped_values,
-        coords=state.coords,
-        dims=state.dims,
-        name=state.name,
-        attrs=state.attrs,
-    )
+    if isinstance(state, xr.DataArray):
+        return xr.DataArray(
+            clipped_values,
+            coords=state.coords,
+            dims=state.dims,
+            name=state.name,
+            attrs=state.attrs,
+        )
+    # np.ndarray path.
+    return clipped_values
 
 
 def sanitize_rate(rate: ArrayLike) -> ArrayLike:

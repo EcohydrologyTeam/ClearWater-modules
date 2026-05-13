@@ -1,0 +1,45 @@
+{
+  "commit": "186b5c4",
+  "date_utc": "2026-05-13",
+  "tests_total": 807,
+  "tests_failures": 0,
+  "tests_errors": 0,
+  "tests_skipped_total": 2,
+  "xfailed_count": 2,
+  "skipped_non_xfail_count": 0,
+  "tests_passed": 805,
+  "wall_time_seconds": 71.365,
+  "xfailed_tests": [
+    {
+      "test": "tests.test_13_nsm_CBOD_calculations::test_changed_kbod_20",
+      "reason": "Known issue with kbod 20 test TBA."
+    },
+    {
+      "test": "tests.test_10_nsm_carbon_calculations::test_changed_kbod_20",
+      "reason": "Known issue with kbod 20 test TBA."
+    }
+  ],
+  "skipped_non_xfail": [],
+  "slow_tests_over_1s": [
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1p5_active_kinetics::test_tier1p5_total_n_conservation_active_kinetics",
+      "seconds": 1.72
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1p5_active_kinetics::test_tier1p5_no_clip_events_under_active_kinetics",
+      "seconds": 1.677
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1p5_active_kinetics::test_tier1p5_total_c_conservation_active_kinetics",
+      "seconds": 1.675
+    },
+    {
+      "test": "tests.v3.nsm1.test_validation_tier1p5_active_kinetics::test_tier1p5_state_variables_finite_and_positive",
+      "seconds": 1.672
+    },
+    {
+      "test": "tests.v3.test_nsm1_demo_setup::test_build_nsm1_demo_run_60_substeps_stable",
+      "seconds": 1.096
+    }
+  ]
+}
