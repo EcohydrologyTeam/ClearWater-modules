@@ -31,6 +31,7 @@ from clearwater_data.custom_types import ArrayLike
 from .floating_algae import FloatingAlgae
 
 from clearwater_modules_v3.utils.conversions import arrhenius_correction
+from clearwater_modules_v3.utils.numerics import clip_negative_state
 
 
 def _sanitize_cache(value):
@@ -218,10 +219,29 @@ class BenthicAlgae(FloatingAlgae):
         self.balgae_pom_from_mortality_rate: ArrayLike = 0.0
 
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
-        # check if there is nitrogen process and set flags according
-        self.use_nitrate = True
-        self.use_ammonium = True
-        self.use_phosphate = True
+        # Phase 1.D: replace the hardcoded ``use_* = True`` with sibling
+        # discovery via ``model.has_process``, matching the FloatingAlgae
+        # pattern. Defaults remain ``True`` when ``model`` does not
+        # expose ``has_process`` (e.g., legacy test harnesses) for back-compat.
+        has_proc = getattr(model, "has_process", None)
+        if has_proc is None:
+            # Legacy / fixture-only path: keep prior behaviour so isolated
+            # unit tests that exercise BenthicAlgae without a real Model
+            # continue to work.
+            self.use_nitrate = True
+            self.use_ammonium = True
+            self.use_phosphate = True
+        else:
+            # When wired through a Model, the per-state-variable flags
+            # follow the sibling-Process presence. BenthicAlgae's
+            # nutrient-limitation kinetics need NH4 / NO3 / TIP whether
+            # or not the matching Process is present, but the *uptake*
+            # path (which writes to NH4/NO3/TIP via the rate cache) is
+            # only meaningful when a sibling Process consumes those
+            # values. Match FloatingAlgae's convention exactly:
+            self.use_nitrate = model.has_process("Nitrogen")
+            self.use_ammonium = model.has_process("Nitrogen")
+            self.use_phosphate = model.has_process("Phosphorus")
 
         # Capture run-level Diagnostics (Phase 2.0 prerequisite).
         model_diagnostics = getattr(model, "diagnostics", None)
@@ -291,10 +311,11 @@ class BenthicAlgae(FloatingAlgae):
         dt_days = self.time_step.total_seconds() / 86400.0
         algae_new = algae + rate * dt_days
 
-        # Clip-with-log per Q7.
-        from clearwater_modules_v3.utils.numerics import clip_negative_state
+        # Clip-with-log per Q7. Import is module-level (Phase 1.C);
+        # step attribution is automatic via ``diagnostics.current_step``
+        # (Phase 0.6 Q1).
         algae_new = clip_negative_state(
-            algae_new, "benthic_algae", self.diagnostics, step=0
+            algae_new, "benthic_algae", self.diagnostics
         )
 
         # Persistence (Bug #16 parallel for benthic algae).

@@ -8,6 +8,7 @@ from clearwater_modules_v3.processes.base import Process, ProcessFactory
 from clearwater_data.variables import VariableRegistry
 from clearwater_data.custom_types import ArrayLike
 from clearwater_modules_v3.utils.conversions import arrhenius_correction
+from clearwater_modules_v3.utils.numerics import clip_negative_state
 
 logger = logging.getLogger(__name__)
 
@@ -295,8 +296,6 @@ class Nitrogen(Process):
         ``_flux_rate`` suffix to disambiguate, with units mg-N/L/d and
         positive-valued absolute magnitudes.
         """
-        from clearwater_modules_v3.utils.numerics import clip_negative_state
-
         # Pull state from registry.
         nitrate = registry.get_at_time("nitrate", time)
         ammonium = registry.get_at_time("ammonium", time)
@@ -348,7 +347,7 @@ class Nitrogen(Process):
             organic_nitrogen=organic_nitrogen,
         )
         ammonium_new = ammonium + ammonium_rate * dt_days
-        ammonium_new = self._clip(ammonium_new, "ammonium")
+        ammonium_new = clip_negative_state(ammonium_new, "ammonium", self.diagnostics)
 
         # --- Nitrate update ---
         nitrate_rate = self.change_nitrate(
@@ -359,7 +358,7 @@ class Nitrogen(Process):
             oxygen_dissolved,
         )
         nitrate_new = nitrate + nitrate_rate * dt_days
-        nitrate_new = self._clip(nitrate_new, "nitrate")
+        nitrate_new = clip_negative_state(nitrate_new, "nitrate", self.diagnostics)
 
         # --- Organic Nitrogen update ---
         orgn_rate = self.change_organic_nitrogen(
@@ -368,20 +367,15 @@ class Nitrogen(Process):
             depth=depth,
         )
         organic_nitrogen_new = organic_nitrogen + orgn_rate * dt_days
-        organic_nitrogen_new = self._clip(organic_nitrogen_new, "organic_nitrogen")
+        organic_nitrogen_new = clip_negative_state(
+            organic_nitrogen_new, "organic_nitrogen", self.diagnostics
+        )
 
         # --- Persistence (Bug #16) ---
         registry.set_at_time("ammonium", time, ammonium_new)
         registry.set_at_time("nitrate", time, nitrate_new)
         if "organic_nitrogen" in registry:
             registry.set_at_time("organic_nitrogen", time, organic_nitrogen_new)
-
-    def _clip(self, state, name: str):
-        """Apply v3 clip-with-log if available; fall back to xr.where."""
-        from clearwater_modules_v3.utils.numerics import clip_negative_state
-        if isinstance(state, xr.DataArray) and self.diagnostics is not None:
-            return clip_negative_state(state, name, self.diagnostics, step=0)
-        return xr.where(state < 0, 0, state)
 
     def change_ammonium(
         self,

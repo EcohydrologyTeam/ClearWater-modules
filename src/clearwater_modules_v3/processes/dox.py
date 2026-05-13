@@ -726,13 +726,11 @@ class DOX(Process):
         dt_days = self.time_step.total_seconds() / 86400.0
         dox_new = dox + rate * dt_days
 
-        # Clip-with-log per the Q7 contract.
-        if isinstance(dox_new, xr.DataArray) and self.diagnostics is not None:
-            dox_new = clip_negative_state(
-                dox_new, "oxygen_dissolved", self.diagnostics, step=0
-            )
-        else:
-            dox_new = xr.where(dox_new < 0, 0, dox_new)
+        # Clip-with-log per the Q7 contract. ``clip_negative_state`` now
+        # accepts non-DataArray and None-diagnostics inputs (Phase 0.6 Q2);
+        # step attribution is automatic via ``diagnostics.current_step``
+        # (Phase 0.6 Q1).
+        dox_new = clip_negative_state(dox_new, "oxygen_dissolved", self.diagnostics)
 
         # Persist updated state.
         registry.set_at_time("oxygen_dissolved", time, dox_new)

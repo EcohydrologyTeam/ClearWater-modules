@@ -85,6 +85,7 @@ from clearwater_data.variables import VariableRegistry
 from clearwater_data.custom_types import ArrayLike
 
 from clearwater_modules_v3.utils.conversions import arrhenius_correction
+from clearwater_modules_v3.utils.numerics import clip_negative_state
 
 from typing import TYPE_CHECKING
 
@@ -225,9 +226,14 @@ class POM(Process):
         Negative cells are clipped to zero via ``clip_negative_state``
         with diagnostics recorded on ``self.diagnostics``. The new state
         is persisted via ``registry.set_at_time``.
-        """
-        from clearwater_modules_v3.utils.numerics import clip_negative_state
 
+        Phase 1.C note: import of ``clip_negative_state`` is lifted to
+        module level. The ``pom_doc_source_rate`` cache currently lives
+        inside ``self.rate()`` for back-compat with external tests that
+        call ``pom.rate(...)`` directly; Phase 7 consolidates the
+        rate-and-cache flow into ``_change_with_components`` and the
+        cache write moves to ``run`` at that time.
+        """
         pom = registry.get_at_time("pom", time)
         water_temperature = registry.get_at_time("water_temperature", time)
 
@@ -255,8 +261,9 @@ class POM(Process):
         dt_days = self.time_step.total_seconds() / 86400.0
         pom_new = pom + rate * dt_days
 
-        # Clip-with-log per Q7.
-        pom_new = clip_negative_state(pom_new, "pom", self.diagnostics, step=0)
+        # Clip-with-log per Q7. Step attribution is automatic via
+        # ``diagnostics.current_step`` (Phase 0.6 Q1).
+        pom_new = clip_negative_state(pom_new, "pom", self.diagnostics)
 
         # Persist the updated state.
         registry.set_at_time("pom", time, pom_new)

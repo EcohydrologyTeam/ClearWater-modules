@@ -56,6 +56,7 @@ from clearwater_data.variables import VariableRegistry
 from clearwater_data.custom_types import ArrayLike
 
 from clearwater_modules_v3.utils.conversions import arrhenius_correction
+from clearwater_modules_v3.utils.numerics import clip_negative_state
 
 
 def _sanitize_cache(value):
@@ -418,10 +419,11 @@ class FloatingAlgae(Process):
         algae_new = algae + rate * dt_days
 
         # Clip-with-log per the resolved Q7 contract; clip target is
-        # exactly 0 (Monod ratios are well-defined at C=0).
-        from clearwater_modules_v3.utils.numerics import clip_negative_state
+        # exactly 0 (Monod ratios are well-defined at C=0). Step
+        # attribution is automatic via ``diagnostics.current_step``
+        # (Phase 0.6 Q1); import is module-level (Phase 1.C).
         algae_new = clip_negative_state(
-            algae_new, "algae_floating", self.diagnostics, step=0
+            algae_new, "algae_floating", self.diagnostics
         )
 
         # Bug #16: persist the updated state. The integrator update was

@@ -56,6 +56,7 @@ from clearwater_modules_v3.utils.conversions import arrhenius_correction
 from clearwater_modules_v3.utils.numerics import (
     Diagnostics,
     clip_negative_state,
+    sanitize_rate,
 )
 
 
@@ -199,13 +200,15 @@ class CBOD(Process):
         water_temperature = registry.get_at_time("water_temperature", time)
         depth = registry.get_at_time("depth", time)
 
-        # DOX coupling: try to read from the registry; fall back to the
-        # stub value if absent (Phase 5 has not landed yet OR the test
-        # is running CBOD standalone). Path (a) per the Phase 3.3
-        # discussion.
-        try:
+        # DOX coupling: read from the registry if present; fall back to
+        # the stub value otherwise (Phase 5 has not landed yet OR the
+        # test is running CBOD standalone). Path (a) per the Phase 3.3
+        # discussion. Phase 1.E: switched from ``try/except KeyError`` to
+        # the ``if name in registry`` idiom for consistency with the rest
+        # of the v3 NSM1 Processes.
+        if "oxygen_dissolved" in registry:
             dox = registry.get_at_time("oxygen_dissolved", time)
-        except KeyError:
+        else:
             logger.warning(
                 "CBOD.run: 'oxygen_dissolved' not found in registry; "
                 "falling back to stub value %.2f mg/L. This is expected "
@@ -243,18 +246,16 @@ class CBOD(Process):
         # (Q10 GS-rates contract). cbod_oxidation_rate is the sink term
         # DOX adds to its integrator; cbod_settling_rate is exposed for
         # diagnostic / future sediment coupling.
-        # Sanitize NaN at the cache source: a NaN here propagates via DOX's
-        # rate sum and zeroes the entire cell's DOX rate after sanitize_rate,
-        # freezing the cell at IC. When CBOD is 0 the contribution is 0
-        # regardless, so NaN -> 0 is the semantically correct value.
-        if isinstance(oxidation_rate, xr.DataArray):
-            oxidation_rate = xr.where(oxidation_rate.isnull(), 0, oxidation_rate)
-        elif isinstance(oxidation_rate, np.ndarray):
-            oxidation_rate = np.where(np.isnan(oxidation_rate), 0, oxidation_rate)
-        if isinstance(settling_rate, xr.DataArray):
-            settling_rate = xr.where(settling_rate.isnull(), 0, settling_rate)
-        elif isinstance(settling_rate, np.ndarray):
-            settling_rate = np.where(np.isnan(settling_rate), 0, settling_rate)
+        # Sanitize NaN/inf at the cache source: a NaN/inf here propagates
+        # via DOX's rate sum and zeroes the entire cell's DOX rate via the
+        # downstream ``sanitize_rate``, freezing the cell at IC. When CBOD
+        # is 0 the contribution is 0 regardless, so NaN/inf -> 0 is the
+        # semantically correct value. Phase 1.E: switched from inline
+        # ``xr.where(isnull, 0, ...)`` / ``np.where(np.isnan, 0, ...)``
+        # branches to the canonical ``sanitize_rate`` helper for parity
+        # with the other v3 NSM1 Processes.
+        oxidation_rate = sanitize_rate(oxidation_rate)
+        settling_rate = sanitize_rate(settling_rate)
         self.cbod_oxidation_rate = oxidation_rate
         self.cbod_settling_rate = settling_rate
 
@@ -265,9 +266,8 @@ class CBOD(Process):
 
         # Clip-with-log per the resolved Q7 contract. Tier 1 closed-
         # system tests assert clip_events is empty under physically
-        # reasonable inputs.
-        cbod_new = clip_negative_state(
-            cbod_new, "cbod", self.diagnostics, step=0
-        )
+        # reasonable inputs. Step attribution is automatic via
+        # ``diagnostics.current_step`` (Phase 0.6 Q1).
+        cbod_new = clip_negative_state(cbod_new, "cbod", self.diagnostics)
 
         registry.set_at_time("cbod", time, cbod_new)

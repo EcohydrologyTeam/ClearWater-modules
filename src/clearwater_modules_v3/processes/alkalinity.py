@@ -481,13 +481,11 @@ class Alkalinity(Process):
         dt_days = self.time_step.total_seconds() / 86400.0
         alk_new = alk + rate * dt_days
 
-        # Clip-with-log per the Q7 contract.
-        if isinstance(alk_new, xr.DataArray) and self.diagnostics is not None:
-            alk_new = clip_negative_state(
-                alk_new, "alkalinity", self.diagnostics, step=0
-            )
-        else:
-            alk_new = xr.where(alk_new < 0, 0, alk_new)
+        # Clip-with-log per the Q7 contract. ``clip_negative_state`` now
+        # accepts non-DataArray and None-diagnostics inputs (Phase 0.6 Q2);
+        # step attribution is automatic via ``diagnostics.current_step``
+        # (Phase 0.6 Q1).
+        alk_new = clip_negative_state(alk_new, "alkalinity", self.diagnostics)
 
         # Persist updated state.
         registry.set_at_time("alkalinity", time, alk_new)

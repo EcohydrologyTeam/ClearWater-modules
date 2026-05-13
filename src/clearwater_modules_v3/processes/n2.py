@@ -363,11 +363,11 @@ class N2(Process):
         dt_days = self.time_step.total_seconds() / 86400.0
         n2_new = n2_state + rate * dt_days
 
-        # Clip-with-log per the Q7 contract.
-        if isinstance(n2_new, xr.DataArray) and self.diagnostics is not None:
-            n2_new = clip_negative_state(n2_new, "n2", self.diagnostics, step=0)
-        else:
-            n2_new = xr.where(n2_new < 0, 0, n2_new)
+        # Clip-with-log per the Q7 contract. ``clip_negative_state`` now
+        # accepts non-DataArray and None-diagnostics inputs (Phase 0.6 Q2);
+        # step attribution is automatic via ``diagnostics.current_step``
+        # (Phase 0.6 Q1).
+        n2_new = clip_negative_state(n2_new, "n2", self.diagnostics)
 
         # Persist updated state.
         registry.set_at_time("n2", time, n2_new)
