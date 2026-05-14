@@ -221,9 +221,6 @@ class Pathogen(Process):
         (E); caches step-scoped rates on ``self.<name>`` (F);
         opportunistically writes diagnostics (G).
 
-        See ``_rate_legacy_inline`` for the pre-Phase-8 inline
-        composition (retained through Phase 10 for the helper-vs-inline
-        parity test under §11.3).
         """
         # --- State and forcing reads (pattern A) ---
         px = registry.get_at_time("pathogen", time)
@@ -322,41 +319,6 @@ class Pathogen(Process):
         }
 
         return rate, components
-
-    def _rate_legacy_inline(
-        self,
-        *,
-        px: ArrayLike,
-        water_temperature: ArrayLike,
-        depth: ArrayLike,
-        q_solar: ArrayLike,
-        solid: ArrayLike,
-        poc: ArrayLike,
-        ap: ArrayLike,
-    ) -> ArrayLike:
-        """Pre-Phase-8 inline rate composition. **Verbatim copy** of the
-        body that ``run`` invoked via ``self.rate(...)`` (plus the
-        ``sanitize_rate`` post-step) before Phase 8 of the
-        pattern-alignment spec landed.
-
-        Retained through Phase 10 for the helper-vs-inline parity test
-        per §11.3. Deleted in Phase 10 alongside its parity test once
-        the final end-to-end baseline parity passes.
-
-        Returns just the net per-day rate (per the rate-form
-        integrator convention; spec §10 Q5).
-        """
-        rate = self.rate(
-            px=px,
-            water_temperature=water_temperature,
-            depth=depth,
-            q_solar=q_solar,
-            solid=solid,
-            poc=poc,
-            ap=ap,
-        )
-        rate = sanitize_rate(rate)
-        return rate
 
     # ------------------------------------------------------------------
     # Kinetic helpers

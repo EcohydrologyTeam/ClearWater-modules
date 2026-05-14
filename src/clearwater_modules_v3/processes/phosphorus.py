@@ -300,9 +300,6 @@ class Phosphorus(Process):
         on ``self.<name>`` (F); opportunistically writes diagnostics
         (G).
 
-        See ``_change_legacy_inline`` for the pre-Phase-6 inline
-        composition (retained through Phase 10 for the helper-vs-inline
-        parity test under §11.3).
         """
         # --- State and forcing reads (pattern A) ---
         tip = registry.get_at_time("tip", time)
@@ -368,10 +365,6 @@ class Phosphorus(Process):
         names, kinetic-helper calls, and the use_TIP / use_OrgP gating
         are preserved verbatim.
 
-        The companion shadow ``_change_legacy_inline`` returns just
-        ``(dtip_dt, dorgp_dt)`` and is used by
-        ``tests/v3/nsm1/test_phosphorus_helper_vs_inline.py`` to verify
-        this helper produces bit-identical deltas through Phase 10.
 
         Side effect: sets ``self.orgp_to_tip_hydrolysis_rate``,
         ``self.tip_settling_rate``, ``self.orgp_settling_rate``
@@ -486,99 +479,6 @@ class Phosphorus(Process):
         }
 
         return dtip_dt, dorgp_dt, components
-
-    def _change_legacy_inline(
-        self,
-        *,
-        tip: ArrayLike,
-        orgp: ArrayLike,
-        water_temperature: ArrayLike,
-        depth: ArrayLike,
-    ) -> tuple[ArrayLike, ArrayLike]:
-        """Pre-Phase-6 inline rate composition. **Verbatim copy** of
-        the body that used to live inside ``run`` before Phase 6 of the
-        pattern-alignment spec landed.
-
-        Retained through Phase 10 for the helper-vs-inline parity test
-        per §11.3. Deleted in Phase 10 alongside its parity test once
-        the final end-to-end baseline parity passes.
-
-        Returns ``(dtip_dt, dorgp_dt)`` — no ``components`` dict, no
-        registry exposure, no clip / Euler / persist. Caller is
-        responsible for the integrator step.
-        """
-        kop_tc = arrhenius_correction(
-            water_temperature, self.kop_20, self.kop_theta
-        )
-        rpo4_tc = arrhenius_correction(
-            water_temperature, self.rpo4_20, self.rpo4_theta
-        )
-
-        fdp = fdp_partition(
-            use_TIP=self.use_TIP,
-            Solid=self.Solid,
-            kdpo4=self.kdpo4,
-        )
-
-        if self.use_OrgP:
-            orgp_to_tip = kop_tc * orgp
-        else:
-            orgp_to_tip = 0.0
-        self.orgp_to_tip_hydrolysis_rate = orgp_to_tip
-
-        if self.use_TIP:
-            tip_settling = self.vs / depth * (1.0 - fdp) * tip
-        else:
-            tip_settling = 0.0
-        self.tip_settling_rate = tip_settling
-
-        if self.use_OrgP:
-            orgp_settling = self.vsop / depth * orgp
-        else:
-            orgp_settling = 0.0
-        self.orgp_settling_rate = orgp_settling
-
-        if self.use_TIP:
-            dip_from_bed = rpo4_tc / depth
-        else:
-            dip_from_bed = 0.0
-
-        ap_tip_uptake = self._tip_uptake_floating_algae()
-        ap_tip_release = self._tip_release_floating_algae_respiration()
-        ab_tip_uptake = self._tip_uptake_benthic_algae(depth=depth)
-        ab_tip_release = self._tip_release_benthic_algae_respiration(depth=depth)
-
-        ap_orgp_mortality = self._orgp_from_floating_algae_mortality()
-        ab_orgp_mortality = self._orgp_from_benthic_algae_mortality()
-
-        if self.use_TIP:
-            dtip_dt = (
-                orgp_to_tip
-                - tip_settling
-                + dip_from_bed
-                - ap_tip_uptake
-                + ap_tip_release
-                - ab_tip_uptake
-                + ab_tip_release
-            )
-        else:
-            dtip_dt = xr.zeros_like(tip) if hasattr(tip, "dims") else 0.0
-
-        if self.use_OrgP:
-            dorgp_dt = (
-                ap_orgp_mortality
-                + ab_orgp_mortality
-                - orgp_to_tip
-                - orgp_settling
-            )
-        else:
-            dorgp_dt = xr.zeros_like(orgp) if hasattr(orgp, "dims") else 0.0
-
-        dtip_dt = sanitize_rate(dtip_dt)
-        dorgp_dt = sanitize_rate(dorgp_dt)
-
-        return dtip_dt, dorgp_dt
-
     # ------------------------------------------------------------------
     # Algal-coupling helpers
     # ------------------------------------------------------------------

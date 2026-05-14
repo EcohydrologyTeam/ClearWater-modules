@@ -304,9 +304,6 @@ class Nitrogen(Process):
         D); persists primary outputs (E); caches step-scoped rates on
         ``self.<name>`` (F); opportunistically writes diagnostics (G).
 
-        See ``_change_legacy_inline`` for the pre-Phase-4 inline
-        composition (retained through Phase 10 for the helper-vs-inline
-        parity test under §11.3).
 
         Phase 2.B fixes (preserved through this refactor):
         * Bug #1 / #2: additive Forward Euler ``X_new = X + rate * dt_days``.
@@ -411,10 +408,6 @@ class Nitrogen(Process):
         recomputation is bit-identical and matches the pre-Phase-4
         behaviour exactly.
 
-        The companion shadow ``_change_legacy_inline`` returns just the
-        per-state rates and is used by
-        ``tests/v3/nsm1/test_nitrogen_helper_vs_inline.py`` to verify
-        this helper produces bit-identical outputs through Phase 10.
         """
         # --- Step-scoped flux caches (preserved attribute names) ---
         # ``ammonium_nitrification`` and ``nitrate_denitrification`` are
@@ -523,62 +516,6 @@ class Nitrogen(Process):
         }
 
         return ammonium_rate, nitrate_rate, orgn_rate, components
-
-    def _change_legacy_inline(
-        self,
-        *,
-        nitrate: ArrayLike,
-        ammonium: ArrayLike,
-        organic_nitrogen: ArrayLike,
-        temperature: ArrayLike,
-        depth: ArrayLike,
-        oxygen_dissolved: ArrayLike,
-    ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
-        """Pre-Phase-4 inline rate composition. **Verbatim copy** of
-        the body that used to live inside ``run`` before Phase 4 of
-        the pattern-alignment spec landed.
-
-        Retained through Phase 10 of the pattern-alignment spec for
-        the helper-vs-inline parity test
-        (``tests/v3/nsm1/test_nitrogen_helper_vs_inline.py``) per
-        §11.3. Deleted in Phase 10 alongside its parity test once the
-        final end-to-end baseline parity passes.
-
-        Returns ``(ammonium_rate, nitrate_rate, orgn_rate)`` — no
-        ``components`` dict, no registry exposure, no clip / Euler /
-        persist. Caller is responsible for the integrator step.
-        """
-        # Step-scoped flux caches (mirrors pre-Phase-4 ``run`` body).
-        # The values are computed but not returned — the helper-vs-inline
-        # parity test only compares the per-state rates.
-        _ = self.ammonium_nitrification(ammonium, temperature, oxygen_dissolved)
-        _ = self.nitrate_denitrification(
-            oxygen_dissolved, self.KsOxdn, nitrate, temperature
-        )
-
-        ammonium_rate = self.change_ammonium(
-            nitrate,
-            ammonium,
-            temperature,
-            depth,
-            oxygen_dissolved,
-            organic_nitrogen=organic_nitrogen,
-        )
-        nitrate_rate = self.change_nitrate(
-            nitrate,
-            ammonium,
-            temperature,
-            depth,
-            oxygen_dissolved,
-        )
-        orgn_rate = self.change_organic_nitrogen(
-            organic_nitrogen=organic_nitrogen,
-            temperature=temperature,
-            depth=depth,
-        )
-
-        return ammonium_rate, nitrate_rate, orgn_rate
-
     def change_ammonium(
         self,
         nitrate: ArrayLike,

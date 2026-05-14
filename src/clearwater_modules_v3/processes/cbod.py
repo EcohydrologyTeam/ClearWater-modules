@@ -202,9 +202,6 @@ class CBOD(Process):
         on ``self.<name>`` (F); opportunistically writes diagnostics
         (G).
 
-        See ``_change_legacy_inline`` for the pre-Phase-7 inline
-        composition (retained through Phase 10 for the helper-vs-inline
-        parity test under §11.3).
 
         Multi-group note: a future extension would loop over
         ``cbod_<group_index>`` keys here, computing per-group
@@ -328,48 +325,3 @@ class CBOD(Process):
         }
 
         return rate, components
-
-    def _change_legacy_inline(
-        self,
-        *,
-        cbod: ArrayLike,
-        water_temperature: ArrayLike,
-        depth: ArrayLike,
-        dox: ArrayLike,
-    ) -> ArrayLike:
-        """Pre-Phase-7 inline rate composition. **Verbatim copy** of the
-        body that used to live inside ``run`` before Phase 7 of the
-        pattern-alignment spec landed.
-
-        Retained through Phase 10 for the helper-vs-inline parity test
-        per §11.3. Deleted in Phase 10 alongside its parity test once
-        the final end-to-end baseline parity passes.
-
-        Returns just the net per-day rate (mg-O2/L/d). Side effects:
-        sets ``self.cbod_oxidation_rate`` and ``self.cbod_settling_rate``
-        (matches pre-Phase-7 ``run`` body) so the shadow leaves the
-        same self state as ``_change_with_components`` does (via the
-        ``run`` setattr loop).
-        """
-        kbod_tc = arrhenius_correction(
-            water_temperature, self.kbod_20, self.kbod_theta
-        )
-        ksbod_tc = arrhenius_correction(
-            water_temperature, self.ksbod_20, self.ksbod_theta
-        )
-
-        if self.use_DOX:
-            oxidation_rate = (
-                kbod_tc * dox / (self.KsOxbod + dox) * cbod
-            )
-        else:
-            oxidation_rate = kbod_tc * cbod
-
-        settling_rate = ksbod_tc / depth * cbod
-
-        oxidation_rate = sanitize_rate(oxidation_rate)
-        settling_rate = sanitize_rate(settling_rate)
-        self.cbod_oxidation_rate = oxidation_rate
-        self.cbod_settling_rate = settling_rate
-
-        return -oxidation_rate - settling_rate

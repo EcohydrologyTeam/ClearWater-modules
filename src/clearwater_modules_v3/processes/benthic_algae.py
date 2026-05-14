@@ -290,9 +290,6 @@ class BenthicAlgae(FloatingAlgae):
         on ``self.<name>`` (F); opportunistically writes diagnostics
         (G).
 
-        See ``_change_legacy_inline`` for the pre-Phase-5 inline
-        composition (retained through Phase 10 for the helper-vs-inline
-        parity test under §11.3). Phase 5 also eliminates the
         redundant ``rate_death`` invocation that was deferred from
         Phase 1: ``_change_with_components`` computes ``ab_death`` once
         and reuses it for both the rate composition and the mortality
@@ -396,11 +393,6 @@ class BenthicAlgae(FloatingAlgae):
         kinetic-helper calls are preserved verbatim, except for the
         ``rate_death`` cache substitution noted above.
 
-        The companion shadow ``_change_legacy_inline`` returns just
-        ``rate`` and is used by
-        ``tests/v3/nsm1/test_benthic_algae_helper_vs_inline.py`` to
-        verify this helper produces a bit-identical net rate through
-        Phase 10.
         """
         # Use v3 fdp utility for the dissolved P fraction.
         from clearwater_modules_v3.utils.partitioning import fdp as fdp_partition
@@ -508,65 +500,6 @@ class BenthicAlgae(FloatingAlgae):
         self.balgae_pom_from_mortality_rate = (
             ab_death * fb * (1.0 - fw) / self.h2
         )
-
-    def _change_legacy_inline(
-        self,
-        *,
-        algae: ArrayLike,
-        depth: ArrayLike,
-        water_temperature: ArrayLike,
-        phosphorus_total_inorganic: ArrayLike,
-        ammonium: ArrayLike,
-        nitrate: ArrayLike,
-        solar: ArrayLike,
-    ) -> ArrayLike:
-        """Pre-Phase-5 inline rate composition. **Verbatim copy** of
-        the body that used to live inside ``run`` before Phase 5 of
-        the pattern-alignment spec landed.
-
-        Notably, this method invokes ``rate()`` (which calls
-        ``rate_death`` once) AND ``_cache_benthic_mortality_rates``
-        (which calls ``rate_death`` again). The duplicate call produces
-        identical values (``rate_death`` is pure) so the per-substep
-        net rate is bit-identical to ``_change_with_components``'s
-        de-duplicated path.
-
-        Retained through Phase 10 of the pattern-alignment spec for
-        the helper-vs-inline parity test
-        (``tests/v3/nsm1/test_benthic_algae_helper_vs_inline.py``)
-        per §11.3. Deleted in Phase 10 alongside its parity test once
-        the final end-to-end baseline parity passes.
-
-        Returns just the net per-day rate (g-D/m^2/d) — no
-        ``components`` dict, no registry exposure, no clip / Euler /
-        persist. Caller is responsible for the integrator step.
-        """
-        from clearwater_modules_v3.utils.partitioning import fdp as fdp_partition
-        phosphate_fraction_dissolved = fdp_partition(
-            use_TIP=self.use_TIP,
-            Solid=self.Solid,
-            kdpo4=self.kdpo4,
-        )
-
-        rate = self.rate(
-            algae=algae,
-            depth=depth,
-            water_temperature=water_temperature,
-            phosphorus_total_inorganic=phosphorus_total_inorganic,
-            phosphate_fraction_dissolved=phosphate_fraction_dissolved,
-            ammonium=ammonium,
-            nitrate=nitrate,
-            solar=solar,
-        )
-
-        # Pre-Phase-5 ``run`` invoked these as side effects.
-        self._cache_benthic_mortality_rates(algae, water_temperature, depth)
-        self.balgae_nh4_uptake_fraction = self._ab_uptake_fr_nh4(
-            ammonium=ammonium, nitrate=nitrate
-        )
-
-        return rate
-
     def _cache_benthic_mortality_rates(
         self,
         algae: ArrayLike,

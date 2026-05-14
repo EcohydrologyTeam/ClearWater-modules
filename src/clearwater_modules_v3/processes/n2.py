@@ -282,9 +282,6 @@ class N2(Process):
         on ``self.<name>`` (F); opportunistically writes diagnostics
         (G).
 
-        See ``_change_legacy_inline`` for the pre-Phase-8 inline
-        composition (retained through Phase 10 for the helper-vs-inline
-        parity test under §11.3). Phase 8 extends the pre-existing
         ``total_dissolved_gas`` opportunistic write (the sole v3 1.0.0
         example of pattern G) to cover the full Appendix A set —
         ``n2_atm_exchange_rate``, ``n2_sat``, and the new
@@ -444,77 +441,3 @@ class N2(Process):
         }
 
         return rate, components
-
-    def _change_legacy_inline(
-        self,
-        *,
-        n2_state: ArrayLike,
-        t_water_c: ArrayLike,
-        depth: ArrayLike,
-        pressure_mb: ArrayLike,
-    ) -> ArrayLike:
-        """Pre-Phase-8 inline rate composition. **Verbatim copy** of
-        the body of ``run`` (the parts producing the net rate) before
-        Phase 8 of the pattern-alignment spec landed.
-
-        Retained through Phase 10 for the helper-vs-inline parity test
-        per §11.3. Deleted in Phase 10 alongside its parity test once
-        the final end-to-end baseline parity passes.
-
-        Returns just the net per-day rate (mg-N/L/d). TDG is computed
-        post-integrator-step in ``run`` and is not part of the parity
-        contract here (it's a derived diagnostic, not a rate).
-        """
-        t_water_k = _kelvin(t_water_c)
-        khn2 = khn2_tc(t_water_k)
-        pwv_atm = pwv(t_water_k)
-        n2_sat = n2sat_henry(khn2, pressure_mb, pwv_atm)
-
-        is_user_hydraulic_zero = (
-            self.hydraulic_reaeration_option == 1 and self.kah_20_user == 0.0
-        )
-        is_user_wind_zero = (
-            self.wind_reaeration_option == 1 and self.kaw_20_user == 0.0
-        )
-        if is_user_hydraulic_zero and is_user_wind_zero:
-            ka_tc_value = 0.0
-        else:
-            kah_20_value = kah_20(
-                kah_20_user=self.kah_20_user,
-                hydraulic_reaeration_option=self.hydraulic_reaeration_option,
-                velocity=self.velocity,
-                depth=depth,
-                flow=self.flow,
-                topwidth=self.topwidth,
-                slope=self.slope,
-                shear_velocity=self.shear_velocity,
-            )
-            kaw_20_value = kaw_20(
-                kaw_20_user=self.kaw_20_user,
-                wind_speed=self.wind_speed,
-                wind_reaeration_option=self.wind_reaeration_option,
-            )
-            ka_tc_value = ka_tc(
-                kah_20=kah_20_value,
-                kaw_20=kaw_20_value,
-                kah_theta=self.kah_theta,
-                kaw_theta=self.kaw_theta,
-                T_water_C=t_water_c,
-                depth=depth,
-            )
-
-        atm_exchange = 1.034 * ka_tc_value * (n2_sat - n2_state)
-
-        if self.use_nitrogen and self.nitrogen_process is not None:
-            denit_source = getattr(
-                self.nitrogen_process, "denitrification_flux_rate", 0
-            )
-            if denit_source is None:
-                denit_source = 0
-        else:
-            denit_source = 0
-
-        rate = atm_exchange + denit_source
-        rate = sanitize_rate(rate)
-
-        return rate

@@ -645,9 +645,6 @@ class DOX(Process):
         D); persists primary outputs (E); caches step-scoped rates on
         ``self.<name>`` (F); opportunistically writes diagnostics (G).
 
-        See ``_change_legacy_inline`` for the pre-Phase-3 inline
-        composition (retained through Phase 10 for the helper-vs-inline
-        parity test under §11.3).
 
         Reads (at ``t = time``):
         * ``oxygen_dissolved`` (mg-O2/L)
@@ -745,10 +742,6 @@ class DOX(Process):
         re-multiplying by ``dt_days`` and the caller can cache ``rate``
         on ``self.dox_rate`` for downstream debugging.
 
-        The companion shadow ``_change_legacy_inline`` returns just
-        ``delta_dox`` and ``rate`` and is used by
-        ``tests/v3/nsm1/test_dox_helper_vs_inline.py`` to verify this
-        helper produces bit-identical outputs through Phase 10.
         """
         # --- O2 saturation (APHA / Benson-Krause) ---
         dox_sat = dox_sat_apha(t_water_c, pressure_mb)
@@ -851,96 +844,3 @@ class DOX(Process):
         }
 
         return delta_dox, rate, components
-
-    def _change_legacy_inline(
-        self,
-        *,
-        dox: ArrayLike,
-        t_water_c: ArrayLike,
-        depth: ArrayLike,
-        ammonium: ArrayLike,
-        pressure_mb: ArrayLike,
-    ) -> tuple[ArrayLike, ArrayLike]:
-        """Pre-Phase-3 inline rate composition. **Verbatim copy** of the
-        body that used to live inside ``run`` before Phase 3 of the
-        pattern-alignment spec landed.
-
-        Retained through Phase 10 of the pattern-alignment spec for the
-        helper-vs-inline parity test
-        (``tests/v3/nsm1/test_dox_helper_vs_inline.py``) per §11.3.
-        Deleted in Phase 10 alongside its parity test once the final
-        end-to-end baseline parity passes.
-
-        Returns ``(delta_dox, rate)`` — no ``components`` dict, no
-        registry exposure, no clip / persist. Caller is responsible for
-        the integrator + clip + persist.
-        """
-        # --- O2 saturation (APHA / Benson-Krause) ---
-        dox_sat = dox_sat_apha(t_water_c, pressure_mb)
-
-        # --- Effective reaeration coefficient ka_tc (1/d) ---
-        is_user_hydraulic_zero = (
-            self.hydraulic_reaeration_option == 1 and self.kah_20_user == 0.0
-        )
-        is_user_wind_zero = (
-            self.wind_reaeration_option == 1 and self.kaw_20_user == 0.0
-        )
-        if is_user_hydraulic_zero and is_user_wind_zero:
-            ka_tc_value = 0.0
-        else:
-            kah_20_value = kah_20(
-                kah_20_user=self.kah_20_user,
-                hydraulic_reaeration_option=self.hydraulic_reaeration_option,
-                velocity=self.velocity,
-                depth=depth,
-                flow=self.flow,
-                topwidth=self.topwidth,
-                slope=self.slope,
-                shear_velocity=self.shear_velocity,
-            )
-            kaw_20_value = kaw_20(
-                kaw_20_user=self.kaw_20_user,
-                wind_speed=self.wind_speed,
-                wind_reaeration_option=self.wind_reaeration_option,
-            )
-            ka_tc_value = ka_tc(
-                kah_20=kah_20_value,
-                kaw_20=kaw_20_value,
-                kah_theta=self.kah_theta,
-                kaw_theta=self.kaw_theta,
-                T_water_C=t_water_c,
-                depth=depth,
-            )
-
-        # --- Compute per-source / per-sink fluxes (mg/L/d) ---
-        atm_reaer  = sanitize_rate(self._atm_reaeration_flux(dox, dox_sat, ka_tc_value))
-        algal_grow = sanitize_rate(self._floating_algae_growth_flux())
-        algal_resp = sanitize_rate(self._floating_algae_respiration_flux())
-        balgae_grow = sanitize_rate(self._benthic_algae_growth_flux(depth))
-        balgae_resp = sanitize_rate(self._benthic_algae_respiration_flux(depth))
-        nitr_sink  = sanitize_rate(self._nitrification_flux(ammonium, t_water_c, dox))
-        doc_sink   = sanitize_rate(self._doc_oxidation_flux())
-        cbod_sink  = sanitize_rate(self._cbod_oxidation_flux())
-        sod_sink   = sanitize_rate(self._sod_flux(t_water_c, depth, dox))
-
-        # --- Net rate (mg/L/d) ---
-        rate = (
-            atm_reaer
-            + algal_grow
-            - algal_resp
-            + balgae_grow
-            - balgae_resp
-            - nitr_sink
-            - doc_sink
-            - cbod_sink
-            - sod_sink
-        )
-
-        # NaN/inf guard.
-        rate = sanitize_rate(rate)
-
-        # --- Forward Euler delta ---
-        dt_days = self.time_step.total_seconds() / 86400.0
-        delta_dox = rate * dt_days
-
-        return delta_dox, rate

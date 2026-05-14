@@ -394,9 +394,6 @@ class FloatingAlgae(Process):
         on ``self.<name>`` (F); opportunistically writes diagnostics
         (G).
 
-        See ``_change_legacy_inline`` for the pre-Phase-5 inline
-        composition (retained through Phase 10 for the helper-vs-inline
-        parity test under §11.3).
         """
         # --- State and forcing reads (pattern A) ---
         algae = registry.get_at_time("algae_floating", time)
@@ -488,11 +485,6 @@ class FloatingAlgae(Process):
         ``rate()`` invokes the same helpers internally and the values
         are bit-identical.
 
-        The companion shadow ``_change_legacy_inline`` returns just
-        ``rate`` and is used by
-        ``tests/v3/nsm1/test_floating_algae_helper_vs_inline.py`` to
-        verify this helper produces a bit-identical net rate through
-        Phase 10.
         """
         # Bug #15: compute fdp via the v3 partitioning utility instead of
         # the previous hard-coded 0.5.
@@ -565,60 +557,6 @@ class FloatingAlgae(Process):
         }
 
         return rate, components
-
-    def _change_legacy_inline(
-        self,
-        *,
-        algae: ArrayLike,
-        depth: ArrayLike,
-        water_temperature: ArrayLike,
-        phosphorus_total_inorganic: ArrayLike,
-        ammonium: ArrayLike,
-        nitrate: ArrayLike,
-        solar: ArrayLike,
-    ) -> ArrayLike:
-        """Pre-Phase-5 inline rate composition. **Verbatim copy** of
-        the body that used to live inside ``run`` before Phase 5 of
-        the pattern-alignment spec landed.
-
-        Retained through Phase 10 of the pattern-alignment spec for
-        the helper-vs-inline parity test
-        (``tests/v3/nsm1/test_floating_algae_helper_vs_inline.py``)
-        per §11.3. Deleted in Phase 10 alongside its parity test once
-        the final end-to-end baseline parity passes.
-
-        Returns just the net per-day rate (ug-Chla/L/d) — no
-        ``components`` dict, no registry exposure, no clip / Euler /
-        persist. Caller is responsible for the integrator step.
-        """
-        from clearwater_modules_v3.utils.partitioning import fdp as fdp_partition
-        phosphate_fraction_dissolved = fdp_partition(
-            use_TIP=self.use_TIP,
-            Solid=self.Solid,
-            kdpo4=self.kdpo4,
-        )
-
-        rate = self.rate(
-            algae=algae,
-            depth=depth,
-            water_temperature=water_temperature,
-            phosphorus_total_inorganic=phosphorus_total_inorganic,
-            phosphate_fraction_dissolved=phosphate_fraction_dissolved,
-            ammonium=ammonium,
-            nitrate=nitrate,
-            solar=solar,
-        )
-
-        # Pre-Phase-5 ``run`` invoked these as side effects; the helper
-        # mirrors the call sequence so cache attributes end up in the
-        # same state regardless of which entry point the test uses.
-        self._cache_mortality_rates(algae, water_temperature)
-        self.algal_nh4_uptake_fraction = self._ap_uptake_fr_nh4(
-            ammonium=ammonium, nitrate=nitrate
-        )
-
-        return rate
-
     def _cache_mortality_rates(
         self, algae: ArrayLike, water_temperature: ArrayLike
     ) -> None:

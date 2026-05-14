@@ -248,9 +248,6 @@ class POM(Process):
         on ``self.<name>`` (F); opportunistically writes diagnostics
         (G).
 
-        See ``_change_legacy_inline`` for the pre-Phase-7 inline
-        composition (retained through Phase 10 for the helper-vs-inline
-        parity test under §11.3). Phase 7 also resolves the Phase 1
         deferred item: the ``pom_doc_source_rate`` cache (consumed by
         Carbon via getattr) now lives in ``_change_with_components``
         rather than inside the public ``rate()`` method, so the cache
@@ -332,10 +329,6 @@ class POM(Process):
         external tests that call ``pom.rate(...)`` directly, but the
         canonical write path is via this helper.
 
-        The companion shadow ``_change_legacy_inline`` returns just
-        the net rate and is used by
-        ``tests/v3/nsm1/test_pom_helper_vs_inline.py`` to verify this
-        helper produces a bit-identical net rate through Phase 10.
         """
         # Temperature-corrected dissolution rate.
         kpom_tc = arrhenius_correction(
@@ -410,77 +403,6 @@ class POM(Process):
         }
 
         return rate, components
-
-    def _change_legacy_inline(
-        self,
-        *,
-        pom: ArrayLike,
-        water_temperature: ArrayLike,
-        poc: ArrayLike,
-        depth: ArrayLike,
-    ) -> ArrayLike:
-        """Pre-Phase-7 inline rate composition. **Verbatim copy** of
-        the body that ``run`` invoked via ``self.rate(...)`` before
-        Phase 7 of the pattern-alignment spec landed.
-
-        The pre-Phase-7 ``run`` called ``self.rate(pom=..., ...,
-        time=..., registry=...)`` which in turn read ``depth`` from
-        the registry inside the helper. This shadow takes ``depth``
-        as a direct argument (consistent with the new helper
-        signature) but performs the same arithmetic on the same
-        intermediates, so the per-substep net rate is bit-identical
-        to the pre-Phase-7 path.
-
-        Retained through Phase 10 for the helper-vs-inline parity
-        test per §11.3. Deleted in Phase 10 alongside its parity test
-        once the final end-to-end baseline parity passes.
-
-        Returns just the net per-day rate (mg/L/d).
-        """
-        kpom_tc = arrhenius_correction(
-            water_temperature, self.kpom_20, self.kpom_theta
-        )
-        rate_dissolution = kpom_tc * pom
-
-        # Pre-Phase-7 ``rate()`` set this side effect; preserved here so
-        # the shadow leaves the same self state.
-        self.pom_doc_source_rate = (
-            self.fcom * rate_dissolution * self.h2 / depth
-        )
-
-        rate_burial = self.vb * pom / self.h2
-
-        if self.use_POC:
-            rate_poc_settling = self.vsoc * poc / self.h2 / self.fcom
-        else:
-            rate_poc_settling = xr.zeros_like(pom)
-
-        if self.use_floating_algae and self.use_Algae and self.floating_algae_process is not None:
-            rate_algal_settling = getattr(
-                self.floating_algae_process,
-                "algal_pom_from_settling_rate",
-                0,
-            )
-        else:
-            rate_algal_settling = xr.zeros_like(pom)
-
-        if self.use_benthic_algae and self.use_Balgae and self.benthic_algae_process is not None:
-            rate_benthic_mortality = getattr(
-                self.benthic_algae_process,
-                "balgae_pom_from_mortality_rate",
-                0,
-            )
-        else:
-            rate_benthic_mortality = xr.zeros_like(pom)
-
-        return (
-            rate_algal_settling
-            - rate_dissolution
-            + rate_poc_settling
-            + rate_benthic_mortality
-            - rate_burial
-        )
-
     # ------------------------------------------------------------------
     # Kinetic helpers
     # ------------------------------------------------------------------
