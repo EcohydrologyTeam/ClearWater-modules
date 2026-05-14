@@ -142,6 +142,28 @@ class Alkalinity(Process):
     # docstring).
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
+    # surface Alkalinity exposes via the opportunistic-write loop in
+    # ``run``. Each name maps to a ``self.<name>`` cache attribute set
+    # inside ``_change_with_components`` and matches the inventory in
+    # ``design/clearwater_modules_v3_nsm1_appendix_a_diff.md`` §3.
+    #
+    # Note: 4 of 6 Appendix A names differ from the pre-Phase-9 cache
+    # attribute names (``alk_nitrification_rate`` ->
+    # ``alk_nitrification_sink_rate``, etc.). The legacy attribute names
+    # are preserved as aliases (set as side effects in
+    # ``_change_with_components``) for back-compat with
+    # ``test_alkalinity_v1_parity_v3.py`` and ``test_alkalinity_tier1.py``,
+    # which read them via getattr.
+    REGISTRY_DIAGNOSTICS: tuple[str, ...] = (
+        "alk_nitrification_sink_rate",
+        "alk_denitrification_source_rate",
+        "alk_algal_growth_rate",
+        "alk_algal_respiration_rate",
+        "alk_balgae_growth_rate",
+        "alk_balgae_respiration_rate",
+    )
+
     def __init__(
         self,
         parameters: dict | None = None,
@@ -428,26 +450,100 @@ class Alkalinity(Process):
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Integrate the alkalinity state by one Forward Euler substep.
 
+        Pattern-alignment spec §3 patterns A–J: reads forcings at top
+        (A); delegates rate composition to ``_change_with_components``
+        (B); applies Forward Euler with unconditional clip-with-log
+        (C, D); persists primary output (E); caches step-scoped rates
+        on ``self.<name>`` (F); opportunistically writes diagnostics
+        (G).
+
+        See ``_change_legacy_inline`` for the pre-Phase-9 inline
+        composition (retained through Phase 10 for the helper-vs-inline
+        parity test under §11.3).
+
         Reads (at ``t = time``):
         * ``alkalinity`` (mg-CaCO3/L)
-        * ``water_temperature`` (deg C) -- not used directly here but
-          required to be present in the registry for symmetry with
-          other Processes.
+        * ``water_temperature`` (deg C) -- read for symmetry with other
+          Processes (no direct temperature dependence in v3 1.0.0;
+          temperature correction lives upstream in Nitrogen / algae).
         * ``depth`` (m) -- used to depth-integrate benthic algae
           contributions.
 
         Writes (at ``t = time``):
         * ``alkalinity`` (mg-CaCO3/L) -- in-place state update.
-
-        Caches step-scoped quantities on ``self`` for diagnostics.
+        * Each Appendix A diagnostic in ``REGISTRY_DIAGNOSTICS`` -- only
+          if the user has pre-registered it (pattern G).
         """
+        # --- State and forcing reads (pattern A) ---
         alk = registry.get_at_time("alkalinity", time)
-        # water_temperature is read for symmetry; the simple-tracer
-        # model has no direct temperature dependence in v3 1.0.0
-        # (all temperature-correction lives upstream in Nitrogen / algae).
+        # water_temperature is read for symmetry.
         _ = registry.get_at_time("water_temperature", time)
         depth = registry.get_at_time("depth", time)
 
+        # --- Fused rate composition (pattern B) ---
+        rate, components = self._change_with_components(depth=depth)
+
+        # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
+        # Sets the six Appendix A name attributes. The four legacy
+        # aliases (``alk_nitrification_rate``,
+        # ``alk_denitrification_rate``, ``alk_benthic_algae_growth_rate``,
+        # ``alk_benthic_algae_respiration_rate``) are set as side effects
+        # inside ``_change_with_components`` for back-compat with
+        # ``test_alkalinity_v1_parity_v3.py`` and
+        # ``test_alkalinity_tier1.py``.
+        for name in self.REGISTRY_DIAGNOSTICS:
+            setattr(self, name, components[name])
+        # Preserve the legacy ``self.alk_rate`` cache attribute.
+        self.alk_rate = rate
+
+        # --- Forward Euler integration (pattern C) ---
+        dt_days = self.time_step.total_seconds() / 86400.0
+        alk_new = alk + rate * dt_days
+
+        # --- Clip-with-log per Q7 (pattern D) ---
+        alk_new = clip_negative_state(alk_new, "alkalinity", self.diagnostics)
+
+        # --- Persist primary output (pattern E) ---
+        registry.set_at_time("alkalinity", time, alk_new)
+
+        # --- Opportunistic diagnostic registry writes (pattern G) ---
+        for name in self.REGISTRY_DIAGNOSTICS:
+            if name in registry:
+                registry.set_at_time(name, time, components[name])
+
+    # ------------------------------------------------------------------
+    # Rate-composition helpers
+    # ------------------------------------------------------------------
+
+    def _change_with_components(
+        self,
+        *,
+        depth: ArrayLike,
+    ) -> tuple[ArrayLike, dict]:
+        """Compute ``(rate, components)`` for Alkalinity.
+
+        ``rate`` is the net per-day Alk rate of change (mg-CaCO3/L/d).
+        ``components`` is the dict[str, ArrayLike] indexed by
+        ``REGISTRY_DIAGNOSTICS``.
+
+        Code-motion-only refactor of ``run``'s former inline
+        composition (§11.6): operand order, sub-flux helper calls, and
+        the v1 ``dAlkdt`` sign convention preserved verbatim.
+
+        Side effect: sets four legacy attribute aliases
+        (``alk_nitrification_rate``, ``alk_denitrification_rate``,
+        ``alk_benthic_algae_growth_rate``,
+        ``alk_benthic_algae_respiration_rate``) for back-compat. The
+        ``test_alkalinity_v1_parity_v3.py`` and
+        ``test_alkalinity_tier1.py`` tests read these names via
+        getattr; the pattern F setattr loop in ``run`` then writes the
+        Appendix A names (``alk_nitrification_sink_rate``, etc.) over
+        the canonical attribute names.
+
+        The companion shadow ``_change_legacy_inline`` returns just
+        ``rate`` and is used by
+        ``tests/v3/nsm1/test_alkalinity_helper_vs_inline.py``.
+        """
         # --- Compute per-source / per-sink fluxes (mg-CaCO3/L/d) ---
         nitr_sink = self._nitrification_alk_sink()
         denit_source = self._denitrification_alk_source()
@@ -471,30 +567,74 @@ class Alkalinity(Process):
             + balgae_resp_source
         )
 
-        # NaN/inf guard (defense-in-depth; primary dry-cell defense
-        # is the orchestration-layer wet-mask in Model). Catches
-        # ``inf`` from depth divisions and ``NaN`` from missing
-        # forcings.
+        # NaN/inf guard.
         rate = sanitize_rate(rate)
 
-        # --- Forward Euler integration ---
-        dt_days = self.time_step.total_seconds() / 86400.0
-        alk_new = alk + rate * dt_days
+        # --- Legacy attribute aliases (back-compat with existing
+        # tests that read the pre-Phase-9 cache attribute names). ---
+        self.alk_nitrification_rate = nitr_sink
+        self.alk_denitrification_rate = denit_source
+        self.alk_benthic_algae_growth_rate = balgae_growth_sink
+        self.alk_benthic_algae_respiration_rate = balgae_resp_source
 
-        # Clip-with-log per the Q7 contract. ``clip_negative_state`` now
-        # accepts non-DataArray and None-diagnostics inputs (Phase 0.6 Q2);
-        # step attribution is automatic via ``diagnostics.current_step``
-        # (Phase 0.6 Q1).
-        alk_new = clip_negative_state(alk_new, "alkalinity", self.diagnostics)
+        # --- Components dict (Appendix A canonical names) ---
+        # The pattern F setattr loop in ``run`` writes these names; for
+        # the two algae-respiration / algae-growth names that match the
+        # Appendix A convention exactly (``alk_algal_growth_rate`` and
+        # ``alk_algal_respiration_rate``) the loop is the only writer.
+        components = {
+            "alk_nitrification_sink_rate": nitr_sink,
+            "alk_denitrification_source_rate": denit_source,
+            "alk_algal_growth_rate": algal_growth_sink,
+            "alk_algal_respiration_rate": algal_resp_source,
+            "alk_balgae_growth_rate": balgae_growth_sink,
+            "alk_balgae_respiration_rate": balgae_resp_source,
+        }
 
-        # Persist updated state.
-        registry.set_at_time("alkalinity", time, alk_new)
+        return rate, components
 
-        # Cache step-scoped quantities for diagnostics.
+    def _change_legacy_inline(
+        self,
+        *,
+        depth: ArrayLike,
+    ) -> ArrayLike:
+        """Pre-Phase-9 inline rate composition. **Verbatim copy** of the
+        body that used to live inside ``run`` before Phase 9 of the
+        pattern-alignment spec landed.
+
+        Retained through Phase 10 for the helper-vs-inline parity test
+        per §11.3. Deleted in Phase 10 alongside its parity test once
+        the final end-to-end baseline parity passes.
+
+        Returns just the net per-day rate (mg-CaCO3/L/d). Sets the four
+        legacy cache attribute names as side effects (matches
+        pre-Phase-9 ``run`` body) so the shadow leaves the same self
+        state as ``_change_with_components`` does.
+        """
+        nitr_sink = self._nitrification_alk_sink()
+        denit_source = self._denitrification_alk_source()
+        algal_growth_sink = self._floating_algae_growth_alk_flux()
+        algal_resp_source = self._floating_algae_respiration_alk_source()
+        balgae_growth_sink = self._benthic_algae_growth_alk_flux(depth)
+        balgae_resp_source = self._benthic_algae_respiration_alk_source(depth)
+
+        rate = (
+            denit_source
+            - nitr_sink
+            - algal_growth_sink
+            + algal_resp_source
+            - balgae_growth_sink
+            + balgae_resp_source
+        )
+        rate = sanitize_rate(rate)
+
+        # Pre-Phase-9 cache attribute names (set as side effects in
+        # pre-Phase-9 ``run``).
         self.alk_nitrification_rate = nitr_sink
         self.alk_denitrification_rate = denit_source
         self.alk_algal_growth_rate = algal_growth_sink
         self.alk_algal_respiration_rate = algal_resp_source
         self.alk_benthic_algae_growth_rate = balgae_growth_sink
         self.alk_benthic_algae_respiration_rate = balgae_resp_source
-        self.alk_rate = rate
+
+        return rate
