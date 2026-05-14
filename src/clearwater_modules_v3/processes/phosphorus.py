@@ -152,6 +152,28 @@ class Phosphorus(Process):
     # used in v3 Pathogen for consistency).
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
+    # surface Phosphorus exposes via the opportunistic-write loop in
+    # ``run``. Each name maps to a ``self.<name>`` cache attribute set
+    # inside ``_change_with_components`` and matches the inventory in
+    # ``design/clearwater_modules_v3_nsm1_appendix_a_diff.md`` §3.
+    #
+    # Note: ``orgp_hydrolysis_rate`` is the Appendix A name (matches the
+    # NSM1 1.0.0 registry-coupling convention). It aliases the existing
+    # ``orgp_to_tip_hydrolysis_rate`` cache attribute that
+    # ``test_phosphorus_v1_parity_v3.py`` reads via ``getattr``; both
+    # names point at the same value (set as side effects in
+    # ``_change_with_components``) for back-compat.
+    REGISTRY_DIAGNOSTICS: tuple[str, ...] = (
+        "orgp_hydrolysis_rate",
+        "orgp_settling_rate",
+        "tip_settling_rate",
+        "dip_from_bed",
+        "orgp_algal_mortality_rate",
+        "tip_algal_growth_rate",
+        "tip_balgae_growth_rate",
+    )
+
     def __init__(
         self,
         parameters: dict | None = None,
@@ -271,19 +293,92 @@ class Phosphorus(Process):
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Advance TIP and OrgP by one substep using Forward Euler.
 
-        Steps:
-            1. Read ``tip``, ``organic_phosphorus``, ``water_temperature``,
-               ``depth`` at ``time`` (Jacobi state semantics).
-            2. Compute per-cell rates of change for both states (1/d).
-            3. Forward Euler: ``state_new = state + rate * dt_days``.
-            4. Clip-with-log via ``clip_negative_state`` (Q7 contract).
-            5. Persist via ``registry.set_at_time``.
+        Pattern-alignment spec §3 patterns A–J: reads forcings at top
+        (A); delegates rate composition to ``_change_with_components``
+        (B); applies Forward Euler with unconditional clip-with-log
+        (C, D); persists primary outputs (E); caches step-scoped rates
+        on ``self.<name>`` (F); opportunistically writes diagnostics
+        (G).
+
+        See ``_change_legacy_inline`` for the pre-Phase-6 inline
+        composition (retained through Phase 10 for the helper-vs-inline
+        parity test under §11.3).
         """
+        # --- State and forcing reads (pattern A) ---
         tip = registry.get_at_time("tip", time)
         orgp = registry.get_at_time("organic_phosphorus", time)
         water_temperature = registry.get_at_time("water_temperature", time)
         depth = registry.get_at_time("depth", time)
 
+        # --- Fused rate composition (pattern B) ---
+        dtip_dt, dorgp_dt, components = self._change_with_components(
+            tip=tip,
+            orgp=orgp,
+            water_temperature=water_temperature,
+            depth=depth,
+        )
+
+        # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
+        # The first three names (orgp_settling_rate, tip_settling_rate,
+        # orgp_to_tip_hydrolysis_rate / orgp_hydrolysis_rate) were
+        # already populated as side effects of _change_with_components;
+        # the setattr loop is idempotent on those. The remaining four
+        # are new caches with this phase.
+        for name in self.REGISTRY_DIAGNOSTICS:
+            setattr(self, name, components[name])
+
+        # --- Forward Euler in days (pattern C) ---
+        dt_days = self.time_step.total_seconds() / 86400.0
+        tip_new = tip + dtip_dt * dt_days
+        orgp_new = orgp + dorgp_dt * dt_days
+
+        # --- Clip-with-log per the Q7 contract (pattern D) ---
+        # Step attribution is automatic via ``diagnostics.current_step``
+        # (Phase 0.6 Q1).
+        tip_new = clip_negative_state(tip_new, "tip", self.diagnostics)
+        orgp_new = clip_negative_state(
+            orgp_new, "organic_phosphorus", self.diagnostics
+        )
+
+        # --- Persist primary outputs (pattern E) ---
+        registry.set_at_time("tip", time, tip_new)
+        registry.set_at_time("organic_phosphorus", time, orgp_new)
+
+        # --- Opportunistic diagnostic registry writes (pattern G) ---
+        for name in self.REGISTRY_DIAGNOSTICS:
+            if name in registry:
+                registry.set_at_time(name, time, components[name])
+
+    # ------------------------------------------------------------------
+    # Rate-composition helpers
+    # ------------------------------------------------------------------
+
+    def _change_with_components(
+        self,
+        *,
+        tip: ArrayLike,
+        orgp: ArrayLike,
+        water_temperature: ArrayLike,
+        depth: ArrayLike,
+    ) -> tuple[ArrayLike, ArrayLike, dict]:
+        """Compute ``(dtip_dt, dorgp_dt, components)`` for Phosphorus.
+
+        Per-day rates (mg-P/L/d). Code-motion-only refactor of ``run``'s
+        former inline composition (§11.6): operand order, intermediate
+        names, kinetic-helper calls, and the use_TIP / use_OrgP gating
+        are preserved verbatim.
+
+        The companion shadow ``_change_legacy_inline`` returns just
+        ``(dtip_dt, dorgp_dt)`` and is used by
+        ``tests/v3/nsm1/test_phosphorus_helper_vs_inline.py`` to verify
+        this helper produces bit-identical deltas through Phase 10.
+
+        Side effect: sets ``self.orgp_to_tip_hydrolysis_rate``,
+        ``self.tip_settling_rate``, ``self.orgp_settling_rate``
+        (preserved attribute names that the existing v3 code and
+        ``test_phosphorus_v1_parity_v3.py`` depend on). The pattern F
+        ``setattr`` loop in ``run`` is idempotent on these names.
+        """
         # Temperature-corrected rates.
         kop_tc = arrhenius_correction(
             water_temperature, self.kop_20, self.kop_theta
@@ -372,22 +467,117 @@ class Phosphorus(Process):
         dtip_dt = sanitize_rate(dtip_dt)
         dorgp_dt = sanitize_rate(dorgp_dt)
 
-        # Forward Euler in days. Rates are 1/d.
-        dt_days = self.time_step.total_seconds() / 86400.0
-        tip_new = tip + dtip_dt * dt_days
-        orgp_new = orgp + dorgp_dt * dt_days
+        # --- Components dict ---
+        # ``orgp_hydrolysis_rate`` is the Appendix A name; aliases the
+        # existing ``orgp_to_tip_hydrolysis_rate`` attribute set above.
+        # ``tip_algal_growth_rate`` and ``tip_balgae_growth_rate``
+        # split the algal TIP uptake by source per Appendix A.
+        # ``orgp_algal_mortality_rate`` sums floating + benthic
+        # mortality contributions to OrgP (mirrors the Nitrogen
+        # ``nh4_algal_growth_rate`` total convention).
+        components = {
+            "orgp_hydrolysis_rate": orgp_to_tip,
+            "orgp_settling_rate": orgp_settling,
+            "tip_settling_rate": tip_settling,
+            "dip_from_bed": dip_from_bed,
+            "orgp_algal_mortality_rate": ap_orgp_mortality + ab_orgp_mortality,
+            "tip_algal_growth_rate": ap_tip_uptake,
+            "tip_balgae_growth_rate": ab_tip_uptake,
+        }
 
-        # Clip-with-log (Q7 contract). Clip target is exactly 0.
-        tip_new = clip_negative_state(
-            tip_new, "tip", self.diagnostics, step=0
+        return dtip_dt, dorgp_dt, components
+
+    def _change_legacy_inline(
+        self,
+        *,
+        tip: ArrayLike,
+        orgp: ArrayLike,
+        water_temperature: ArrayLike,
+        depth: ArrayLike,
+    ) -> tuple[ArrayLike, ArrayLike]:
+        """Pre-Phase-6 inline rate composition. **Verbatim copy** of
+        the body that used to live inside ``run`` before Phase 6 of the
+        pattern-alignment spec landed.
+
+        Retained through Phase 10 for the helper-vs-inline parity test
+        per §11.3. Deleted in Phase 10 alongside its parity test once
+        the final end-to-end baseline parity passes.
+
+        Returns ``(dtip_dt, dorgp_dt)`` — no ``components`` dict, no
+        registry exposure, no clip / Euler / persist. Caller is
+        responsible for the integrator step.
+        """
+        kop_tc = arrhenius_correction(
+            water_temperature, self.kop_20, self.kop_theta
         )
-        orgp_new = clip_negative_state(
-            orgp_new, "organic_phosphorus", self.diagnostics, step=0
+        rpo4_tc = arrhenius_correction(
+            water_temperature, self.rpo4_20, self.rpo4_theta
         )
 
-        # Persist updated state.
-        registry.set_at_time("tip", time, tip_new)
-        registry.set_at_time("organic_phosphorus", time, orgp_new)
+        fdp = fdp_partition(
+            use_TIP=self.use_TIP,
+            Solid=self.Solid,
+            kdpo4=self.kdpo4,
+        )
+
+        if self.use_OrgP:
+            orgp_to_tip = kop_tc * orgp
+        else:
+            orgp_to_tip = 0.0
+        self.orgp_to_tip_hydrolysis_rate = orgp_to_tip
+
+        if self.use_TIP:
+            tip_settling = self.vs / depth * (1.0 - fdp) * tip
+        else:
+            tip_settling = 0.0
+        self.tip_settling_rate = tip_settling
+
+        if self.use_OrgP:
+            orgp_settling = self.vsop / depth * orgp
+        else:
+            orgp_settling = 0.0
+        self.orgp_settling_rate = orgp_settling
+
+        if self.use_TIP:
+            dip_from_bed = rpo4_tc / depth
+        else:
+            dip_from_bed = 0.0
+
+        ap_tip_uptake = self._tip_uptake_floating_algae()
+        ap_tip_release = self._tip_release_floating_algae_respiration()
+        ab_tip_uptake = self._tip_uptake_benthic_algae(depth=depth)
+        ab_tip_release = self._tip_release_benthic_algae_respiration(depth=depth)
+
+        ap_orgp_mortality = self._orgp_from_floating_algae_mortality()
+        ab_orgp_mortality = self._orgp_from_benthic_algae_mortality()
+
+        if self.use_TIP:
+            dtip_dt = (
+                orgp_to_tip
+                - tip_settling
+                + dip_from_bed
+                - ap_tip_uptake
+                + ap_tip_release
+                - ab_tip_uptake
+                + ab_tip_release
+            )
+        else:
+            dtip_dt = xr.zeros_like(tip) if hasattr(tip, "dims") else 0.0
+
+        if self.use_OrgP:
+            dorgp_dt = (
+                ap_orgp_mortality
+                + ab_orgp_mortality
+                - orgp_to_tip
+                - orgp_settling
+            )
+        else:
+            dorgp_dt = xr.zeros_like(orgp) if hasattr(orgp, "dims") else 0.0
+
+        dtip_dt = sanitize_rate(dtip_dt)
+        dorgp_dt = sanitize_rate(dorgp_dt)
+
+        return dtip_dt, dorgp_dt
 
     # ------------------------------------------------------------------
     # Algal-coupling helpers
