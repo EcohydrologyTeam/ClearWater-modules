@@ -245,6 +245,31 @@ class DOX(Process):
     # docstring).
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
+    # surface DOX exposes via the opportunistic-write loop in ``run``.
+    # Each name maps to a ``self.<name>`` cache attribute set inside
+    # ``_change_with_components`` and matches the inventory in
+    # ``design/clearwater_modules_v3_nsm1_appendix_a_diff.md`` §3.
+    #
+    # Note: ``sod_rate`` and ``dox_sod_rate`` are aliases for the same
+    # volumetric SOD sink (mg-O2/L/d). ``dox_sod_rate`` is the v3 cache
+    # attribute DOX has always written; ``sod_rate`` is the Appendix A
+    # name inherited from the 1.0.0 "sediment-globals" naming. Both are
+    # exposed so legacy consumers (and the Appendix A catalog) line up.
+    REGISTRY_DIAGNOSTICS: tuple[str, ...] = (
+        "dox_sat",
+        "atm_reaeration_rate",
+        "dox_nitrification_rate",
+        "dox_sod_rate",
+        "sod_rate",
+        "dox_doc_oxidation_rate",
+        "dox_cbod_oxidation_rate",
+        "dox_algal_photo_rate",
+        "dox_algal_resp_rate",
+        "dox_balgae_photo_rate",
+        "dox_balgae_resp_rate",
+    )
+
     def __init__(
         self,
         parameters: dict | None = None,
@@ -614,6 +639,16 @@ class DOX(Process):
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Integrate the DOX state by one Forward Euler substep.
 
+        Pattern-alignment spec §3 patterns A–J: reads forcings at top
+        (A); delegates rate composition to ``_change_with_components``
+        (B); applies Forward Euler with unconditional clip-with-log (C,
+        D); persists primary outputs (E); caches step-scoped rates on
+        ``self.<name>`` (F); opportunistically writes diagnostics (G).
+
+        See ``_change_legacy_inline`` for the pre-Phase-3 inline
+        composition (retained through Phase 10 for the helper-vs-inline
+        parity test under §11.3).
+
         Reads (at ``t = time``):
         * ``oxygen_dissolved`` (mg-O2/L)
         * ``water_temperature`` (deg C)
@@ -624,11 +659,10 @@ class DOX(Process):
 
         Writes (at ``t = time``):
         * ``oxygen_dissolved`` (mg-O2/L) — in-place state update.
-
-        Caches step-scoped quantities on ``self`` for diagnostics:
-        * ``dox_sat``, ``atm_reaeration_rate``, ``dox_nitrification_rate``,
-          ``dox_sod_rate``, ``dox_rate``.
+        * Each Appendix A diagnostic in ``REGISTRY_DIAGNOSTICS`` — only
+          if the user has pre-registered it (pattern G).
         """
+        # --- State and forcing reads (pattern A) ---
         dox = registry.get_at_time("oxygen_dissolved", time)
         t_water_c = registry.get_at_time("water_temperature", time)
         depth = registry.get_at_time("depth", time)
@@ -644,6 +678,78 @@ class DOX(Process):
         else:
             pressure_mb = self.pressure_mb
 
+        # --- Fused rate composition (pattern B) ---
+        delta_dox, rate, components = self._change_with_components(
+            dox=dox,
+            t_water_c=t_water_c,
+            depth=depth,
+            ammonium=ammonium,
+            pressure_mb=pressure_mb,
+        )
+
+        # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
+        # Preserved names: ``dox_sat``, ``atm_reaeration_rate``,
+        # ``dox_nitrification_rate``, ``dox_sod_rate`` were already
+        # published by DOX for the Phase 5.5 / Tier 1 / Alkalinity
+        # diagnostics. The remaining seven are new with this phase.
+        for name in self.REGISTRY_DIAGNOSTICS:
+            setattr(self, name, components[name])
+        # Net-rate cache retained for downstream debugging (not exposed
+        # via REGISTRY_DIAGNOSTICS — it is the integrator's own argument,
+        # not an Appendix A diagnostic).
+        self.dox_rate = rate
+
+        # --- Forward Euler integration (pattern C) ---
+        dt_days = self.time_step.total_seconds() / 86400.0
+        dox_new = dox + delta_dox
+
+        # Clip-with-log (pattern D). Phase 0.6 Q1+Q2: ``clip_negative_state``
+        # accepts non-DataArray and None-diagnostics inputs; step
+        # attribution is automatic via ``diagnostics.current_step``.
+        dox_new = clip_negative_state(dox_new, "oxygen_dissolved", self.diagnostics)
+
+        # --- Persist primary state (pattern E) ---
+        registry.set_at_time("oxygen_dissolved", time, dox_new)
+
+        # --- Opportunistic diagnostic registry writes (pattern G) ---
+        # Each Appendix A name is written ONLY if the user has
+        # pre-registered it. Zero cost when not subscribed.
+        for name in self.REGISTRY_DIAGNOSTICS:
+            if name in registry:
+                registry.set_at_time(name, time, components[name])
+
+    # ------------------------------------------------------------------
+    # Rate-composition helpers
+    # ------------------------------------------------------------------
+
+    def _change_with_components(
+        self,
+        *,
+        dox: ArrayLike,
+        t_water_c: ArrayLike,
+        depth: ArrayLike,
+        ammonium: ArrayLike,
+        pressure_mb: ArrayLike,
+    ) -> tuple[ArrayLike, ArrayLike, dict]:
+        """Compute ``(delta_dox, rate, components)``.
+
+        Code-motion-only refactor of ``run``'s former inline composition
+        (§11.6): operand order, intermediate names, and arithmetic are
+        preserved verbatim from the pre-refactor body. The ``components``
+        dict is populated from the same intermediates the integrator
+        consumes (no recomputation).
+
+        ``delta_dox`` is the Forward Euler increment ``rate * dt_days``
+        (in mg-O2/L per substep). ``rate`` is the net rate in mg-O2/L/d.
+        Both are returned so ``run`` can apply Forward Euler without
+        re-multiplying by ``dt_days`` and the caller can cache ``rate``
+        on ``self.dox_rate`` for downstream debugging.
+
+        The companion shadow ``_change_legacy_inline`` returns just
+        ``delta_dox`` and ``rate`` and is used by
+        ``tests/v3/nsm1/test_dox_helper_vs_inline.py`` to verify this
+        helper produces bit-identical outputs through Phase 10.
+        """
         # --- O2 saturation (APHA / Benson-Krause) ---
         dox_sat = dox_sat_apha(t_water_c, pressure_mb)
 
@@ -722,22 +828,119 @@ class DOX(Process):
         # sanitization above). Catches any residual NaN from the sum.
         rate = sanitize_rate(rate)
 
-        # --- Forward Euler integration ---
+        # --- Forward Euler delta (caller applies as ``dox + delta_dox``) ---
         dt_days = self.time_step.total_seconds() / 86400.0
-        dox_new = dox + rate * dt_days
+        delta_dox = rate * dt_days
 
-        # Clip-with-log per the Q7 contract. ``clip_negative_state`` now
-        # accepts non-DataArray and None-diagnostics inputs (Phase 0.6 Q2);
-        # step attribution is automatic via ``diagnostics.current_step``
-        # (Phase 0.6 Q1).
-        dox_new = clip_negative_state(dox_new, "oxygen_dissolved", self.diagnostics)
+        # --- Components dict (single source of truth for pattern F+G) ---
+        # ``sod_rate`` is exposed as an alias for ``dox_sod_rate`` (the
+        # volumetric SOD sink in mg-O2/L/d). Both names map to the
+        # same sanitized value.
+        components = {
+            "dox_sat": dox_sat,
+            "atm_reaeration_rate": atm_reaer,
+            "dox_nitrification_rate": nitr_sink,
+            "dox_sod_rate": sod_sink,
+            "sod_rate": sod_sink,
+            "dox_doc_oxidation_rate": doc_sink,
+            "dox_cbod_oxidation_rate": cbod_sink,
+            "dox_algal_photo_rate": algal_grow,
+            "dox_algal_resp_rate": algal_resp,
+            "dox_balgae_photo_rate": balgae_grow,
+            "dox_balgae_resp_rate": balgae_resp,
+        }
 
-        # Persist updated state.
-        registry.set_at_time("oxygen_dissolved", time, dox_new)
+        return delta_dox, rate, components
 
-        # Cache step-scoped quantities for diagnostics / Phase 5.5.
-        self.dox_sat = dox_sat
-        self.atm_reaeration_rate = atm_reaer
-        self.dox_nitrification_rate = nitr_sink
-        self.dox_sod_rate = sod_sink
-        self.dox_rate = rate
+    def _change_legacy_inline(
+        self,
+        *,
+        dox: ArrayLike,
+        t_water_c: ArrayLike,
+        depth: ArrayLike,
+        ammonium: ArrayLike,
+        pressure_mb: ArrayLike,
+    ) -> tuple[ArrayLike, ArrayLike]:
+        """Pre-Phase-3 inline rate composition. **Verbatim copy** of the
+        body that used to live inside ``run`` before Phase 3 of the
+        pattern-alignment spec landed.
+
+        Retained through Phase 10 of the pattern-alignment spec for the
+        helper-vs-inline parity test
+        (``tests/v3/nsm1/test_dox_helper_vs_inline.py``) per §11.3.
+        Deleted in Phase 10 alongside its parity test once the final
+        end-to-end baseline parity passes.
+
+        Returns ``(delta_dox, rate)`` — no ``components`` dict, no
+        registry exposure, no clip / persist. Caller is responsible for
+        the integrator + clip + persist.
+        """
+        # --- O2 saturation (APHA / Benson-Krause) ---
+        dox_sat = dox_sat_apha(t_water_c, pressure_mb)
+
+        # --- Effective reaeration coefficient ka_tc (1/d) ---
+        is_user_hydraulic_zero = (
+            self.hydraulic_reaeration_option == 1 and self.kah_20_user == 0.0
+        )
+        is_user_wind_zero = (
+            self.wind_reaeration_option == 1 and self.kaw_20_user == 0.0
+        )
+        if is_user_hydraulic_zero and is_user_wind_zero:
+            ka_tc_value = 0.0
+        else:
+            kah_20_value = kah_20(
+                kah_20_user=self.kah_20_user,
+                hydraulic_reaeration_option=self.hydraulic_reaeration_option,
+                velocity=self.velocity,
+                depth=depth,
+                flow=self.flow,
+                topwidth=self.topwidth,
+                slope=self.slope,
+                shear_velocity=self.shear_velocity,
+            )
+            kaw_20_value = kaw_20(
+                kaw_20_user=self.kaw_20_user,
+                wind_speed=self.wind_speed,
+                wind_reaeration_option=self.wind_reaeration_option,
+            )
+            ka_tc_value = ka_tc(
+                kah_20=kah_20_value,
+                kaw_20=kaw_20_value,
+                kah_theta=self.kah_theta,
+                kaw_theta=self.kaw_theta,
+                T_water_C=t_water_c,
+                depth=depth,
+            )
+
+        # --- Compute per-source / per-sink fluxes (mg/L/d) ---
+        atm_reaer  = sanitize_rate(self._atm_reaeration_flux(dox, dox_sat, ka_tc_value))
+        algal_grow = sanitize_rate(self._floating_algae_growth_flux())
+        algal_resp = sanitize_rate(self._floating_algae_respiration_flux())
+        balgae_grow = sanitize_rate(self._benthic_algae_growth_flux(depth))
+        balgae_resp = sanitize_rate(self._benthic_algae_respiration_flux(depth))
+        nitr_sink  = sanitize_rate(self._nitrification_flux(ammonium, t_water_c, dox))
+        doc_sink   = sanitize_rate(self._doc_oxidation_flux())
+        cbod_sink  = sanitize_rate(self._cbod_oxidation_flux())
+        sod_sink   = sanitize_rate(self._sod_flux(t_water_c, depth, dox))
+
+        # --- Net rate (mg/L/d) ---
+        rate = (
+            atm_reaer
+            + algal_grow
+            - algal_resp
+            + balgae_grow
+            - balgae_resp
+            - nitr_sink
+            - doc_sink
+            - cbod_sink
+            - sod_sink
+        )
+
+        # NaN/inf guard.
+        rate = sanitize_rate(rate)
+
+        # --- Forward Euler delta ---
+        dt_days = self.time_step.total_seconds() / 86400.0
+        delta_dox = rate * dt_days
+
+        return delta_dox, rate
