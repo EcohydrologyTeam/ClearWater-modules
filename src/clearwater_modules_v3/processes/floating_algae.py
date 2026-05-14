@@ -132,6 +132,36 @@ class FloatingAlgae(Process):
     # ALGAE_DEFAULTS dict every subsequent instance reads.
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
+    # surface FloatingAlgae exposes via the opportunistic-write loop in
+    # ``run``. Each name maps to a ``self.<name>`` cache attribute set
+    # inside ``_change_with_components`` (or as a side effect of the
+    # rate / mortality-routing helpers it calls) and matches the
+    # inventory in ``design/clearwater_modules_v3_nsm1_appendix_a_diff.md``
+    # §3.
+    #
+    # All four cache attributes consumed by sibling Processes
+    # (DOX / Carbon read ``algal_growth_rate`` and ``algal_respiration_rate``;
+    # Nitrogen / Phosphorus read ``algal_nh4_uptake_fraction``;
+    # Carbon / Nitrogen / Phosphorus / POM read the
+    # ``algal_*_from_mortality_rate`` family) are preserved attribute
+    # names — Phase 5 keeps them exact.
+    REGISTRY_DIAGNOSTICS: tuple[str, ...] = (
+        "algal_growth_rate",
+        "algal_respiration_rate",
+        "algal_death_rate",
+        "algal_settling_rate",
+        "algal_orgn_from_mortality_rate",
+        "algal_orgp_from_mortality_rate",
+        "algal_poc_from_mortality_rate",
+        "algal_doc_from_mortality_rate",
+        "algal_pom_from_settling_rate",
+        "algal_nh4_uptake_fraction",
+        "algal_light_limitation",
+        "algal_nutrient_limitation_n",
+        "algal_nutrient_limitation_p",
+    )
+
     # Legacy v2 kwarg name -> v3 DEFAULTS-aligned attribute name.
     # Phase 9.A.1 wiring fix: when a legacy kwarg is omitted, the
     # rate methods read the corresponding DEFAULTS-merged attribute
@@ -357,12 +387,18 @@ class FloatingAlgae(Process):
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Run the floating algae process.
 
-        Forward-Euler integrator: ``algae_new = algae + rate * dt_days``.
-        Negative cells are clipped to zero via the v3 ``clip_negative_state``
-        with diagnostics recorded on ``self.diagnostics``. The new state
-        is persisted via ``registry.set_at_time``.
-        """
+        Pattern-alignment spec §3 patterns A–J: reads forcings at top
+        (A); delegates rate composition to ``_change_with_components``
+        (B); applies Forward Euler with unconditional clip-with-log
+        (C, D); persists primary output (E); caches step-scoped rates
+        on ``self.<name>`` (F); opportunistically writes diagnostics
+        (G).
 
+        See ``_change_legacy_inline`` for the pre-Phase-5 inline
+        composition (retained through Phase 10 for the helper-vs-inline
+        parity test under §11.3).
+        """
+        # --- State and forcing reads (pattern A) ---
         algae = registry.get_at_time("algae_floating", time)
         ammonium = registry.get_at_time("ammonium", time)
         nitrate = registry.get_at_time("nitrate", time)
@@ -380,6 +416,84 @@ class FloatingAlgae(Process):
         water_temperature = registry.get_at_time("water_temperature", time)
         solar = registry.get_at_time("solar_radiation", time)
 
+        # --- Fused rate composition (pattern B) ---
+        rate, components = self._change_with_components(
+            algae=algae,
+            depth=depth,
+            water_temperature=water_temperature,
+            phosphorus_total_inorganic=phosphorus_total_inorganic,
+            ammonium=ammonium,
+            nitrate=nitrate,
+            solar=solar,
+        )
+
+        # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
+        # Names match REGISTRY_DIAGNOSTICS. The growth/respiration/
+        # settling/death/mortality-routing/nh4-uptake-fraction caches
+        # are *also* set as side effects of the helpers called inside
+        # ``_change_with_components``; the setattr loop here is
+        # idempotent on those names (same value) and adds the new
+        # ``algal_light_limitation`` / ``algal_nutrient_limitation_*``
+        # entries that did not have a self-cache before Phase 5.
+        for name in self.REGISTRY_DIAGNOSTICS:
+            setattr(self, name, components[name])
+
+        # --- Forward Euler in days (pattern C; Bug #4) ---
+        dt_days = self.time_step.total_seconds() / 86400.0
+        algae_new = algae + rate * dt_days
+
+        # --- Clip-with-log per the resolved Q7 contract (pattern D) ---
+        # Clip target is exactly 0 (Monod ratios are well-defined at C=0).
+        # Step attribution is automatic via ``diagnostics.current_step``
+        # (Phase 0.6 Q1); import is module-level (Phase 1.C).
+        algae_new = clip_negative_state(
+            algae_new, "algae_floating", self.diagnostics
+        )
+
+        # --- Persist primary output (pattern E; Bug #16) ---
+        registry.set_at_time("algae_floating", time, algae_new)
+
+        # --- Opportunistic diagnostic registry writes (pattern G) ---
+        for name in self.REGISTRY_DIAGNOSTICS:
+            if name in registry:
+                registry.set_at_time(name, time, components[name])
+
+    # ------------------------------------------------------------------
+    # Rate-composition helpers
+    # ------------------------------------------------------------------
+
+    def _change_with_components(
+        self,
+        *,
+        algae: ArrayLike,
+        depth: ArrayLike,
+        water_temperature: ArrayLike,
+        phosphorus_total_inorganic: ArrayLike,
+        ammonium: ArrayLike,
+        nitrate: ArrayLike,
+        solar: ArrayLike,
+    ) -> tuple[ArrayLike, dict]:
+        """Compute ``(rate, components)`` for FloatingAlgae.
+
+        ``rate`` is the net per-day algal rate of change (ug-Chla/L/d).
+        ``components`` is the dict[str, ArrayLike] indexed by
+        ``REGISTRY_DIAGNOSTICS``.
+
+        Code-motion-only refactor of ``run``'s former inline
+        composition (§11.6): operand order, intermediate names, and
+        kinetic-helper calls are preserved verbatim. The new
+        ``algal_light_limitation`` / ``algal_nutrient_limitation_*``
+        diagnostics are computed by separate (pure-function) calls to
+        ``limit_light`` / ``limit_nitrogen`` / ``limit_phosphorus``;
+        ``rate()`` invokes the same helpers internally and the values
+        are bit-identical.
+
+        The companion shadow ``_change_legacy_inline`` returns just
+        ``rate`` and is used by
+        ``tests/v3/nsm1/test_floating_algae_helper_vs_inline.py`` to
+        verify this helper produces a bit-identical net rate through
+        Phase 10.
+        """
         # Bug #15: compute fdp via the v3 partitioning utility instead of
         # the previous hard-coded 0.5.
         from clearwater_modules_v3.utils.partitioning import fdp as fdp_partition
@@ -389,8 +503,12 @@ class FloatingAlgae(Process):
             kdpo4=self.kdpo4,
         )
 
-        # get rate of change (1/d for the lumped rate; per-d for the
-        # absolute change in concentration)
+        # Net per-day rate. Side effects: rate() invokes rate_growth /
+        # rate_respiration / rate_settling, each of which writes
+        # ``self.algal_growth_rate`` / ``algal_respiration_rate`` /
+        # ``algal_settling_rate`` as cache attributes. _cache_mortality_rates
+        # then writes the death / orgn / orgp / poc / doc / pom-settling
+        # mortality routing caches.
         rate = self.rate(
             algae=algae,
             depth=depth,
@@ -402,33 +520,104 @@ class FloatingAlgae(Process):
             solar=solar,
         )
 
-        # Cache step-scoped algal mortality routing variables for
-        # downstream Processes (Q10 workaround). These compute the
-        # algae->{OrgN,OrgP,POC,DOC} fluxes at the current step.
+        # Cache mortality routing variables (sets the algal_*_from_*
+        # caches as side effects).
         self._cache_mortality_rates(algae, water_temperature)
 
-        # Cache step-scoped NH4-uptake fraction so Nitrogen.run can split
-        # algal N uptake between NH4 and NO3 (v1 ApUptakeFr_NH4).
+        # NH4-uptake fraction so Nitrogen.run can split algal N uptake
+        # between NH4 and NO3 (v1 ApUptakeFr_NH4). Side-effect parity
+        # with the pre-Phase-5 ``run`` body, which assigned this
+        # attribute directly. The pattern F setattr loop in ``run``
+        # (which iterates REGISTRY_DIAGNOSTICS) is idempotent on this
+        # name.
+        nh4_uptake_fraction = self._ap_uptake_fr_nh4(
+            ammonium=ammonium, nitrate=nitrate
+        )
+        self.algal_nh4_uptake_fraction = nh4_uptake_fraction
+
+        # Limitation diagnostics (pure-function recomputes; same values
+        # as those used inside rate()).
+        limit_phosphorus = self.limit_phosphorus(
+            concentration=phosphorus_total_inorganic,
+            fraction_dissolved=phosphate_fraction_dissolved,
+        )
+        limit_nitrogen = self.limit_nitrogen(
+            ammonium=ammonium, nitrate=nitrate
+        )
+        limit_light = self.limit_light(
+            algae=algae, depth=depth, surface_light_intensity=solar
+        )
+
+        components = {
+            "algal_growth_rate": self.algal_growth_rate,
+            "algal_respiration_rate": self.algal_respiration_rate,
+            "algal_death_rate": self.algal_death_rate,
+            "algal_settling_rate": self.algal_settling_rate,
+            "algal_orgn_from_mortality_rate": self.algal_orgn_from_mortality_rate,
+            "algal_orgp_from_mortality_rate": self.algal_orgp_from_mortality_rate,
+            "algal_poc_from_mortality_rate": self.algal_poc_from_mortality_rate,
+            "algal_doc_from_mortality_rate": self.algal_doc_from_mortality_rate,
+            "algal_pom_from_settling_rate": self.algal_pom_from_settling_rate,
+            "algal_nh4_uptake_fraction": nh4_uptake_fraction,
+            "algal_light_limitation": limit_light,
+            "algal_nutrient_limitation_n": limit_nitrogen,
+            "algal_nutrient_limitation_p": limit_phosphorus,
+        }
+
+        return rate, components
+
+    def _change_legacy_inline(
+        self,
+        *,
+        algae: ArrayLike,
+        depth: ArrayLike,
+        water_temperature: ArrayLike,
+        phosphorus_total_inorganic: ArrayLike,
+        ammonium: ArrayLike,
+        nitrate: ArrayLike,
+        solar: ArrayLike,
+    ) -> ArrayLike:
+        """Pre-Phase-5 inline rate composition. **Verbatim copy** of
+        the body that used to live inside ``run`` before Phase 5 of
+        the pattern-alignment spec landed.
+
+        Retained through Phase 10 of the pattern-alignment spec for
+        the helper-vs-inline parity test
+        (``tests/v3/nsm1/test_floating_algae_helper_vs_inline.py``)
+        per §11.3. Deleted in Phase 10 alongside its parity test once
+        the final end-to-end baseline parity passes.
+
+        Returns just the net per-day rate (ug-Chla/L/d) — no
+        ``components`` dict, no registry exposure, no clip / Euler /
+        persist. Caller is responsible for the integrator step.
+        """
+        from clearwater_modules_v3.utils.partitioning import fdp as fdp_partition
+        phosphate_fraction_dissolved = fdp_partition(
+            use_TIP=self.use_TIP,
+            Solid=self.Solid,
+            kdpo4=self.kdpo4,
+        )
+
+        rate = self.rate(
+            algae=algae,
+            depth=depth,
+            water_temperature=water_temperature,
+            phosphorus_total_inorganic=phosphorus_total_inorganic,
+            phosphate_fraction_dissolved=phosphate_fraction_dissolved,
+            ammonium=ammonium,
+            nitrate=nitrate,
+            solar=solar,
+        )
+
+        # Pre-Phase-5 ``run`` invoked these as side effects; the helper
+        # mirrors the call sequence so cache attributes end up in the
+        # same state regardless of which entry point the test uses.
+        self._cache_mortality_rates(algae, water_temperature)
         self.algal_nh4_uptake_fraction = self._ap_uptake_fr_nh4(
             ammonium=ammonium, nitrate=nitrate
         )
 
-        # Bug #4: additive Forward Euler. Rates are 1/d; convert dt
-        # from seconds (legacy v2 storage) to days (v1 semantic).
-        dt_days = self.time_step.total_seconds() / 86400.0
-        algae_new = algae + rate * dt_days
-
-        # Clip-with-log per the resolved Q7 contract; clip target is
-        # exactly 0 (Monod ratios are well-defined at C=0). Step
-        # attribution is automatic via ``diagnostics.current_step``
-        # (Phase 0.6 Q1); import is module-level (Phase 1.C).
-        algae_new = clip_negative_state(
-            algae_new, "algae_floating", self.diagnostics
-        )
-
-        # Bug #16: persist the updated state. The integrator update was
-        # previously dropped on function exit.
-        registry.set_at_time("algae_floating", time, algae_new)
+        return rate
 
     def _cache_mortality_rates(
         self, algae: ArrayLike, water_temperature: ArrayLike

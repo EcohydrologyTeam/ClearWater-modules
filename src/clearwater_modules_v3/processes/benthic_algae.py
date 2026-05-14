@@ -91,6 +91,38 @@ class BenthicAlgae(FloatingAlgae):
     # on first instantiation to avoid the v2 <-> v3 circular import.
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
+    # surface BenthicAlgae exposes via the opportunistic-write loop in
+    # ``run``. Each name maps to a ``self.<name>`` cache attribute set
+    # inside ``_change_with_components`` (or as a side effect of the
+    # rate / mortality-routing helpers it calls) and matches the
+    # inventory in ``design/clearwater_modules_v3_nsm1_appendix_a_diff.md``
+    # §3.
+    #
+    # The cache attribute names consumed by sibling Processes
+    # (Carbon / DOX read ``balgae_growth_rate`` and
+    # ``balgae_respiration_rate``; Nitrogen reads
+    # ``balgae_nh4_uptake_fraction``; Carbon / Nitrogen / Phosphorus /
+    # POM read the ``balgae_*_from_mortality_rate`` family) are
+    # preserved attribute names — Phase 5 keeps them exact.
+    #
+    # Note: this tuple shadows ``FloatingAlgae.REGISTRY_DIAGNOSTICS``;
+    # BenthicAlgae's ``run`` (defined below) iterates *this* class's
+    # tuple via ``self.REGISTRY_DIAGNOSTICS``.
+    REGISTRY_DIAGNOSTICS: tuple[str, ...] = (
+        "balgae_growth_rate",
+        "balgae_respiration_rate",
+        "balgae_death_rate",
+        "balgae_orgn_from_mortality_rate",
+        "balgae_orgp_from_mortality_rate",
+        "balgae_poc_from_mortality_rate",
+        "balgae_doc_from_mortality_rate",
+        "balgae_nh4_uptake_fraction",
+        "balgae_light_limitation",
+        "balgae_nutrient_limitation_n",
+        "balgae_nutrient_limitation_p",
+    )
+
     # Phase 9.A.1 wiring fix: BenthicAlgae overrides the legacy-kwarg
     # to v3-DEFAULTS mapping inherited from FloatingAlgae so that
     # benthic-specific defaults (e.g. ``KsNb`` instead of ``KsN``,
@@ -251,12 +283,22 @@ class BenthicAlgae(FloatingAlgae):
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Run the benthic algae process.
 
-        Forward-Euler integrator with v3 clip-with-log diagnostics and
-        registry persistence. Mirrors ``FloatingAlgae.run`` but uses the
-        benthic algae registry variable name and the additional density
-        limitation factor.
-        """
+        Pattern-alignment spec §3 patterns A–J: reads forcings at top
+        (A); delegates rate composition to ``_change_with_components``
+        (B); applies Forward Euler with unconditional clip-with-log
+        (C, D); persists primary output (E); caches step-scoped rates
+        on ``self.<name>`` (F); opportunistically writes diagnostics
+        (G).
 
+        See ``_change_legacy_inline`` for the pre-Phase-5 inline
+        composition (retained through Phase 10 for the helper-vs-inline
+        parity test under §11.3). Phase 5 also eliminates the
+        redundant ``rate_death`` invocation that was deferred from
+        Phase 1: ``_change_with_components`` computes ``ab_death`` once
+        and reuses it for both the rate composition and the mortality
+        routing caches.
+        """
+        # --- State and forcing reads (pattern A) ---
         algae = registry.get_at_time("benthic_algae", time)
         ammonium = registry.get_at_time("ammonium", time)
         nitrate = registry.get_at_time("nitrate", time)
@@ -274,9 +316,232 @@ class BenthicAlgae(FloatingAlgae):
         water_temperature = registry.get_at_time("water_temperature", time)
         solar = registry.get_at_time("solar_radiation", time)
 
+        # Cache depth for v1 NH4_AbRespiration / NH4_AbGrowth (which
+        # divide by depth to convert g/m^2/d areal rates into mg-N/L/d
+        # volumetric rates). Used as a side-channel by helpers reached
+        # via getattr from sibling Processes; preserved here.
+        self._cached_depth = depth
+
+        # --- Fused rate composition (pattern B) ---
+        rate, components = self._change_with_components(
+            algae=algae,
+            depth=depth,
+            water_temperature=water_temperature,
+            phosphorus_total_inorganic=phosphorus_total_inorganic,
+            ammonium=ammonium,
+            nitrate=nitrate,
+            solar=solar,
+        )
+
+        # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
+        # Names match REGISTRY_DIAGNOSTICS. Most are already populated
+        # as side effects of the helpers called inside
+        # ``_change_with_components``; the setattr loop is idempotent on
+        # those names and adds the new ``balgae_light_limitation`` /
+        # ``balgae_nutrient_limitation_*`` entries.
+        for name in self.REGISTRY_DIAGNOSTICS:
+            setattr(self, name, components[name])
+
+        # --- Forward Euler in days (pattern C) ---
+        dt_days = self.time_step.total_seconds() / 86400.0
+        algae_new = algae + rate * dt_days
+
+        # --- Clip-with-log per the resolved Q7 contract (pattern D) ---
+        # Import is module-level (Phase 1.C); step attribution is
+        # automatic via ``diagnostics.current_step`` (Phase 0.6 Q1).
+        algae_new = clip_negative_state(
+            algae_new, "benthic_algae", self.diagnostics
+        )
+
+        # --- Persist primary output (pattern E; Bug #16 parallel) ---
+        registry.set_at_time("benthic_algae", time, algae_new)
+
+        # --- Opportunistic diagnostic registry writes (pattern G) ---
+        for name in self.REGISTRY_DIAGNOSTICS:
+            if name in registry:
+                registry.set_at_time(name, time, components[name])
+
+    # ------------------------------------------------------------------
+    # Rate-composition helpers
+    # ------------------------------------------------------------------
+
+    def _change_with_components(
+        self,
+        *,
+        algae: ArrayLike,
+        depth: ArrayLike,
+        water_temperature: ArrayLike,
+        phosphorus_total_inorganic: ArrayLike,
+        ammonium: ArrayLike,
+        nitrate: ArrayLike,
+        solar: ArrayLike,
+    ) -> tuple[ArrayLike, dict]:
+        """Compute ``(rate, components)`` for BenthicAlgae.
+
+        ``rate`` is the net per-day rate of change of benthic-algae
+        density (g-D/m^2/d). ``components`` is the dict[str, ArrayLike]
+        indexed by ``REGISTRY_DIAGNOSTICS``.
+
+        **Phase 5 dedup**: ``rate_death`` is called exactly once here
+        (computing ``ab_death``) and the cached value feeds both the
+        rate composition AND the mortality routing. Pre-Phase-5 ran
+        ``rate_death`` twice — once inside ``rate()`` and once inside
+        ``_cache_benthic_mortality_rates`` — producing two identical
+        values from the pure function. The new path is bit-identical to
+        the old (``rate_death`` is pure: same inputs → same output).
+        Spec §6 Phase 5 explicitly authorises this dedup.
+
+        Code-motion-only refactor of ``run``'s former inline
+        composition (§11.6): operand order, intermediate names, and
+        kinetic-helper calls are preserved verbatim, except for the
+        ``rate_death`` cache substitution noted above.
+
+        The companion shadow ``_change_legacy_inline`` returns just
+        ``rate`` and is used by
+        ``tests/v3/nsm1/test_benthic_algae_helper_vs_inline.py`` to
+        verify this helper produces a bit-identical net rate through
+        Phase 10.
+        """
         # Use v3 fdp utility for the dissolved P fraction.
         from clearwater_modules_v3.utils.partitioning import fdp as fdp_partition
+        phosphate_fraction_dissolved = fdp_partition(
+            use_TIP=self.use_TIP,
+            Solid=self.Solid,
+            kdpo4=self.kdpo4,
+        )
 
+        # Phase 5 dedup: compute ab_death ONCE and reuse below.
+        ab_death = self.rate_death(algae, water_temperature)
+
+        # Inline ``rate()``'s body using the cached ``ab_death`` (vs the
+        # pre-Phase-5 ``rate()`` invocation that recomputed it). Operand
+        # order, helper signatures, and the four growth-limit factors
+        # are preserved verbatim from the override at lines 437-435 (pre-Phase-5).
+        limit_phosphorus = self.limit_phosphorus(
+            concentration=phosphorus_total_inorganic,
+            fraction_dissolved=phosphate_fraction_dissolved,
+        )
+        limit_nitrogen = self.limit_nitrogen(
+            ammonium=ammonium, nitrate=nitrate
+        )
+        limit_light = self.limit_light(
+            algae=algae,
+            depth=depth,
+            surface_light_intensity=solar,
+        )
+        limit_density = self.limit_density(algae=algae)
+
+        rate = (
+            self.rate_growth(
+                algae,
+                water_temperature,
+                limit_phosphorus,
+                limit_nitrogen,
+                limit_light,
+                limit_density,
+            )
+            - ab_death
+            - self.rate_respiration(algae, water_temperature)
+        )
+
+        # Mortality routing — uses the cached ab_death rather than
+        # invoking rate_death a second time. Sets the same five
+        # ``self.balgae_*_from_mortality_rate`` cache attributes that
+        # ``_cache_benthic_mortality_rates`` does, so consumers
+        # (Carbon / Nitrogen / Phosphorus / POM) read identical values.
+        self._compute_balgae_mortality_components_from_death(ab_death, depth)
+
+        # NH4-uptake fraction. Side-effect parity with the pre-Phase-5
+        # ``run`` body, which assigned this attribute directly. The
+        # pattern F setattr loop in ``run`` is idempotent on this name.
+        nh4_uptake_fraction = self._ab_uptake_fr_nh4(
+            ammonium=ammonium, nitrate=nitrate
+        )
+        self.balgae_nh4_uptake_fraction = nh4_uptake_fraction
+
+        components = {
+            "balgae_growth_rate": self.balgae_growth_rate,
+            "balgae_respiration_rate": self.balgae_respiration_rate,
+            "balgae_death_rate": self.balgae_death_rate,
+            "balgae_orgn_from_mortality_rate": self.balgae_orgn_from_mortality_rate,
+            "balgae_orgp_from_mortality_rate": self.balgae_orgp_from_mortality_rate,
+            "balgae_poc_from_mortality_rate": self.balgae_poc_from_mortality_rate,
+            "balgae_doc_from_mortality_rate": self.balgae_doc_from_mortality_rate,
+            "balgae_nh4_uptake_fraction": nh4_uptake_fraction,
+            "balgae_light_limitation": limit_light,
+            "balgae_nutrient_limitation_n": limit_nitrogen,
+            "balgae_nutrient_limitation_p": limit_phosphorus,
+        }
+
+        return rate, components
+
+    def _compute_balgae_mortality_components_from_death(
+        self,
+        ab_death: ArrayLike,
+        depth: ArrayLike,
+    ) -> None:
+        """Mortality routing math — verbatim copy of
+        ``_cache_benthic_mortality_rates``'s body MINUS the
+        ``self.rate_death(...)`` call. Takes the pre-computed
+        ``ab_death`` as input.
+
+        Phase 5 dedup helper; spec §6 Phase 5 explicit deliverable.
+        """
+        rnb = self.BWn / self.BWd  # mg-N/mg-D
+        rpb = self.BWp / self.BWd  # mg-P/mg-D
+        rcb = self.BWc / self.BWd  # mg-C/mg-D
+
+        fw = self.Fw
+        fb = self.Fb
+
+        self.balgae_death_rate = ab_death
+        self.balgae_orgn_from_mortality_rate = rnb * fw * fb * ab_death / depth
+        self.balgae_orgp_from_mortality_rate = rpb * fw * fb * ab_death / depth
+        self.balgae_poc_from_mortality_rate = (
+            self.f_pocb * fb * fw * rcb * ab_death / depth
+        )
+        self.balgae_doc_from_mortality_rate = (
+            (1.0 - self.f_pocb) * fb * fw * rcb * ab_death / depth
+        )
+        # POM source from benthic algae mortality (mg/L/d). Uses (1-Fw)
+        # and h2 (sediment layer thickness), NOT Fw and depth.
+        self.balgae_pom_from_mortality_rate = (
+            ab_death * fb * (1.0 - fw) / self.h2
+        )
+
+    def _change_legacy_inline(
+        self,
+        *,
+        algae: ArrayLike,
+        depth: ArrayLike,
+        water_temperature: ArrayLike,
+        phosphorus_total_inorganic: ArrayLike,
+        ammonium: ArrayLike,
+        nitrate: ArrayLike,
+        solar: ArrayLike,
+    ) -> ArrayLike:
+        """Pre-Phase-5 inline rate composition. **Verbatim copy** of
+        the body that used to live inside ``run`` before Phase 5 of
+        the pattern-alignment spec landed.
+
+        Notably, this method invokes ``rate()`` (which calls
+        ``rate_death`` once) AND ``_cache_benthic_mortality_rates``
+        (which calls ``rate_death`` again). The duplicate call produces
+        identical values (``rate_death`` is pure) so the per-substep
+        net rate is bit-identical to ``_change_with_components``'s
+        de-duplicated path.
+
+        Retained through Phase 10 of the pattern-alignment spec for
+        the helper-vs-inline parity test
+        (``tests/v3/nsm1/test_benthic_algae_helper_vs_inline.py``)
+        per §11.3. Deleted in Phase 10 alongside its parity test once
+        the final end-to-end baseline parity passes.
+
+        Returns just the net per-day rate (g-D/m^2/d) — no
+        ``components`` dict, no registry exposure, no clip / Euler /
+        persist. Caller is responsible for the integrator step.
+        """
+        from clearwater_modules_v3.utils.partitioning import fdp as fdp_partition
         phosphate_fraction_dissolved = fdp_partition(
             use_TIP=self.use_TIP,
             Solid=self.Solid,
@@ -294,32 +559,13 @@ class BenthicAlgae(FloatingAlgae):
             solar=solar,
         )
 
-        # Cache depth for v1 NH4_AbRespiration / NH4_AbGrowth (which
-        # divide by depth to convert g/m^2/d areal rates into mg-N/L/d
-        # volumetric rates).
-        self._cached_depth = depth
-
-        # Cache step-scoped routing variables for downstream Processes.
+        # Pre-Phase-5 ``run`` invoked these as side effects.
         self._cache_benthic_mortality_rates(algae, water_temperature, depth)
-
-        # Cache the benthic NH4-uptake fraction.
         self.balgae_nh4_uptake_fraction = self._ab_uptake_fr_nh4(
             ammonium=ammonium, nitrate=nitrate
         )
 
-        # Forward Euler in days.
-        dt_days = self.time_step.total_seconds() / 86400.0
-        algae_new = algae + rate * dt_days
-
-        # Clip-with-log per Q7. Import is module-level (Phase 1.C);
-        # step attribution is automatic via ``diagnostics.current_step``
-        # (Phase 0.6 Q1).
-        algae_new = clip_negative_state(
-            algae_new, "benthic_algae", self.diagnostics
-        )
-
-        # Persistence (Bug #16 parallel for benthic algae).
-        registry.set_at_time("benthic_algae", time, algae_new)
+        return rate
 
     def _cache_benthic_mortality_rates(
         self,
