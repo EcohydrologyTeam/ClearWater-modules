@@ -153,6 +153,23 @@ class N2(Process):
     # global_vars (see module docstring).
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
+    # surface N2 exposes via the opportunistic-write loop in ``run``.
+    # Each name maps to a ``self.<name>`` cache attribute set inside
+    # ``_change_with_components`` and matches the inventory in
+    # ``design/clearwater_modules_v3_nsm1_appendix_a_diff.md`` §3.
+    #
+    # N2 already had ``total_dissolved_gas`` opportunistically exposed
+    # pre-Phase 8 (the sole pre-existing example of pattern G in v3
+    # NSM1 1.0.0); Phase 8 *extends* the loop to cover the full
+    # Appendix A set rather than replacing it.
+    REGISTRY_DIAGNOSTICS: tuple[str, ...] = (
+        "n2_atm_exchange_rate",
+        "n2_sat",
+        "total_dissolved_gas",
+        "n2_denit_source_rate",
+    )
+
     def __init__(
         self,
         parameters: dict | None = None,
@@ -258,21 +275,27 @@ class N2(Process):
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Integrate the N2 state by one Forward Euler step.
 
-        Reads:
-        * ``n2`` (mg-N/L) at ``t = time``
-        * ``water_temperature`` (deg C) at ``t = time``
-        * ``depth`` (m) at ``t = time``
-        * ``atmospheric_pressure`` (mb) at ``t = time`` -- optional;
-          falls back to ``self.pressure_mb`` when absent.
+        Pattern-alignment spec §3 patterns A–J: reads forcings at top
+        (A); delegates rate composition to ``_change_with_components``
+        (B); applies Forward Euler with unconditional clip-with-log
+        (C, D); persists primary output (E); caches step-scoped rates
+        on ``self.<name>`` (F); opportunistically writes diagnostics
+        (G).
 
-        Writes:
-        * ``n2`` (mg-N/L) at ``t = time`` (in-place state update)
-        * ``total_dissolved_gas`` (fraction) at ``t = time`` -- optional;
-          only written when the registry knows the variable.
+        See ``_change_legacy_inline`` for the pre-Phase-8 inline
+        composition (retained through Phase 10 for the helper-vs-inline
+        parity test under §11.3). Phase 8 extends the pre-existing
+        ``total_dissolved_gas`` opportunistic write (the sole v3 1.0.0
+        example of pattern G) to cover the full Appendix A set —
+        ``n2_atm_exchange_rate``, ``n2_sat``, and the new
+        ``n2_denit_source_rate``.
 
-        Caches (for downstream Processes):
-        * ``self.n2_sat``, ``self.n2_atm_exchange_rate``, ``self.tdg``
+        ``self.tdg`` attribute name is **preserved** for back-compat
+        with the existing v1-parity and Tier 1 tests; ``total_dissolved_gas``
+        (Appendix A name) is set as an alias side effect via the
+        pattern F setattr loop.
         """
+        # --- State and forcing reads (pattern A) ---
         n2_state = registry.get_at_time("n2", time)
         t_water_c = registry.get_at_time("water_temperature", time)
         depth = registry.get_at_time("depth", time)
@@ -284,6 +307,77 @@ class N2(Process):
         else:
             pressure_mb = self.pressure_mb
 
+        # --- Fused rate composition (pattern B) ---
+        rate, components = self._change_with_components(
+            n2_state=n2_state,
+            t_water_c=t_water_c,
+            depth=depth,
+            pressure_mb=pressure_mb,
+        )
+
+        # --- Forward Euler integration (pattern C) ---
+        dt_days = self.time_step.total_seconds() / 86400.0
+        n2_new = n2_state + rate * dt_days
+
+        # --- Clip-with-log per Q7 (pattern D) ---
+        n2_new = clip_negative_state(n2_new, "n2", self.diagnostics)
+
+        # --- Persist primary output (pattern E) ---
+        registry.set_at_time("n2", time, n2_new)
+
+        # --- Derived TDG (depends on n2_new; computed after the
+        # integrator step). Phase 3 simple form: ``N2_new / N2_sat``.
+        # Phase 5 will swap for the O2-weighted form once DOX is
+        # available.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            tdg = n2_new / components["n2_sat"]
+        tdg = sanitize_rate(tdg)
+        # ``self.tdg`` is the back-compat attribute name (v1-parity +
+        # Tier 1 tests); ``total_dissolved_gas`` is the Appendix A
+        # name. Both point at the same value.
+        self.tdg = tdg
+        components["total_dissolved_gas"] = tdg
+
+        # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
+        # Sets self.n2_atm_exchange_rate, self.n2_sat,
+        # self.total_dissolved_gas, self.n2_denit_source_rate. The
+        # tdg alias above is idempotent on self.total_dissolved_gas.
+        for name in self.REGISTRY_DIAGNOSTICS:
+            setattr(self, name, components[name])
+
+        # --- Opportunistic diagnostic registry writes (pattern G) ---
+        # Extends the pre-Phase-8 ``total_dissolved_gas`` write to the
+        # full Appendix A set.
+        for name in self.REGISTRY_DIAGNOSTICS:
+            if name in registry:
+                registry.set_at_time(name, time, components[name])
+
+    # ------------------------------------------------------------------
+    # Rate-composition helper
+    # ------------------------------------------------------------------
+
+    def _change_with_components(
+        self,
+        *,
+        n2_state: ArrayLike,
+        t_water_c: ArrayLike,
+        depth: ArrayLike,
+        pressure_mb: ArrayLike,
+    ) -> tuple[ArrayLike, dict]:
+        """Compute ``(rate, components)`` for N2 (without TDG; TDG is
+        computed post-integrator-step in ``run`` because it depends on
+        ``n2_new``).
+
+        ``rate`` is the net per-day N2 rate of change (mg-N/L/d).
+        ``components`` carries ``n2_atm_exchange_rate``, ``n2_sat``,
+        ``n2_denit_source_rate`` (and ``total_dissolved_gas`` is added
+        by ``run`` after the integrator step).
+
+        Code-motion-only refactor of ``run``'s former inline
+        composition (§11.6): operand order, intermediate names, the
+        ``is_user_*_zero`` fast-path short-circuit, and the sanitize
+        guard preserved verbatim.
+        """
         # --- Henry's-law saturation ---
         t_water_k = _kelvin(t_water_c)
         khn2 = khn2_tc(t_water_k)
@@ -291,14 +385,6 @@ class N2(Process):
         n2_sat = n2sat_henry(khn2, pressure_mb, pwv_atm)
 
         # --- Effective reaeration coefficient ka_tc (1/d) ---
-        # Fast path: when both menu options are user-defined (==1) and
-        # both user values are zero, ``ka_tc`` is identically zero and
-        # we can short-circuit. This also avoids a known numpy.select
-        # broadcast quirk in ``utils.reaeration.kah_20`` where mixing
-        # scalar option-checks with DataArray-shaped depth conditions
-        # introduces a spurious second dimension on the output even
-        # when the ``option == 1`` branch is selected (causing shape
-        # (cell, dim_0) instead of (cell,)).
         is_user_hydraulic_zero = (
             self.hydraulic_reaeration_option == 1 and self.kah_20_user == 0.0
         )
@@ -336,11 +422,6 @@ class N2(Process):
         atm_exchange = 1.034 * ka_tc_value * (n2_sat - n2_state)
 
         # --- Denitrification source (mg-N/L/d) ---
-        # Integration Item 1: read the step-scoped denitrification flux
-        # cached on the Nitrogen Process after its ``run``. Units are
-        # mg-N/L/d, positive-valued (absolute magnitude of NO3 -> N2);
-        # ``denitrification_flux_rate`` is distinct from the legacy
-        # ``denitrification_rate`` kinetic rate-constant attribute.
         if self.use_nitrogen and self.nitrogen_process is not None:
             denit_source = getattr(
                 self.nitrogen_process, "denitrification_flux_rate", 0
@@ -353,37 +434,87 @@ class N2(Process):
         # --- Net rate (mg-N/L/d) ---
         rate = atm_exchange + denit_source
 
-        # NaN/inf guard (defense-in-depth; primary dry-cell defense
-        # is the orchestration-layer wet-mask in Model). Catches
-        # ``inf`` from ``x / depth`` at ``depth == 0`` and ``NaN``
-        # from missing forcings.
+        # NaN/inf guard.
         rate = sanitize_rate(rate)
 
-        # --- Forward Euler integration ---
-        dt_days = self.time_step.total_seconds() / 86400.0
-        n2_new = n2_state + rate * dt_days
+        components = {
+            "n2_atm_exchange_rate": atm_exchange,
+            "n2_sat": n2_sat,
+            "n2_denit_source_rate": denit_source,
+        }
 
-        # Clip-with-log per the Q7 contract. ``clip_negative_state`` now
-        # accepts non-DataArray and None-diagnostics inputs (Phase 0.6 Q2);
-        # step attribution is automatic via ``diagnostics.current_step``
-        # (Phase 0.6 Q1).
-        n2_new = clip_negative_state(n2_new, "n2", self.diagnostics)
+        return rate, components
 
-        # Persist updated state.
-        registry.set_at_time("n2", time, n2_new)
+    def _change_legacy_inline(
+        self,
+        *,
+        n2_state: ArrayLike,
+        t_water_c: ArrayLike,
+        depth: ArrayLike,
+        pressure_mb: ArrayLike,
+    ) -> ArrayLike:
+        """Pre-Phase-8 inline rate composition. **Verbatim copy** of
+        the body of ``run`` (the parts producing the net rate) before
+        Phase 8 of the pattern-alignment spec landed.
 
-        # --- Derived TDG (fraction of saturation; Phase 3 simple form) ---
-        # Phase 5 will swap this for the O2-weighted form
-        # ``0.79 * N2/N2sat + 0.21 * DOX/DOX_sat`` once the DOX Process
-        # is available.
-        with np.errstate(divide="ignore", invalid="ignore"):
-            tdg = n2_new / n2_sat
-        tdg = sanitize_rate(tdg)
+        Retained through Phase 10 for the helper-vs-inline parity test
+        per §11.3. Deleted in Phase 10 alongside its parity test once
+        the final end-to-end baseline parity passes.
 
-        if "total_dissolved_gas" in registry:
-            registry.set_at_time("total_dissolved_gas", time, tdg)
+        Returns just the net per-day rate (mg-N/L/d). TDG is computed
+        post-integrator-step in ``run`` and is not part of the parity
+        contract here (it's a derived diagnostic, not a rate).
+        """
+        t_water_k = _kelvin(t_water_c)
+        khn2 = khn2_tc(t_water_k)
+        pwv_atm = pwv(t_water_k)
+        n2_sat = n2sat_henry(khn2, pressure_mb, pwv_atm)
 
-        # Cache step-scoped quantities for downstream consumers.
-        self.n2_sat = n2_sat
-        self.n2_atm_exchange_rate = atm_exchange
-        self.tdg = tdg
+        is_user_hydraulic_zero = (
+            self.hydraulic_reaeration_option == 1 and self.kah_20_user == 0.0
+        )
+        is_user_wind_zero = (
+            self.wind_reaeration_option == 1 and self.kaw_20_user == 0.0
+        )
+        if is_user_hydraulic_zero and is_user_wind_zero:
+            ka_tc_value = 0.0
+        else:
+            kah_20_value = kah_20(
+                kah_20_user=self.kah_20_user,
+                hydraulic_reaeration_option=self.hydraulic_reaeration_option,
+                velocity=self.velocity,
+                depth=depth,
+                flow=self.flow,
+                topwidth=self.topwidth,
+                slope=self.slope,
+                shear_velocity=self.shear_velocity,
+            )
+            kaw_20_value = kaw_20(
+                kaw_20_user=self.kaw_20_user,
+                wind_speed=self.wind_speed,
+                wind_reaeration_option=self.wind_reaeration_option,
+            )
+            ka_tc_value = ka_tc(
+                kah_20=kah_20_value,
+                kaw_20=kaw_20_value,
+                kah_theta=self.kah_theta,
+                kaw_theta=self.kaw_theta,
+                T_water_C=t_water_c,
+                depth=depth,
+            )
+
+        atm_exchange = 1.034 * ka_tc_value * (n2_sat - n2_state)
+
+        if self.use_nitrogen and self.nitrogen_process is not None:
+            denit_source = getattr(
+                self.nitrogen_process, "denitrification_flux_rate", 0
+            )
+            if denit_source is None:
+                denit_source = 0
+        else:
+            denit_source = 0
+
+        rate = atm_exchange + denit_source
+        rate = sanitize_rate(rate)
+
+        return rate

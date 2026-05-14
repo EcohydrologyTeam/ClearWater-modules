@@ -117,6 +117,24 @@ class Pathogen(Process):
     # consistent with the established style in v2 process classes).
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
+    # surface Pathogen exposes via the opportunistic-write loop in
+    # ``run``. Each name maps to a ``self.<name>`` cache attribute set
+    # inside ``_rate_with_components`` and matches the inventory in
+    # ``design/clearwater_modules_v3_nsm1_appendix_a_diff.md`` §3.
+    #
+    # Per pattern-alignment spec §10 Q5: Pathogen is a single-state
+    # rate-form integrator, so the canonical helper is named
+    # ``_rate_with_components`` (returns ``(rate, components)``) rather
+    # than ``_change_with_components`` (which returns
+    # ``(delta_state(s)..., components)``). The naming reflects the
+    # integrator's argument shape.
+    REGISTRY_DIAGNOSTICS: tuple[str, ...] = (
+        "pathogen_natural_death_rate",
+        "pathogen_light_death_rate",
+        "pathogen_settling_rate",
+    )
+
     def __init__(
         self,
         parameters: dict | None = None,
@@ -196,18 +214,18 @@ class Pathogen(Process):
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Advance the pathogen state by one substep via Forward Euler.
 
-        Steps:
-            1. Read ``pathogen``, ``water_temperature``, ``depth``,
-               ``solar_radiation`` at ``time`` (Jacobi state semantics).
-            2. Compute KEXT via ``utils.light.L`` from ``Solid``, ``POC``,
-               ``Ap`` (read from the registry when present, else 0 with
-               a one-time warning).
-            3. Compute the per-cell rate of change ``dPXdt`` (1/d).
-            4. Forward-Euler update: ``PX_new = PX + dPXdt * dt_days``.
-            5. Pass the updated state through ``clip_negative_state``
-               (resolved Q7 clip-with-log).
-            6. Persist via ``registry.set_at_time``.
+        Pattern-alignment spec §3 patterns A–J: reads forcings at top
+        (A); delegates rate composition to ``_rate_with_components``
+        (B — rate-form per spec §10 Q5); applies Forward Euler with
+        unconditional clip-with-log (C, D); persists primary output
+        (E); caches step-scoped rates on ``self.<name>`` (F);
+        opportunistically writes diagnostics (G).
+
+        See ``_rate_legacy_inline`` for the pre-Phase-8 inline
+        composition (retained through Phase 10 for the helper-vs-inline
+        parity test under §11.3).
         """
+        # --- State and forcing reads (pattern A) ---
         px = registry.get_at_time("pathogen", time)
         water_temperature = registry.get_at_time("water_temperature", time)
         depth = registry.get_at_time("depth", time)
@@ -221,8 +239,8 @@ class Pathogen(Process):
         poc = self._get_optional(registry, "poc", "_warned_missing_poc", time)
         ap = self._get_optional(registry, "ap", "_warned_missing_ap", time)
 
-        # Per-cell rate of change (1/d).
-        rate = self.rate(
+        # --- Fused rate composition (pattern B; rate-form per §10 Q5) ---
+        rate, components = self._rate_with_components(
             px=px,
             water_temperature=water_temperature,
             depth=depth,
@@ -232,23 +250,113 @@ class Pathogen(Process):
             ap=ap,
         )
 
-        # NaN/inf guard (defense-in-depth; primary dry-cell defense
-        # is the orchestration-layer wet-mask in Model). Catches
-        # ``inf`` from ``vx / depth`` at ``depth == 0`` and ``NaN``
-        # from missing forcings (temperature, solar radiation).
-        rate = sanitize_rate(rate)
+        # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
+        for name in self.REGISTRY_DIAGNOSTICS:
+            setattr(self, name, components[name])
 
-        # Forward Euler. Rates are 1/d; convert dt from seconds to days.
+        # --- Forward Euler (pattern C) ---
+        # Rates are 1/d; convert dt from seconds to days.
         dt_days = self.time_step.total_seconds() / 86400.0
         px_new = px + rate * dt_days
 
-        # Resolved Q7: clip-with-log to non-negative; clip target is 0.
-        px_new = clip_negative_state(
-            px_new, "pathogen", self.diagnostics, step=0
-        )
+        # --- Clip-with-log per Q7 (pattern D) ---
+        # Step attribution is automatic via ``diagnostics.current_step``
+        # (Phase 0.6 Q1).
+        px_new = clip_negative_state(px_new, "pathogen", self.diagnostics)
 
-        # Persist the updated state.
+        # --- Persist primary output (pattern E) ---
         registry.set_at_time("pathogen", time, px_new)
+
+        # --- Opportunistic diagnostic registry writes (pattern G) ---
+        for name in self.REGISTRY_DIAGNOSTICS:
+            if name in registry:
+                registry.set_at_time(name, time, components[name])
+
+    # ------------------------------------------------------------------
+    # Rate-composition helpers (rate-form per spec §10 Q5)
+    # ------------------------------------------------------------------
+
+    def _rate_with_components(
+        self,
+        *,
+        px: ArrayLike,
+        water_temperature: ArrayLike,
+        depth: ArrayLike,
+        q_solar: ArrayLike,
+        solid: ArrayLike,
+        poc: ArrayLike,
+        ap: ArrayLike,
+    ) -> tuple[ArrayLike, dict]:
+        """Compute ``(rate, components)`` for Pathogen.
+
+        ``rate`` is the net per-day PX rate of change (cfu/100mL/d or
+        whatever PX-unit is supplied). ``components`` carries the three
+        positive-magnitude sub-rates: natural death, light-induced
+        death, and settling. The integrator applies them as sinks via
+        ``rate = -(natural + light + settling)``.
+
+        Code-motion-only refactor (§11.6): operand order and
+        sub-flux helpers preserved verbatim from the pre-Phase-8
+        ``rate()`` body. ``rate()`` is retained for back-compat with
+        any external caller; it now delegates to this helper.
+
+        The companion shadow ``_rate_legacy_inline`` returns just
+        ``rate`` and is used by
+        ``tests/v3/nsm1/test_pathogen_helper_vs_inline.py``.
+        """
+        natural_death = self._rate_natural_decay(px, water_temperature)
+        light_death = self._rate_light_decay(px, depth, q_solar, solid, poc, ap)
+        settling = self._rate_settling(px, depth)
+
+        rate = -(natural_death + light_death + settling)
+
+        # NaN/inf guard at the net rate (defense-in-depth; primary
+        # dry-cell defense is the orchestration-layer wet-mask in
+        # Model).
+        rate = sanitize_rate(rate)
+
+        components = {
+            "pathogen_natural_death_rate": natural_death,
+            "pathogen_light_death_rate": light_death,
+            "pathogen_settling_rate": settling,
+        }
+
+        return rate, components
+
+    def _rate_legacy_inline(
+        self,
+        *,
+        px: ArrayLike,
+        water_temperature: ArrayLike,
+        depth: ArrayLike,
+        q_solar: ArrayLike,
+        solid: ArrayLike,
+        poc: ArrayLike,
+        ap: ArrayLike,
+    ) -> ArrayLike:
+        """Pre-Phase-8 inline rate composition. **Verbatim copy** of the
+        body that ``run`` invoked via ``self.rate(...)`` (plus the
+        ``sanitize_rate`` post-step) before Phase 8 of the
+        pattern-alignment spec landed.
+
+        Retained through Phase 10 for the helper-vs-inline parity test
+        per §11.3. Deleted in Phase 10 alongside its parity test once
+        the final end-to-end baseline parity passes.
+
+        Returns just the net per-day rate (per the rate-form
+        integrator convention; spec §10 Q5).
+        """
+        rate = self.rate(
+            px=px,
+            water_temperature=water_temperature,
+            depth=depth,
+            q_solar=q_solar,
+            solid=solid,
+            poc=poc,
+            ap=ap,
+        )
+        rate = sanitize_rate(rate)
+        return rate
 
     # ------------------------------------------------------------------
     # Kinetic helpers
