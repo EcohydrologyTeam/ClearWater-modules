@@ -58,6 +58,29 @@ class Nitrogen(Process):
     # <-> v3 circular import chain.
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
+    # surface Nitrogen exposes via the opportunistic-write loop in
+    # ``run``. Each name maps to a ``self.<name>`` cache attribute set
+    # inside ``_change_with_components`` and matches the inventory in
+    # ``design/clearwater_modules_v3_nsm1_appendix_a_diff.md`` §3.
+    #
+    # ``nitrification_flux_rate`` and ``denitrification_flux_rate`` are
+    # **preserved** attribute names that DOX, Alkalinity, and N2 already
+    # consume via ``getattr(nitrogen_process, ...)``. Renaming them
+    # would silently break sibling reads. Phase 4 keeps the names exact.
+    REGISTRY_DIAGNOSTICS: tuple[str, ...] = (
+        "nitrification_flux_rate",
+        "denitrification_flux_rate",
+        "nh4_from_bed",
+        "no3_from_bed_denit",
+        "orgn_hydrolysis_rate",
+        "orgn_settling_rate",
+        "nh4_algal_growth_rate",
+        "no3_algal_growth_rate",
+        "nh4_algal_resp_rate",
+        "nh4_balgae_resp_rate",
+    )
+
     def __init__(
         self,
         parameters: dict | None = None,
@@ -275,28 +298,28 @@ class Nitrogen(Process):
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Run the Nitrogen process for one time step.
 
-        Phase 2.B fixes:
-        * Bug #1 / #2: replaced the multiplicative ``X = 0 + X * rate * dt``
-          update with additive Forward Euler ``X_new = X + rate * dt_days``
-          (rates are 1/d per the v1 NSM1 convention; ``dt_days`` converts
-          the legacy seconds-based ``time_step`` to days). The ``dt``
-          attribute name typo (``time_step_frequency``) is also fixed.
-        * Bug #16: persist ``ammonium_new`` / ``nitrate_new`` /
-          ``organic_nitrogen_new`` via ``registry.set_at_time``.
-        * Q7 clip-with-log via ``clip_negative_state`` (with diagnostics).
-        * OrgN: third state variable integrated alongside NH4 / NO3.
+        Pattern-alignment spec §3 patterns A–J: reads forcings at top
+        (A); delegates rate composition to ``_change_with_components``
+        (B); applies Forward Euler with unconditional clip-with-log (C,
+        D); persists primary outputs (E); caches step-scoped rates on
+        ``self.<name>`` (F); opportunistically writes diagnostics (G).
 
-        Integration Item 1 (v3 NSM1, registry rate-variable convention,
-        spec resolved Q10): cache the *step-scoped* nitrification and
-        denitrification fluxes onto ``self`` for downstream consumers
-        (N2, DOX, eventual Alkalinity). The legacy
-        ``self.nitrification_rate`` / ``self.denitrification_rate``
-        attribute names remain bound to the kinetic rate *constants*
-        (1/d) for back-compat with v2 kwargs; the new fluxes use the
-        ``_flux_rate`` suffix to disambiguate, with units mg-N/L/d and
-        positive-valued absolute magnitudes.
+        See ``_change_legacy_inline`` for the pre-Phase-4 inline
+        composition (retained through Phase 10 for the helper-vs-inline
+        parity test under §11.3).
+
+        Phase 2.B fixes (preserved through this refactor):
+        * Bug #1 / #2: additive Forward Euler ``X_new = X + rate * dt_days``.
+        * Bug #16: persist via ``registry.set_at_time``.
+        * Q7 clip-with-log via ``clip_negative_state``.
+        * OrgN as third state variable.
+
+        Cached attribute names ``nitrification_flux_rate`` and
+        ``denitrification_flux_rate`` are preserved exactly — DOX,
+        Alkalinity, and N2 already consume them via ``getattr`` and
+        renaming would silently break sibling reads.
         """
-        # Pull state from registry.
+        # --- State and forcing reads (pattern A) ---
         nitrate = registry.get_at_time("nitrate", time)
         ammonium = registry.get_at_time("ammonium", time)
         temperature = registry.get_at_time("water_temperature", time)
@@ -311,33 +334,107 @@ class Nitrogen(Process):
         else:
             organic_nitrogen = xr.zeros_like(ammonium) if hasattr(ammonium, "dims") else 0.0
 
-        # 1/d -> per-step concentration delta.
-        dt_days = self.time_step.total_seconds() / 86400.0
+        # --- Fused rate composition (pattern B) ---
+        ammonium_rate, nitrate_rate, orgn_rate, components = (
+            self._change_with_components(
+                nitrate=nitrate,
+                ammonium=ammonium,
+                organic_nitrogen=organic_nitrogen,
+                temperature=temperature,
+                depth=depth,
+                oxygen_dissolved=oxygen_dissolved,
+            )
+        )
 
-        # --- Step-scoped flux caches (Integration Item 1) ---
-        # Compute the nitrification flux (NH4 -> NO3) and denitrification
-        # flux (NO3 -> N2) here, before the change-rate decomposition.
-        # These are positive-valued absolute magnitudes in mg-N/L/d that
-        # downstream Processes (N2 source, DOX O2 sink) read via getattr.
-        # NOTE: ``ammonium_nitrification`` and ``nitrate_denitrification``
-        # already return non-negative fluxes by construction (kinetic
-        # rates >= 0, NH4/NO3 >= 0, inhibition factors in [0, 1]); the
-        # signs in ``change_ammonium`` / ``change_nitrate`` come from
-        # how they are summed into the change-rates, not from the flux
-        # values themselves.
-        self.nitrification_flux_rate = self.ammonium_nitrification(
+        # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
+        # Names match REGISTRY_DIAGNOSTICS. The two preserved names
+        # ``nitrification_flux_rate`` / ``denitrification_flux_rate``
+        # carry the same values DOX/Alkalinity/N2 read pre-Phase-4
+        # (computed via ``ammonium_nitrification`` and
+        # ``nitrate_denitrification`` exactly as before).
+        for name in self.REGISTRY_DIAGNOSTICS:
+            setattr(self, name, components[name])
+
+        # --- Forward Euler in days (pattern C) ---
+        dt_days = self.time_step.total_seconds() / 86400.0
+        ammonium_new = ammonium + ammonium_rate * dt_days
+        nitrate_new = nitrate + nitrate_rate * dt_days
+        organic_nitrogen_new = organic_nitrogen + orgn_rate * dt_days
+
+        # --- Clip-with-log per the resolved Q7 contract (pattern D) ---
+        ammonium_new = clip_negative_state(ammonium_new, "ammonium", self.diagnostics)
+        nitrate_new = clip_negative_state(nitrate_new, "nitrate", self.diagnostics)
+        organic_nitrogen_new = clip_negative_state(
+            organic_nitrogen_new, "organic_nitrogen", self.diagnostics
+        )
+
+        # --- Persist primary outputs (pattern E; Bug #16) ---
+        registry.set_at_time("ammonium", time, ammonium_new)
+        registry.set_at_time("nitrate", time, nitrate_new)
+        if "organic_nitrogen" in registry:
+            registry.set_at_time("organic_nitrogen", time, organic_nitrogen_new)
+
+        # --- Opportunistic diagnostic registry writes (pattern G) ---
+        for name in self.REGISTRY_DIAGNOSTICS:
+            if name in registry:
+                registry.set_at_time(name, time, components[name])
+
+    # ------------------------------------------------------------------
+    # Rate-composition helpers
+    # ------------------------------------------------------------------
+
+    def _change_with_components(
+        self,
+        *,
+        nitrate: ArrayLike,
+        ammonium: ArrayLike,
+        organic_nitrogen: ArrayLike,
+        temperature: ArrayLike,
+        depth: ArrayLike,
+        oxygen_dissolved: ArrayLike,
+    ) -> tuple[ArrayLike, ArrayLike, ArrayLike, dict]:
+        """Compute ``(ammonium_rate, nitrate_rate, orgn_rate, components)``.
+
+        Code-motion-only refactor of ``run``'s former inline composition
+        (§11.6): operand order, intermediate names, kinetic-helper calls,
+        and per-state rate compositions are preserved verbatim.
+
+        The ``components`` dict is populated from the same intermediates
+        the integrator consumes; pure-function sub-flux helpers
+        (``ammonium_nitrification``, ``nitrate_denitrification``,
+        ``ammonium_from_bed``, ``nitrate_bed_denitrification``,
+        ``organic_nitrogen_to_ammonium_hydrolysis``,
+        ``organic_nitrogen_settling``, the algal coupling helpers) are
+        called once each here for the cache; ``change_ammonium`` /
+        ``change_nitrate`` / ``change_organic_nitrogen`` invoke the
+        same helpers internally to compose the per-state rates. The
+        recomputation is bit-identical and matches the pre-Phase-4
+        behaviour exactly.
+
+        The companion shadow ``_change_legacy_inline`` returns just the
+        per-state rates and is used by
+        ``tests/v3/nsm1/test_nitrogen_helper_vs_inline.py`` to verify
+        this helper produces bit-identical outputs through Phase 10.
+        """
+        # --- Step-scoped flux caches (preserved attribute names) ---
+        # ``ammonium_nitrification`` and ``nitrate_denitrification`` are
+        # pure functions; the values populated here match what
+        # ``change_ammonium`` / ``change_nitrate`` compute internally.
+        # Sibling consumers (DOX, Alkalinity, N2) read these attribute
+        # names via ``getattr`` and rely on bit-identical values.
+        nitrification_flux = self.ammonium_nitrification(
             ammonium,
             temperature,
             oxygen_dissolved,
         )
-        self.denitrification_flux_rate = self.nitrate_denitrification(
+        denitrification_flux = self.nitrate_denitrification(
             oxygen_dissolved,
             self.KsOxdn,
             nitrate,
             temperature,
         )
 
-        # --- Ammonium update ---
+        # --- Per-state rate compositions (verbatim from pre-Phase-4) ---
         ammonium_rate = self.change_ammonium(
             nitrate,
             ammonium,
@@ -346,10 +443,6 @@ class Nitrogen(Process):
             oxygen_dissolved,
             organic_nitrogen=organic_nitrogen,
         )
-        ammonium_new = ammonium + ammonium_rate * dt_days
-        ammonium_new = clip_negative_state(ammonium_new, "ammonium", self.diagnostics)
-
-        # --- Nitrate update ---
         nitrate_rate = self.change_nitrate(
             nitrate,
             ammonium,
@@ -357,25 +450,134 @@ class Nitrogen(Process):
             depth,
             oxygen_dissolved,
         )
-        nitrate_new = nitrate + nitrate_rate * dt_days
-        nitrate_new = clip_negative_state(nitrate_new, "nitrate", self.diagnostics)
-
-        # --- Organic Nitrogen update ---
         orgn_rate = self.change_organic_nitrogen(
             organic_nitrogen=organic_nitrogen,
             temperature=temperature,
             depth=depth,
         )
-        organic_nitrogen_new = organic_nitrogen + orgn_rate * dt_days
-        organic_nitrogen_new = clip_negative_state(
-            organic_nitrogen_new, "organic_nitrogen", self.diagnostics
+
+        # --- Sub-fluxes for the components dict ---
+        # Each is a pure-function recompute mirroring what the change_*
+        # methods invoke internally; same arguments → identical values.
+        # When ``use_OrgN`` is False the OrgN sub-fluxes default to 0
+        # (matching ``change_organic_nitrogen``'s early-return).
+        nh4_from_bed = self.ammonium_from_bed(depth=depth, temperature=temperature)
+        no3_from_bed_denit = self.nitrate_bed_denitrification(
+            depth, nitrate, temperature
+        )
+        orgn_hydrolysis = self.organic_nitrogen_to_ammonium_hydrolysis(
+            organic_nitrogen=organic_nitrogen,
+            temperature=temperature,
+        )
+        if getattr(self, "use_OrgN", True):
+            orgn_settling = self.organic_nitrogen_settling(
+                organic_nitrogen=organic_nitrogen,
+                temperature=temperature,
+                depth=depth,
+            )
+        else:
+            orgn_settling = 0.0
+
+        # Algal NH4 / NO3 coupling diagnostics (sums of floating +
+        # benthic). The change_ammonium / change_nitrate methods sum
+        # the per-source contributions internally; we mirror that sum
+        # here so the components dict carries the consumer-visible
+        # totals. Float / benthic per-source values stay accessible via
+        # the per-source attribute caches on FloatingAlgae / BenthicAlgae.
+        nh4_algal_resp = self.ammonium_floating_respiration()
+        nh4_balgae_resp = self.ammonium_benthic_respiration()
+        nh4_algal_growth = (
+            self.ammonium_floating_growth() + self.ammonium_benthic_growth()
         )
 
-        # --- Persistence (Bug #16) ---
-        registry.set_at_time("ammonium", time, ammonium_new)
-        registry.set_at_time("nitrate", time, nitrate_new)
-        if "organic_nitrogen" in registry:
-            registry.set_at_time("organic_nitrogen", time, organic_nitrogen_new)
+        if self.use_floating_algae:
+            float_algae_growth = getattr(
+                self.floating_algae_process, "algal_growth_rate", 0
+            )
+        else:
+            float_algae_growth = 0
+        if self.use_benthic_algae:
+            benthic_algae_growth = getattr(
+                self.benthic_algae_process, "balgae_growth_rate", 0
+            )
+        else:
+            benthic_algae_growth = 0
+        no3_algal_growth = (
+            self.nitrate_uptake_floating_algae(nitrate, ammonium, float_algae_growth)
+            + self.nitrate_uptake_benthic_algae(
+                nitrate, ammonium, benthic_algae_growth, depth
+            )
+        )
+
+        components = {
+            "nitrification_flux_rate": nitrification_flux,
+            "denitrification_flux_rate": denitrification_flux,
+            "nh4_from_bed": nh4_from_bed,
+            "no3_from_bed_denit": no3_from_bed_denit,
+            "orgn_hydrolysis_rate": orgn_hydrolysis,
+            "orgn_settling_rate": orgn_settling,
+            "nh4_algal_growth_rate": nh4_algal_growth,
+            "no3_algal_growth_rate": no3_algal_growth,
+            "nh4_algal_resp_rate": nh4_algal_resp,
+            "nh4_balgae_resp_rate": nh4_balgae_resp,
+        }
+
+        return ammonium_rate, nitrate_rate, orgn_rate, components
+
+    def _change_legacy_inline(
+        self,
+        *,
+        nitrate: ArrayLike,
+        ammonium: ArrayLike,
+        organic_nitrogen: ArrayLike,
+        temperature: ArrayLike,
+        depth: ArrayLike,
+        oxygen_dissolved: ArrayLike,
+    ) -> tuple[ArrayLike, ArrayLike, ArrayLike]:
+        """Pre-Phase-4 inline rate composition. **Verbatim copy** of
+        the body that used to live inside ``run`` before Phase 4 of
+        the pattern-alignment spec landed.
+
+        Retained through Phase 10 of the pattern-alignment spec for
+        the helper-vs-inline parity test
+        (``tests/v3/nsm1/test_nitrogen_helper_vs_inline.py``) per
+        §11.3. Deleted in Phase 10 alongside its parity test once the
+        final end-to-end baseline parity passes.
+
+        Returns ``(ammonium_rate, nitrate_rate, orgn_rate)`` — no
+        ``components`` dict, no registry exposure, no clip / Euler /
+        persist. Caller is responsible for the integrator step.
+        """
+        # Step-scoped flux caches (mirrors pre-Phase-4 ``run`` body).
+        # The values are computed but not returned — the helper-vs-inline
+        # parity test only compares the per-state rates.
+        _ = self.ammonium_nitrification(ammonium, temperature, oxygen_dissolved)
+        _ = self.nitrate_denitrification(
+            oxygen_dissolved, self.KsOxdn, nitrate, temperature
+        )
+
+        ammonium_rate = self.change_ammonium(
+            nitrate,
+            ammonium,
+            temperature,
+            depth,
+            oxygen_dissolved,
+            organic_nitrogen=organic_nitrogen,
+        )
+        nitrate_rate = self.change_nitrate(
+            nitrate,
+            ammonium,
+            temperature,
+            depth,
+            oxygen_dissolved,
+        )
+        orgn_rate = self.change_organic_nitrogen(
+            organic_nitrogen=organic_nitrogen,
+            temperature=temperature,
+            depth=depth,
+        )
+
+        return ammonium_rate, nitrate_rate, orgn_rate
 
     def change_ammonium(
         self,
