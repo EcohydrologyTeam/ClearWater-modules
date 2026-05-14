@@ -132,6 +132,25 @@ class POM(Process):
     # keeps consistency with the rest of v3.
     DEFAULTS: dict[str, float | int | bool] = {}
 
+    # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
+    # surface POM exposes via the opportunistic-write loop in ``run``.
+    # Each name maps to a ``self.<name>`` cache attribute set inside
+    # ``_change_with_components`` and matches the inventory in
+    # ``design/clearwater_modules_v3_nsm1_appendix_a_diff.md`` §3.
+    #
+    # Note: ``pom_doc_source_rate`` (consumer-ready unit-converted DOC
+    # source rate that Carbon reads via getattr) is NOT in
+    # REGISTRY_DIAGNOSTICS — it is set as a side effect of the helper
+    # for sibling consumption but not exposed to the registry; the
+    # raw POM dissolution rate is exposed instead under
+    # ``pom_hydrolysis_rate``.
+    REGISTRY_DIAGNOSTICS: tuple[str, ...] = (
+        "pom_hydrolysis_rate",
+        "pom_settling_rate",
+        "pom_algal_mortality_rate",
+        "pom_balgae_mortality_rate",
+    )
+
     def __init__(
         self,
         parameters: dict | None = None,
@@ -222,20 +241,26 @@ class POM(Process):
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Run the POM process for one time step.
 
-        Forward-Euler integrator: ``pom_new = pom + rate * dt_days``.
-        Negative cells are clipped to zero via ``clip_negative_state``
-        with diagnostics recorded on ``self.diagnostics``. The new state
-        is persisted via ``registry.set_at_time``.
+        Pattern-alignment spec §3 patterns A–J: reads forcings at top
+        (A); delegates rate composition to ``_change_with_components``
+        (B); applies Forward Euler with unconditional clip-with-log
+        (C, D); persists primary output (E); caches step-scoped rates
+        on ``self.<name>`` (F); opportunistically writes diagnostics
+        (G).
 
-        Phase 1.C note: import of ``clip_negative_state`` is lifted to
-        module level. The ``pom_doc_source_rate`` cache currently lives
-        inside ``self.rate()`` for back-compat with external tests that
-        call ``pom.rate(...)`` directly; Phase 7 consolidates the
-        rate-and-cache flow into ``_change_with_components`` and the
-        cache write moves to ``run`` at that time.
+        See ``_change_legacy_inline`` for the pre-Phase-7 inline
+        composition (retained through Phase 10 for the helper-vs-inline
+        parity test under §11.3). Phase 7 also resolves the Phase 1
+        deferred item: the ``pom_doc_source_rate`` cache (consumed by
+        Carbon via getattr) now lives in ``_change_with_components``
+        rather than inside the public ``rate()`` method, so the cache
+        does not depend on a side effect of an externally-callable
+        helper.
         """
+        # --- State and forcing reads (pattern A) ---
         pom = registry.get_at_time("pom", time)
         water_temperature = registry.get_at_time("water_temperature", time)
+        depth = registry.get_at_time("depth", time)
 
         # POC source (only present if POC Process / state is registered).
         # In closed-system Tier 1 mode without a Carbon Process the POC
@@ -248,25 +273,213 @@ class POM(Process):
         else:
             poc = xr.zeros_like(pom)
 
-        # Compute the POM rate of change (mg/L/d).
-        rate = self.rate(
+        # --- Fused rate composition (pattern B) ---
+        rate, components = self._change_with_components(
             pom=pom,
             water_temperature=water_temperature,
             poc=poc,
-            time=time,
-            registry=registry,
+            depth=depth,
         )
 
-        # Forward Euler in days.
+        # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
+        for name in self.REGISTRY_DIAGNOSTICS:
+            setattr(self, name, components[name])
+
+        # --- Forward Euler in days (pattern C) ---
         dt_days = self.time_step.total_seconds() / 86400.0
         pom_new = pom + rate * dt_days
 
-        # Clip-with-log per Q7. Step attribution is automatic via
-        # ``diagnostics.current_step`` (Phase 0.6 Q1).
+        # --- Clip-with-log per Q7 (pattern D) ---
+        # Step attribution is automatic via ``diagnostics.current_step``
+        # (Phase 0.6 Q1).
         pom_new = clip_negative_state(pom_new, "pom", self.diagnostics)
 
-        # Persist the updated state.
+        # --- Persist primary output (pattern E) ---
         registry.set_at_time("pom", time, pom_new)
+
+        # --- Opportunistic diagnostic registry writes (pattern G) ---
+        for name in self.REGISTRY_DIAGNOSTICS:
+            if name in registry:
+                registry.set_at_time(name, time, components[name])
+
+    # ------------------------------------------------------------------
+    # Rate-composition helpers
+    # ------------------------------------------------------------------
+
+    def _change_with_components(
+        self,
+        *,
+        pom: ArrayLike,
+        water_temperature: ArrayLike,
+        poc: ArrayLike,
+        depth: ArrayLike,
+    ) -> tuple[ArrayLike, dict]:
+        """Compute ``(rate, components)`` for POM.
+
+        ``rate`` is the net per-day POM rate of change (mg/L/d).
+        ``components`` is the dict[str, ArrayLike] indexed by
+        ``REGISTRY_DIAGNOSTICS``.
+
+        Code-motion-only refactor of ``run``'s former inline
+        composition (§11.6): operand order, intermediate names, and
+        sub-flux helpers are preserved verbatim from the body of
+        ``rate()`` (the pre-Phase-7 entry point).
+
+        **Phase 7 cache relocation**: the ``self.pom_doc_source_rate``
+        cache that Carbon reads via getattr is now set here as a side
+        effect (not inside the public ``rate()`` method). The ``rate()``
+        method retains its prior behaviour for back-compat with
+        external tests that call ``pom.rate(...)`` directly, but the
+        canonical write path is via this helper.
+
+        The companion shadow ``_change_legacy_inline`` returns just
+        the net rate and is used by
+        ``tests/v3/nsm1/test_pom_helper_vs_inline.py`` to verify this
+        helper produces a bit-identical net rate through Phase 10.
+        """
+        # Temperature-corrected dissolution rate.
+        kpom_tc = arrhenius_correction(
+            water_temperature, self.kpom_20, self.kpom_theta
+        )
+
+        # Sink: dissolution. POM mass loss is in mg-D/L_sed/d (POM state
+        # is dry-mass-per-sediment-volume). Used as a sink in dPOM/dt.
+        rate_dissolution = kpom_tc * pom
+
+        # Phase 5.A consumer-ready DOC source rate (mg-C/L_water/d).
+        # The raw POM dissolution rate (mg-D/L_sed/d) becomes a DOC
+        # source by (1) converting dry mass to carbon mass via
+        # ``fcom`` (mg-C/mg-D) and (2) converting sediment volumetric
+        # to water-column volumetric via ``h2 / depth``. Matches the
+        # convention of ``poc_hydrolysis_rate`` on Carbon (mg-C/L/d
+        # water-column). Required for closed-system C conservation.
+        # Phase 7: cache moved here from ``rate()`` per spec §6 Phase 7.
+        self.pom_doc_source_rate = (
+            self.fcom * rate_dissolution * self.h2 / depth
+        )
+
+        # Sink: burial.
+        rate_burial = self.vb * pom / self.h2
+
+        # Source: POC settling. Disabled when ``use_POC`` is False or
+        # when ``vsoc == 0`` (closed-system mode).
+        if self.use_POC:
+            rate_poc_settling = self.vsoc * poc / self.h2 / self.fcom
+        else:
+            rate_poc_settling = xr.zeros_like(pom)
+
+        # Source: floating-algae settling. Phase 3.5 inter-process
+        # coupling: the FloatingAlgae Process caches
+        # ``algal_pom_from_settling_rate`` (mg/L/d) on each ``run``
+        # invocation. Read it via ``getattr`` so a missing cache
+        # (FloatingAlgae not yet run, or absent) degrades to zero.
+        if self.use_floating_algae and self.use_Algae and self.floating_algae_process is not None:
+            rate_algal_settling = getattr(
+                self.floating_algae_process,
+                "algal_pom_from_settling_rate",
+                0,
+            )
+        else:
+            rate_algal_settling = xr.zeros_like(pom)
+
+        # Source: benthic-algae mortality. The BenthicAlgae Process
+        # caches ``balgae_pom_from_mortality_rate`` (mg/L/d). Same
+        # getattr-with-zero fallback.
+        if self.use_benthic_algae and self.use_Balgae and self.benthic_algae_process is not None:
+            rate_benthic_mortality = getattr(
+                self.benthic_algae_process,
+                "balgae_pom_from_mortality_rate",
+                0,
+            )
+        else:
+            rate_benthic_mortality = xr.zeros_like(pom)
+
+        rate = (
+            rate_algal_settling
+            - rate_dissolution
+            + rate_poc_settling
+            + rate_benthic_mortality
+            - rate_burial
+        )
+
+        components = {
+            "pom_hydrolysis_rate": rate_dissolution,
+            "pom_settling_rate": rate_burial,
+            "pom_algal_mortality_rate": rate_algal_settling,
+            "pom_balgae_mortality_rate": rate_benthic_mortality,
+        }
+
+        return rate, components
+
+    def _change_legacy_inline(
+        self,
+        *,
+        pom: ArrayLike,
+        water_temperature: ArrayLike,
+        poc: ArrayLike,
+        depth: ArrayLike,
+    ) -> ArrayLike:
+        """Pre-Phase-7 inline rate composition. **Verbatim copy** of
+        the body that ``run`` invoked via ``self.rate(...)`` before
+        Phase 7 of the pattern-alignment spec landed.
+
+        The pre-Phase-7 ``run`` called ``self.rate(pom=..., ...,
+        time=..., registry=...)`` which in turn read ``depth`` from
+        the registry inside the helper. This shadow takes ``depth``
+        as a direct argument (consistent with the new helper
+        signature) but performs the same arithmetic on the same
+        intermediates, so the per-substep net rate is bit-identical
+        to the pre-Phase-7 path.
+
+        Retained through Phase 10 for the helper-vs-inline parity
+        test per §11.3. Deleted in Phase 10 alongside its parity test
+        once the final end-to-end baseline parity passes.
+
+        Returns just the net per-day rate (mg/L/d).
+        """
+        kpom_tc = arrhenius_correction(
+            water_temperature, self.kpom_20, self.kpom_theta
+        )
+        rate_dissolution = kpom_tc * pom
+
+        # Pre-Phase-7 ``rate()`` set this side effect; preserved here so
+        # the shadow leaves the same self state.
+        self.pom_doc_source_rate = (
+            self.fcom * rate_dissolution * self.h2 / depth
+        )
+
+        rate_burial = self.vb * pom / self.h2
+
+        if self.use_POC:
+            rate_poc_settling = self.vsoc * poc / self.h2 / self.fcom
+        else:
+            rate_poc_settling = xr.zeros_like(pom)
+
+        if self.use_floating_algae and self.use_Algae and self.floating_algae_process is not None:
+            rate_algal_settling = getattr(
+                self.floating_algae_process,
+                "algal_pom_from_settling_rate",
+                0,
+            )
+        else:
+            rate_algal_settling = xr.zeros_like(pom)
+
+        if self.use_benthic_algae and self.use_Balgae and self.benthic_algae_process is not None:
+            rate_benthic_mortality = getattr(
+                self.benthic_algae_process,
+                "balgae_pom_from_mortality_rate",
+                0,
+            )
+        else:
+            rate_benthic_mortality = xr.zeros_like(pom)
+
+        return (
+            rate_algal_settling
+            - rate_dissolution
+            + rate_poc_settling
+            + rate_benthic_mortality
+            - rate_burial
+        )
 
     # ------------------------------------------------------------------
     # Kinetic helpers

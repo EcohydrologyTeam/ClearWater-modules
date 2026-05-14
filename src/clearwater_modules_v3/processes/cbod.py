@@ -108,6 +108,19 @@ class CBOD(Process):
     # the v3 ``parameters.cbod`` module.
     DEFAULTS: dict[str, float | int | bool] = CBOD_DEFAULTS
 
+    # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
+    # surface CBOD exposes via the opportunistic-write loop in ``run``.
+    # Each name maps to a ``self.<name>`` cache attribute set inside
+    # ``_change_with_components`` and matches the inventory in
+    # ``design/clearwater_modules_v3_nsm1_appendix_a_diff.md`` §3.
+    #
+    # ``cbod_oxidation_rate`` is the preserved attribute name DOX and
+    # Carbon read via getattr (sibling-consumer contract).
+    REGISTRY_DIAGNOSTICS: tuple[str, ...] = (
+        "cbod_oxidation_rate",
+        "cbod_settling_rate",
+    )
+
     def __init__(
         self,
         parameters: dict | None = None,
@@ -182,20 +195,24 @@ class CBOD(Process):
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Advance CBOD by one substep using Forward Euler.
 
-        Reads state at ``t = time`` and writes the updated state back at
-        the same key (in-place semantic, matching the v2 NSM1 Process
-        convention used by the Tier 1 ``InMemoryRegistry``). The v3
-        production registry uses time-indexed reads/writes; both
-        interfaces share the ``get_at_time`` / ``set_at_time`` API so
-        the same code path serves both.
+        Pattern-alignment spec §3 patterns A–J: reads forcings at top
+        (A); delegates rate composition to ``_change_with_components``
+        (B); applies Forward Euler with unconditional clip-with-log
+        (C, D); persists primary output (E); caches step-scoped rates
+        on ``self.<name>`` (F); opportunistically writes diagnostics
+        (G).
 
-        Multi-group note: a Phase 4+ extension would loop over
+        See ``_change_legacy_inline`` for the pre-Phase-7 inline
+        composition (retained through Phase 10 for the helper-vs-inline
+        parity test under §11.3).
+
+        Multi-group note: a future extension would loop over
         ``cbod_<group_index>`` keys here, computing per-group
-        oxidation/settling rates and summing
-        ``self.cbod_oxidation_rate`` across groups for downstream DOX
-        consumption. The single-group implementation hard-codes the
-        ``"cbod"`` key.
+        oxidation/settling rates and summing across groups for
+        downstream DOX consumption. The single-group implementation
+        hard-codes the ``"cbod"`` key.
         """
+        # --- State and forcing reads (pattern A) ---
         cbod = registry.get_at_time("cbod", time)
         water_temperature = registry.get_at_time("water_temperature", time)
         depth = registry.get_at_time("depth", time)
@@ -204,8 +221,7 @@ class CBOD(Process):
         # the stub value otherwise (Phase 5 has not landed yet OR the
         # test is running CBOD standalone). Path (a) per the Phase 3.3
         # discussion. Phase 1.E: switched from ``try/except KeyError`` to
-        # the ``if name in registry`` idiom for consistency with the rest
-        # of the v3 NSM1 Processes.
+        # the ``if name in registry`` idiom.
         if "oxygen_dissolved" in registry:
             dox = registry.get_at_time("oxygen_dissolved", time)
         else:
@@ -218,6 +234,63 @@ class CBOD(Process):
             )
             dox = xr.full_like(cbod, _DOX_STUB_MG_PER_L)
 
+        # --- Fused rate composition (pattern B) ---
+        rate, components = self._change_with_components(
+            cbod=cbod,
+            water_temperature=water_temperature,
+            depth=depth,
+            dox=dox,
+        )
+
+        # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
+        # ``cbod_oxidation_rate`` is consumed by DOX and Carbon via
+        # getattr; preserved attribute name.
+        for name in self.REGISTRY_DIAGNOSTICS:
+            setattr(self, name, components[name])
+
+        # --- Forward Euler in days (pattern C) ---
+        dt_days = self.time_step.total_seconds() / 86400.0
+        cbod_new = cbod + rate * dt_days
+
+        # --- Clip-with-log per Q7 (pattern D) ---
+        cbod_new = clip_negative_state(cbod_new, "cbod", self.diagnostics)
+
+        # --- Persist primary output (pattern E) ---
+        registry.set_at_time("cbod", time, cbod_new)
+
+        # --- Opportunistic diagnostic registry writes (pattern G) ---
+        for name in self.REGISTRY_DIAGNOSTICS:
+            if name in registry:
+                registry.set_at_time(name, time, components[name])
+
+    # ------------------------------------------------------------------
+    # Rate-composition helpers
+    # ------------------------------------------------------------------
+
+    def _change_with_components(
+        self,
+        *,
+        cbod: ArrayLike,
+        water_temperature: ArrayLike,
+        depth: ArrayLike,
+        dox: ArrayLike,
+    ) -> tuple[ArrayLike, dict]:
+        """Compute ``(rate, components)`` for CBOD.
+
+        ``rate`` is the net per-day CBOD rate of change (mg-O2/L/d) —
+        the sum of the negated oxidation and settling sinks. The
+        positive-magnitude oxidation and settling terms are exposed in
+        the components dict.
+
+        Code-motion-only refactor of ``run``'s former inline
+        composition (§11.6): operand order, intermediate names, the
+        ``use_DOX`` Monod gating, and the per-sub-flux ``sanitize_rate``
+        calls are preserved verbatim.
+
+        The companion shadow ``_change_legacy_inline`` returns just the
+        net rate and is used by
+        ``tests/v3/nsm1/test_cbod_helper_vs_inline.py``.
+        """
         # Temperature-corrected rate constants (Arrhenius / van't Hoff).
         kbod_tc = arrhenius_correction(
             water_temperature, self.kbod_20, self.kbod_theta
@@ -235,39 +308,68 @@ class CBOD(Process):
         else:
             oxidation_rate = kbod_tc * cbod
 
-        # Settling rate (mg-O2/L/d). v1 ``CBOD_sedimentation`` is
-        # ``CBOD * ksbod_tc`` (units m/d * 1/m -> 1/d) but the divide
-        # by depth makes it m/d * (1/depth) * CBOD which is the v3
-        # convention (see Phase 3.3 spec). With the Phase 0 audit
-        # default ``ksbod_20=0``, this term is identically zero.
+        # Settling rate (mg-O2/L/d). With the Phase 0 audit default
+        # ``ksbod_20=0``, this term is identically zero.
         settling_rate = ksbod_tc / depth * cbod
 
-        # Cache step-scoped rate variables for Phase 5 DOX consumption
-        # (Q10 GS-rates contract). cbod_oxidation_rate is the sink term
-        # DOX adds to its integrator; cbod_settling_rate is exposed for
-        # diagnostic / future sediment coupling.
-        # Sanitize NaN/inf at the cache source: a NaN/inf here propagates
-        # via DOX's rate sum and zeroes the entire cell's DOX rate via the
-        # downstream ``sanitize_rate``, freezing the cell at IC. When CBOD
-        # is 0 the contribution is 0 regardless, so NaN/inf -> 0 is the
-        # semantically correct value. Phase 1.E: switched from inline
-        # ``xr.where(isnull, 0, ...)`` / ``np.where(np.isnan, 0, ...)``
-        # branches to the canonical ``sanitize_rate`` helper for parity
+        # Sanitize per-sub-flux at the cache source: a NaN/inf here
+        # propagates via DOX's rate sum and zeroes the entire cell's
+        # DOX rate via the downstream ``sanitize_rate``, freezing the
+        # cell at IC. Phase 1.E adopted ``sanitize_rate`` for parity
         # with the other v3 NSM1 Processes.
+        oxidation_rate = sanitize_rate(oxidation_rate)
+        settling_rate = sanitize_rate(settling_rate)
+
+        rate = -oxidation_rate - settling_rate
+
+        components = {
+            "cbod_oxidation_rate": oxidation_rate,
+            "cbod_settling_rate": settling_rate,
+        }
+
+        return rate, components
+
+    def _change_legacy_inline(
+        self,
+        *,
+        cbod: ArrayLike,
+        water_temperature: ArrayLike,
+        depth: ArrayLike,
+        dox: ArrayLike,
+    ) -> ArrayLike:
+        """Pre-Phase-7 inline rate composition. **Verbatim copy** of the
+        body that used to live inside ``run`` before Phase 7 of the
+        pattern-alignment spec landed.
+
+        Retained through Phase 10 for the helper-vs-inline parity test
+        per §11.3. Deleted in Phase 10 alongside its parity test once
+        the final end-to-end baseline parity passes.
+
+        Returns just the net per-day rate (mg-O2/L/d). Side effects:
+        sets ``self.cbod_oxidation_rate`` and ``self.cbod_settling_rate``
+        (matches pre-Phase-7 ``run`` body) so the shadow leaves the
+        same self state as ``_change_with_components`` does (via the
+        ``run`` setattr loop).
+        """
+        kbod_tc = arrhenius_correction(
+            water_temperature, self.kbod_20, self.kbod_theta
+        )
+        ksbod_tc = arrhenius_correction(
+            water_temperature, self.ksbod_20, self.ksbod_theta
+        )
+
+        if self.use_DOX:
+            oxidation_rate = (
+                kbod_tc * dox / (self.KsOxbod + dox) * cbod
+            )
+        else:
+            oxidation_rate = kbod_tc * cbod
+
+        settling_rate = ksbod_tc / depth * cbod
+
         oxidation_rate = sanitize_rate(oxidation_rate)
         settling_rate = sanitize_rate(settling_rate)
         self.cbod_oxidation_rate = oxidation_rate
         self.cbod_settling_rate = settling_rate
 
-        # Forward Euler in days. time_step is stored as a timedelta;
-        # convert to days the same way the other v3 Processes do.
-        dt_days = self.time_step.total_seconds() / 86400.0
-        cbod_new = cbod + (-oxidation_rate - settling_rate) * dt_days
-
-        # Clip-with-log per the resolved Q7 contract. Tier 1 closed-
-        # system tests assert clip_events is empty under physically
-        # reasonable inputs. Step attribution is automatic via
-        # ``diagnostics.current_step`` (Phase 0.6 Q1).
-        cbod_new = clip_negative_state(cbod_new, "cbod", self.diagnostics)
-
-        registry.set_at_time("cbod", time, cbod_new)
+        return -oxidation_rate - settling_rate
