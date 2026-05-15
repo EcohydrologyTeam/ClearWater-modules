@@ -86,6 +86,8 @@ target/
 
 # profiling
 *.prof
+# Allow committed pattern-alignment profile artifact (Phase 11 analysis).
+!tests/v3/nsm1/baseline/profile_perf.prof
 
 # IPython
 profile_default/

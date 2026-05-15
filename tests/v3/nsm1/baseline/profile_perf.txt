@@ -1,0 +1,126 @@
+================================================================================
+v3 NSM1 cProfile summary (N_PROFILE=500)
+================================================================================
+
+--- Top 30 by cumulative time ---
+
+         160195489 function calls (159410002 primitive calls) in 42.850 seconds
+
+   Ordered by: cumulative time
+   List reduced from 10066 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.001    0.001   42.895   42.895 profile_perf.py:34(_do_run)
+      560    0.009    0.000   40.762    0.073 nsm1_demo_setup.py:295(step)
+   384160    1.025    0.000   27.011    0.000 dataarray.py:4903(_binary_op)
+   193200    0.141    0.000   15.041    0.000 alignment.py:763(align)
+   193200    0.273    0.000   13.769    0.000 alignment.py:650(align)
+      220    0.004    0.000   12.969    0.059 __init__.py:1(<module>)
+    98560    0.375    0.000   10.802    0.000 apply_ufunc.py:896(apply_ufunc)
+   148400    0.153    0.000    8.892    0.000 alignment.py:637(reindex_all)
+    96880    0.409    0.000    8.817    0.000 apply_ufunc.py:276(apply_dataarray_vfunc)
+   296800    0.217    0.000    8.739    0.000 alignment.py:616(_reindex_one)
+   296800    0.292    0.000    8.354    0.000 dataarray.py:1954(_reindex_callback)
+    43120    0.111    0.000    8.030    0.000 computation.py:682(where)
+    16800    0.036    0.000    7.737    0.000 numerics.py:210(sanitize_rate)
+    87360    0.037    0.000    7.551    0.000 _typed_ops.py:551(__mul__)
+      560    0.004    0.000    7.001    0.013 dox.py:639(run)
+      560    0.010    0.000    6.911    0.012 dox.py:722(_change_with_components)
+   384160    1.198    0.000    6.833    0.000 variable.py:2444(_binary_op)
+      560    0.007    0.000    6.742    0.012 carbon.py:370(run)
+      560    0.013    0.000    6.417    0.011 carbon.py:451(_change_with_components)
+      560    0.005    0.000    6.283    0.011 nitrogen.py:298(run)
+      560    0.004    0.000    6.083    0.011 floating_algae.py:387(run)
+      560    0.006    0.000    5.997    0.011 nitrogen.py:383(_change_with_components)
+      560    0.004    0.000    5.974    0.011 floating_algae.py:462(_change_with_components)
+    96880    0.642    0.000    5.102    0.000 apply_ufunc.py:707(apply_variable_ufunc)
+   296800    0.362    0.000    4.526    0.000 dataset.py:3362(_reindex_callback)
+    36960    0.019    0.000    4.419    0.000 _typed_ops.py:527(__add__)
+      560    0.004    0.000    4.350    0.008 benthic_algae.py:283(run)
+      560    0.005    0.000    4.243    0.008 benthic_algae.py:365(_change_with_components)
+    33600    0.017    0.000    4.098    0.000 _typed_ops.py:575(__truediv__)
+    45360    0.019    0.000    4.012    0.000 _typed_ops.py:539(__sub__)
+
+
+
+
+--- Top 30 by total (self) time ---
+
+         160195489 function calls (159410002 primitive calls) in 42.850 seconds
+
+   Ordered by: internal time
+   List reduced from 10066 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+  2119390    1.592    0.000    1.886    0.000 indexes.py:1710(__init__)
+9451905/9155105    1.478    0.000    1.796    0.000 common.py:328(__setattr__)
+17331438/17331426    1.424    0.000    1.956    0.000 {built-in method builtins.isinstance}
+   384160    1.198    0.000    6.833    0.000 variable.py:2444(_binary_op)
+   899730    1.100    0.000    1.902    0.000 variable.py:245(as_compatible_data)
+   384160    1.025    0.000   27.011    0.000 dataarray.py:4903(_binary_op)
+   273285    0.837    0.000    2.143    0.000 common.py:299(__getattr__)
+    96880    0.642    0.000    5.102    0.000 apply_ufunc.py:707(apply_variable_ufunc)
+   791185    0.638    0.000    1.439    0.000 dataarray.py:416(__init__)
+   688240    0.586    0.000    2.218    0.000 dataarray.py:499(_replace)
+   595300    0.572    0.000    1.645    0.000 dataset.py:849(_construct_direct)
+   296800    0.543    0.000    3.724    0.000 dataset.py:1133(_copy)
+   864660    0.520    0.000    0.694    0.000 variable.py:3137(calculate_dimensions)
+  7239955    0.519    0.000    0.519    0.000 {method 'items' of 'dict' objects}
+   796785    0.519    0.000    1.040    0.000 core.py:502(_parse_dimensions)
+   189280    0.508    0.000    2.252    0.000 alignment.py:329(find_matching_unindexed_dims)
+  1438410    0.485    0.000    1.769    0.000 dataarray.py:984(xindexes)
+   189280    0.479    0.000    1.472    0.000 alignment.py:289(find_matching_indexes)
+  185/182    0.471    0.003    0.473    0.003 {built-in method _imp.create_dynamic}
+  2402400    0.445    0.000    0.614    0.000 utils.py:320(__hash__)
+   796785    0.429    0.000    3.205    0.000 variable.py:370(__init__)
+3221093/3210439    0.425    0.000    0.913    0.000 {built-in method builtins.getattr}
+   384160    0.419    0.000    2.017    0.000 variable.py:3057(_broadcast_compat_data)
+    96880    0.409    0.000    8.817    0.000 apply_ufunc.py:276(apply_dataarray_vfunc)
+   828240    0.390    0.000    0.727    0.000 variable.py:440(data)
+   384160    0.388    0.000    2.674    0.000 coordinates.py:511(_merge_raw)
+    98560    0.375    0.000   10.802    0.000 apply_ufunc.py:896(apply_ufunc)
+  1559485    0.371    0.000    0.466    0.000 dataarray.py:991(coords)
+   296800    0.362    0.000    4.526    0.000 dataset.py:3362(_reindex_callback)
+6021483/6017963    0.360    0.000    0.360    0.000 {built-in method builtins.len}
+
+
+
+
+--- v3 NSM1 functions only, by cumulative time ---
+
+         160195489 function calls (159410002 primitive calls) in 42.850 seconds
+
+
+
+--- Pattern-G hot-spot candidates ---
+
+         160195489 function calls (159410002 primitive calls) in 42.850 seconds
+
+   Ordered by: cumulative time
+   List reduced from 10066 to 22 due to restriction <'_change_with_components|_rate_with_components|sanitize_rate|clip_negative_state|setattr|set_at_time'>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    16800    0.036    0.000    7.737    0.000 numerics.py:210(sanitize_rate)
+      560    0.010    0.000    6.911    0.012 dox.py:722(_change_with_components)
+      560    0.013    0.000    6.417    0.011 carbon.py:451(_change_with_components)
+      560    0.006    0.000    5.997    0.011 nitrogen.py:383(_change_with_components)
+      560    0.004    0.000    5.974    0.011 floating_algae.py:462(_change_with_components)
+      560    0.005    0.000    4.243    0.008 benthic_algae.py:365(_change_with_components)
+      560    0.004    0.000    2.395    0.004 n2.py:356(_change_with_components)
+      560    0.007    0.000    2.016    0.004 phosphorus.py:353(_change_with_components)
+9451905/9155105    1.478    0.000    1.796    0.000 common.py:328(__setattr__)
+      560    0.002    0.000    1.618    0.003 pathogen.py:276(_rate_with_components)
+      560    0.003    0.000    1.479    0.003 alkalinity.py:515(_change_with_components)
+      560    0.003    0.000    1.122    0.002 cbod.py:267(_change_with_components)
+      560    0.003    0.000    0.608    0.001 pom.py:306(_change_with_components)
+     8960    0.019    0.000    0.063    0.000 numerics.py:71(clip_negative_state)
+    77956    0.018    0.000    0.044    0.000 {built-in method builtins.setattr}
+22622/22592    0.018    0.000    0.044    0.000 parameterized.py:1686(__setattr__)
+      658    0.001    0.000    0.015    0.000 parameterized.py:4564(__setattr__)
+     3833    0.001    0.000    0.002    0.000 typing.py:1286(__setattr__)
+     8960    0.001    0.000    0.001    0.000 nsm1_demo_setup.py:125(set_at_time)
+     1660    0.001    0.000    0.001    0.000 enum.py:811(__setattr__)
+      259    0.000    0.000    0.000    0.000 delayed.py:757(__setattr__)
+        2    0.000    0.000    0.000    0.000 core.py:6826(__setattr__)
+
+
