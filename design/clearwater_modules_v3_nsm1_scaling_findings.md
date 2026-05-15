@@ -46,11 +46,34 @@ Using the 500K-cell per-cell cost (conservative — the asymptote is lower):
 
 Peak working-set memory scales ~linearly: 500K cells ≈ 1.2 GB, 2M cells ≈ ~5 GB. Feasible on a workstation. (This is the per-substep working set, independent of run length; see chunking note below.)
 
-## Real-world validation — Willamette Santiam-Salem
+## Real-world anchor — Willamette Corvallis–Santiam (authoritative)
 
-Reported anchor: ~150,000 cells, ~50 minutes wall time for a Santiam-Salem reach run.
+The model lead's recollection was "~150,000 cells, ~50 minutes." The authoritative record (`run_provenance.json` from the actual coupled run, git_head `5646d35`, executed 2026-04-27) corrects all three figures:
 
-Interpolating the measured curve, 150K cells ≈ ~94 ms/step. 50 min ÷ 0.094 s ≈ ~32,000 substeps ≈ a ~1-year run at 15-min timesteps. So "150K cells, ~1 year, ~50 min" is **exactly consistent** with the measured scaling — and the synthetic demo runs all 11 NSM1 Processes, so a production run with a process subset would likely be faster. The benchmark is realistic, possibly conservative.
+| Quantity | Recollection | **Recorded (authoritative)** |
+|---|---|---|
+| Reach | "Santiam-Salem" | Corvallis–Santiam–Albany (Willamette; Salem is the KSLE met station, ~30 km downstream of the mesh outlet, dropped from validation) |
+| Cell count | ~150,000 | **591,671 total (586,803 active "real" cells)** |
+| Wall clock | ~50 min | **82.97 min** (4,977.93 s; `run_start` → `run_end`, includes ~9.6 GB output write) |
+| Simulated period | (1 year inferred) | **30 days** (2014-06-01 → 2014-06-30) |
+| Cadence | (15-min inferred) | **Daily** Riverine/NSM1/ESM coupling (`n_loop = n_days − 1 = 29` outer steps) + **6-hour** TSM sub-stepping (`tsm_substeps_per_day = 4`, `tsm_dt_days = 0.25`, 120 TSM substeps) |
+| Stack | (NSM1 implied) | **Full TRUE coupled stack**: CW-Riverine advection-diffusion + TSM energy balance + NSM1 kinetics + ESM vegetation (13 constituents, 7 species seed tracers) |
+
+**This anchor does NOT validate the NSM1-only 15-min extrapolation above, and the earlier draft of this section (which accepted the ~150K / ~50-min / ~1-yr recollection) was wrong.** Three things must be kept distinct:
+
+1. **The NSM1-only scaling benchmark** (§ above): 500K cells, 5-min substep, NSM1 kinetics only → 267 ms/step. This is what the extrapolation table is built on.
+2. **The recorded coupled run**: ~592K cells, **daily** Riverine/NSM1/ESM + **6-hr** TSM, full stack, 30 days → 83 min wall (≈ 172 s per daily coupled outer step, which internally does 1 transport + 1 NSM1 + 4 TSM + 1 ESM + mesh↔registry sanitisation, plus end-to-end I/O of a 285 MB HDF in and ~9.6 GB out).
+3. **The project requirement**: 500K–2M cells at **15-minute** cadence for 1–3 months / 1 year.
+
+The recorded run is at the project's target *cell count* (~592K ≈ 500K target) but at a far *coarser cadence* (daily / 6-hr, not 15-min) and for the *full coupled stack* (not NSM1 alone). It confirms that the coupled stack at ~600K cells is tractable for a 30-day run at coarse cadence (~83 min including I/O). It does **not** confirm a 15-min-cadence coupled run at that scale — that workload is unmeasured.
+
+### What the NSM1-only benchmark still establishes
+
+The NSM1 kinetics component, in isolation, at 15-min cadence (the §extrapolation table) is **not** the bottleneck: ~2.6 hr for a 500K-cell 1-year NSM1-only run. The coupled-run cost is dominated by Riverine transport + TSM sub-stepping + ESM + per-substep mesh↔registry sanitisation + I/O, none of which is in scope for this NSM1 pattern-alignment work.
+
+### The open question this surfaces
+
+A 15-minute-cadence **coupled** run at 500K–2M cells is the actual project workload and **has never been benchmarked**. Extrapolating the one recorded daily-cadence coupled point to 15-min cadence is not defensible without measurement: going from daily to 15-min Riverine/NSM1 cadence is 96× more transport+kinetics outer steps. Whether that is 96× more wall clock depends entirely on how much of the 172 s/daily-step is per-step transport+kinetics vs fixed per-day overhead (mask construction, sanitisation, I/O) — which is not decomposed in the provenance. **This is the measurement the project actually needs, and it is a coupled-orchestrator question, not an NSM1 pattern-alignment question.**
 
 ## Verdict against requirements
 
@@ -62,7 +85,9 @@ Interpolating the measured curve, 150K cells ≈ ~94 ms/step. 50 min ÷ 0.094 s 
 | 1M cells, 1 year | ~5.2 hr | Met (long but feasible) |
 | 2M cells, 1 year | ~10.4 hr | Feasible as an overnight job |
 
-**v3 NSM1 is fit for purpose at the project's production scale.** The 5-cell panic was a measurement artifact. The LimnoTech xarray-DataArray design's implicit bet — that vectorisation amortises the per-operation framework overhead at production scale — pays off precisely in the 500K–2M-cell regime the project operates in. It looks catastrophic only at the 5-cell test mesh, which is the worst case for xarray and the least representative of the actual workload.
+**v3 NSM1 kinetics, in isolation, is fit for purpose at the project's production scale.** The 5-cell panic was a measurement artifact. The xarray-DataArray design's implicit bet — that vectorisation amortises the per-operation framework overhead at production scale — pays off precisely in the 500K–2M-cell regime, for NSM1 kinetics. It looks catastrophic only at the 5-cell test mesh, the worst case for xarray.
+
+**Caveat (load-bearing): this verdict covers NSM1 kinetics only.** The table above is NSM1-only at 15-min cadence. The actual project workload is the *full coupled stack* (Riverine + TSM + NSM1 + ESM) at 15-min cadence. The only recorded coupled run (§ below) is at *daily/6-hr* cadence and has not been re-measured at 15-min. The end-to-end viability of a 15-min-cadence coupled run at 500K–2M cells is **unmeasured and remains an open question** — it is a coupled-orchestrator measurement, outside the NSM1 pattern-alignment scope.
 
 ## On the chunked / dask path
 
@@ -87,4 +112,9 @@ At 500K cells, 15% of 267 ms ≈ 40 ms/step. Over a 1-year run that adds 35,040 
 
 - The "NSM is an order of magnitude slower / I am screwed" concern: **the order-of-magnitude gap is v1→v3 (numba vs xarray), present before pattern-alignment, and it does not matter at production scale because the per-operation overhead amortises away.** v3 at 500K cells is ~0.5 µs/cell/step — within a small factor of raw numpy.
 - The pattern-alignment +15%: real, small at scale, recoverable, not decisive.
-- The design question: the v3 (xarray) design is appropriate for the production regime. It is the wrong design only if you primarily run small meshes — which is not the project's use case.
+- The design question (NSM1 only): the v3 (xarray) design is appropriate for the production regime *for NSM1 kinetics*. It is the wrong design only if you primarily run small meshes — not the project's use case.
+
+## What this does NOT resolve (escalated)
+
+- **The full-coupled-stack 15-min-cadence cost at 500K–2M cells is unmeasured.** The only recorded coupled run (Willamette Corvallis–Santiam, `run_provenance.json`) is 591,671 cells / 30 days / **daily Riverine-NSM1-ESM + 6-hr TSM** / 82.97 min — *not* the 15-min cadence the project requires. The model lead's "~150K cells / ~50 min / ~1 yr" recollection was inaccurate on every figure (real: ~592K / ~83 min / 30 days / coarse cadence).
+- The next decisive measurement is **a 15-min-cadence coupled run benchmark at ~500K cells** — owned by the coupled-orchestrator workstream (`ClearWater-modules-phase2-ESM-streaming/.../08_run_coupled*.py`), not by NSM1 pattern-alignment. Until that exists, statements about whether the project's 1-year, 15-min, 500K–2M-cell target is feasible are extrapolation, not measurement.
