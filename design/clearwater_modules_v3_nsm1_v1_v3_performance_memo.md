@@ -98,7 +98,12 @@ For the production regime of interest (hundreds of thousands to ~1,000,000 cells
 
 ## 8. Reproducibility
 
-The harness scripts (`/tmp/cw_v1_v3_speed_sweep.py`, `/tmp/cw_1m_one.py`) are transient and not part of the repository. If a reproducible, version-controlled benchmark is wanted, a properly scoped script can be added under `tests/v3/nsm1/baseline/` as a separate, reviewed change. The verified provenance file in §2 is the authoritative source for the Santiam-Salem run parameters and is already on disk in the case-study output directory.
+The harness is version-controlled at `tests/v3/nsm1/baseline/v1_v3_nsm1_benchmark.py` (the reviewed consolidation of the two transient prototype scripts). It has two modes:
+
+- `pixi run --environment dev python tests/v3/nsm1/baseline/v1_v3_nsm1_benchmark.py` — the v1-vs-v3 speed sweep (§4 table). Default cell-count ceiling is 1,000,000; 2,000,000 is excluded by default because it exceeds the target workstation's memory for v1.
+- `... --mode isolated --engine {v1,v3} --n-cells N` — single engine, single N, in its own process, for the clean peak-RSS figures in §5 (run once per engine).
+
+v1 is built exactly as the coupled pipeline builds it; the parameter dicts in the script carry a comment to that effect. The verified provenance file in §2 is the authoritative source for the Santiam-Salem run parameters and is already on disk in the case-study output directory.
 
 ---
 
