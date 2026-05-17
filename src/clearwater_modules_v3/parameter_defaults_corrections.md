@@ -950,6 +950,35 @@ Each docstring states the deviation explicitly, identifies the test
 fixture's strategy for isolating the deviation from kinetics-formula
 parity, and pins the expected v1 reference value.
 
+### 3.8 FloatingAlgae / BenthicAlgae light limitation — `PAR = solar_radiation * Fr_PAR` restored — NSM1-SCI-A3 (gold-standard spec B1, 2026-05-16)
+
+The mirror image of §3.4. For **algae** (unlike pathogen), the canonical
+formulation *does* operate on PAR: v1 computes `PAR = q_solar * Fr_PAR`
+(`Fr_PAR=0.47`, `nsm1/constants.py:350`; `processes.py:287`) upstream of
+the floating/benthic light-limitation kinetic, and `KL`/`KLb` (=10 W/m²)
+are PAR-scale half-saturation constants.
+
+- **Module:** `processes/floating_algae.py`, `processes/benthic_algae.py`
+  (`run`, `solar_radiation` read → `limit_light`).
+- **Defect (NSM1-SCI-A3, MAJOR):** pre-fix v3 dropped v1's Fr_PAR
+  conversion and passed total broadband shortwave straight into
+  `limit_light` against the PAR-scale `KL`/`KLb` — a **v1→v3 regression**.
+  Confirmed by the B1 trace of the Santiam–Salem case study, where
+  `solar_radiation` is fed total shortwave (45–380 W/m²) with no scaling.
+  Effective irradiance ~2.1× too high → light under-limits → algal growth
+  over-predicted ~30–60% wherever light is the binding constraint.
+- **Resolution:** `Fr_PAR=0.47` restored at the process boundary
+  (`solar = solar_shortwave * self.Fr_PAR`), mirroring v1. `Fr_PAR` added
+  to `parameters/algae.py` and `parameters/balgae.py` (=0.47 — exact v1
+  parity per `nsm1/constants.py:350`; consistent with v3 pathogen
+  `Fr_PAR=0.47`, §1.15/§3.4). Reference-anchored; restores v1 parity
+  (v3⊇v1). The `solar_radiation` registry variable is **not** mutated
+  (conversion is local to the algae processes; other consumers still see
+  total shortwave).
+- **Reference test:** `tests/v3/nsm1/test_floating_algae_scia3_regression.py`
+  (non-shared-path: Fr_PAR supplied as an independent hardcoded literal,
+  not read from the process). Audit item F9 and findings §6 updated.
+
 ---
 
 ## Section 4: Items flagged for LimnoTech reconciliation

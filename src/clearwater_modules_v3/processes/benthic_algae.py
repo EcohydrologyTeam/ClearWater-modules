@@ -13,6 +13,14 @@ to ``FloatingAlgae``:
   ``np.isnan``.
 - Persistence: persist updated state via ``registry.set_at_time``.
 
+Irradiance basis (NSM1-SCI-A3, gold-standard spec B1): the
+``solar_radiation`` registry variable is **total broadband shortwave**
+(W/m^2); benthic photosynthesis responds to PAR and ``KLb`` is a
+PAR-scale half-saturation value. ``run`` converts at the process
+boundary, ``PAR = solar_radiation * Fr_PAR`` (``Fr_PAR=0.47``), before
+``limit_light`` -- mirroring NSM1 v1. The registry variable is not
+mutated.
+
 Adopt the v3 ``BALGAE_DEFAULTS`` merge pattern. Algal-mortality routing
 methods are added that mirror FloatingAlgae's, using benthic
 stoichiometry (BWn, BWp, BWc) and the v1 ``Fw`` (fraction to water
@@ -311,7 +319,14 @@ class BenthicAlgae(FloatingAlgae):
             )
         depth = registry.get_at_time("depth", time)
         water_temperature = registry.get_at_time("water_temperature", time)
-        solar = registry.get_at_time("solar_radiation", time)
+        # ``solar_radiation`` is total broadband shortwave (W/m^2);
+        # benthic photosynthesis responds to PAR and ``KLb`` is PAR-scale.
+        # Convert at the process boundary (mirrors NSM1 v1 PAR = q_solar *
+        # Fr_PAR). NSM1-SCI-A3 fix (gold-standard spec B1): pre-fix v3
+        # passed total shortwave straight into ``limit_light`` against the
+        # PAR-scale ``KLb`` (v1->v3 regression -- v1 applied Fr_PAR).
+        solar_shortwave = registry.get_at_time("solar_radiation", time)
+        solar = solar_shortwave * self.Fr_PAR
 
         # Cache depth for v1 NH4_AbRespiration / NH4_AbGrowth (which
         # divide by depth to convert g/m^2/d areal rates into mg-N/L/d

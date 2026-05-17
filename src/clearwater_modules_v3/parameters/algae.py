@@ -25,7 +25,8 @@ DEFAULTS: dict[str, float | int | bool] = {
     'AWn': 7.2,                     # mg-N per stoichiometric unit (rna = AWn/AWa = 0.0072 mg-N/ug-Chla)
     'AWp': 1.0,                     # mg-P per stoichiometric unit (rpa = AWp/AWa = 0.001 mg-P/ug-Chla)
     'AWa': 1000.0,                  # ug-Chla per stoichiometric unit (matches benthic BWa; rda/rca/rna/rpa derived above)
-    'KL': 10.0,                     # W/m^2; light limitation half-saturation
+    'KL': 10.0,                     # W/m^2 PAR; light limitation half-saturation (PAR-scale, Bowie/Chapra)
+    'Fr_PAR': 0.47,                 # unitless; PAR fraction of total broadband shortwave. NSM1-SCI-A3 (spec B1): solar_radiation is total SW; algal photosynthesis responds to PAR only. Restores v1 PAR=q_solar*Fr_PAR (nsm1/constants.py:350); matches v3 pathogen Fr_PAR=0.47.
     'KsN': 0.04,                    # mg-N/L; nitrogen half-saturation for algal growth
     'KsP': 0.0012,                  # mg-P/L; phosphorus half-saturation for algal growth
     #

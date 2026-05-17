@@ -17,6 +17,15 @@ the FloatingAlgae bug fixes and adopt the v3 patterns:
   ``rate.isnull()`` / ``np.isnan`` (IEEE 754 makes ``x == np.nan``
   always False, so the prior guards were no-ops).
 
+Irradiance basis (NSM1-SCI-A3, gold-standard spec B1): the
+``solar_radiation`` registry variable is **total broadband shortwave**
+(W/m^2). Algal photosynthesis responds to photosynthetically active
+radiation only; ``KL`` (``light_limitation_constant``) is a PAR-scale
+half-saturation value. ``run`` therefore converts at the process
+boundary, ``PAR = solar_radiation * Fr_PAR`` (``Fr_PAR=0.47``), before
+``limit_light`` -- mirroring NSM1 v1 ``processes.py:287``. The registry
+variable itself is not mutated.
+
 Adopt the Phase 1.3 DEFAULTS-merge pattern established by ``Nitrogen``:
 the v3 ``ALGAE_DEFAULTS`` is the class ``DEFAULTS`` and is merged with
 a user ``parameters`` dict at construction time. Legacy v2 kwargs are
@@ -411,7 +420,18 @@ class FloatingAlgae(Process):
             )
         depth = registry.get_at_time("depth", time)
         water_temperature = registry.get_at_time("water_temperature", time)
-        solar = registry.get_at_time("solar_radiation", time)
+        # ``solar_radiation`` is total broadband shortwave (W/m^2). Algal
+        # photosynthesis responds to photosynthetically active radiation
+        # only, and ``KL`` (``light_limitation_constant``) is a PAR-scale
+        # half-saturation value. Convert at the process boundary, mirroring
+        # NSM1 v1 ``processes.py:287`` (``PAR = q_solar * Fr_PAR``).
+        # NSM1-SCI-A3 fix (gold-standard spec B1): pre-fix v3 passed total
+        # shortwave straight into ``limit_light`` against the PAR-scale
+        # ``KL``, under-limiting light and over-predicting algal growth
+        # ~30-60% wherever light is the binding constraint (a v1->v3
+        # regression -- v1 applied Fr_PAR, v3 had dropped it).
+        solar_shortwave = registry.get_at_time("solar_radiation", time)
+        solar = solar_shortwave * self.Fr_PAR
 
         # --- Fused rate composition (pattern B) ---
         rate, components = self._change_with_components(

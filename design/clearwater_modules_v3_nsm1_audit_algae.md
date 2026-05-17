@@ -149,13 +149,30 @@ Sources audited:
   (Fr_PAR=0.47 default; see `parameter_defaults_corrections.md` 3.4).
 - v3 (`floating_algae.py:277, 393`): reads `solar_radiation` from registry and
   passes it as `surface_light_intensity` (the FL input slot).
-- **Minor / observation**: there is no Fr_PAR scaling in the FloatingAlgae or
-  BenthicAlgae path. Either `solar_radiation` is conventionally already PAR
-  (in which case the registry contract should say so), or FL/FLb is being
-  driven by total shortwave, overstating effective irradiance by ~2x. Needs
-  verification against the registry-side variable contract.
-- Severity: minor (needs verification)
-- Category: v3-deviation
+- **CONFIRMED & FIXED — NSM1-SCI-A3 (MAJOR), gold-standard spec B1, 2026-05-16.**
+  Verification (B1 trace, Santiam–Salem case study
+  `ClearWater-modules-phase2-ESM-streaming/case_studies/santiam_salem/`):
+  the registry-side `solar_radiation` is **total broadband shortwave**
+  (synthetic met `solar_W_m2`, 45–380 W/m^2; `06_synthesize_nutrients_
+  meteorology.py:301-359` → `08_run_coupled.py:855`, no scaling), and
+  `KL`/`KLb` are PAR-scale (=10 W/m^2). Pre-fix v3 drove FL/FLb with
+  total shortwave against a PAR-scale half-saturation → effective
+  irradiance ~2.1× too high → light under-limits → algal growth
+  over-predicted ~30–60% wherever light is the binding constraint. (The
+  spec's "observe the Santiam–Salem mismatch direction" check was moot:
+  that case study uses synthetic forcing with no observed-chlorophyll
+  validation; the code+config trace plus the v1→v3 regression is itself
+  decisive.)
+- **Fix**: `Fr_PAR=0.47` restored at the process boundary in
+  `floating_algae.py` (`run`, solar read) and `benthic_algae.py`
+  (`run`, solar read), mirroring v1 `processes.py:287`. `Fr_PAR` added
+  to `parameters/algae.py` + `parameters/balgae.py` (=0.47, matches v1
+  `nsm1/constants.py:350` and v3 pathogen). Restores v1 parity (v3⊇v1).
+  Regression-guarded by `tests/v3/nsm1/test_floating_algae_scia3_regression.py`
+  (non-shared-path). See `parameter_defaults_corrections.md` (SCI-A3
+  entry) and findings §6.
+- Severity: was minor (needs verification) → **MAJOR, resolved**
+- Category: v3-deviation → v1→v3 regression, corrected
 
 ### F10. Nitrogen limitation (FN)
 - Fortran (`modAlgae.f90:297-303`): `FN = (NH4+NO3)/(KsN+NH4+NO3)` when

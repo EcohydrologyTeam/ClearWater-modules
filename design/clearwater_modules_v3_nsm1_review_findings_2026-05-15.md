@@ -322,9 +322,41 @@ coupling driver: which variable/units the Santiam–Salem run writes into
 observed miss further discriminates: over-prediction strongly implicates the
 light/PAR path; under-prediction points to the multiplicative-nutrient form.
 
-**Determination:** the algae mismatch is **plausibly explained by SCI-A3**, not
-by the CRITICAL alkalinity defect. Confidence is *moderate and conditional*
-pending the irradiance-convention trace and the miss-direction.
+**Determination (preliminary, 2026-05-15):** the algae mismatch is **plausibly
+explained by SCI-A3**, not by the CRITICAL alkalinity defect. Confidence is
+*moderate and conditional* pending the irradiance-convention trace and the
+miss-direction.
+
+**Determination (resolved, 2026-05-16 — gold-standard spec B1): SCI-A3
+CONFIRMED.** The B1 trace of the Santiam–Salem case study
+(`ClearWater-modules-phase2-ESM-streaming/case_studies/santiam_salem/`)
+established decisively:
+
+- `solar_radiation` is fed **total broadband shortwave** (synthetic met
+  `solar_W_m2`, 45–380 W/m²; `06_synthesize_nutrients_meteorology.py:301-359`
+  → `08_run_coupled.py:855`, no PAR scaling applied).
+- The run uses `KL=10` W/m² (PAR-scale), `light_limitation_option=1`
+  (half-saturation), `growth_rate_option=3` (`08_run_coupled.py:603-608`).
+- v3 `floating_algae.py`/`benthic_algae.py` passed total shortwave straight
+  into `limit_light`; v1 applied `PAR = q_solar·Fr_PAR` (Fr_PAR=0.47,
+  `nsm1/constants.py:350`, `processes.py:287`). This is a **v1→v3
+  regression** — effective irradiance ~2.1× too high → light under-limits →
+  algal growth over-predicted ~30–60% wherever light is the binding
+  constraint.
+
+Methodological note: the spec's "observe the Santiam–Salem miss direction"
+discriminator was **unavailable** — that case study uses synthetic
+meteorology/nutrients with no observed-chlorophyll validation, so there is no
+empirical mismatch direction to read. The code+config trace plus the v1→v3
+regression evidence is itself decisive and stronger than a direction signal
+would have been.
+
+**Resolution:** Fr_PAR=0.47 restored at the floating/benthic process
+boundary (gold-standard spec B1; commit pending). Restores v1 parity (v3⊇v1);
+reference-anchored (v1 `nsm1/constants.py:350`; consistent with v3 pathogen
+Fr_PAR=0.47). Non-shared-path regression:
+`tests/v3/nsm1/test_floating_algae_scia3_regression.py`. Audit item F9 and
+`parameter_defaults_corrections.md` updated.
 
 ---
 

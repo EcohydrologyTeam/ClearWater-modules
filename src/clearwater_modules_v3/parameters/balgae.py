@@ -34,7 +34,8 @@ DEFAULTS: dict[str, float | int | bool] = {
     'BWn': 7.2,                         # mg-N per stoichiometric unit (rnb = BWn/BWd = 0.072 mg-N/mg-D)
     'BWp': 1.0,                         # mg-P per stoichiometric unit (rpb = BWp/BWd = 0.01 mg-P/mg-D)
     'BWa': 1000.0,                      # ug-Chla per stoichiometric unit; gives rab = BWa/BWd = 10 mg-Chla/g-DW (matches WASP7 canonical and NSM1 floating-algae AWa/AWd; was 3500 in v1/v3 pre-Phase-9.E and 5000 in Fortran, both above canonical)
-    'KLb': 10.0,                        # W/m^2; benthic light limitation half-saturation
+    'KLb': 10.0,                        # W/m^2 PAR; benthic light limitation half-saturation (PAR-scale)
+    'Fr_PAR': 0.47,                     # unitless; PAR fraction of total broadband shortwave. NSM1-SCI-A3 (spec B1): restores v1 PAR=q_solar*Fr_PAR for benthic algae; matches floating-algae + pathogen Fr_PAR=0.47.
     'KsNb': 0.25,                       # mg-N/L; nitrogen half-saturation for benthic algae
     'KsPb': 0.125,                      # mg-P/L; phosphorus half-saturation for benthic algae
     'Ksb': 10.0,                        # g-D/m^2; benthic biomass half-saturation (FSb space limitation)
