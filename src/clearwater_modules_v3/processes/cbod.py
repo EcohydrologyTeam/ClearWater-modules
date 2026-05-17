@@ -17,7 +17,7 @@ class.
 Kinetics (mirrors v1 ``processes.py:2334-2422``):
 
     dCBOD/dt = -kbod_tc * DOX / (KsOxbod + DOX) * CBOD     # oxidation
-               -ksbod_tc / depth * CBOD                      # settling
+               -ksbod_tc * CBOD                             # settling (1/d)
 
 where:
 
@@ -28,9 +28,22 @@ where:
   CBOD test before the Phase 5 DOX Process lands), a stub value of
   ``8.0 mg/L`` is used and a warning is logged once per ``run`` call.
 
+NSM1-SCI-CB1 (gold-standard spec C2; research doc
+``docs/clearwater_modules_v3_nsm1_research_2_3_ksbod.md``;
+``parameter_defaults_corrections.md`` §2.3): CBOD settling is a
+**first-order rate constant (1/d at 20 °C)**, NOT a settling velocity.
+Fortran NSM1 ``modCBOD.f90:114`` and QUAL2E apply ``ksbod_tc * CBOD``
+with **no depth division**; pre-fix v3 divided by depth (treating it as
+m/d), which silently diverged from the Fortran 1/d convention by a
+factor of ``1/depth`` for any nonzero ``ksbod_20``. The Arrhenius
+coefficient is the **settling** value ``ksbod_theta = 1.024``
+(Bowie 1985 / QUAL2E), not the oxidation ``1.047``.
+
 Note (Phase 0 audit): the v3 ``ksbod_20=0`` default means CBOD does not
 settle by default. The settling code path is wired in for completeness
-but is identically zero unless the user passes ``ksbod_20 > 0``.
+but is identically zero unless the user passes ``ksbod_20 > 0`` — so the
+SCI-CB1 form/θ correction is dormant at the shipped default and does not
+perturb the coupled-demo trajectory.
 
 Q10 GS-rates contract: the per-step oxidation rate
 ``self.cbod_oxidation_rate`` is cached as an instance attribute after
@@ -305,9 +318,16 @@ class CBOD(Process):
         else:
             oxidation_rate = kbod_tc * cbod
 
-        # Settling rate (mg-O2/L/d). With the Phase 0 audit default
-        # ``ksbod_20=0``, this term is identically zero.
-        settling_rate = ksbod_tc / depth * cbod
+        # Settling rate (mg-O2/L/d). NSM1-SCI-CB1 (spec C2): ``ksbod`` is
+        # a first-order rate (1/d at 20 °C), so the form is
+        # ``ksbod_tc * cbod`` with NO depth division -- matching Fortran
+        # ``modCBOD.f90:114`` and QUAL2E. Pre-fix v3 used
+        # ``ksbod_tc / depth * cbod`` (a velocity, m/d), diverging by
+        # 1/depth for any nonzero ``ksbod_20``. ``depth`` is still read
+        # from the registry (variables contract / symmetry) but is no
+        # longer used by this term. With the shipped ``ksbod_20=0`` this
+        # is identically zero regardless of form.
+        settling_rate = ksbod_tc * cbod
 
         # Sanitize per-sub-flux at the cache source: a NaN/inf here
         # propagates via DOX's rate sum and zeroes the entire cell's

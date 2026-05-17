@@ -23,14 +23,17 @@ formula in a Phase 9.x audit), update the reference literal here and
 document why in the commit message. The intent is bit-exact match at
 ``rtol=1e-6`` until a deliberate divergence is approved.
 
-v3 deviation note (settling): v1 ``CBOD_sedimentation = CBOD * ksbod_tc``
-(units treat ``ksbod_tc`` as 1/d). v3 ``cbod_settling_rate =
-ksbod_tc / depth * cbod`` (treats ``ksbod_tc`` as m/d and divides by
-depth to get 1/d). The two forms differ by ``1/depth``. The
-``V1_SETTLING_PER_DEPTH_REFERENCE`` reference below is v1's
-sedimentation flux divided by the 5-cell depth fixture so the
-assertion holds. The default ``ksbod_20=0.0`` makes this term
-identically zero in production use anyway.
+Settling (NSM1-SCI-CB1, gold-standard spec C2, RESOLVED 2026-05-16):
+v1/Fortran ``CBOD_sedimentation = CBOD * ksbod_tc`` is a first-order
+**1/d rate** (Fortran ``modCBOD.f90:114``; QUAL2E), with **no depth
+division**. Pre-fix v3 used ``ksbod_tc / depth * cbod`` (a velocity,
+m/d), and the old frozen ``V1_SETTLING_PER_DEPTH_REFERENCE`` was v1's
+1/d flux *divided by* the depth fixture to match that v3 defect — a
+shared-path reference that masked the units error. v3 now applies the
+1/d form (no depth division), so the settling test below computes the
+faithful v1/Fortran reference **inline and independently** (no
+``1/depth`` factor) and is a genuine v1↔v3 parity check. The default
+``ksbod_20=0.0`` makes this term identically zero in production anyway.
 """
 from datetime import datetime, timedelta
 
@@ -39,6 +42,7 @@ import pytest
 import xarray as xr
 
 from clearwater_modules_v3.processes.cbod import CBOD
+from clearwater_modules_v3.utils.conversions import arrhenius_correction
 
 
 # ---------------------------------------------------------------------------
@@ -62,13 +66,11 @@ V1_OXIDATION_NO_DOX_REFERENCE = np.array([
     0.6039133717200031,
 ])
 
-V1_SETTLING_PER_DEPTH_REFERENCE = np.array([
-    0.15896319653691854,
-    0.11402935024251763,
-    0.10000000000000002,
-    0.09591828749999998,
-    0.08387685718333376,
-])
+# NSM1-SCI-CB1: the former ``V1_SETTLING_PER_DEPTH_REFERENCE`` literal
+# was v1's 1/d sedimentation flux divided by the depth fixture to match
+# the pre-fix v3 ``/depth`` defect (a shared-path reference). Removed;
+# the settling test now computes the faithful v1/Fortran 1/d reference
+# inline (no depth division) — see ``test_cbod_settling_matches_v1_*``.
 
 
 # ---------------------------------------------------------------------------
@@ -185,18 +187,25 @@ def test_cbod_oxidation_no_dox_matches_v1_first_order(loaded_registry, time_zero
     )
 
 
-def test_cbod_settling_matches_v1_CBOD_sedimentation_per_depth(
-    loaded_registry, time_zero
+def test_cbod_settling_matches_v1_CBOD_sedimentation_1d_rate(
+    loaded_registry, time_zero, cbod_5cell, water_temp_5cell, depth_5cell
 ):
-    """v3 cached ``cbod_settling_rate`` matches v1
-    ``CBOD_sedimentation = CBOD * ksbod_tc`` divided by depth (see
-    module-level deviation note)."""
+    """v3 cached ``cbod_settling_rate`` matches the faithful v1/Fortran
+    1/d form ``CBOD_sedimentation = ksbod_tc * CBOD`` with **no depth
+    division** (Fortran ``modCBOD.f90:114``; NSM1-SCI-CB1, spec C2).
+
+    The reference is computed inline and independently (the van't Hoff
+    Arrhenius form at the explicit ``ksbod_theta`` test input), not read
+    from the process — a genuine non-shared-path v1↔v3 check.
+    """
+    ksbod_20 = 0.05
+    ksbod_theta = 1.047  # explicit test input; the form must match at any θ
     cbod = CBOD(
         parameters={
             "kbod_20": 0.12,
             "kbod_theta": 1.047,
-            "ksbod_20": 0.05,
-            "ksbod_theta": 1.047,
+            "ksbod_20": ksbod_20,
+            "ksbod_theta": ksbod_theta,
             "KsOxbod": 0.5,
         },
         time_step=timedelta(minutes=5),
@@ -204,8 +213,15 @@ def test_cbod_settling_matches_v1_CBOD_sedimentation_per_depth(
     cbod.use_DOX = True
     cbod.run(time_zero, loaded_registry)
 
+    # Faithful v1/Fortran 1/d form: ksbod_tc * CBOD, NO depth division.
+    ksbod_tc = arrhenius_correction(water_temp_5cell, ksbod_20, ksbod_theta)
+    expected_1d = np.asarray(ksbod_tc * cbod_5cell)
+
     np.testing.assert_allclose(
-        np.asarray(cbod.cbod_settling_rate),
-        V1_SETTLING_PER_DEPTH_REFERENCE,
-        rtol=1e-6,
+        np.asarray(cbod.cbod_settling_rate), expected_1d, rtol=1e-6
     )
+    # Anti-regression: must NOT be the pre-fix ``/depth`` velocity form.
+    prefix_per_depth = expected_1d / np.asarray(depth_5cell)
+    assert not np.allclose(
+        np.asarray(cbod.cbod_settling_rate), prefix_per_depth, rtol=1e-6
+    ), "v3 cbod settling still divides by depth (pre-fix SCI-CB1 defect)"

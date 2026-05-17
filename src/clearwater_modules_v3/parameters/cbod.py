@@ -25,18 +25,20 @@ Corrections applied:
     laden CBOD settling dominated removal — illustrating that
     nonzero values are site-, source-, and treatment-specific.
 
-  Two related defects are flagged for follow-up (Section 4 / future
-  audit, NOT addressed in Phase 9.F.C):
+  Two related defects — **RESOLVED 2026-05-16 (NSM1-SCI-CB1,
+  gold-standard spec C2; research doc
+  ``docs/clearwater_modules_v3_nsm1_research_2_3_ksbod.md``):**
 
-  - **Units form**: v3's ``processes/cbod.py`` divides ``ksbod_tc`` by
-    depth (``ksbod_tc / depth * cbod``) implementing it as a
+  - **Units form**: v3's ``processes/cbod.py`` divided ``ksbod_tc`` by
+    depth (``ksbod_tc / depth * cbod``), implementing it as a
     settling-velocity (m/d), but Fortran NSM1 (``modCBOD.f90:114``,
     no depth division) and QUAL2E both treat it as a 1/d rate
-    constant. With ``ksbod_20 = 0`` the form difference is silent;
-    nonzero user values would diverge by a factor of 1/depth.
-  - **Theta**: v3 ``ksbod_theta = 1.047`` differs from
-    Fortran/QUAL2E ``1.024`` (the canonical settling-coefficient
-    Arrhenius value per Bowie 1985 / QUAL2E).
+    constant. **Fixed** to ``ksbod_tc * cbod`` (no depth division;
+    1/d at 20 °C). With ``ksbod_20 = 0`` the form difference was
+    silent; nonzero user values would have diverged by 1/depth.
+  - **Theta**: v3 ``ksbod_theta`` was ``1.047`` (the oxidation
+    coefficient); the canonical **settling** value is ``1.024``
+    (Bowie 1985 / QUAL2E). **Fixed** to ``1.024``.
 
   See ``parameter_defaults_corrections.md`` Section 2.3 and research
   record in ``docs/clearwater_modules_v3_nsm1_research_2_3_ksbod.md``.
@@ -45,7 +47,7 @@ Corrections applied:
 DEFAULTS: dict[str, float | int | bool] = {
     'KsOxbod': 0.5,         # mg-O2/L; oxygen half-saturation for CBOD oxidation
     'kbod_20': 0.12,        # 1/d; CBOD oxidation rate at 20 C
-    'ksbod_20': 0.0,        # CBOD settling rate at 20 C. v3/v1/Fortran/QUAL2E default; intentional zero per modern dissolved-CBOD convention (QUAL2K, WASP, CE-QUAL-W2 omit the parameter entirely). Nonzero values are site/source-specific. Phase 9.F.C documentation fix; see corrections doc Section 2.3.
+    'ksbod_20': 0.0,        # 1/d at 20 C; CBOD settling first-order RATE constant (NOT a velocity). v3/v1/Fortran/QUAL2E default; intentional zero per modern dissolved-CBOD convention (QUAL2K, WASP, CE-QUAL-W2 omit the parameter entirely). Nonzero values are site/source-specific. NSM1-SCI-CB1 (spec C2): processes/cbod.py applies ksbod_tc*cbod with NO depth division (Fortran modCBOD.f90:114 / QUAL2E). See corrections doc Section 2.3.
     'kbod_theta': 1.047,    # unitless; Arrhenius coefficient for CBOD decay
-    'ksbod_theta': 1.047,   # unitless; Arrhenius coefficient for CBOD settling (note: Fortran/QUAL2E use 1.024 for settling; v3 inherits v1's 1.047, flagged for follow-up - see corrections doc Section 2.3)
+    'ksbod_theta': 1.024,   # unitless; Arrhenius coefficient for CBOD SETTLING. NSM1-SCI-CB1 (spec C2): 1.047 -> 1.024, the canonical settling-coefficient value (Bowie 1985 / QUAL2E); the prior 1.047 was the oxidation coefficient mis-applied to settling. See corrections doc Section 2.3.
 }

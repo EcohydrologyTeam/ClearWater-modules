@@ -856,7 +856,7 @@ shortwave for UV-mediated pathogen decay. The calibration target
 - **Reference test:** `tests/test_5_pathogen_calculations_v2.py::test_phase9fb_light_decay_uses_raw_q_solar`
   pins the post-9.F.B behavior (rate is insensitive to `Fr_PAR`).
 
-### 3.5 CBOD sedimentation — `ksbod_tc / depth` in v3 (cross-references Section 2.3)
+### 3.5 CBOD sedimentation — `ksbod_tc / depth` in v3 — RESOLVED (NSM1-SCI-CB1, gold-standard spec C2, 2026-05-16)
 
 - **Module:** `processes/cbod.py` (sedimentation sink)
 - **v1 / Fortran / QUAL2E form:** `CBOD_sedimentation = CBOD * ksbod_tc`,
@@ -870,19 +870,25 @@ shortwave for UV-mediated pathogen decay. The calibration target
   first-order rate. This conflicts with the Fortran/QUAL2E convention
   but matches the velocity-style units label inherited from v1's
   `constants.py`.
-- **Status:** the form mismatch is **silent** at the canonical
-  `ksbod_20 = 0` default (both forms produce zero) but would diverge
-  by a factor of `1/depth` at any nonzero user value. Phase 9.F.C
-  (Section 2.3) documented this and the related `ksbod_theta` mismatch
-  (v3 `1.047` vs Fortran/QUAL2E `1.024`) as deferred follow-ups; both
-  become actionable only if a user activates CBOD settling. See Section
-  2.3 above for the Phase 9.F.2 research record and the
-  modern-convention rationale (QUAL2K, WASP, CE-QUAL-W2 omit the
-  parameter entirely).
-- **Reference test:** `tests/test_5_cbod_calculations_v2.py` module
-  docstring (line 11) and the parity test at lines 173–200 document the
-  units mismatch and pin the v3 result against the v1 form scaled
-  through the `1/depth` factor.
+- **Resolution (NSM1-SCI-CB1, spec C2, 2026-05-16):** the form
+  mismatch was **silent** at the canonical `ksbod_20 = 0` default
+  (both forms produce zero) but diverged by `1/depth` at any nonzero
+  user value. `processes/cbod.py` now applies `settling_rate =
+  ksbod_tc * cbod` (no depth division), matching Fortran
+  `modCBOD.f90:114` / QUAL2E; and `ksbod_theta` corrected `1.047 →
+  1.024` (the canonical settling-coefficient value, Bowie 1985 /
+  QUAL2E; the prior `1.047` was the oxidation coefficient). `depth` is
+  still read from the registry (variables contract) but no longer used
+  by this term. Dormant at the shipped `ksbod_20 = 0` → does not
+  perturb the coupled-demo trajectory; no re-baseline required. See
+  Section 2.3 for the Phase 9.F.2 research record and the
+  modern-convention rationale.
+- **Reference tests:** `tests/v3/nsm1/test_cbod_scicb1_regression.py`
+  (non-shared-path: a nonzero `ksbod_20` case asserted against an
+  independently hardcoded Fortran 1/d form — no `1/depth` factor — and
+  a `ksbod_theta == 1.024` guard). Legacy
+  `tests/test_5_cbod_calculations_v2.py` documents the historical v1
+  velocity-style label.
 
 ### 3.6 Celsius-to-Kelvin offset — v3 uses 273.15 (SI); v2 uses 273.16 (triple point)
 
