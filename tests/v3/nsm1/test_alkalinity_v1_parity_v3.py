@@ -5,6 +5,19 @@ imported v1 directly to compute the reference inline. This file
 freezes those v1 reference values as numpy literals so the test runs
 without requiring ``src/clearwater_modules/`` (v1) source.
 
+NSM1-CA-1 re-derivation (2026-05-16, gold-standard spec A1): the
+``V1_ALGAL_GROWTH_REFERENCE`` / ``V1_ALGAL_RESP_REFERENCE`` literals
+were originally captured by calling v1's ``Alk_algal_growth`` /
+``Alk_algal_respiration`` with ``rca`` bound to the *raw* stoichiometric
+weight ``AWc`` (=40) -- the same defective convention v3 carried in
+``alkalinity.py``. Because both sides shared that wrong input, the
+parity test passed while masking a 1000x error (the structural reason
+NSM1-CA-1 escaped; see gold-standard spec Section 1(4)). The literals
+below are re-derived by calling the **same v1 functions** with the
+verified-correct *intensive* ratio ``rca = AWc/AWa`` (=0.04 mg-C/ug-Chla,
+v1 ``processes.py:337-347``). They are now a faithful v1 capture and
+this is a genuine non-shared-path v1<->v3 parity check.
+
 Scope: v1-equivalent ``dAlkdt`` sub-terms (nitrification sink,
 denitrification source, algal-growth coupling, algal-respiration source).
 """
@@ -44,20 +57,25 @@ V1_DENIT_SOURCE_REFERENCE = np.array([
     0.0017626335751812243,
 ])
 
+# Re-derived 2026-05-16 by calling v1 ``Alk_algal_growth`` with the
+# correct intensive ``rca = AWc/AWa = 40/1000 = 0.04`` (was captured at
+# raw ``AWc = 40``; exactly 1000x too large). NSM1-CA-1.
 V1_ALGAL_GROWTH_REFERENCE = np.array([
-    -9.11949685534591,
-    -4.90566037735849,
-    -2.2012578616352187,
-    1.5094339622641522,
-    11.949685534591195,
+    -0.00911949685534591,
+    -0.00490566037735849,
+    -0.002201257861635219,
+    0.001509433962264152,
+    0.011949685534591196,
 ])
 
+# Re-derived 2026-05-16 from v1 ``Alk_algal_respiration`` at intensive
+# ``rca = 0.04`` (was raw ``AWc = 40``; exactly 1000x too large).
 V1_ALGAL_RESP_REFERENCE = np.array([
-    11.0062893081761,
-    13.20754716981132,
-    15.40880503144654,
-    17.61006289308176,
-    22.0125786163522,
+    0.0110062893081761,
+    0.01320754716981132,
+    0.01540880503144654,
+    0.01761006289308176,
+    0.0220125786163522,
 ])
 
 

@@ -333,14 +333,25 @@ matched parameters. v3 matches the Fortran routing.
 - v1 (`processes.py:3322-3342`):
   `(r_alkaa * ApUptakeFr_NH4 - r_alkan * (1 - ApUptakeFr_NH4))
   * ApGrowth * rca * 50000`.
-- v3 (`alkalinity.py:301-343`):
+- v3 (`Alkalinity._floating_algae_growth_alk_flux`):
   `(r_alkaa * ap_uptake_fr_nh4 - r_alkan * (1 - ap_uptake_fr_nh4))
   * ap_growth * rca * EQ_TO_MG_CACO3` where `EQ_TO_MG_CACO3 = 50000` and
-  `rca = self.AWc`.
+  `rca = self.AWc / self.AWa`.
 
-Match. Stoichiometric ratio names differ (Fortran `ralkca/ralkcn`,
-v1/v3 `r_alkaa/r_alkan`) but the values
-`14/106/12/1000` and `18/106/12/1000` are identical.
+**Defect NSM1-CA-1 (CRITICAL) — CORRECTED 2026-05-16 (gold-standard
+spec A1).** This entry previously read `rca = self.AWc` and was
+incorrectly verdicted "Match": pre-fix v3 bound the *raw* stoichiometric
+weight `AWc` (=40) where Fortran (`rca(r)`, `modAlgae`) and v1
+(`processes.py:337-347`, `rca = AWc/AWa`) both use the *intensive*
+carbon:chlorophyll ratio `AWc/AWa` (=0.04 mg-C/ug-Chla). The raw form
+overstated the floating-algae alkalinity flux by `AWa = 1000x`. The fix
+binds `rca = self.AWc / self.AWa`, mirroring `carbon.py:495` and v1.
+
+Now a true Match. Stoichiometric ratio names differ (Fortran
+`ralkca/ralkcn`, v1/v3 `r_alkaa/r_alkan`) but the values
+`14/106/12/1000` and `18/106/12/1000` are identical, and the
+carbon:chlorophyll conversion is now the intensive `AWc/AWa` on all
+three (Fortran/v1/v3).
 
 ### 22. Algal respiration source
 
@@ -348,10 +359,15 @@ v1/v3 `r_alkaa/r_alkan`) but the values
   `Alk_ApRespiration = ralkca * rca(r) * ApRespiration * 50000`.
 - v1 (`processes.py:3345-3361`):
   `ApRespiration * r_alkaa * 50000 * rca`.
-- v3 (`alkalinity.py:345-360`):
-  `ap_resp * self.r_alkaa * self.AWc * EQ_TO_MG_CACO3`.
+- v3 (`Alkalinity._floating_algae_respiration_alk_source`):
+  `ap_resp * self.r_alkaa * (self.AWc / self.AWa) * EQ_TO_MG_CACO3`.
 
-Match.
+**Defect NSM1-CA-1 (CRITICAL) — CORRECTED 2026-05-16 (gold-standard
+spec A1).** Previously `ap_resp * self.r_alkaa * self.AWc * ...` and
+incorrectly verdicted "Match": v3 used the raw weight `AWc` where
+Fortran/v1 use the intensive `rca = AWc/AWa`, a 1000x overstatement of
+the algal-respiration alkalinity source. Fixed to `self.AWc / self.AWa`.
+Now a true Match.
 
 ### 23. Benthic algae growth and respiration
 
@@ -362,12 +378,17 @@ Match.
   * 50000`.
 - v1 (`processes.py:3364-3410`): same form, with `1/depth` factor and
   `Fb` multiplication; uses `r_alkba`/`r_alkbn`.
-- v3 (`alkalinity.py:362-418`): same form; uses
-  `r_alkba`/`r_alkbn`/`BWc`/`Fb`. The `1/depth` divider is applied
-  explicitly in `_benthic_algae_growth_alk_flux` and
-  `_benthic_algae_respiration_alk_source`.
+- v3 (`_benthic_algae_growth_alk_flux` /
+  `_benthic_algae_respiration_alk_source`): same form; uses
+  `r_alkba`/`r_alkbn`/`rcb = BWc/BWd`/`Fb`. The `1/depth` divider is
+  applied explicitly in both helpers.
 
-Match.
+**Defect NSM1-CA-1 (CRITICAL) — CORRECTED 2026-05-16 (gold-standard
+spec A1).** Previously bound raw `BWc` (=40) and was incorrectly
+verdicted "Match": Fortran (`rcb(r)`) and v1 use the intensive
+carbon:dry-weight ratio `BWc/BWd` (=0.4 mg-C/mg-D); the raw form
+overstated the benthic-algae alkalinity terms by `BWd = 100x`. Fixed
+to `rcb = self.BWc / self.BWd`. Now a true Match.
 
 ### 24. Net dAlk/dt sign convention
 

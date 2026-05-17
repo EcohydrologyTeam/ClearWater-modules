@@ -58,9 +58,15 @@ DEFAULTS sources (composed from four parameter groups):
 * ``parameters.alkalinity``: 6 stoichiometric ratios (above).
 * ``parameters.global_parameters``: feature flags (``use_NH4``, ``use_NO3``,
   ``use_DOX``, ``use_Algae``, ``use_Balgae``).
-* ``parameters.algae``: ``AWc`` (== rca, mg-C/ug-Chla).
-* ``parameters.balgae``: ``BWc`` (== rcb, mg-C/g-D), ``Fb`` (bottom-area
-  fraction).
+* ``parameters.algae``: ``AWc``, ``AWa`` -- raw stoichiometric weights.
+  The algal-coupling terms use the *intensive* carbon:chlorophyll ratio
+  ``rca = AWc / AWa`` (mg-C/ug-Chla), formed at point of use (mirrors
+  ``carbon.py:495-496``, Fortran ``modAlgae``, and NSM1 v1
+  ``processes.py:337-347``). It is **not** ``AWc`` alone.
+* ``parameters.balgae``: ``BWc``, ``BWd`` -- raw stoichiometric weights.
+  Benthic terms use the intensive carbon:dry-weight ratio
+  ``rcb = BWc / BWd`` (mg-C/mg-D), formed at point of use. ``Fb``
+  (bottom-area fraction).
 
 Coupling pattern: every cross-Process value is read via
 ``getattr(..., default=0)`` so missing siblings degrade gracefully.
@@ -199,11 +205,22 @@ class Alkalinity(Process):
                 "use_Balgae",
             ):
                 composed[k] = GLOBAL_PARAM_DEFAULTS.get(k, True)
-            # Algal stoichiometry (rca = AWc, mg-C/ug-Chla).
+            # Algal stoichiometry: carry the raw weights AWc/AWa; the
+            # intensive ratio rca = AWc/AWa (mg-C/ug-Chla) is formed at
+            # point of use (mirrors carbon.py:495-496, v1
+            # processes.py:337-347, Fortran modAlgae). NSM1-CA-1 fix
+            # (gold-standard spec A1, 2026-05-16): pre-fix v3 bound
+            # rca = AWc (raw, =40), inflating the floating-algae
+            # alkalinity flux by AWa = 1000x.
             composed["AWc"] = ALGAE_DEFAULTS["AWc"]
-            # Benthic algae stoichiometry (rcb = BWc, mg-C/g-D) and
+            composed["AWa"] = ALGAE_DEFAULTS["AWa"]
+            # Benthic algae stoichiometry: carry raw BWc/BWd; the
+            # intensive ratio rcb = BWc/BWd (mg-C/mg-D) is formed at
+            # point of use. Pre-CA-1-fix v3 bound rcb = BWc (raw, =40),
+            # inflating the benthic flux by BWd = 100x. Fb is the
             # bottom-area fraction.
             composed["BWc"] = BALGAE_DEFAULTS["BWc"]
+            composed["BWd"] = BALGAE_DEFAULTS["BWd"]
             composed["Fb"] = BALGAE_DEFAULTS.get("Fb", 0.9)
 
             type(self).DEFAULTS = composed
@@ -356,10 +373,13 @@ class Alkalinity(Process):
         ap_uptake_fr_nh4 = getattr(
             self.floating_algae_process, "algal_nh4_uptake_fraction", 0.5
         )
-        # rca: algal C:Chla. ApGrowth (ug-Chla/L/d) * rca (mg-C/ug-Chla)
-        # = mg-C/L/d. Multiplied by stoich (eq/mg-C) and 50000 (mg-CaCO3/eq)
-        # yields mg-CaCO3/L/d.
-        rca = self.AWc
+        # rca: intensive algal C:Chla ratio = AWc/AWa (mg-C/ug-Chla).
+        # ApGrowth (ug-Chla/L/d) * rca (mg-C/ug-Chla) = mg-C/L/d;
+        # * stoich (eq/mg-C) * 50000 (mg-CaCO3/eq) -> mg-CaCO3/L/d.
+        # NSM1-CA-1 fix (gold-standard spec A1): was ``rca = self.AWc``
+        # (raw weight, =40), a 1000x (=AWa) overstatement. Mirrors
+        # carbon.py:495 and v1 processes.py:347.
+        rca = self.AWc / self.AWa
         return (
             (self.r_alkaa * ap_uptake_fr_nh4
              - self.r_alkan * (1.0 - ap_uptake_fr_nh4))
@@ -383,7 +403,10 @@ class Alkalinity(Process):
         ap_resp = getattr(
             self.floating_algae_process, "algal_respiration_rate", 0
         )
-        return ap_resp * self.r_alkaa * self.AWc * EQ_TO_MG_CACO3
+        # NSM1-CA-1 fix (spec A1): intensive rca = AWc/AWa (mg-C/ug-Chla);
+        # was raw ``self.AWc`` (=40), a 1000x overstatement.
+        rca = self.AWc / self.AWa
+        return ap_resp * self.r_alkaa * rca * EQ_TO_MG_CACO3
 
     def _benthic_algae_growth_alk_flux(self, depth: ArrayLike) -> ArrayLike:
         """Benthic-algae growth coupling (mg-CaCO3/L/d). v1 ``Alk_benthic_algae_growth``.
@@ -408,7 +431,10 @@ class Alkalinity(Process):
         ab_uptake_fr_nh4 = getattr(
             self.benthic_algae_process, "balgae_nh4_uptake_fraction", 0.5
         )
-        rcb = self.BWc
+        # NSM1-CA-1 fix (spec A1): intensive rcb = BWc/BWd (mg-C/mg-D);
+        # was raw ``self.BWc`` (=40), a 100x (=BWd) overstatement.
+        # Mirrors carbon.py:496 and v1 processes.py.
+        rcb = self.BWc / self.BWd
         return (
             (1.0 / depth)
             * (self.r_alkba * ab_uptake_fr_nh4
@@ -434,11 +460,14 @@ class Alkalinity(Process):
         ab_resp = getattr(
             self.benthic_algae_process, "balgae_respiration_rate", 0
         )
+        # NSM1-CA-1 fix (spec A1): intensive rcb = BWc/BWd (mg-C/mg-D);
+        # was raw ``self.BWc`` (=40), a 100x overstatement.
+        rcb = self.BWc / self.BWd
         return (
             (1.0 / depth)
             * self.r_alkba
             * ab_resp
-            * self.BWc
+            * rcb
             * self.Fb
             * EQ_TO_MG_CACO3
         )
