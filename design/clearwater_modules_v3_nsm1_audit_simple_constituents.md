@@ -475,7 +475,7 @@ hard-coded at the formula site:
 | `r_alkaa` | 14/106/12/1000 (`modAlkalinity.f90:49`) | same | same | Match |
 | `r_alkan` (v3 / v1; Fortran `ralkcn`) | 18/106/12/1000 (line 50) | same | same | Match |
 | `r_alkn` | 2/14/1000 (line 53) | same | same | Match |
-| `r_alkden` | 4/14/1000 (line 54) | same | same | Match |
+| `r_alkden` | 4/14/1000 (line 54) | 4/14/1000 | **1/14/1000** | **Deliberate divergence (NSM1-SCI-N1, spec A2, 2026-05-16).** Denitrification produces 1 eq alkalinity per mol NO3-N (CE-QUAL-W2 `water-quality.f90:3157`; Stumm & Morgan). Fortran/v1 `4/14/1000` is 4x the stoichiometric value — the canonical "wrong at all stages" case (Fortran=v1=v3, invisible to parity). v3 corrected; upstream Fortran defect reported (see `clearwater_modules_v3_nsm1_upstream_fortran_defects.md`). Cross-check: `r_alkn=2/14/1000` confirms the 1:2 denit:nitrif ratio. |
 | `r_alkba` | 14/106/12/1000 (Fortran reuses ralkca for benthic) | same | same | Match |
 | `r_alkbn` | 18/106/12/1000 (Fortran reuses ralkcn for benthic) | same | same | Match |
 | `EQ_TO_MG_CACO3` | 50000 | 50000 | 50000 | Match |

@@ -46,7 +46,9 @@ Stoichiometric ratios (from ``ALKALINITY_DEFAULTS``):
 * ``r_alkaa`` = 14/106/12/1000 eq/mg-C — algal photosynthesis, NH4 path.
 * ``r_alkan`` = 18/106/12/1000 eq/mg-C — algal photosynthesis, NO3 path.
 * ``r_alkn``  = 2/14/1000      eq/mg-N — nitrification (Alk sink).
-* ``r_alkden`` = 4/14/1000     eq/mg-N — denitrification (Alk source).
+* ``r_alkden`` = 1/14/1000     eq/mg-N — denitrification (Alk source);
+  1 eq/mol-N, CE-QUAL-W2 + Stumm & Morgan. NSM1-SCI-N1 fix: a
+  deliberate divergence from upstream Fortran (=4/14/1000, 4x high).
 * ``r_alkba`` = 14/106/12/1000 eq/mg-C — benthic algae photosynthesis, NH4 path.
 * ``r_alkbn`` = 18/106/12/1000 eq/mg-C — benthic algae photosynthesis, NO3 path.
 

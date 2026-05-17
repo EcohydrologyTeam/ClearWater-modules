@@ -244,7 +244,9 @@ def test_alkalinity_instantiates_with_defaults() -> None:
     assert alk.r_alkaa == 14.0 / 106.0 / 12.0 / 1000.0
     assert alk.r_alkan == 18.0 / 106.0 / 12.0 / 1000.0
     assert alk.r_alkn == 2.0 / 14.0 / 1000.0
-    assert alk.r_alkden == 4.0 / 14.0 / 1000.0
+    # NSM1-SCI-N1 (spec A2): 1 eq/mol-N, deliberate divergence from the
+    # upstream Fortran/v1 4/14/1000 (4x too high).
+    assert alk.r_alkden == 1.0 / 14.0 / 1000.0
     assert alk.r_alkba == 14.0 / 106.0 / 12.0 / 1000.0
     assert alk.r_alkbn == 18.0 / 106.0 / 12.0 / 1000.0
     # Pulled from global_parameters (feature flags).

@@ -49,6 +49,16 @@ V1_NITR_SINK_REFERENCE = np.array([
     0.3184620287023956,
 ])
 
+# NSM1-SCI-N1 (gold-standard spec A2): these are the *upstream-defect*
+# v1/Fortran values, captured with the stoichiometrically-wrong
+# ``r_alkden = 4/14/1000`` that Fortran (``modAlkalinity.f90:54``), v1,
+# and pre-fix v3 all shared (the canonical "wrong at all stages" case,
+# invisible to v1<->v3 parity). v3 deliberately diverges: denitrification
+# produces 1 eq alkalinity per mol NO3-N (CE-QUAL-W2
+# ``water-quality.f90:3157``; Stumm & Morgan), so corrected v3 =
+# this reference / 4. Retained verbatim as the auditable divergence
+# baseline; ``test_alk_denitrification_source_matches_v1`` asserts the
+# /4 corrected value.
 V1_DENIT_SOURCE_REFERENCE = np.array([
     0.0005591993355405442,
     0.0008578266522129975,
@@ -56,6 +66,9 @@ V1_DENIT_SOURCE_REFERENCE = np.array([
     0.00154077601410934,
     0.0017626335751812243,
 ])
+
+# SCI-N1 intentional divergence factor: r_alkden 4/14/1000 -> 1/14/1000.
+SCI_N1_DENIT_DIVERGENCE = 4.0
 
 # Re-derived 2026-05-16 by calling v1 ``Alk_algal_growth`` with the
 # correct intensive ``rca = AWc/AWa = 40/1000 = 0.04`` (was captured at
@@ -187,7 +200,11 @@ def test_alk_nitrification_sink_matches_v1(
 def test_alk_denitrification_source_matches_v1(
     water_temp_5cell, depth_5cell, alk_5cell, dox_5cell, no3_5cell
 ):
-    """v3 ``alk_denitrification_rate`` matches frozen v1 reference."""
+    """v3 ``alk_denitrification_rate`` is the SCI-N1-corrected value:
+    exactly ``V1_DENIT_SOURCE_REFERENCE / 4``. v3 deliberately diverges
+    from the v1/Fortran upstream defect (``r_alkden`` 4/14/1000 ->
+    1/14/1000); see the reference block above and spec A2.
+    """
     KsOxdn = 0.1
     kdnit_tc = arrhenius_correction(water_temp_5cell, 0.002, 1.045)
     denitrification_flux = (
@@ -207,7 +224,7 @@ def test_alk_denitrification_source_matches_v1(
 
     np.testing.assert_allclose(
         np.asarray(alk_proc.alk_denitrification_rate),
-        V1_DENIT_SOURCE_REFERENCE,
+        V1_DENIT_SOURCE_REFERENCE / SCI_N1_DENIT_DIVERGENCE,
         rtol=1e-6,
     )
 
