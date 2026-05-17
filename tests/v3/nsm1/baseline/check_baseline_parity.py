@@ -13,7 +13,7 @@ check; failure rolls the phase back.
 
 Usage:
     pixi run --environment dev python tests/v3/nsm1/baseline/check_baseline_parity.py
-        [--baseline tests/v3/nsm1/baseline/baseline_coupled_trajectory_186b5c4.nc]
+        [--baseline tests/v3/nsm1/baseline/baseline_coupled_trajectory_624ed7c.nc]
 
 Exit code:
     0 — bit-identical match
@@ -118,7 +118,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--baseline",
-        default="tests/v3/nsm1/baseline/baseline_coupled_trajectory_186b5c4.nc",
+        default="tests/v3/nsm1/baseline/baseline_coupled_trajectory_624ed7c.nc",
         help="Path to the Phase 0 baseline NetCDF",
     )
     args = parser.parse_args()
