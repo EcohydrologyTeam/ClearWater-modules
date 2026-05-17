@@ -1044,6 +1044,33 @@ result), and a vestigial-but-must-stay-consistent copy in
   (non-shared-path: silent-zero path warns once; `min_reaeration_ka`
   default OFF leaves `ka_tc` unchanged; opt-in value floors it).
 
+### 3.11 Algal alkalinity coupling — carbon-routed vs nitrogen-driven — NSM1-SCI-A1 (gold-standard spec C5; E2: documented known limitation, deferred to NSM2)
+
+- **Module:** `processes/alkalinity.py` (algal/benthic-algae coupling).
+- **Limitation (NSM1-SCI-A1):** the algal/benthic alkalinity coupling
+  is computed on a **carbon-routed** basis (scaled by the algal
+  growth/respiration carbon flux `rca`/`rcb` and the NH4-vs-NO3 uptake
+  split). The process is intrinsically **nitrogen-driven** — CE-QUAL-W2
+  (`water-quality.f90`) and Stumm & Morgan compute it from the algal
+  *nitrogen* flux directly. The carbon-routed form equals the N-flux
+  form only at *exact* Redfield N:C; NSM1's `AWn/AWc` is ~2% off
+  Redfield, so the algal alkalinity term differs by ~2% wherever algal
+  uptake drives alkalinity. This is **distinct from and beyond
+  NSM1-CA-1**: CA-1 corrected the carbon-ratio *magnitude* (the ×1000
+  / ×100 raw-weight bug); SCI-A1 is the carbon-vs-nitrogen *basis*.
+- **Disposition (E2 author decision, 2026-05-16):** **documented known
+  limitation**, **not** a v3 1.0 gate blocker (it is explicitly
+  recorded here and in the `Alkalinity` module docstring). The proper
+  fix — reimplementing the algal alkalinity term on the N-flux basis as
+  CE-QUAL-W2 does — is **scheduled for NSM2** (v3 1.1+), naturally
+  alongside the carbonate/pH solver. No v3 1.0 code change; no
+  trajectory perturbation; no re-baseline.
+- **NSM2 scheduling:** to be entered in the NSM2 features
+  implementation plan (`design/clearwater_modules_v3_nsm2_features_implementation_plan.md`)
+  — pending author action (the plan is author-maintained).
+- **Reference:** CE-QUAL-W2 `water-quality.f90` (N-flux alkalinity);
+  Stumm & Morgan, *Aquatic Chemistry* 3rd ed.
+
 ---
 
 ## Section 4: Items flagged for LimnoTech reconciliation

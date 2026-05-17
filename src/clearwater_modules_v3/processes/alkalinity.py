@@ -11,6 +11,24 @@ Processes (algal growth/respiration coupling, fractionated by NH4 vs NO3
 uptake). There is **no** carbonate equilibrium / pH solver in v3 1.0.0;
 that is NSM2 territory in v3 1.1+.
 
+Known limitation — NSM1-SCI-A1 (gold-standard spec C5; E2 author
+decision: stage with NSM2). The algal/benthic-algae alkalinity coupling
+is computed on a **carbon-routed** basis: the alkalinity flux is scaled
+by the algal growth/respiration *carbon* flux (``rca``/``rcb``) and the
+NH4-vs-NO3 uptake split. The process it approximates is intrinsically
+**nitrogen-driven** — CE-QUAL-W2 (``water-quality.f90``) and Stumm &
+Morgan compute the algal alkalinity change from the algal *nitrogen*
+flux directly. The carbon-routed form is self-consistent with the
+N-flux form only at *exact* Redfield N:C; NSM1's stoichiometric
+``AWn/AWc`` is ~2% off Redfield, so the two differ by ~2% wherever
+algal uptake drives alkalinity. This is a **formulation limitation
+beyond NSM1-CA-1** (CA-1 fixed the carbon-ratio *magnitude*; SCI-A1 is
+about the carbon-vs-nitrogen *basis*). It is **not** a v3 1.0 gate
+blocker because it is explicitly documented here and in
+``parameter_defaults_corrections.md``; the proper fix — reimplementing
+the algal alkalinity term on the N-flux basis as CE-QUAL-W2 does — is
+**scheduled for NSM2** (v3 1.1+), alongside the carbonate/pH solver.
+
 Kinetics (mirrors v1 ``processes.py:3246-3447``):
 
     dAlk/dt = + r_alkden * (1 - DOX/(DOX+KsOxdn)) * kdnit_tc * NO3 * 50000   (denit source)
