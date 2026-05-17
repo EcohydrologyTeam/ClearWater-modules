@@ -383,6 +383,16 @@ Recommendation: add a `salinity_psu` input variable (defaulting to 0.0)
 and apply the Fortran-form correction; document the addition in the
 corrections doc.
 
+**Disposition (NSM1-DOX-F1, gold-standard spec C3, 2026-05-16).** The
+freshwater assumption is now **explicitly documented** at
+`dox_sat_apha` and in the `DOX` module docstring (it is exact for
+fresh water — factor 1.0 — and matches v1; no numeric change). The
+salinity-corrected APHA form is a **documented deferral** (NSM2 scope,
+this C6). `DOX.run` now emits a **one-time warning** if a nonzero
+`salinity` is present in the registry, so brackish/marine input can no
+longer pass silently. Regression-guarded by
+`tests/v3/nsm1/test_dox_doxf1_regression.py`.
+
 ### 2. Atmospheric reaeration
 
 - Fortran (`modDOX.f90:110`): `O2_Reaeration = ka_tc * (O2sat - DOX)`.

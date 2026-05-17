@@ -37,7 +37,12 @@ Where:
 * ``O2sat`` -- APHA / QUAL2E formulation; v1 lines 2901-2923. Requires
   ``T_water_K`` (Kelvin), ``pressure_mb`` (mb), and the empirical
   ``DOs_atm_alpha`` correction. The full APHA form is implemented (no
-  simpler approximation is used).
+  simpler approximation is used). **Fresh-water assumption (NSM1-DOX-F1,
+  spec C3):** the APHA *salinity* correction is intentionally omitted
+  (matches v1; exact for fresh water). DOsat is overstated for
+  brackish/marine water (~18% at 35 ppt); the salinity-corrected form
+  is a documented deferral (audit C6 / NSM2). ``run`` warns once if a
+  nonzero ``salinity`` is in the registry. See ``dox_sat_apha``.
 * ``ron = 4.57`` -- v1 default ratio of O2 mass per N nitrified
   (= 2.0 * 32.0 / 14.0). Lives in ``DOX_DEFAULTS``.
 * ``roc = 32/12`` -- O2 mass per C oxidized. Lives in
@@ -168,6 +173,17 @@ def dox_sat_apha(
     fresh water) saturation is the Benson-Krause form; the pressure
     correction multiplies by ``P_atm * (1 - p_wv/P_atm) * (1 - alpha *
     P_atm) / ((1 - p_wv) * (1 - alpha))``.
+
+    **Freshwater assumption (NSM1-DOX-F1, gold-standard spec C3).**
+    This is the **fresh-water** APHA saturation. The APHA salinity
+    correction term is intentionally **not** applied (matches v1; exact
+    for fresh water — multiplicative factor 1.0). For brackish/marine
+    water DOsat is overstated (~18% at 35 ppt salinity). CE-QUAL-W2
+    applies the APHA-exact salinity correction; the salinity-corrected
+    form is a documented deferral (audit C6 / NSM2 scope). ``DOX.run``
+    emits a one-time warning if a nonzero ``salinity`` is present in the
+    registry so brackish input cannot pass silently. No salinity input
+    is taken here by design.
 
     Args:
         t_water_c | deg C | water temperature.
@@ -373,6 +389,12 @@ class DOX(Process):
         # for downstream debugging and for Phase 5.5 semi-implicit
         # opt-in (which would split this into source / sink halves).
         self.dox_rate: ArrayLike = 0.0
+
+        # NSM1-DOX-F1 (gold-standard spec C3): one-time warn-latch for
+        # the freshwater DO-saturation assumption (the APHA salinity
+        # correction is not applied; see ``dox_sat_apha`` docstring and
+        # audit C6). Tripped if a nonzero ``salinity`` is in the registry.
+        self._salinity_freshwater_warned: bool = False
 
         # Diagnostics handle (replaced by the model's run-level handle in
         # ``init_process`` if available).
@@ -674,6 +696,28 @@ class DOX(Process):
             pressure_mb = registry.get_at_time("atmospheric_pressure", time)
         else:
             pressure_mb = self.pressure_mb
+
+        # --- NSM1-DOX-F1 (spec C3): freshwater DO-saturation guard ---
+        # ``dox_sat_apha`` computes the *freshwater* APHA saturation (the
+        # salinity correction is intentionally omitted; matches v1 and is
+        # exact for fresh water, ~factor 1.0). If the registry carries a
+        # nonzero salinity, the freshwater assumption is violated and
+        # DOsat is overstated (~18% at 35 ppt). Warn once rather than let
+        # brackish input pass silently. The salinity-corrected APHA form
+        # is a documented deferral (audit C6 / NSM2 scope); no numeric
+        # change here for fresh water.
+        if not self._salinity_freshwater_warned and "salinity" in registry:
+            _sal = registry.get_at_time("salinity", time)
+            if bool(np.any(np.asarray(_sal) > 0.0)):
+                logger.warning(
+                    "DOX: nonzero 'salinity' present in the registry, but "
+                    "the APHA DO-saturation (dox_sat_apha) applies the "
+                    "FRESHWATER form only (no salinity correction; "
+                    "NSM1-DOX-F1 / audit C6, deferred). DOsat is "
+                    "overstated for brackish/marine water (~18%% at 35 "
+                    "ppt). This warning is emitted once per process."
+                )
+                self._salinity_freshwater_warned = True
 
         # --- Fused rate composition (pattern B) ---
         delta_dox, rate, components = self._change_with_components(
