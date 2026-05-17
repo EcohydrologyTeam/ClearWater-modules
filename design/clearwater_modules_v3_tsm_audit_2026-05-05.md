@@ -1,7 +1,18 @@
 # v3 TSM Four-Way Audit Findings
 
+> **⚠ Superseded — wind defaults (2026-05-16, gold-standard D2).** This
+> audit (2026-05-05) predates the authoritative
+> `clearwater_modules_v3_tsm_wind_function_specification.md`
+> (2026-05-08). Every statement below of the wind defaults as
+> `wind_a/b/c = 0.3 / 1.5 / 3.0` (Q6 — lines ~31, ~191, ~222–224,
+> ~242) is **superseded**: the v3 default is `wind_c = 2.0`
+> (CE-QUAL-W2 `CFW=2.0`, QUAL2K Brady-Graves-Geyer, all seven W2
+> example cases; Santiam–Salem validated). `wind_a/wind_b = 0.3/1.5`
+> are retained. `wind_c = 3.0` ≠ v3 default; it is opt-in back-compat
+> only. See the wind-function specification for the binding statement.
+
 **Date:** 2026-05-05
-**Last updated:** 2026-05-05 (resolution status added)
+**Last updated:** 2026-05-16 (wind-default supersession note added — gold-standard D2)
 **Method:** Three parallel reviewer agents partitioned by physics domain.
 **Sources audited:**
 - **v3 TSM:** `src/clearwater_modules_v3/processes/temperature.py`

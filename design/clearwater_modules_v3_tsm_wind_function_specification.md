@@ -33,6 +33,30 @@ specification:
    interchangeable with CE-QUAL-W2's SI calibration values
    (`9.2 / 0.46`).
 
+## ⚠ Reviewer awareness — intentional divergence from v1 (NOT a defect)
+
+**v3 `wind_c = 2.0` ≠ v1 `wind_c = 3.0`. This is a deliberate,
+reference-anchored design choice, not a regression or porting error.**
+Sponsor/LimnoTech reviewers comparing v3 TSM against v1 will see a wind
+exponent difference; it is expected and correct:
+
+- **v3 `wind_c = 2.0`** matches the explicit CE-QUAL-W2 user-manual
+  default (`CFW = 2.0`), the QUAL2K Brady-Graves-Geyer default
+  (exponent 2.0), and **all seven CE-QUAL-W2 example case studies**
+  (Spokane River, Columbia Slough Estuary, Detroit, DeGray, Long Lake,
+  Bonneville Dam, Berlin Milton) — quadratic in wind regardless of
+  waterbody type. It has been exercised in the Santiam–Salem
+  case-study validation.
+- **v1 `wind_c = 3.0`** is the prior ClearWater-only value with no
+  canonical-model basis; it is *not* the Edinger/W2/QUAL2K consensus.
+- v3 keeps `wind_c = 3.0` **opt-in** (allowed at the validator's upper
+  bound) for back-compat with runs already calibrated against the old
+  default, but the **shipped default is 2.0 by design**.
+
+Any sponsor-facing TSM comparison or memo that cites the old
+`0.3 / 1.5 / 3.0` defaults must carry this supersession note. This
+specification is the authoritative source for the v3 wind function.
+
 ## Authoritative reference
 
 ### CE-QUAL-W2
