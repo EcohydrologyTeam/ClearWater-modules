@@ -620,3 +620,118 @@ def test_F2_sediment_delta_scales_by_ramp_and_clip_ratio_in_run():
         "Test setup did not actually trigger the cap; tighten the cap or "
         "increase the T_sed - T_water gradient."
     )
+
+
+# ---------------------------------------------------------------------------
+# NSM1/TSM gold-standard D3 (E5): end-to-end MMS energy-conservation test.
+#
+# TSM line-review §5.2 named this the highest-value *deferred* test: "an
+# end-to-end MMS test would have caught F2 before it shipped." The
+# existing tests verify the water<->sediment pair-cancellation invariant
+# *instantaneously* (one substep). F2's failure mode is *cumulative*:
+# pre-fix, every depth-ramp substep leaked ~(1 - ramp) of the exchanged
+# energy, so a multi-substep trajectory through the guarded regime
+# drifts without bound. This test closes that gap end-to-end: a
+# manufactured closed water<->sediment reservoir pair (zero net
+# atmospheric flux: air_temperature == water_temperature, solar 0)
+# integrated through the public ``Temperature.run`` over a full
+# 240-substep trajectory with the thin-water depth ramp active every
+# substep. Invariant: the *cumulative* energy the water gains via the
+# sediment pathway exactly cancels the *cumulative* energy the sediment
+# loses.
+#
+# Methodology note (important): the sediment pathway is isolated by the
+# difference of two runs (sediment ON vs OFF). That subtraction is only
+# valid where the water-side transform is **linear**, i.e. the depth
+# ramp (a scalar multiply) — NOT the per-hour dT/dt cap, whose clip
+# ratio is ``cap / |delta_unclipped|`` and so differs between the ON
+# and OFF runs (different unclipped magnitudes); with the cap clipping,
+# ``dT_water_on - dT_water_off`` is no longer the isolated sediment
+# contribution. The cap is therefore disabled here (``inf``), exactly
+# as the existing single-substep under-ramp test does. The clip path's
+# *symmetric* ramp*clip scaling is verified directly and per-substep by
+# ``test_F2_sediment_delta_scales_by_ramp_and_clip_ratio_in_run``; this
+# test adds the orthogonal, previously-missing **cumulative end-to-end**
+# dimension on the ramp path.
+# ---------------------------------------------------------------------------
+
+
+def test_mms_end_to_end_water_sediment_energy_conservation_under_ramp():
+    """End-to-end (240-substep) cumulative energy conservation of the
+    water<->sediment exchange with the F2 depth-ramp guard active every
+    substep. Pre-F2 this accumulates O((1-ramp)) drift per substep and
+    fails grossly; post-fix the cumulative imbalance is ~machine-zero.
+    """
+    # Shallow cell (depth = 0.05 m, ramp_ref = 0.3 m -> ramp = 1/6) so
+    # the depth-ramp F2 guard is active on every substep. Cap disabled
+    # (see the methodology note above: the two-run-diff isolation is
+    # only valid on the linear ramp path).
+    surface_area = 100.0
+    volume = 5.0            # depth = volume / surface_area = 0.05 m
+    h2 = 0.1
+    n_substeps = 240        # 20 h at 5-min substeps
+
+    common = dict(
+        wind_a=0.3, wind_b=1.5, wind_c=3.0,
+        time_step=timedelta(minutes=5),
+        q_net_depth_ramp_ref=0.3,        # ramp active (depth 0.05 < 0.3)
+        dTdt_max_per_hour=float("inf"),  # cap OFF: keep the diff method linear
+    )
+
+    # Manufactured closed system: strong initial gradient so the
+    # coupling is vigorous and the cumulative exchanged energy is large
+    # (a sensitive denominator for the conservation ratio).
+    T_water, T_sed = 5.0, 28.0
+
+    cum_dE_water_from_sed = 0.0
+    cum_dE_sediment = 0.0
+    T_water_0, T_sed_0 = T_water, T_sed
+
+    for _ in range(n_substeps):
+        t_on = Temperature(**common, use_sediment_temperature=True)
+        dT_water_on, dT_sed = _run_one_substep_capture_deltas(
+            t_on, T_water=T_water, T_sed=T_sed,
+            surface_area=surface_area, volume=volume, h2=h2,
+        )
+        t_off = Temperature(**common, use_sediment_temperature=False)
+        dT_water_off, _ = _run_one_substep_capture_deltas(
+            t_off, T_water=T_water, T_sed=T_sed,
+            surface_area=surface_area, volume=volume, h2=h2,
+        )
+
+        # Sediment-pathway contribution to the water column this substep
+        # (valid: ramp-only -> linear water-side transform).
+        dE_water_from_sed = _energy_change_water_J_per_substep(
+            t_on, T_water, volume, dT_water_on - dT_water_off,
+        )
+        dE_sediment = _energy_change_sediment_J_per_substep(
+            t_on, surface_area, h2, dT_sed,
+        )
+        cum_dE_water_from_sed += dE_water_from_sed
+        cum_dE_sediment += dE_sediment
+
+        # Advance the canonical (sediment-ON) state.
+        T_water += dT_water_on
+        T_sed += dT_sed
+
+    # The trajectory must have done real work, and the depth-ramp F2
+    # guard must have been genuinely active throughout.
+    assert abs(T_sed - T_water) < abs(T_sed_0 - T_water_0), (
+        "Manufactured system did not relax — no exchange to conserve."
+    )
+    assert volume / surface_area < common["q_net_depth_ramp_ref"], (
+        "Depth ramp not active; guarded path not exercised."
+    )
+
+    total = cum_dE_water_from_sed + cum_dE_sediment
+    reference = max(abs(cum_dE_water_from_sed), abs(cum_dE_sediment))
+    assert reference > 0.0, "No cumulative sediment exchange occurred."
+    rel_error = abs(total) / reference
+    assert rel_error < 1e-9, (
+        f"Cumulative water<->sediment energy non-conservation over "
+        f"{n_substeps} ramp-guarded substeps (the F2 end-to-end MMS "
+        f"gate): Sigma dE_water_from_sed={cum_dE_water_from_sed:.6e} J, "
+        f"Sigma dE_sediment={cum_dE_sediment:.6e} J, total={total:.6e} J, "
+        f"rel_error={rel_error:.3e}. Pre-F2 this drifts by ~(1-ramp) per "
+        f"substep (ramp = 0.05/0.3 ~ 0.167) and fails grossly."
+    )

@@ -13,6 +13,34 @@ broader Phase 0 inventory and rationale live in
 
 ---
 
+## ⚠ Reader note — intentionally-zero inherited-lineage defaults (so you are not surprised)
+
+The following v3 NSM1 defaults are **deliberately `0.0`**, inherited
+from the v1/Fortran lineage and the modern dissolved-/water-column
+convention. At these defaults the associated process term is
+**identically zero** — *silently disabled, by design, not a bug*. If
+your application needs the process active you must set a nonzero value
+explicitly (and, where noted, accept the documented gold-standard
+form/units correction):
+
+| Default | =0 disables | Where documented | Enable by |
+|---|---|---|---|
+| `kdpo4` (phosphorus) | TIP solid–water partitioning / particulate-P settling (`fdp ≡ 1`) | §2.2 (NSM2-deferred) | set `kdpo4 > 0` (needs multi-class solids; full path is NSM2) |
+| `ksbod_20` (CBOD) | CBOD settling | §2.3 / §3.5 (NSM1-SCI-CB1) | set `ksbod_20 > 0`; v3 then applies the Fortran/QUAL2E **1/d** form (no `1/depth`), `ksbod_theta = 1.024` |
+| `rpo4_20` (phosphorus) | sediment-flux ortho-P release | §2.1 (NSM2-deferred) | set `rpo4_20 > 0` |
+| `rnh4_20` (nitrogen) | sediment-flux NH4 release | §2.1 (NSM2-deferred) | set `rnh4_20 > 0` |
+| `vno3_20` (nitrogen) | sediment/bed NO3 denitrification | §2.1 (NSM2-deferred) | set `vno3_20 > 0` |
+
+These are the v1/Fortran/QUAL2E shipped defaults (QUAL2K, WASP, and
+CE-QUAL-W2 likewise omit or zero these terms for dissolved-/water-column
+river applications). They are **not** silent defects: each is recorded
+in the section cited above. This box is the single consolidated pointer
+(gold-standard spec D3) so a user enabling sediment flux, P sorption,
+or CBOD settling knows the term was off by default and which correction
+applies when it is switched on.
+
+---
+
 ## Section 1: Critical default-value corrections (16 items, applied at port)
 
 These are applied directly in the v3 `DEFAULTS` dicts. Each inline comment in
