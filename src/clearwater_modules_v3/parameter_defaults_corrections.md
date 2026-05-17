@@ -1065,9 +1065,12 @@ result), and a vestigial-but-must-stay-consistent copy in
   CE-QUAL-W2 does — is **scheduled for NSM2** (v3 1.1+), naturally
   alongside the carbonate/pH solver. No v3 1.0 code change; no
   trajectory perturbation; no re-baseline.
-- **NSM2 scheduling:** to be entered in the NSM2 features
-  implementation plan (`design/clearwater_modules_v3_nsm2_features_implementation_plan.md`)
-  — pending author action (the plan is author-maintained).
+- **NSM2 scheduling:** scheduled in the NSM2 features implementation
+  plan (`design/clearwater_modules_v3_nsm2_features_implementation_plan.md`)
+  — §4.B and **Phase S4-3** carry SCI-A1 as a separable sub-deliverable
+  (algal `Alk` term reformulated to the N-flux basis, with a
+  non-shared-path regression + CE-QUAL-W2 cross-check), distinct from
+  the additive carbonate solver.
 - **Reference:** CE-QUAL-W2 `water-quality.f90` (N-flux alkalinity);
   Stumm & Morgan, *Aquatic Chemistry* 3rd ed.
 
