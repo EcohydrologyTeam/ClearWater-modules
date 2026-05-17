@@ -121,8 +121,15 @@ _FDP_DEFAULTS = {
     "kdpo4": 0.0,   # L/kg; matches v3 phosphorus DEFAULTS (TIP partitioning disabled)
     "Solid": 1.0,   # mg/L; matches v3 global_vars DEFAULTS
     "use_TIP": True,
-    # mortality routing fractions (v1 carbon: f_pocp; not in algae DEFAULTS)
-    "f_pocp": 0.5,  # fraction of algal mortality C that goes to POC; (1-f_pocp) -> DOC
+    # mortality routing fractions (v1 carbon: f_pocp; not in algae DEFAULTS).
+    # NSM1-SCI-A2 (gold-standard spec C1, E1 author decision 2026-05-16):
+    # 0.5 -> 0.8. Dead algal carbon is predominantly particulate
+    # (CE-QUAL-W2 ``APOM`` ~0.8; QUAL2K/Bowie/Chapra; v1 used 0.9). The
+    # pre-fix 0.5 mis-routed ~40% of mortality C to DOC, biasing
+    # DOC->DIC and DO demand. This is the *operative* value (Carbon
+    # consumes the FloatingAlgae-cached rate); keep it consistent with
+    # ``parameters/carbon.py`` f_pocp. See parameter_defaults_corrections.md.
+    "f_pocp": 0.8,  # fraction of algal mortality C that goes to POC; (1-f_pocp) -> DOC
 }
 
 

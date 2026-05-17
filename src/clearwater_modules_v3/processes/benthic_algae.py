@@ -87,8 +87,12 @@ _BENTHIC_FDP_DEFAULTS = {
     "kdpo4": 0.0,
     "Solid": 1.0,
     "use_TIP": True,
-    # mortality routing fractions (v1 carbon: f_pocb)
-    "f_pocb": 0.5,  # fraction of benthic algal mortality C that goes to POC
+    # mortality routing fractions (v1 carbon: f_pocb).
+    # NSM1-SCI-A2 (gold-standard spec C1, E1 author decision 2026-05-16):
+    # 0.5 -> 0.8 (CE-QUAL-W2 ``APOM`` ~0.8; v1 used 0.9). Operative value
+    # (Carbon consumes the BenthicAlgae-cached rate); keep consistent with
+    # ``parameters/carbon.py`` f_pocb. See parameter_defaults_corrections.md.
+    "f_pocb": 0.8,  # fraction of benthic algal mortality C that goes to POC
 }
 
 

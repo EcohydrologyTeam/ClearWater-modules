@@ -120,7 +120,9 @@ Match.
   (`floating_algae.py:363`) stores `f_pocp * rca * ap_death` with the
   correct `rca = AWc / AWa`.
 
-Match (via cache).
+Formula match (via cache). **`f_pocp` value: NSM1-SCI-A2 — the
+operative `_FDP_DEFAULTS` value was 0.5 (defect); corrected to 0.8 per
+the parameter table above and `parameter_defaults_corrections.md` §3.9.**
 
 ### 4. POC from benthic algal mortality
 
@@ -132,7 +134,9 @@ Match (via cache).
   populated by v2 BenthicAlgae as
   `f_pocb * fb * fw * rcb * ab_death / depth` with correct `rcb = BWc / BWd`.
 
-Match (via cache).
+Formula match (via cache). **`f_pocb` value: NSM1-SCI-A2 — operative
+`_BENTHIC_FDP_DEFAULTS` was 0.5 (defect); corrected to 0.8. See
+`parameter_defaults_corrections.md` §3.9.**
 
 ### 5. dPOC/dt assembly
 
@@ -548,10 +552,10 @@ Match in form, defective in magnitude due to findings C1, C2.
 
 | Key          | v3 default | v1 default | Fortran default | Verdict |
 |--------------|-----------:|-----------:|----------------:|---------|
-| `f_pocp`     | 0.9        | 0.9        | 0.9             | match   |
+| `f_pocp`     | 0.8        | 0.9        | 0.9             | **Deliberate divergence (NSM1-SCI-A2, spec C1, 2026-05-16).** The *operative* value is `floating_algae.py` `_FDP_DEFAULTS` (Carbon consumes the cached rate); it was **0.5** (mis-routing ~40% mortality C to DOC) while this `parameters/carbon.py` copy showed 0.9 — this row previously reported only the 0.9 copy and mislabeled it "match", masking the operative defect. Set to **0.8** (CE-QUAL-W2 `APOM`; E1 author decision) in both the operative and carbon-side copies. See `parameter_defaults_corrections.md` §3.9. |
 | `kdoc_20`    | 0.01       | 0.01       | 0.01            | match   |
 | `kdoc_theta` | 1.047      | 1.047      | 1.047           | match   |
-| `f_pocb`     | 0.9        | 0.9        | 0.9             | match   |
+| `f_pocb`     | 0.8        | 0.9        | 0.9             | **Deliberate divergence (NSM1-SCI-A2, spec C1).** Operative value is `benthic_algae.py` `_BENTHIC_FDP_DEFAULTS` (was 0.5); set **0.8** (CE-QUAL-W2 `APOM`; E1) in both operative and carbon-side copies. Same masking issue as `f_pocp`. See `parameter_defaults_corrections.md` §3.9. |
 | `kpoc_20`    | 0.005      | 0.005      | 0.005           | match   |
 | `kpoc_theta` | 1.047      | 1.047      | 1.047           | match   |
 | `KsOxmc`     | 1.0        | 1.0        | 1.0             | match   |

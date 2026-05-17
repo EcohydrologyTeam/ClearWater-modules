@@ -979,6 +979,43 @@ are PAR-scale half-saturation constants.
   (non-shared-path: Fr_PAR supplied as an independent hardcoded literal,
   not read from the process). Audit item F9 and findings §6 updated.
 
+### 3.9 `f_pocp` / `f_pocb` — algal/benthic mortality-carbon routing — NSM1-SCI-A2 (gold-standard spec C1, E1 author decision, 2026-05-16)
+
+The fraction of algal/benthic mortality carbon routed to **POC** (the
+remainder to DOC). There are two copies: the *operative* one in
+`processes/floating_algae.py` `_FDP_DEFAULTS` and
+`processes/benthic_algae.py` `_BENTHIC_FDP_DEFAULTS` (Carbon consumes
+the FloatingAlgae/BenthicAlgae-cached mortality rate, so these drive the
+result), and a vestigial-but-must-stay-consistent copy in
+`parameters/carbon.py`.
+
+- **Defect (NSM1-SCI-A2, MAJOR):** the operative `_FDP_DEFAULTS` value
+  was **0.5**, while v1 used **0.9** and CE-QUAL-W2 `APOM` ≈ 0.6–0.9
+  (~0.8); QUAL2K / Bowie (1985) / Chapra (1997) all treat dead algal
+  carbon as predominantly **particulate**. The pre-fix 0.5 mis-routed
+  ~40% of mortality C from POC to DOC, biasing the DOC→DIC flux and DO
+  demand (algal biomass unaffected). The `parameters/carbon.py` copy was
+  separately at 0.9, so the two were also internally inconsistent — and
+  the audit table (`audit_c_dox.md`) reported only the 0.9 copy and
+  mislabeled it "match", masking the operative 0.5.
+- **Decision (E1, author, 2026-05-16):** set **`f_pocp = f_pocb = 0.8`**
+  (CE-QUAL-W2 `APOM` midpoint; between v1's 0.9 and W2's ~0.8 lower
+  range). This is a documented, cited deliberate value — the
+  `mu_max_20` precedent (Section 1) — not a silent inline default.
+- **Resolution:** `_FDP_DEFAULTS["f_pocp"] = 0.8`
+  (`floating_algae.py`), `_BENTHIC_FDP_DEFAULTS["f_pocb"] = 0.8`
+  (`benthic_algae.py`), and `parameters/carbon.py` `f_pocp`/`f_pocb`
+  reconciled `0.9 → 0.8` (kept consistent with the operative value).
+  Audit table `audit_c_dox.md` corrected.
+- **Reference:** CE-QUAL-W2 `APOM` (algal→particulate-OM partition,
+  Cole & Wells W2 user manual); v1 NSM1 `DEFAULT_CARBON` (0.9);
+  Bowie et al. (1985); Chapra (1997).
+- **Reference test:** `tests/v3/nsm1/test_carbon_scia2_regression.py`
+  (non-shared-path: the 0.8/0.2 split asserted from independent
+  hardcoded literals; DOC/DO sensitivity guard).
+- **Trajectory:** perturbs the coupled-demo (POC/DOC/DIC/DOX/POM);
+  re-baselined separately.
+
 ---
 
 ## Section 4: Items flagged for LimnoTech reconciliation
