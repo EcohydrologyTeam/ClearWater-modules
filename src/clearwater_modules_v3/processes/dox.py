@@ -33,7 +33,13 @@ Kinetics (mirrors v1 ``processes.py`` lines 2876-3135):
 Where:
 
 * ``ka_tc`` -- ``utils.reaeration.ka_tc`` (combined hydraulic + wind
-  reaeration, temperature-corrected)
+  reaeration, temperature-corrected). **NSM1-DOX-F2 (spec C4):**
+  ``hydraulic_reaeration_option == 1`` with ``kah_20_user == 0.0``
+  yields zero hydraulic reaeration (silently zero atmospheric
+  reaeration if wind is also off). v3 preserves the unfloored value by
+  default for v1/Fortran parity but warns once and offers an opt-in
+  CE-QUAL-W2-``MINKL``-style floor ``min_reaeration_ka`` (default
+  ``0.0`` = OFF; default behaviour unchanged).
 * ``O2sat`` -- APHA / QUAL2E formulation; v1 lines 2901-2923. Requires
   ``T_water_K`` (Kelvin), ``pressure_mb`` (mb), and the empirical
   ``DOs_atm_alpha`` correction. The full APHA form is implemented (no
@@ -395,6 +401,15 @@ class DOX(Process):
         # correction is not applied; see ``dox_sat_apha`` docstring and
         # audit C6). Tripped if a nonzero ``salinity`` is in the registry.
         self._salinity_freshwater_warned: bool = False
+
+        # NSM1-DOX-F2 (gold-standard spec C4): one-time warn-latch for
+        # the silent-zero atmospheric-reaeration path
+        # (hydraulic_reaeration_option == 1 with kah_20_user == 0.0 and
+        # no wind path). CE-QUAL-W2 enforces a MINKL minimum-reaeration
+        # floor on every branch; v3 keeps the unfloored value by default
+        # for v1 parity but warns and offers the opt-in
+        # ``min_reaeration_ka`` floor.
+        self._reaeration_silent_zero_warned: bool = False
 
         # Diagnostics handle (replaced by the model's run-level handle in
         # ``init_process`` if available).
@@ -827,6 +842,31 @@ class DOX(Process):
                 T_water_C=t_water_c,
                 depth=depth,
             )
+
+        # --- NSM1-DOX-F2 (spec C4): silent-zero reaeration guard + floor ---
+        # ``hydraulic_reaeration_option == 1`` with ``kah_20_user == 0.0``
+        # yields zero hydraulic reaeration; if the wind path is also off,
+        # atmospheric reaeration is silently zero. CE-QUAL-W2 enforces a
+        # ``MINKL`` minimum-reaeration floor on every branch. v3 keeps
+        # the unfloored value by default for v1/Fortran parity but
+        # (a) warns once, and (b) offers the opt-in ``min_reaeration_ka``
+        # floor (default 0.0 = OFF, so default behaviour is unchanged).
+        if (
+            not self._reaeration_silent_zero_warned
+            and is_user_hydraulic_zero
+        ):
+            logger.warning(
+                "DOX: hydraulic_reaeration_option == 1 with "
+                "kah_20_user == 0.0 gives zero hydraulic reaeration; "
+                "atmospheric reaeration may be silently zero. v3 "
+                "preserves v1/Fortran parity (no implicit floor); "
+                "CE-QUAL-W2 enforces a MINKL floor. Set "
+                "'min_reaeration_ka' > 0 to opt into a minimum-"
+                "reaeration floor. NSM1-DOX-F2. Emitted once per process."
+            )
+            self._reaeration_silent_zero_warned = True
+        if self.min_reaeration_ka > 0.0:
+            ka_tc_value = np.maximum(ka_tc_value, self.min_reaeration_ka)
 
         # --- Compute per-source / per-sink fluxes (mg/L/d) ---
         # Each sub-flux is individually sanitized so that a NaN at a single

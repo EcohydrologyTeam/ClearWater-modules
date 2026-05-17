@@ -1022,6 +1022,28 @@ result), and a vestigial-but-must-stay-consistent copy in
 - **Trajectory:** perturbs the coupled-demo (POC/DOC/DIC/DOX/POM);
   re-baselined separately.
 
+### 3.10 DOX atmospheric reaeration — silent-zero guard + opt-in MINKL floor — NSM1-DOX-F2 (gold-standard spec C4, 2026-05-16)
+
+- **Module:** `processes/dox.py` (effective reaeration `ka_tc`);
+  `parameters/dox.py` (`min_reaeration_ka`).
+- **Issue (NSM1-DOX-F2):** with `hydraulic_reaeration_option == 1` and
+  `kah_20_user == 0.0` (and the wind path off), atmospheric reaeration
+  is **silently zero**. CE-QUAL-W2 enforces a `MINKL`
+  minimum-reaeration floor on every branch; v3 had no floor and no
+  warning. Not triggered by the shipped defaults
+  (`hydraulic_reaeration_option = 5`).
+- **Resolution:** v3 **preserves v1/Fortran parity by default** (no
+  implicit floor) but (a) emits a **one-time warning** when the
+  silent-zero hydraulic path is active, and (b) adds an **opt-in**
+  floor `min_reaeration_ka` (default `0.0` = OFF; when `> 0`,
+  `ka_tc = max(ka_tc, min_reaeration_ka)`, the CE-QUAL-W2 `MINKL`
+  precedent). Default behaviour is unchanged → does not perturb the
+  coupled-demo trajectory; no re-baseline.
+- **Reference:** CE-QUAL-W2 `gas-transfer.f90` (`MINKL`).
+- **Reference test:** `tests/v3/nsm1/test_dox_doxf2_regression.py`
+  (non-shared-path: silent-zero path warns once; `min_reaeration_ka`
+  default OFF leaves `ka_tc` unchanged; opt-in value floors it).
+
 ---
 
 ## Section 4: Items flagged for LimnoTech reconciliation
