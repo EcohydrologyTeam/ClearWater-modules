@@ -5,12 +5,14 @@ Two complementary contracts:
 1. ``test_baseline_parity_bit_identical`` — replays the Phase 0
    4,320-substep baseline scenario and asserts every state-variable
    trajectory matches the committed
-   ``baseline_coupled_trajectory_624ed7c.nc`` bit-identically when no
+   ``baseline_coupled_trajectory_b51df71.nc`` bit-identically when no
    ``REGISTRY_DIAGNOSTICS`` names are pre-registered. This is the
-   §11.2 contract enforced inside the test suite. (Re-baselined at
-   ``624ed7c`` for the NSM1-CA-1 alkalinity kinetics fix; the prior
-   ``186b5c4`` baseline encoded the pre-fix raw-weight alkalinity bug
-   and is retained for auditability per baseline/README.md.)
+   §11.2 contract enforced inside the test suite. (Terminal
+   gold-standard baseline at ``b51df71``, incorporating the NSM1-CA-1
+   and NSM1-SCI-N1 alkalinity kinetics fixes — the only
+   trajectory-perturbing gate changes. Prior baselines ``624ed7c``
+   (CA-1 only) and ``186b5c4`` (pre-fix) are retained for auditability
+   per baseline/README.md.)
 
 2. ``test_diagnostics_subscription_smoke`` — runs the same demo
    shorter (60 substeps for speed) but pre-registers every Appendix A
@@ -55,7 +57,7 @@ from clearwater_modules_v3.processes import (
 _BASELINE_NETCDF = (
     Path(__file__).resolve().parent
     / "baseline"
-    / "baseline_coupled_trajectory_624ed7c.nc"
+    / "baseline_coupled_trajectory_b51df71.nc"
 )
 
 
