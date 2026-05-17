@@ -130,8 +130,11 @@ class N2(Process):
 
     Sources / sinks (1/d, integrated by Forward Euler):
     * Atmospheric exchange: ``1.034 * ka_tc * (N2sat - N2)``
-    * Denitrification: read from ``nitrogen_process.denitrification_rate``
-      when the Nitrogen process is wired up; 0 otherwise.
+    * Denitrification: read from
+      ``nitrogen_process.denitrification_flux_rate`` when the Nitrogen
+      process is wired up; 0 otherwise. (The attribute is
+      ``denitrification_flux_rate`` — there is no ``denitrification_rate``
+      attribute; this docstring previously named the wrong attribute.)
 
     Caches computed step-scoped quantities for downstream consumers (TDG-
     aware Processes in v3 1.x):

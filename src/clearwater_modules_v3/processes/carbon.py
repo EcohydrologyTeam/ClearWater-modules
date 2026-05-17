@@ -376,9 +376,10 @@ class Carbon(Process):
         D); persists primary outputs (E); caches step-scoped rates on
         ``self.<name>`` (F); opportunistically writes diagnostics (G).
 
-        See ``_change_legacy_inline`` for the pre-refactor inline
-        composition (retained through Phase 10 for the helper-vs-inline
-        parity test under §11.3).
+        (The Phase-10 ``_change_legacy_inline`` shadow method and its
+        ``test_carbon_helper_vs_inline.py`` parity test were removed once
+        the helper refactor was settled; the coupled-demo bit-identical
+        baseline parity test is the standing regression guard.)
         """
         # --- State reads (pattern A) ---
         poc = registry.get_at_time("poc", time)
@@ -467,10 +468,11 @@ class Carbon(Process):
         consumes (no recomputation).
 
         Phase 2 pattern-alignment spec §6 deliverable. The companion
-        shadow ``_change_legacy_inline`` returns just the deltas and is
-        used by ``tests/v3/nsm1/test_carbon_helper_vs_inline.py`` to
-        verify this helper produces bit-identical deltas through
-        Phase 10.
+        ``_change_legacy_inline`` shadow and its
+        ``test_carbon_helper_vs_inline.py`` parity test were removed once
+        the helper refactor was settled and proven bit-identical; the
+        standing regression guard is the coupled-demo bit-identical
+        baseline parity test (``test_coupled_demo_parity.py``).
         """
         # --- Temperature-corrected rate constants (Arrhenius / van't Hoff) ---
         kpoc_tc_value = arrhenius_correction(

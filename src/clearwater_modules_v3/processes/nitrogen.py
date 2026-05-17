@@ -20,7 +20,17 @@ if TYPE_CHECKING:
 
 
 class Nitrogen(Process):
-    """v2 NSM1 Nitrogen Process (Phase 2.B fixes applied).
+    """v3 NSM1 Nitrogen Process (v3-native; not a v2 re-export).
+
+    As-implemented status: the Phase 2.B v2-bug fixes (below), the
+    Phase 9.A.2 audit corrections (findings N10–N12: ``kdnit_20`` /
+    ``kdnit_theta`` read from ``NITROGEN_DEFAULTS``;
+    ``nitrate_bed_denitrification`` via ``vno3_20``; the
+    ``nitrate_uptake_*`` NO3-fraction fix), and the gold-standard
+    coupling consumed by Alkalinity NSM1-SCI-N1 (the
+    ``denitrification_flux_rate`` semantics; see
+    ``parameters/alkalinity.py`` and `parameter_defaults_corrections.md`)
+    are all in place and regression-tested.
 
     Phase 1.3 (v3 NSM1 design spec, Section 3.4 + Appendix B): adopt the
     ``Process.DEFAULTS`` merge pattern for parameter handling. The v3
@@ -789,6 +799,13 @@ class Nitrogen(Process):
     ) -> ArrayLike:
         """v1 NO3_ApGrowth: ApUptakeFr_NO3 * rna * ApGrowth (mg-N/L/d).
 
+        Current behavior (as-implemented, correct): the NO3 uptake
+        fraction is ``1 - algal_nh4_uptake_fraction``, read dynamically
+        from FloatingAlgae each step, so the NH4 and NO3 uptake paths
+        sum exactly to ``rna * ApGrowth`` (algal-N mass balance closed).
+        Matches v1 ``processes.py:1675`` / Fortran ``modNitrogen.f90:321``.
+        History (resolved) is recorded below for traceability.
+
         Phase 9.A.2 audit finding N12: previously used the static
         ``float_algea_faction_uptake_from_nitrate`` (default 1.0) for the
         NO3 uptake fraction while the NH4 path read the dynamic
@@ -825,8 +842,15 @@ class Nitrogen(Process):
     ) -> ArrayLike:
         """v1 NO3_AbGrowth: AbUptakeFr_NO3 * rnb * Fb * AbGrowth / depth.
 
-        Phase 9.A.2 audit finding N13: previous implementation had four
-        structural defects:
+        Current behavior (as-implemented, correct): uses the benthic
+        NO3 uptake fraction ``1 - balgae_nh4_uptake_fraction``, benthic
+        stoichiometry ``rnb``, and the ``Fb / depth`` area-integration
+        factor, matching v1/Fortran benthic NO3_AbGrowth. The four
+        Phase 9.A.2 (N13) structural defects below are **fixed**;
+        history retained for traceability.
+
+        Phase 9.A.2 audit finding N13: the previous implementation had
+        four structural defects (all since fixed):
         (1) divided by ``algal_chlorophyll`` (= AWa, the *floating*-algae
             chlorophyll factor of 1000) instead of by ``BWd`` (benthic
             dry-weight). Wrong stoichiometry by orders of magnitude.

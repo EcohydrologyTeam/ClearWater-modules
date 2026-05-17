@@ -42,10 +42,16 @@ Top concerns (read these first):
    (v1 default `rnh4_20=0`); the formula is correct but the default magnitude
    injects a large (`1/depth`) NH4 source where Fortran and v1 are silent.
    Critical at default kwargs (calibration-impacting).
-5. v3 Phosphorus inherits the v1 unit error in `fdp`: divides by `0.000001`
-   instead of `1.0E6` (a factor of 1E12). Latent at the v3 default `kdpo4=0`,
-   but breaks particulate-P partitioning the moment the user enables `kdpo4>0`.
-   Critical, but gated.
+5. ~~v3 Phosphorus inherits the v1 unit error in `fdp`~~ — **CORRECTED
+   (stale audit entry, fixed in v3; updated 2026-05-16, gold-standard
+   D1).** v1 `nsm1.processes` has the `fdp` unit factor inverted
+   (`/ 0.000001`); **v3 `utils/partitioning.py:50` uses the
+   dimensionally-correct `1 / (1 + kdpo4 * Solid * 1e-6)`**, matching
+   Fortran `modGlobalParam.f90:228` (`/ 1.0E6`). v3 does **not** inherit
+   the error. The only residual P-partitioning item is that TIP
+   sorption is **disabled by the shipped default `kdpo4 = 0`** (an
+   inherited-lineage default, NSM2-deferred per
+   `parameter_defaults_corrections.md` §2.2) — not a v3 unit bug.
 
 ---
 

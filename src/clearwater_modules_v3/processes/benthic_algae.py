@@ -1,17 +1,19 @@
-"""v2 NSM1 BenthicAlgae Process.
+"""v3 NSM1 BenthicAlgae Process (v3-native; not a v2 re-export).
 
-Phase 2.A (v3 NSM1 design spec, Section 11 + Section 6 bug list): apply
-the parallel set of bug fixes to ``BenthicAlgae`` that Phase 2.A applies
-to ``FloatingAlgae``:
+As-implemented record (Phase 2.A, v3 NSM1 design spec Section 11 +
+Section 6 bug list). The parallel set of v2-inherited bugs that
+Phase 2.A fixed for ``FloatingAlgae`` are **fixed and regression-tested**
+here too:
 
-- Integrator fix: replace the broken multiplicative integrator inherited
-  from ``FloatingAlgae.run`` with additive Forward Euler.
-- Implement ``ammonium_respiration`` and ``ammonium_growth`` per v1
+- Integrator (fixed): the broken multiplicative integrator inherited
+  from ``FloatingAlgae.run`` was replaced with additive Forward Euler.
+- ``ammonium_respiration`` / ``ammonium_growth`` (implemented) per v1
   benthic algae kinetics (NH4_AbRespiration / NH4_AbGrowth) using the
   benthic stoichiometry (BWn) and the depth/Fb area-integration factor.
-- NaN guards: replace broken ``rate == np.nan`` with ``isnull`` /
-  ``np.isnan``.
-- Persistence: persist updated state via ``registry.set_at_time``.
+- NaN guards (fixed): the broken ``rate == np.nan`` comparisons were
+  replaced with ``isnull`` / ``np.isnan``.
+- Persistence (fixed): updated state is persisted via
+  ``registry.set_at_time``.
 
 Irradiance basis (NSM1-SCI-A3, gold-standard spec B1): the
 ``solar_radiation`` registry variable is **total broadband shortwave**

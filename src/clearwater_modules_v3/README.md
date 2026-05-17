@@ -9,28 +9,34 @@ v3 keeps v2's framework as the architectural baseline and folds in v1's optimiza
 
 ## Status
 
-Phases 0--4 are complete; Phase 5 (READMEs and migration notes) is in progress.
+v3 is the consolidated, **v3-native** package: v2 has been removed entirely
+(the top-level `__init__.py` no longer re-exports any v2 module). TSM and
+NSM1 are merged and v3-native; the NSM1 gold-standard correctness gate
+(CA-1, SCI-N1, SCI-A3, SCI-A2, CB1, DOX-F1/F2, SCI-A1) is resolved or
+explicitly NSM2-deferred with regression tests.
 
-- v3 `Temperature` (`processes/temperature.py`) is **v3-native**: it is no longer an overlay re-export. It carries the v1 latent-heat unit correction, the v1 thin-water depth ramp and per-hour `dT/dt` cap, the Fortran-parity sediment thermal diffusivity, and the dynamic sediment-temperature evolution that all three Python ports (v1, v2, v3) had previously dropped relative to the canonical Fortran reference.
+- v3 `Temperature` (`processes/temperature.py`) is **v3-native**: it carries the v1 latent-heat unit correction, the v1 thin-water depth ramp and per-hour `dT/dt` cap, the Fortran-parity sediment thermal diffusivity, and the dynamic sediment-temperature evolution that all three Python ports (v1, v2, v3) had previously dropped relative to the canonical Fortran reference.
 - v3 `Model` (`model.py`) is **v3-native**: it adds the kernel-optimization compute schedule (precomputed and timezone-independent), registry-level wet-mask gating, hotstart from `xr.Dataset`, and chunking aligned to integer step indices (immune to floating-point drift in `current_time` arithmetic).
 - v3 `init_from_file` (`config/init.py`) is **v3-native**: it accepts the v2 YAML schema unchanged and adds two optional top-level keys, `hotstart` and `wet_mask`.
-- The remaining process classes (`Riverine`, `BenthicAlgae`, `FloatingAlgae`, `Nitrogen`) and the `Process` / `ProcessFactory` base remain re-exports from v2 pending their own merge phases.
+- The process classes (`Riverine`, `BenthicAlgae`, `FloatingAlgae`, `Nitrogen`, plus `Alkalinity`, `Carbon`, `CBOD`, `DOX`, `N2`, `Pathogen`, `POM`) and the `Process` / `ProcessFactory` base are all **v3-native in-tree** — not v2 re-exports.
 
-The v3 multi-agent code review on 2026-05-04 closed all 10 CRITICAL findings (C1--C10) under Phases R-1 and R-2. R-3 (MAJOR-finding cleanup) is in progress; 2 of 18 MAJOR findings (M6, M9) are resolved. See `design/clearwater_modules_v3_review_findings.md` for the full triage.
+The v3 multi-agent code review on 2026-05-04 closed all 10 CRITICAL findings (C1--C10). The authoritative MAJOR triage records **17 of 18 MAJOR findings resolved**; the single remainder (M4) is an explicit NSM2 deferral, guarded and documented. See `design/clearwater_modules_v3_review_findings.md` for the full triage and the NSM1 line-level review under `design/v3_nsm1_review_2026-05-15/`.
 
 ### Phase status
 
 | Phase | Scope | Status |
 |---|---|---|
 | Phase 0 | Inventory and gap analysis (TSM and NSM1) | Complete |
-| Phase 1 | Overlay scaffold (re-exports from v2) | Complete |
+| Phase 1 | Overlay scaffold (historical; v2 since removed) | Complete |
 | Phase 2 | v3-native `processes/temperature.py` (merged TSM) | Complete |
 | Phase 3 | v3-native `model.py` and `config/init.py` (extra YAML keys) | Complete |
 | Phase 4 | Test suite ports and v2/v3 parity tests | Complete |
-| Phase 5 | README updates and migration notes for downstream users | In progress |
+| Phase 5 | README updates and migration notes for downstream users | Complete |
+| Phases 6--10 | v3-native NSM1 (pattern alignment + per-process merge) | Complete |
+| Gold-standard gate | NSM1 correctness fixes (CA-1, SCI-N1, SCI-A3, SCI-A2, CB1, DOX-F1/F2) + SCI-A1 NSM2 deferral | Complete |
 | Phase R-1 | Review-finding cleanup: all 10 CRITICAL findings resolved (2026-05-04) | Complete |
 | Phase R-2 | Review-finding cleanup: physics correctness CRITICAL fixes (sediment-diffusivity, mixing_ratio_air, sediment-T evolution) | Complete |
-| Phase R-3 | Review-finding cleanup: 18 MAJOR findings (validation, NaN guards, ordering hazards) | In progress (2 of 18 resolved) |
+| Phase R-3 | Review-finding cleanup: MAJOR findings (validation, NaN guards, ordering hazards) | Complete (17 of 18; M4 NSM2-deferred) |
 
 ## What's new in v3 (relative to v2)
 
@@ -109,7 +115,7 @@ wet_mask:                       # optional; if absent, no wet-mask gating
 
 ## Backward compatibility
 
-Every v2 YAML configuration that does not contain a `hotstart` or `wet_mask` top-level key runs unchanged on v3. The v3 `init_from_file` returns the same `Model` API surface as v2's. Re-exported processes (`Riverine`, `BenthicAlgae`, `FloatingAlgae`, `Nitrogen`) are bit-for-bit the v2 classes, registered under the same names with the same `ProcessFactory`. The migration is import-path-only for any v2 user who is not opting into hotstart or wet-mask.
+Every v2 YAML configuration that does not contain a `hotstart` or `wet_mask` top-level key runs unchanged on v3. The v3 `init_from_file` returns the same `Model` API surface as v2's. The process classes are **v3-native** (not v2 re-exports) but are registered under the same names with the same `ProcessFactory` and accept the v2 YAML schema unchanged, so the migration is import-path-only for any v2 user who is not opting into hotstart or wet-mask. (The v3 NSM1 processes additionally carry the gold-standard correctness fixes; these change kinetics relative to v1/v2 by design and are documented in `src/clearwater_modules_v3/parameter_defaults_corrections.md` and the per-domain audit docs.)
 
 The two v3-only YAML keys are strictly additive. v3 also tolerates v2's existing keys without modification.
 

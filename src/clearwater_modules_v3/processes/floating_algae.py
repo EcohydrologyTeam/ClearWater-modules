@@ -1,15 +1,18 @@
-"""v2 NSM1 FloatingAlgae Process.
+"""v3 NSM1 FloatingAlgae Process (v3-native; not a v2 re-export).
 
-Phase 2.A (v3 NSM1 design spec, Section 11 + Section 6 bug list): apply
-the FloatingAlgae bug fixes and adopt the v3 patterns:
+As-implemented record (Phase 2.A, v3 NSM1 design spec Section 11 +
+Section 6 bug list). The following v2-inherited bugs are **fixed and
+regression-tested**, and the v3 patterns are adopted:
 
-- Bug #4: replace the broken multiplicative integrator
-  ``algae * rate * dt * 86400`` with additive Forward Euler
-  ``algae + rate * dt_days``.
-- Bug #13: implement ``ammonium_respiration`` (was returning 0).
-- Bug #14: implement ``ammonium_growth`` (was returning 0).
-- Bug #15: replace hard-coded ``phosphate_fraction_dissolved=0.5`` with
-  the v3 ``fdp`` partitioning utility.
+- Bug #4 (fixed): the broken multiplicative integrator
+  ``algae * rate * dt * 86400`` was replaced with additive Forward
+  Euler ``algae + rate * dt_days``.
+- Bug #13 (fixed): ``ammonium_respiration`` is implemented (was
+  returning 0 in v2).
+- Bug #14 (fixed): ``ammonium_growth`` is implemented (was returning 0
+  in v2).
+- Bug #15 (fixed): the hard-coded ``phosphate_fraction_dissolved=0.5``
+  was replaced with the v3 ``fdp`` partitioning utility.
 - Bug #16: re-add ``set_at_time`` persistence after the integrator step
   (the prior fix was lost when streaming branch was rebased onto
   ``upstream/memory-refactor-pytestUpdate`` via the C8 sync).
@@ -384,12 +387,14 @@ class FloatingAlgae(Process):
         return FloatingAlgae(**config)
 
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
-        # check if there is nitrogen process and set flags according
+        # The nutrient-availability flags are enabled unconditionally by
+        # design (NSM1 floating algae always couples to N and P; the
+        # actual limitation is governed by KsN/KsP and the registry
+        # concentrations, not by a process-presence gate). This matches
+        # the v1 kinetic contract and the parity-test fixtures, which
+        # set the same three flags. Not an incomplete stub.
         self.use_nitrate = True
         self.use_ammonium = True
-
-        # check if there is a phosphorus process and set flags according
-        # TODO: implement
         self.use_phosphate = True
 
         # Phase 2.A: capture the v3 Model's run-level Diagnostics handle
