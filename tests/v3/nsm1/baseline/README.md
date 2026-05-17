@@ -2,7 +2,7 @@
 
 Originally captured 2026-05-13 against commit `186b5c4` ("Add v3 NSM1 pattern alignment specification") on branch `streaming`.
 
-**Active baseline: `3a8c188`** (terminal gold-standard baseline, re-baselined 2026-05-16, incorporating NSM1-CA-1, NSM1-SCI-N1 (alkalinity) and NSM1-SCI-A3 (algae PAR — a broad cascade across ~16 coupled variables); see "Re-baseline log" below). The `b51df71` (CA-1+SCI-N1), `624ed7c` (CA-1 only) and `186b5c4` (pre-fix) artifacts are retained in the tree for auditability and are no longer the active reference.
+**Active baseline: `6c10f36`** (terminal gold-standard baseline, re-baselined 2026-05-16, incorporating NSM1-CA-1, NSM1-SCI-N1, NSM1-SCI-A3 and NSM1-SCI-A2 — the trajectory-perturbing gate changes; the remaining gate items C2–C5 and D do not perturb the coupled-demo trajectory; see "Re-baseline log" below). The `3a8c188` (through SCI-A3), `b51df71` (CA-1+SCI-N1), `624ed7c` (CA-1 only) and `186b5c4` (pre-fix) artifacts are retained in the tree for auditability and are no longer the active reference.
 
 These artifacts are the **gold reference** for the zero-regression contract in `design/clearwater_modules_v3_nsm1_pattern_alignment_specification.md` §11. Every per-Process phase commit (Phase 1 through Phase 10) of the pattern-alignment work must reproduce them bit-identically when no `REGISTRY_DIAGNOSTICS` names are pre-registered.
 
@@ -10,12 +10,15 @@ These artifacts are the **gold reference** for the zero-regression contract in `
 
 | File | Purpose |
 |---|---|
-| `baseline_coupled_trajectory_3a8c188.nc` | **ACTIVE (terminal).** 4,320-substep coupled NSM1 demo trajectory at the NSM1-CA-1 + NSM1-SCI-N1 + NSM1-SCI-A3 fixes. Same shape/contract as `186b5c4`; differs from `b51df71` broadly (~16 coupled variables, the SCI-A3 algae-PAR cascade). **Load-bearing for §11.2.** |
+| `baseline_coupled_trajectory_6c10f36.nc` | **ACTIVE (terminal).** 4,320-substep coupled NSM1 demo trajectory at the NSM1-CA-1 + NSM1-SCI-N1 + NSM1-SCI-A3 + NSM1-SCI-A2 fixes. Same shape/contract as `186b5c4`; differs from `3a8c188` broadly (the SCI-A2 carbon-routing cascade). **Load-bearing for §11.2.** |
+| `baseline_coupled_trajectory_3a8c188.nc` | Superseded (through SCI-A3; encodes the SCI-A2 0.5 mortality-C mis-routing). 4,320-substep coupled NSM1 demo trajectory. Retained for auditability. |
 | `baseline_coupled_trajectory_b51df71.nc` | Superseded (CA-1+SCI-N1; encodes the SCI-A3 algae total-shortwave defect). 4,320-substep coupled NSM1 demo trajectory. Retained for auditability. |
 | `baseline_coupled_trajectory_624ed7c.nc` | Superseded (CA-1 only; encodes the SCI-N1 4× denitrification-alkalinity defect). Retained for auditability. |
 | `baseline_coupled_trajectory_186b5c4.nc` | Superseded (pre-CA-1; encodes the raw-weight alkalinity bug). 4,320-substep coupled NSM1 demo trajectory; 20 state/forcing variables × 5 cells × 4,321 substep indices (initial condition + 4,320 substeps). Bit-identical reproducibility verified across two consecutive captures. Retained for auditability. |
-| `baseline_junit_full_3a8c188.xml` | **ACTIVE (terminal).** Full repo test suite JUnit XML at the CA-1 + SCI-N1 + SCI-A3 fixes (997 passed, 2 xfailed, 0 failed, 319.51 s wall; +2 vs `b51df71` from the new SCI-A3 regression tests). |
-| `baseline_tier1_junit_3a8c188.xml` | **ACTIVE (terminal).** Tier 1 conservation tests JUnit XML at the CA-1 + SCI-N1 + SCI-A3 fixes. |
+| `baseline_junit_full_6c10f36.xml` | **ACTIVE (terminal).** Full repo test suite JUnit XML at the CA-1 + SCI-N1 + SCI-A3 + SCI-A2 fixes (999 passed, 2 xfailed, 0 failed, 314.59 s wall; +2 vs `3a8c188` from the new SCI-A2 regression tests). |
+| `baseline_tier1_junit_6c10f36.xml` | **ACTIVE (terminal).** Tier 1 conservation tests JUnit XML at the CA-1 + SCI-N1 + SCI-A3 + SCI-A2 fixes. |
+| `baseline_junit_full_3a8c188.xml` | Superseded (through SCI-A3). Full repo test suite JUnit XML (997 passed, 2 xfailed, 0 failed, 319.51 s wall). |
+| `baseline_tier1_junit_3a8c188.xml` | Superseded (through SCI-A3). Tier 1 conservation tests JUnit XML (40 passed). |
 | `baseline_junit_full_b51df71.xml` | Superseded (CA-1+SCI-N1). Full repo test suite JUnit XML (995 passed, 2 xfailed, 0 failed, 319.15 s wall). |
 | `baseline_tier1_junit_b51df71.xml` | Superseded (CA-1+SCI-N1). Tier 1 conservation tests JUnit XML (40 passed). |
 | `baseline_junit_full_624ed7c.xml` | Superseded (CA-1 only). Full repo test suite JUnit XML (993 passed, 2 xfailed, 0 failed, 327.77 s wall). |
@@ -57,13 +60,21 @@ Re-baselining is a separate, signed-off commit with its own short hash in the fi
 
 ## Re-baseline log
 
-### `3a8c188` — 2026-05-16 — NSM1-SCI-A3 (terminal gold-standard baseline)
+### `6c10f36` — 2026-05-16 — NSM1-SCI-A2 (terminal gold-standard baseline)
+
+Trigger: a deliberate kinetics change (gold-standard spec Workstream C1; E1 author decision). Commit `6c10f36` fixed NSM1-SCI-A2 (MAJOR): the operative algal/benthic mortality-carbon routing fraction `f_pocp`/`f_pocb` was corrected `0.5 → 0.8` (CE-QUAL-W2 `APOM`; v1 used 0.9), routing dead algal carbon predominantly to POC rather than ~half to DOC.
+
+Scope of change vs `3a8c188`: **broad** — the POC/DOC re-partition cascades through the carbon→DIC→DO network and onward. ~16 variables differ (`algae_floating, alkalinity, ammonium, benthic_algae, cbod, dic, doc, n2, nitrate, organic_nitrogen, organic_phosphorus, oxygen_dissolved, pathogen, poc, pom, tip`). Captured under `pixi --environment dev`; parity re-verified under the conda `clearwater` test env.
+
+**Terminal baseline.** NSM1-CA-1, NSM1-SCI-N1, NSM1-SCI-A3 and NSM1-SCI-A2 are the trajectory-perturbing changes in the gold-standard gate set. The remaining gate items genuinely do not alter the coupled-demo trajectory (re-verified per item): **C2** CBOD settling is dormant at the shipped `ksbod_20=0`; **C3** DOX-F1 is a doc/guard with no freshwater numeric change; **C4** DOX-F2 is a warning + opt-in floor that is off by default; **C5** is documentation-only; **D** is documentation/tests. Absent a new deliberate kinetics change or dependency bump, `6c10f36` is the final gold-standard reference. References in `test_coupled_demo_parity.py` and `check_baseline_parity.py` now point at `6c10f36`; prior artifacts retained unmodified.
+
+### `3a8c188` — 2026-05-16 — NSM1-SCI-A3
 
 Trigger: a deliberate kinetics change (gold-standard spec Workstream B1). Commit `3a8c188` fixed NSM1-SCI-A3 (MAJOR): FloatingAlgae/BenthicAlgae now convert `solar_radiation` (total broadband shortwave) to PAR (`× Fr_PAR`, Fr_PAR=0.47) at the process boundary before light limitation, restoring the v1 convention v3 had dropped (a v1→v3 regression).
 
 Scope of change vs `b51df71`: **broad** — unlike the alkalinity-only CA-1/SCI-N1 fixes, the algae light-limitation change cascades through the coupled network. ~16 variables differ (`algae_floating, alkalinity, ammonium, benthic_algae, cbod, dic, doc, n2, nitrate, organic_nitrogen, organic_phosphorus, oxygen_dissolved, pathogen, poc, pom, tip`). Captured under `pixi --environment dev`; parity re-verified under the conda `clearwater` test env.
 
-**Terminal baseline.** NSM1-CA-1, NSM1-SCI-N1 and NSM1-SCI-A3 are the trajectory-perturbing changes in the gold-standard gate set; the remaining gate items (C1 carbon-routing, C2 CBOD, C3/C4 DOX docs/guards/off-by-default, C5 doc-only, D documentation) do not alter the coupled-demo trajectory. Absent a new deliberate kinetics change or dependency bump, `3a8c188` is the final gold-standard reference. References in `test_coupled_demo_parity.py` and `check_baseline_parity.py` now point at `3a8c188`; `b51df71`, `624ed7c` and `186b5c4` artifacts retained unmodified.
+Correction (logged in-record): this entry was originally written as the "terminal gold-standard baseline", asserting that **C1 carbon-routing** (along with C2–C5/D) does not perturb the trajectory. That was **wrong** — NSM1-SCI-A2 (C1, `f_pocp/f_pocb`) re-partitions mortality carbon and cascades broadly, so `3a8c188` was superseded by `6c10f36` on the same day. The over-claim is corrected here rather than rewritten away; C2–C5/D were re-verified individually as genuinely non-perturbing (see the `6c10f36` entry). References now point at `6c10f36`; `3a8c188`, `b51df71`, `624ed7c` and `186b5c4` artifacts retained unmodified.
 
 ### `b51df71` — 2026-05-16 — NSM1-SCI-N1
 

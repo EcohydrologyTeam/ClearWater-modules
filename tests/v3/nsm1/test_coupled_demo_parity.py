@@ -5,12 +5,13 @@ Two complementary contracts:
 1. ``test_baseline_parity_bit_identical`` — replays the Phase 0
    4,320-substep baseline scenario and asserts every state-variable
    trajectory matches the committed
-   ``baseline_coupled_trajectory_3a8c188.nc`` bit-identically when no
+   ``baseline_coupled_trajectory_6c10f36.nc`` bit-identically when no
    ``REGISTRY_DIAGNOSTICS`` names are pre-registered. This is the
    §11.2 contract enforced inside the test suite. (Terminal
-   gold-standard baseline at ``3a8c188``, incorporating NSM1-CA-1,
-   NSM1-SCI-N1 (alkalinity) and NSM1-SCI-A3 (algae PAR — broad
-   cascade) — the trajectory-perturbing gate changes. Prior baselines
+   gold-standard baseline at ``6c10f36``, incorporating NSM1-CA-1,
+   NSM1-SCI-N1, NSM1-SCI-A3 and NSM1-SCI-A2 — the
+   trajectory-perturbing gate changes (C2–C5/D do not perturb the
+   trajectory). Prior baselines ``3a8c188`` (through SCI-A3),
    ``b51df71`` (CA-1+SCI-N1), ``624ed7c`` (CA-1) and ``186b5c4``
    (pre-fix) are retained for auditability per baseline/README.md.)
 
@@ -57,7 +58,7 @@ from clearwater_modules_v3.processes import (
 _BASELINE_NETCDF = (
     Path(__file__).resolve().parent
     / "baseline"
-    / "baseline_coupled_trajectory_3a8c188.nc"
+    / "baseline_coupled_trajectory_6c10f36.nc"
 )
 
 
