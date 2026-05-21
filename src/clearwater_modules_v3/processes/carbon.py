@@ -403,6 +403,36 @@ class Carbon(Process):
         else:
             dox = _dox_from_registry(registry, time, poc)
 
+        # Phase G-3 (2026-05-21): read hydraulic + wind forcings from
+        # registry when present, falling back to constructor-time
+        # scalars. See DOX.run for the rationale. Prior to G-3,
+        # Carbon's CO2 atmospheric exchange was computed against frozen
+        # constructor defaults regardless of registry forcing.
+        wind_speed = (
+            registry.get_at_time("wind_speed", time)
+            if "wind_speed" in registry else self.wind_speed
+        )
+        velocity = (
+            registry.get_at_time("velocity", time)
+            if "velocity" in registry else self.velocity
+        )
+        flow = (
+            registry.get_at_time("flow", time)
+            if "flow" in registry else self.flow
+        )
+        topwidth = (
+            registry.get_at_time("topwidth", time)
+            if "topwidth" in registry else self.topwidth
+        )
+        slope = (
+            registry.get_at_time("slope", time)
+            if "slope" in registry else self.slope
+        )
+        shear_velocity = (
+            registry.get_at_time("shear_velocity", time)
+            if "shear_velocity" in registry else self.shear_velocity
+        )
+
         # --- Fused rate composition (pattern B) ---
         d_poc, d_doc, d_dic, components = self._change_with_components(
             poc=poc,
@@ -411,6 +441,12 @@ class Carbon(Process):
             t_water_c=t_water_c,
             depth=depth,
             dox=dox,
+            wind_speed=wind_speed,
+            velocity=velocity,
+            flow=flow,
+            topwidth=topwidth,
+            slope=slope,
+            shear_velocity=shear_velocity,
         )
 
         # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
@@ -458,6 +494,12 @@ class Carbon(Process):
         t_water_c: ArrayLike,
         depth: ArrayLike,
         dox: ArrayLike,
+        wind_speed: ArrayLike | None = None,
+        velocity: ArrayLike | None = None,
+        flow: ArrayLike | None = None,
+        topwidth: ArrayLike | None = None,
+        slope: ArrayLike | None = None,
+        shear_velocity: ArrayLike | None = None,
     ) -> tuple[ArrayLike, ArrayLike, ArrayLike, dict]:
         """Compute ``(d_poc, d_doc, d_dic, components)``.
 
@@ -670,19 +712,33 @@ class Carbon(Process):
         the value count matches; otherwise we fall through to scalar
         broadcasting.
         """
+        # Phase G-3 kwarg-to-self fallback.
+        if wind_speed is None:
+            wind_speed = self.wind_speed
+        if velocity is None:
+            velocity = self.velocity
+        if flow is None:
+            flow = self.flow
+        if topwidth is None:
+            topwidth = self.topwidth
+        if slope is None:
+            slope = self.slope
+        if shear_velocity is None:
+            shear_velocity = self.shear_velocity
+
         kah_20_value = kah_20(
             kah_20_user=self.kah_20_user,
             hydraulic_reaeration_option=self.hydraulic_reaeration_option,
-            velocity=self.velocity,
+            velocity=velocity,
             depth=depth,
-            flow=self.flow,
-            topwidth=self.topwidth,
-            slope=self.slope,
-            shear_velocity=self.shear_velocity,
+            flow=flow,
+            topwidth=topwidth,
+            slope=slope,
+            shear_velocity=shear_velocity,
         )
         kaw_20_value = kaw_20(
             kaw_20_user=self.kaw_20_user,
-            wind_speed=self.wind_speed,
+            wind_speed=wind_speed,
             wind_reaeration_option=self.wind_reaeration_option,
         )
         return ka_tc(

@@ -307,12 +307,48 @@ class N2(Process):
         else:
             pressure_mb = self.pressure_mb
 
+        # Phase G-3 (2026-05-21): read hydraulic + wind forcings from
+        # registry when present, falling back to constructor-time
+        # scalars. See DOX.run for the rationale. Prior to G-3, N2's
+        # atmospheric exchange was computed against frozen constructor
+        # defaults regardless of registry forcing.
+        wind_speed = (
+            registry.get_at_time("wind_speed", time)
+            if "wind_speed" in registry else self.wind_speed
+        )
+        velocity = (
+            registry.get_at_time("velocity", time)
+            if "velocity" in registry else self.velocity
+        )
+        flow = (
+            registry.get_at_time("flow", time)
+            if "flow" in registry else self.flow
+        )
+        topwidth = (
+            registry.get_at_time("topwidth", time)
+            if "topwidth" in registry else self.topwidth
+        )
+        slope = (
+            registry.get_at_time("slope", time)
+            if "slope" in registry else self.slope
+        )
+        shear_velocity = (
+            registry.get_at_time("shear_velocity", time)
+            if "shear_velocity" in registry else self.shear_velocity
+        )
+
         # --- Fused rate composition (pattern B) ---
         rate, components = self._change_with_components(
             n2_state=n2_state,
             t_water_c=t_water_c,
             depth=depth,
             pressure_mb=pressure_mb,
+            wind_speed=wind_speed,
+            velocity=velocity,
+            flow=flow,
+            topwidth=topwidth,
+            slope=slope,
+            shear_velocity=shear_velocity,
         )
 
         # --- Forward Euler integration (pattern C) ---
@@ -363,6 +399,12 @@ class N2(Process):
         t_water_c: ArrayLike,
         depth: ArrayLike,
         pressure_mb: ArrayLike,
+        wind_speed: ArrayLike | None = None,
+        velocity: ArrayLike | None = None,
+        flow: ArrayLike | None = None,
+        topwidth: ArrayLike | None = None,
+        slope: ArrayLike | None = None,
+        shear_velocity: ArrayLike | None = None,
     ) -> tuple[ArrayLike, dict]:
         """Compute ``(rate, components)`` for N2 (without TDG; TDG is
         computed post-integrator-step in ``run`` because it depends on
@@ -384,6 +426,20 @@ class N2(Process):
         pwv_atm = pwv(t_water_k)
         n2_sat = n2sat_henry(khn2, pressure_mb, pwv_atm)
 
+        # Phase G-3 kwarg-to-self fallback.
+        if wind_speed is None:
+            wind_speed = self.wind_speed
+        if velocity is None:
+            velocity = self.velocity
+        if flow is None:
+            flow = self.flow
+        if topwidth is None:
+            topwidth = self.topwidth
+        if slope is None:
+            slope = self.slope
+        if shear_velocity is None:
+            shear_velocity = self.shear_velocity
+
         # --- Effective reaeration coefficient ka_tc (1/d) ---
         is_user_hydraulic_zero = (
             self.hydraulic_reaeration_option == 1 and self.kah_20_user == 0.0
@@ -397,16 +453,16 @@ class N2(Process):
             kah_20_value = kah_20(
                 kah_20_user=self.kah_20_user,
                 hydraulic_reaeration_option=self.hydraulic_reaeration_option,
-                velocity=self.velocity,
+                velocity=velocity,
                 depth=depth,
-                flow=self.flow,
-                topwidth=self.topwidth,
-                slope=self.slope,
-                shear_velocity=self.shear_velocity,
+                flow=flow,
+                topwidth=topwidth,
+                slope=slope,
+                shear_velocity=shear_velocity,
             )
             kaw_20_value = kaw_20(
                 kaw_20_user=self.kaw_20_user,
-                wind_speed=self.wind_speed,
+                wind_speed=wind_speed,
                 wind_reaeration_option=self.wind_reaeration_option,
             )
             ka_tc_value = ka_tc(

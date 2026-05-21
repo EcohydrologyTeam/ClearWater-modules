@@ -712,6 +712,43 @@ class DOX(Process):
         else:
             pressure_mb = self.pressure_mb
 
+        # Phase G-3 (2026-05-21): read hydraulic and wind forcings from
+        # the registry when present, falling back to the constructor-
+        # time scalars (which are toy defaults from
+        # ``parameters/global_vars.py``). Prior to this, reaeration
+        # used the frozen constructor scalars even when the registry
+        # carried time-varying ``wind_speed`` / ``velocity`` / ``flow``
+        # / ``topwidth`` / ``slope`` / ``shear_velocity`` --
+        # silently producing wrong gas-exchange rates in any coupled
+        # run with realistic met forcing. The Temperature module
+        # already reads ``wind_speed`` from the registry, so
+        # pre-G-3 the heat budget responded to wind while DOX did
+        # not -- a confusing internal asymmetry that this fix closes.
+        wind_speed = (
+            registry.get_at_time("wind_speed", time)
+            if "wind_speed" in registry else self.wind_speed
+        )
+        velocity = (
+            registry.get_at_time("velocity", time)
+            if "velocity" in registry else self.velocity
+        )
+        flow = (
+            registry.get_at_time("flow", time)
+            if "flow" in registry else self.flow
+        )
+        topwidth = (
+            registry.get_at_time("topwidth", time)
+            if "topwidth" in registry else self.topwidth
+        )
+        slope = (
+            registry.get_at_time("slope", time)
+            if "slope" in registry else self.slope
+        )
+        shear_velocity = (
+            registry.get_at_time("shear_velocity", time)
+            if "shear_velocity" in registry else self.shear_velocity
+        )
+
         # --- NSM1-DOX-F1 (spec C3): freshwater DO-saturation guard ---
         # ``dox_sat_apha`` computes the *freshwater* APHA saturation (the
         # salinity correction is intentionally omitted; matches v1 and is
@@ -741,6 +778,12 @@ class DOX(Process):
             depth=depth,
             ammonium=ammonium,
             pressure_mb=pressure_mb,
+            wind_speed=wind_speed,
+            velocity=velocity,
+            flow=flow,
+            topwidth=topwidth,
+            slope=slope,
+            shear_velocity=shear_velocity,
         )
 
         # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
@@ -786,6 +829,12 @@ class DOX(Process):
         depth: ArrayLike,
         ammonium: ArrayLike,
         pressure_mb: ArrayLike,
+        wind_speed: ArrayLike | None = None,
+        velocity: ArrayLike | None = None,
+        flow: ArrayLike | None = None,
+        topwidth: ArrayLike | None = None,
+        slope: ArrayLike | None = None,
+        shear_velocity: ArrayLike | None = None,
     ) -> tuple[ArrayLike, ArrayLike, dict]:
         """Compute ``(delta_dox, rate, components)``.
 
@@ -801,7 +850,25 @@ class DOX(Process):
         re-multiplying by ``dt_days`` and the caller can cache ``rate``
         on ``self.dox_rate`` for downstream debugging.
 
+        Phase G-3 (2026-05-21): the hydraulic and wind kwargs accept
+        registry-driven time-varying forcings from ``run()``. When
+        passed as ``None`` (default, for backward compat with callers
+        that have not yet been updated), each falls back to the
+        constructor-time scalar on ``self``.
         """
+        # Phase G-3 kwarg-to-self fallback.
+        if wind_speed is None:
+            wind_speed = self.wind_speed
+        if velocity is None:
+            velocity = self.velocity
+        if flow is None:
+            flow = self.flow
+        if topwidth is None:
+            topwidth = self.topwidth
+        if slope is None:
+            slope = self.slope
+        if shear_velocity is None:
+            shear_velocity = self.shear_velocity
         # --- O2 saturation (APHA / Benson-Krause) ---
         dox_sat = dox_sat_apha(t_water_c, pressure_mb)
 
@@ -822,16 +889,16 @@ class DOX(Process):
             kah_20_value = kah_20(
                 kah_20_user=self.kah_20_user,
                 hydraulic_reaeration_option=self.hydraulic_reaeration_option,
-                velocity=self.velocity,
+                velocity=velocity,
                 depth=depth,
-                flow=self.flow,
-                topwidth=self.topwidth,
-                slope=self.slope,
-                shear_velocity=self.shear_velocity,
+                flow=flow,
+                topwidth=topwidth,
+                slope=slope,
+                shear_velocity=shear_velocity,
             )
             kaw_20_value = kaw_20(
                 kaw_20_user=self.kaw_20_user,
-                wind_speed=self.wind_speed,
+                wind_speed=wind_speed,
                 wind_reaeration_option=self.wind_reaeration_option,
             )
             ka_tc_value = ka_tc(
