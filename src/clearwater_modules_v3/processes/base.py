@@ -86,6 +86,20 @@ class Process(ABC):
     variables = []
     time_step_seconds: int
 
+    # Phase H-9 (2026-05-21): per-substep sibling-coupling dependency
+    # declaration. Each subclass overrides this tuple with the
+    # ``process_name()`` of any sibling process whose step-scoped
+    # ``self.<name>`` rate caches it reads inside ``run()``. Model
+    # validates the registered process order at init time and raises
+    # if a reader is constructed before its writer. Default empty
+    # tuple = no sibling dependencies (the legacy contract). Examples:
+    #   * DOX reads Nitrogen.nitrification_flux_rate +
+    #     FloatingAlgae.algal_growth_rate + BenthicAlgae.balgae_*_rate +
+    #     Carbon.doc_dic_oxidation_rate.
+    #   * Phosphorus reads FloatingAlgae.algal_growth_rate +
+    #     BenthicAlgae.balgae_growth_rate.
+    upstream_processes: tuple[str, ...] = ()
+
     def __init__(self, time_step: timedelta) -> None:
         self.time_step = time_step
         self.time_step_seconds = self.time_step.total_seconds()

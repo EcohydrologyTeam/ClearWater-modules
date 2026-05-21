@@ -275,6 +275,16 @@ class N2(Process):
             self.use_nitrogen = False
             self.nitrogen_process = None
 
+        # Phase H-8 (2026-05-21): adopt Temperature's wind_input_height
+        # if Temperature is in the model. See DOX.init_process for the
+        # full rationale (same height-convention unification).
+        self.wind_input_height = 2.0
+        if hasattr(model, "has_process") and model.has_process("Temperature"):
+            temperature_process = model.get_process("Temperature")
+            self.wind_input_height = float(
+                getattr(temperature_process, "wind_input_height", 2.0)
+            )
+
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Integrate the N2 state by one Forward Euler step.
 
@@ -464,6 +474,7 @@ class N2(Process):
                 kaw_20_user=self.kaw_20_user,
                 wind_speed=wind_speed,
                 wind_reaeration_option=self.wind_reaeration_option,
+                wind_input_height=getattr(self, "wind_input_height", 2.0),
             )
             ka_tc_value = ka_tc(
                 kah_20=kah_20_value,

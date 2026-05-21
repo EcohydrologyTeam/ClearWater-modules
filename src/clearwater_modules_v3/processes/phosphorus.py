@@ -118,6 +118,11 @@ _PARTITIONING_DEFAULTS: dict[str, float | bool] = {
 
 
 class Phosphorus(Process):
+    # Phase H-9 (2026-05-21): Phosphorus reads step-scoped rate caches
+    # from FloatingAlgae (algal_growth_rate, algal_respiration_rate) and
+    # BenthicAlgae (balgae_growth_rate, balgae_respiration_rate).
+    upstream_processes = ("FloatingAlgae", "BenthicAlgae")
+
     """v3 NSM1 Phosphorus Process (TIP + OrgP).
 
     Single Process managing both Phosphorus state variables. Forward

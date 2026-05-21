@@ -132,17 +132,28 @@ def kaw_20(
     kaw_20_user: xr.DataArray,
     wind_speed: xr.DataArray,
     wind_reaeration_option: xr.DataArray,
+    wind_input_height: float = 2.0,
 ) -> xr.DataArray:
     """Wind-driven oxygen reaeration velocity at 20 deg C.
 
     Args:
         kaw_20_user | m/d | user-defined wind reaeration velocity at 20 deg C
             (used when ``wind_reaeration_option == 1``).
-        wind_speed | m/s | wind speed at 10 m above the water surface
-            (the input is referenced to 2 m and rescaled to 10 m via the
-            standard 1/7 power law internally).
+        wind_speed | m/s | observed wind speed at ``wind_input_height``
+            above the water surface. The empirical formulas below are
+            calibrated against the 10 m reference height (Uw10); this
+            function converts the input to Uw10 via the standard
+            ``(10 / wind_input_height) ** 0.143`` power law.
         wind_reaeration_option | int | selector for the empirical formula,
             1-13 (see Notes).
+        wind_input_height | m | height (m) above the water surface at
+            which ``wind_speed`` was observed. Default 2.0 m matches the
+            pre-Phase-H behaviour and the v1/Fortran NSM1 inheritance.
+            For NOAA ASOS / METAR / GridMET / NLDAS records (standard
+            anemometer at 10 m), pass ``wind_input_height=10.0`` so the
+            internal Uw10 calculation does not double-count the height
+            correction. Phase H-8 (2026-05-21): added to align with the
+            v3 TSM ``Temperature.wind_input_height`` configurable.
 
     Returns:
         m/d | wind-driven reaeration velocity at 20 deg C.
@@ -164,7 +175,20 @@ def kaw_20(
             12. Yu et al. (1977).
             13. Weiler (1974): piecewise at ``Uw10 = 1.6 m/s``.
     """
-    Uw10 = wind_speed * (10.0 / 2.0) ** 0.143
+    # Phase H-8 (2026-05-21): use the caller-supplied
+    # ``wind_input_height`` (default 2.0 m for legacy parity) rather
+    # than the hard-coded ``2.0`` rescale base. With Phase G-3 wiring
+    # registry-driven wind into DOX/N2/Carbon and Phase F bumping the
+    # canonical runner's ``--wind-input-height`` default to 10.0 to
+    # match the KSLE ASOS anemometer, the previous hard-coded
+    # ``(10/2)**0.143`` rescale would have applied a 1.35x factor on
+    # top of an already-10-m measurement. ``wind_input_height == 10``
+    # now produces the identity factor here, matching the Temperature
+    # module's log-law contract for the same height value.
+    if abs(wind_input_height - 10.0) < 1e-12:
+        Uw10 = wind_speed
+    else:
+        Uw10 = wind_speed * (10.0 / wind_input_height) ** 0.143
     # See ``kah_20`` for the same ``np.select`` dim-stripping fix; reattach
     # ``wind_speed`` dims/coords to the result.
     result = np.select(

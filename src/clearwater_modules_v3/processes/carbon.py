@@ -367,6 +367,17 @@ class Carbon(Process):
             if self.use_cbod:
                 self.cbod_process = model.get_process("CBOD")
 
+            # Phase H-8 (2026-05-21): adopt Temperature's
+            # wind_input_height for the kaw_20 (CO2 atmospheric
+            # exchange) call. See DOX.init_process for the full
+            # rationale.
+            self.wind_input_height = 2.0
+            if model.has_process("Temperature"):
+                temperature_process = model.get_process("Temperature")
+                self.wind_input_height = float(
+                    getattr(temperature_process, "wind_input_height", 2.0)
+                )
+
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Advance POC, DOC, DIC by one substep using Forward Euler.
 
@@ -740,6 +751,7 @@ class Carbon(Process):
             kaw_20_user=self.kaw_20_user,
             wind_speed=wind_speed,
             wind_reaeration_option=self.wind_reaeration_option,
+            wind_input_height=getattr(self, "wind_input_height", 2.0),
         )
         return ka_tc(
             kah_20=kah_20_value,

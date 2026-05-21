@@ -229,6 +229,17 @@ def dox_sat_apha(
 
 
 class DOX(Process):
+    # Phase H-9 (2026-05-21): DOX reads step-scoped rate caches from
+    # Nitrogen (nitrification_flux_rate), FloatingAlgae (algal_growth_rate,
+    # algal_respiration_rate, algal_nh4_uptake_fraction), BenthicAlgae
+    # (balgae_growth_rate, balgae_respiration_rate, balgae_nh4_uptake_fraction),
+    # Carbon (doc_dic_oxidation_rate), and CBOD (cbod_oxidation_rate).
+    # Each must run BEFORE DOX in the same substep. Model.__init_model
+    # validates the registered process order against this list.
+    upstream_processes = (
+        "Nitrogen", "FloatingAlgae", "BenthicAlgae", "Carbon", "CBOD",
+    )
+
     """v3 NSM1 dissolved oxygen Process.
 
     State variable: ``oxygen_dissolved`` (mg-O2/L).
@@ -462,6 +473,24 @@ class DOX(Process):
         if model.has_process("CBOD"):
             self.use_cbod = True
             self.cbod_process = model.get_process("CBOD")
+
+        # Phase H-8 (2026-05-21): adopt the Temperature module's
+        # ``wind_input_height`` if Temperature is in the model, so the
+        # internal log-law correction inside ``kaw_20`` agrees with
+        # Temperature's wind-function. Without this, a user passing
+        # ``Temperature(wind_input_height=10.0)`` for KSLE ASOS wind
+        # would have Temperature apply the log-law correction
+        # downstream to 2 m, but DOX's reaeration would treat the
+        # same 10-m wind as if it were at 2 m, applying an additional
+        # ``(10/2)**0.143 == 1.35`` factor on top -- silently
+        # inflating DOX gas exchange by ~35%. With this lookup, both
+        # modules see the same convention.
+        self.wind_input_height = 2.0  # legacy default
+        if model.has_process("Temperature"):
+            temperature_process = model.get_process("Temperature")
+            self.wind_input_height = float(
+                getattr(temperature_process, "wind_input_height", 2.0)
+            )
 
     # ------------------------------------------------------------------
     # Per-source helpers (each returns mg-O2/L/d; missing siblings -> 0)
@@ -900,6 +929,7 @@ class DOX(Process):
                 kaw_20_user=self.kaw_20_user,
                 wind_speed=wind_speed,
                 wind_reaeration_option=self.wind_reaeration_option,
+                wind_input_height=getattr(self, "wind_input_height", 2.0),
             )
             ka_tc_value = ka_tc(
                 kah_20=kah_20_value,

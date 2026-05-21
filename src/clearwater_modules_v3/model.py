@@ -338,6 +338,38 @@ class Model:
         for process in self.__processes:
             process.init_process(self, self.__registry)
 
+        # Phase H-9 (2026-05-21): validate per-substep process order
+        # against the declared ``upstream_processes`` DAG. Each
+        # Process subclass declares the names of sibling processes
+        # whose step-scoped ``self.<rate>`` caches it reads inside
+        # ``run()``. The Model invokes processes in the order of
+        # ``self.__processes`` per substep, so if a reader is
+        # constructed before its writer, the reader sees the
+        # PREVIOUS substep's cache (a silent one-substep lag).
+        # Raise at init time so the user fixes the construction
+        # order rather than discovering the lag via a calibration-
+        # off-by-N-percent mystery.
+        seen: set[str] = set()
+        for process in self.__processes:
+            name = process.process_name()
+            upstream = tuple(
+                getattr(process, "upstream_processes", ())
+            )
+            missing = [u for u in upstream if u not in seen]
+            if missing:
+                raise ValueError(
+                    f"Process order violation: {name!r} declares "
+                    f"upstream_processes = {upstream!r} but the "
+                    f"processes {missing!r} are NOT registered before "
+                    f"it in the Model's process list. {name!r} reads "
+                    "step-scoped rate caches from those processes "
+                    "inside run(); without them registered earlier, "
+                    "the reader sees stale or zero values. Re-order "
+                    "the ``processes=`` argument to Model() so the "
+                    "dependencies appear before this process."
+                )
+            seen.add(name)
+
         # Step 4 (M5 contract): invoke ``from_hotstart`` on any process
         # that defines it, passing whatever process-specific state is
         # available. By contract this MUST override the fresh-start
