@@ -769,9 +769,20 @@ class Temperature(Process):
 
         * ``q_sensible``: sensible heat flux, signed by
           ``T_air - T_water`` (positive = air heats water).
-        * ``q_latent``: latent heat flux **magnitude**, signed by
-          ``e_sat - e_air`` (positive = evaporation cools water).
-          Subtracted in ``q_net``.
+        * ``q_latent``: latent heat flux returned as a **signed
+          subtraction term**, NOT a positive magnitude. Phase H-10
+          (2026-05-21) docstring clarification: in the evaporative
+          regime (``e_sat > e_air``) the value is positive and
+          subtracting it in ``q_net`` cools the water; in the
+          condensation regime (``e_sat < e_air``) the value is
+          negative and subtracting it (`-(-x) = +x`) correctly adds
+          the latent heat of condensation back to the column. Sign
+          convention preserved across both regimes; downstream
+          consumers doing an offline mass-balance closure should use
+          the *subtraction-term* form ``q_net = ... - q_latent``,
+          not ``q_net = ... + |q_latent|``. Previously documented as
+          "magnitude", which invited bugs in calibration plotters
+          that took ``abs(q_latent)``.
         * ``q_longwave_up``: upwelling longwave **magnitude**.
           Subtracted in ``q_net``.
         * ``q_longwave_down``: downwelling atmospheric longwave
@@ -1403,13 +1414,18 @@ class Temperature(Process):
         else:
             shelter = self.wind_shelter
 
-        if self.wind_input_height != 2.0:
-            height_factor = (
-                np.log(2.0 / self.surface_z0)
-                / np.log(self.wind_input_height / self.surface_z0)
-            )
-        else:
-            height_factor = 1.0
+        # Phase H-7 (2026-05-21): always apply the log-law factor;
+        # at ``wind_input_height == 2.0`` exactly the factor reduces
+        # to ``log(2/z0) / log(2/z0) == 1.0`` by construction, so the
+        # previous exact-equality branch was dead optimization that
+        # introduced a float-drift hazard (a value of 2.0000001 from
+        # config-file round-tripping would silently bypass the
+        # correction). Always evaluating the log-law produces 1.0 at
+        # 2.0 and the correct factor at every other height.
+        height_factor = (
+            np.log(2.0 / self.surface_z0)
+            / np.log(self.wind_input_height / self.surface_z0)
+        )
 
         return wind_speed * shelter * height_factor
 
