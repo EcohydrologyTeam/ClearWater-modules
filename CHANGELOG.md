@@ -6,22 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 
 ---
 
-## [v0.4.0-alpha] — Unreleased
+## [v0.4.0] — 2026-05-22
 
 > 104 commits to `main` by @ptomasula, @jrutyna, @aufdenkampe, and @sjordan29
 > spanning 2025-05-14 through 2026-05-05
 
-This release is a ground-up architectural refactor, introducing `clearwater_modules_v2` — a
-new package namespace with a custom variable-registry framework, YAML-driven configuration,
-protocol-decoupled I/O, chunked Zarr output, and tightly coupled integration with
-ClearWater-Riverine v2. A key enabler is the new
-**[ClearWater-data](https://github.com/EcohydrologyTeam/ClearWater-data)** package — a
-purpose-built shared data layer (Xarray + Dask + Zarr) that provides zero-copy data exchange
-across all ClearWater components, such as 
-[ClearWater-Riverine](https://github.com/EcohydrologyTeam/ClearWater-riverine)
-, and ClearWater-data v0.1.0 was released alongside the spring 2026 refactors of
-both repositories. The legacy `clearwater_modules` package remains in place for backwards
-compatibility.
+This release is a ground-up architectural refactor with a custom variable-registry framework, YAML-driven configuration, protocol-decoupled I/O, chunked Zarr output, and tightly coupled integration with [ClearWater-Riverine](https://github.com/EcohydrologyTeam/ClearWater-riverine). A key enabler is the new **[ClearWater-data](https://github.com/EcohydrologyTeam/ClearWater-data)** package that serves as a purpose-built shared data layer (Xarray + Dask + Zarr) that provides zero-copy data exchange across all ClearWater components, such as  ClearWater-Riverine. The refactor is presently introduced with a new package namespace  `clearwater_modules_v2`, which will temporily sit alongside the legacy `clearwater_modules` package for backwards compatibility and testing. In a future release, the legacy code will be fully replaced by the refactored code under a single `clearwater_modules` namespace.
+
+ and ClearWater-data v0.1.0 was released alongside the spring 2026 refactors of both repositories.
 
 ---
 
