@@ -48,6 +48,19 @@ jobs:
       - name: Install package in editable mode
         run: python -m pip install -e .
 
+      # Phase I-6 (2026-05-21): import-time smoke test. Catches the
+      # G-1/G-2-class import defects that have bitten ClearWater-
+      # riverine on a clean install. v3 Processes are intended to be
+      # usable standalone, and the Phase I-4/F9 decoupling of
+      # ``examples`` from the package init was specifically motivated
+      # by this concern. This step locks the standalone-import
+      # contract.
+      - name: Import-time smoke test
+        run: |
+          python -c "import clearwater_modules_v3; print('clearwater_modules_v3 imports')"
+          python -c "from clearwater_modules_v3 import Temperature, DOX, Nitrogen, Phosphorus, Carbon, N2, FloatingAlgae, BenthicAlgae, CBOD, POM, Pathogen, Alkalinity, Model; print('all 11 v3 processes + Model importable from package root')"
+          python -c "from clearwater_modules_v3.utils.reaeration import kah_20, kaw_20, ka_tc; print('reaeration utils OK')"
+
       # Test-only deps not declared in pyproject.toml.
       # numba is imported transitively via clearwater_modules.utils;
       # tests/conftest.py loads clearwater_modules.shared.types which
