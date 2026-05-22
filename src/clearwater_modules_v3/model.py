@@ -797,7 +797,8 @@ class Model:
         if self.__output_data_store is None:
             return
         for variable_name in self.__output_variables:
-            variable = self.__registry.get(variable_name)
+            # Phase I-5 (2026-05-21): migrate to the new-style accessor.
+            variable = self.__registry.get_variable(variable_name).get_data()
             self.__output_data_store.write_chunk(
                 data=variable,
                 parameter_name=variable.name,

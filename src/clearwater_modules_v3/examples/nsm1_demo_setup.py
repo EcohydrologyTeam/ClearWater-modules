@@ -63,8 +63,10 @@ Usage
         demo.step(t)
         t += demo.time_step
 
-    # Inspect any state variable on the registry.
-    final_dox = demo.registry.get("oxygen_dissolved")
+    # Inspect any state variable on the registry. Phase I-5 migrated
+    # the substrate's deprecated `registry.get(...)` to
+    # `registry.get_variable(...).get_data()`.
+    final_dox = demo.registry.get_variable("oxygen_dissolved").get_data()
 """
 
 from __future__ import annotations
