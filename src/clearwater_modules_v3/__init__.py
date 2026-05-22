@@ -20,10 +20,17 @@ umbrella ``design/clearwater_modules_v3_architecture_specification.md``.
 
 from clearwater_modules_v3 import parameters
 from clearwater_modules_v3 import utils
-from clearwater_modules_v3 import examples
+# Phase I-4 / F9 (2026-05-21): ``examples`` is no longer eagerly
+# imported at package init. The ``examples`` subpackage
+# transitively imports clearwater_riverine (via
+# ``processes/riverine.py``), and pulling that into v3's import
+# critical path made v3 Process unit tests fail any time
+# clearwater_riverine had an import-time issue (cf. Phase G-1 / G-2).
+# v3 Processes are intended to be usable standalone; users who want
+# the examples should explicitly ``from clearwater_modules_v3
+# import examples`` in their own code.
 from clearwater_modules_v3.model import Model
 from clearwater_modules_v3.config import init_from_file
-from clearwater_modules_v3.examples import build_nsm1_demo
 from clearwater_modules_v3.processes import (
     Riverine,
     Temperature,
@@ -43,8 +50,14 @@ from clearwater_modules_v3.processes import (
 __all__ = [
     "Model",
     "init_from_file",
-    "build_nsm1_demo",
-    "examples",
+    # Phase I-4 / F9 (2026-05-21): "build_nsm1_demo" and "examples"
+    # were eagerly imported at package level; removed because they
+    # transitively pulled clearwater_riverine into v3's import path
+    # and broke standalone Process unit testing on import-time
+    # defects in the consumer. Access them explicitly via
+    # ``from clearwater_modules_v3 import examples`` or
+    # ``from clearwater_modules_v3.examples import build_nsm1_demo``
+    # in caller code.
     "Riverine",
     "Temperature",
     "BenthicAlgae",
