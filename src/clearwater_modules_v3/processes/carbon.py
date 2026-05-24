@@ -711,7 +711,18 @@ class Carbon(Process):
     # Helpers
     # ------------------------------------------------------------------
 
-    def _ka_tc(self, t_water_c: ArrayLike, depth: ArrayLike) -> ArrayLike:
+    def _ka_tc(
+        self,
+        t_water_c: ArrayLike,
+        depth: ArrayLike,
+        *,
+        wind_speed: ArrayLike | None = None,
+        velocity: ArrayLike | None = None,
+        flow: ArrayLike | None = None,
+        topwidth: ArrayLike | None = None,
+        slope: ArrayLike | None = None,
+        shear_velocity: ArrayLike | None = None,
+    ) -> ArrayLike:
         """Effective reaeration coefficient (1/d), temperature-corrected.
 
         Uses the same hydraulic + wind reaeration menu as DOX/N2. The
@@ -722,6 +733,14 @@ class Carbon(Process):
         re-wrap the combined ``ka_tc`` result with ``depth``'s dims if
         the value count matches; otherwise we fall through to scalar
         broadcasting.
+
+        Phase J+1 (Corvallis 2026-05-23): the six hydraulic/wind-state
+        kwargs were missing from this signature (carbon.py only) while
+        the Phase G-3 kwarg-to-self fallback body referenced them as
+        locals, producing ``UnboundLocalError``. Sibling helpers in
+        ``n2.py:_change_with_components`` and ``dox.py:_ka_tc`` carry
+        the same six kwargs in their signatures; restored here for
+        parity.
         """
         # Phase G-3 kwarg-to-self fallback.
         if wind_speed is None:
