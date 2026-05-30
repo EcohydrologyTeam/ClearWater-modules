@@ -1,12 +1,20 @@
+from __future__ import annotations
+
 from clearwater_modules_v3.processes.base import Process, ProcessFactory
 from datetime import datetime, timedelta
 from clearwater_data.variables import VariableRegistry, DataArrayVariable
-import clearwater_riverine as cwr
-import clearwater_riverine.utilities as cwr_utils
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+# clearwater_riverine is imported LAZILY (inside the methods that build or use a
+# mesh) so importing the universal APL processes package does NOT require CWR to
+# be installed. CWR is the riverine (HEC-RAS-2D) transport engine; only
+# consumers that actually run the Riverine process need it. The import here is
+# under TYPE_CHECKING purely so the ``cwr.*`` annotation below resolves for type
+# checkers (with ``from __future__ import annotations`` it is never evaluated at
+# runtime).
 if TYPE_CHECKING:
+    import clearwater_riverine as cwr
     from clearwater_modules_v3.model import Model
 
 
@@ -48,6 +56,8 @@ class Riverine(Process):
             start_datetime = start_datetime.strftime("%m-%d-%y %H:%M:%S")
         if isinstance(end_datetime, datetime):
             end_datetime = end_datetime.strftime("%m-%d-%y %H:%M:%S")
+
+        import clearwater_riverine as cwr  # lazy: only riverine consumers need CWR
 
         return Riverine(
             cwr.ClearwaterRiverine(
@@ -130,6 +140,8 @@ class Riverine(Process):
             # elevation-volume lookups and register it on the shared registry.
             # calculate_wetted_surface_area takes the registry (not the model
             # instance) and RETURNS a DataArrayVariable without registering it.
+            import clearwater_riverine.utilities as cwr_utils  # lazy import
+
             registry.register(
                 "wetted_surface_area",
                 cwr_utils.calculate_wetted_surface_area(registry),
