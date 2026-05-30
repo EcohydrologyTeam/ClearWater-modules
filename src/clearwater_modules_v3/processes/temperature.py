@@ -10,12 +10,19 @@ This is the v3-native merged TSM. It combines:
 - v2's ``mixing_ratio_air`` edge guard, ``use_sediment_temperature`` flag,
   and ``__skip_first_time_step`` v1-coupling-compat logic.
 
-Default values for the new stability parameters (``q_net_depth_ramp_ref=0.3``
-and ``dTdt_max_per_hour=5.0``) match v1's hardened defaults. Both can be
-disabled to reproduce the unguarded v2 behavior:
+Default values for the v1-inherited stability parameters
+(``q_net_depth_ramp_ref=0.3`` and ``dTdt_max_per_hour=5.0``) match v1's
+hardened defaults. Both can be disabled to reproduce the unguarded v2
+behavior:
 
 - ``q_net_depth_ramp_ref=0.0`` disables the depth ramp.
 - ``dTdt_max_per_hour=float("inf")`` disables the rate cap.
+
+An additional, opt-in thin-water guard
+(``q_net_depth_skip_threshold``, default ``0.0`` = disabled) skips the
+heat-flux step entirely for cells thinner than the threshold (recommended
+``0.05`` m for runs that exhibit newly-wet-cell T artifacts). Default off
+preserves byte-identity with prior runs.
 
 References:
     https://erdc-library.erdc.dren.mil/server/api/core/bitstreams/81b728f8-87a7-4ef8-e053-411ac80adeb3/content
@@ -102,6 +109,7 @@ class Temperature(Process):
         use_sediment_temperature: bool = True,
         evolve_sediment_temperature: bool = True,
         q_net_depth_ramp_ref: float = 0.3,
+        q_net_depth_skip_threshold: float = 0.0,
         dTdt_max_per_hour: float = 5.0,
     ) -> None:
         """Initialize the temperature process.
@@ -229,6 +237,27 @@ class Temperature(Process):
                 flux ramp. The net flux is multiplied by
                 ``min(1, depth / q_net_depth_ramp_ref)``. Set to ``0.0``
                 to disable (legacy behavior).
+            q_net_depth_skip_threshold: Hard depth (m) below which the
+                temperature kinetics are skipped entirely (delta T = 0
+                on the kinetics side; the sediment-side delta is also
+                zeroed via ``ramp = 0`` for energy pair-cancellation).
+                Default ``0.0`` disables the skip and preserves
+                byte-identity with prior runs. A defensible non-zero
+                value is ``0.05`` m (5 cm), which sits below the linear
+                ramp's natural shutoff and below any cell where the
+                kinetics term is physically meaningful: at depth < 5 cm
+                the surface-area / volume ratio is large enough that
+                even moderate solar (200 W/m^2) drives multi-K/hr T
+                deltas before the dT/dt cap fires, and the cell will
+                typically dry-up within a substep or two so the
+                kinetics contribution is dominated by numerical
+                artifact. Generalisation of the linear depth ramp:
+                cells thinner than this threshold have transport-only
+                T evolution (T tracks neighbors via CWR's LHS), and
+                kinetics resume once the cell deepens. See
+                ``design/clearwater_modules_v3_thin_water_skip.md``
+                and the Corvallis-Santiam Sept 2008 investigation notes
+                for the underlying motivation.
             dTdt_max_per_hour: Maximum |dT/dt| (K/hr). Per-substep delta T
                 is clipped to ``+/- dTdt_max_per_hour * dt_hours``. Set to
                 ``float("inf")`` to disable.
@@ -265,6 +294,7 @@ class Temperature(Process):
         self.use_sediment_temperature = use_sediment_temperature
         self.evolve_sediment_temperature = evolve_sediment_temperature
         self.q_net_depth_ramp_ref = q_net_depth_ramp_ref
+        self.q_net_depth_skip_threshold = q_net_depth_skip_threshold
         self.dTdt_max_per_hour = dTdt_max_per_hour
 
         # M1 fix (review-findings 2026-05-04): validate stability params.
@@ -275,6 +305,15 @@ class Temperature(Process):
             raise ValueError(
                 f"q_net_depth_ramp_ref must be >= 0.0 and finite (set 0.0 to disable); "
                 f"got {q_net_depth_ramp_ref!r}"
+            )
+        # Same predicate for ``q_net_depth_skip_threshold`` (added
+        # 2026-05-27 per Corvallis-Santiam Sept 2008 newly-wet-cell
+        # investigation): finite and >= 0; 0.0 (the default) disables the
+        # skip and preserves byte-identity with prior runs.
+        if not (np.isfinite(q_net_depth_skip_threshold) and q_net_depth_skip_threshold >= 0.0):
+            raise ValueError(
+                f"q_net_depth_skip_threshold must be >= 0.0 and finite (set 0.0 to disable); "
+                f"got {q_net_depth_skip_threshold!r}"
             )
         # ``dTdt_max_per_hour`` must be strictly > 0. ``+inf`` is the
         # documented disable value and passes ``> 0.0``. Zero would freeze
@@ -1296,6 +1335,27 @@ class Temperature(Process):
             cap / xr.where(abs_unclipped > 0.0, abs_unclipped, 1.0),
             1.0,
         )
+
+        # Thin-water skip (added 2026-05-27 per Corvallis-Santiam Sept
+        # 2008 newly-wet-cell investigation). When
+        # ``q_net_depth_skip_threshold > 0``, cells thinner than the
+        # threshold get their kinetics-side delta zeroed AND their
+        # ``ramp`` factor zeroed so that ``Temperature.run`` propagates
+        # the skip to the sediment-side delta (energy pair-cancellation
+        # via ``ramp * clip_ratio``, audit F2). Components are NOT
+        # zeroed: they remain available as a registry-recorded
+        # diagnostic of what the kinetics would have applied absent the
+        # skip. Default ``q_net_depth_skip_threshold = 0.0`` makes this
+        # a no-op and preserves byte-identity with prior runs.
+        if self.q_net_depth_skip_threshold > 0.0:
+            thin_water_skip = depth < self.q_net_depth_skip_threshold
+            delta_clipped = xr.where(thin_water_skip, 0.0, delta_clipped)
+            # ``ramp`` is either an xr.DataArray (when ramp_ref > 0) or
+            # the scalar 1.0 (when ramp is disabled). Promote the
+            # scalar branch to an array first so the skip can apply.
+            if not isinstance(ramp, xr.DataArray):
+                ramp = xr.ones_like(depth) * ramp
+            ramp = xr.where(thin_water_skip, 0.0, ramp)
 
         return delta_clipped, ramp, clip_ratio, components
 
