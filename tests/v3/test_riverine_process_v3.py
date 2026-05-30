@@ -1,4 +1,9 @@
-"""Unit tests for the v3 ``Riverine`` process MeshView bridge.
+"""Integration tests for the v3 ``Riverine`` process MeshView bridge.
+
+These tests build a REAL ``ClearwaterRiverine`` over a bundled HEC-RAS
+plan (``plan02_2x1`` in the ClearWater-riverine repo) with the five NSM
+constituents (Ap/NH4/NO3/TIP/DOX) and drive the modules bridge against
+the resulting transport mesh -- no stub ``riverine_instance``/``MeshView``.
 
 Covers the chunk-safe re-bridge added in the riverine MeshView-compat
 change (``design/clearwater_modules_v3_riverine_process_meshview_compat.md``):
@@ -8,79 +13,153 @@ change (``design/clearwater_modules_v3_riverine_process_meshview_compat.md``):
   guard; present constituents bridge unconditionally.
 - The inorganic-P name is reconciled to ``tip`` (was
   ``phosphorus_total_inorganic``).
-- ``depth`` is bridged from ``mesh["coupling_depth"]`` (the resolved
-  cell mean water-column depth, a length), not ``wetted_surface_area``
-  (area). ``init_process`` first calls
+- ``depth`` is bridged from ``mesh["coupling_depth"]`` (the resolved cell
+  mean water-column depth, a length), not ``wetted_surface_area`` (area).
+  ``init_process`` first calls
   ``riverine_instance.enable_coupling_depth()`` to turn that resolved
   depth on for the coupled run.
 - The bridge is re-applied each substep so chunk reloads (which
-  re-register FRESH DataArrays) are picked up rather than stranded on
-  the previous chunk's buffers.
+  re-register FRESH DataArrays) are picked up rather than stranded on the
+  previous chunk's buffers.
 
-These tests build a real ``MeshView`` over a hand-built
-``VariableRegistry`` and a stub ``riverine_instance`` -- no HEC-RAS mesh
-or transport solve is needed.
+REQUIRED INVOCATION (the conda ``clearwater`` env has a zarr-3-incompatible
+xarray; the riverine pixi ``dev`` env has a working one, and PYTHONPATH
+adds the modules source so no install is needed). Run from the modules
+repo dir::
+
+    PYTHONPATH=/Users/todd/GitHub/ecohydrology/ClearWater-modules/src \\
+      /Users/todd/GitHub/ecohydrology/ClearWater-riverine/.pixi/envs/dev/bin/python \\
+      -m pytest tests/v3/test_riverine_process_v3.py -q
+
+Plain ``python``/``conda`` fails on the chunked zarr path with
+``'Float64' object has no attribute 'value'``.
 """
 
 from __future__ import annotations
 
+import tempfile
+from datetime import timedelta
+from pathlib import Path
+
+import h5py
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
+import yaml
 
-from clearwater_data.variables import VariableRegistry, DataArrayVariable
+import clearwater_riverine as cwr
+from clearwater_data.variables import DataArrayVariable, VariableRegistry
 from clearwater_riverine.fork_compat import MeshView
+from clearwater_riverine.variables import CHANGE_IN_TIME
 
 from clearwater_modules_v3.processes.riverine import Riverine
 
 
-# Distinguishable magnitudes per constituent so an accidental cross-wire
-# (e.g. depth aliasing wetted_surface_area) is caught, not masked.
-_CHUNK1_VALUES = {
-    "Ap": [1.0, 1.1],
-    "NH4": [2.0, 2.1],
-    "NO3": [3.0, 3.1],
-    "TIP": [4.0, 4.1],
-    "DOX": [5.0, 5.1],
-    "coupling_depth": [0.5, 0.6],
-    "volume": [100.0, 110.0],
-    "water_temperature": [20.0, 21.0],
-    "wetted_surface_area": [200.0, 220.0],  # area: deliberately != depth
-}
+# --- Real-fixture plumbing -------------------------------------------------
+# The bundled plan lives in the ClearWater-riverine repo, a sibling of the
+# modules repo. Resolve it relative to this file so the test is location
+# independent.
+_RIVERINE_REPO = (
+    Path(__file__).resolve().parents[3] / "ClearWater-riverine"
+)
+PLAN02 = _RIVERINE_REPO / "tests" / "data" / "simple_test_cases" / "plan02_2x1"
+PLAN02_HDF = "clearWaterTestCases.p02.hdf"
+
+_RAS_TIME_PATH = (
+    "Results/Unsteady/Output/Output Blocks/Base Output/"
+    "Unsteady Time Series/Time Date Stamp"
+)
+
+# The five NSM constituents the modules bridge maps to canonical names.
+_CONSTITUENTS = ["Ap", "NH4", "NO3", "TIP", "DOX"]
 
 
-def _da(values: list[float]) -> xr.DataArray:
-    """A 1-D nface DataArray (no time dim) for a stub constituent."""
-    return xr.DataArray(np.asarray(values, dtype=float), dims=["nface"])
+pytestmark = pytest.mark.skipif(
+    not (PLAN02 / PLAN02_HDF).exists(),
+    reason=(
+        "ClearWater-riverine plan02 fixture not found at "
+        f"{PLAN02 / PLAN02_HDF}; sibling repo checkout required"
+    ),
+)
 
 
-def _build_registry(names: list[str]) -> VariableRegistry:
-    registry = VariableRegistry()
-    for name in names:
-        registry.register(name, DataArrayVariable(_da(_CHUNK1_VALUES[name])))
-    return registry
+def _hdf_time_bounds(hdf_path: Path):
+    with h5py.File(hdf_path, "r") as f:
+        raw = f[_RAS_TIME_PATH][()]
+    stamps = pd.to_datetime(
+        pd.Series(raw).str.decode("utf8"), format="%d%b%Y %H:%M:%S"
+    )
+    return stamps.iloc[0], stamps.iloc[-1]
 
 
-class _StubRiverineInstance:
-    """Minimal stand-in for ``ClearwaterRiverine``.
+def _build_real_riverine(
+    constituents: list[str] | None = None,
+    *,
+    chunk_size: str | None = None,
+):
+    """Build a real ``ClearwaterRiverine`` over plan02 with float IC/BC.
 
-    Only ``.mesh`` (a real MeshView), ``.is_chunked`` and
-    ``enable_coupling_depth()`` are exercised by these unit tests;
-    ``update()`` / ``finalize()`` are not called.
-
-    The real ``enable_coupling_depth()`` enables + seed-computes the
-    resolved coupling depth and registers it under ``'coupling_depth'``.
-    The stub's registry already carries ``coupling_depth``, so the stub
-    only records that the coupling hook was invoked.
+    Returns ``(instance, registry)``. ``water_temperature`` is seeded on
+    the shared registry (the modules side requires it) at a constant 15 C.
+    The five (or a subset of) NSM constituents land in ``inst.mesh`` and
+    the shared registry. When ``chunk_size`` is given (a ``pd.Timedelta``
+    string), the instance runs in chunked mode.
     """
+    if constituents is None:
+        constituents = _CONSTITUENTS
+    start, end = _hdf_time_bounds(PLAN02 / PLAN02_HDF)
+    reg = VariableRegistry()
+    consts = {
+        c: {
+            "initial_conditions": {"provider": "float", "data": {"value": 1.0}},
+            "boundary_conditions": {"provider": "float", "data": {"value": 1.0}},
+        }
+        for c in constituents
+    }
+    model_cfg = {
+        # A scratch sim dir keeps zarr output out of the checked-in fixture.
+        "simulation_directory": str(Path(tempfile.mkdtemp())),
+        "hydrodynamic_input": str((PLAN02 / PLAN02_HDF).resolve()),
+        "start_datetime": str(start),
+        "end_datetime": str(end),
+        "diffusion_coefficient": 0.01,
+        "output_variables": [],
+        "mass_flux_calculation": False,
+    }
+    if chunk_size is not None:
+        model_cfg["chunk_size"] = chunk_size
+    cfg = {"model": model_cfg, "constituents": consts}
+    cfg_path = Path(tempfile.mkdtemp()) / "riv.yml"
+    cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
 
-    def __init__(self, registry: VariableRegistry) -> None:
-        self.mesh = MeshView(registry)
-        self.is_chunked = False
-        self.enable_coupling_depth_calls = 0
+    inst = cwr.ClearwaterRiverine(
+        config_filepath=str(cfg_path), variable_registry=reg
+    )
+    reg.register(
+        "water_temperature",
+        DataArrayVariable(xr.full_like(reg.get_variable("volume").get_data(), 15.0)),
+    )
+    return inst, reg
 
-    def enable_coupling_depth(self) -> None:
-        self.enable_coupling_depth_calls += 1
+
+def _even_chunk_size():
+    """Derive a chunk_size giving an exact, even >=2-chunk split of plan02.
+
+    Mirrors ``tests/test_coupling_depth.py::_even_chunk_size`` in the
+    riverine repo: probe a non-chunked model for its uniform timestep,
+    then pick a chunk window that splits the step count into 2 (or 3)
+    equal chunks with >=2 slots each. Returns ``(chunk_size_str, dt_s,
+    n_steps)`` or ``(None, None, None)``.
+    """
+    probe, _ = _build_real_riverine()
+    dt_s = float(probe.registry.get_variable(CHANGE_IN_TIME).get_data())
+    start, end = _hdf_time_bounds(PLAN02 / PLAN02_HDF)
+    n_steps = round((end - start).total_seconds() / dt_s)
+    m = next((k for k in (2, 3) if n_steps % k == 0 and n_steps // k >= 2), None)
+    if m is None:
+        return None, None, None
+    return str(pd.Timedelta(seconds=dt_s) * (n_steps // m)), dt_s, n_steps
 
 
 class _DummyModel:
@@ -88,42 +167,27 @@ class _DummyModel:
     compatibility but no longer reads it; this just satisfies the call."""
 
     def has_process(self, process_type) -> bool:  # pragma: no cover - defensive
-        return True
-
-
-def _make_process(registry: VariableRegistry) -> Riverine:
-    return Riverine(_StubRiverineInstance(registry))
+        return False
 
 
 def _read(registry: VariableRegistry, name: str) -> np.ndarray:
-    return registry.get_variable(name).get().values
+    return np.asarray(registry.get_variable(name).get_data())
+
+
+def _init(inst, registry, time_step=timedelta(seconds=30)) -> Riverine:
+    process = Riverine(inst, time_step=time_step)
+    process.init_process(_DummyModel(), registry)
+    return process
 
 
 # ---------------------------------------------------------------------------
-# Unit: full constituent set bridges to canonical names with correct depth.
+# Full constituent set bridges to canonical names with correct depth.
 # ---------------------------------------------------------------------------
 
 
 def test_init_process_bridges_all_constituents_and_depth():
-    registry = _build_registry(
-        [
-            "Ap",
-            "NH4",
-            "NO3",
-            "TIP",
-            "DOX",
-            "coupling_depth",
-            "volume",
-            "water_temperature",
-            "wetted_surface_area",
-        ]
-    )
-    process = _make_process(registry)
-
-    process.init_process(_DummyModel(), registry)
-
-    # init_process turns on resolved-depth computation for the coupled run.
-    assert process.riverine_instance.enable_coupling_depth_calls == 1
+    inst, registry = _build_real_riverine()
+    process = _init(inst, registry)
 
     # Canonical aliases registered.
     for canonical in (
@@ -140,17 +204,24 @@ def test_init_process_bridges_all_constituents_and_depth():
     assert "tip" in registry
     assert "phosphorus_total_inorganic" not in registry
 
-    # Values track the source mesh constituents.
-    np.testing.assert_array_equal(_read(registry, "algae_floating"), [1.0, 1.1])
-    np.testing.assert_array_equal(_read(registry, "tip"), [4.0, 4.1])
-
-    # depth aliases coupling_depth (length), NOT wetted_surface_area (area).
-    np.testing.assert_array_equal(_read(registry, "depth"), [0.5, 0.6])
+    # Values track the source mesh constituents (NaN-aware: dry cells are
+    # NaN in both, and assert_array_equal treats NaN == NaN as equal).
     np.testing.assert_array_equal(
-        _read(registry, "depth"), _read(registry, "coupling_depth")
+        _read(registry, "algae_floating"), np.asarray(inst.mesh["Ap"])
     )
-    assert not np.array_equal(
-        _read(registry, "depth"), _read(registry, "wetted_surface_area")
+    np.testing.assert_array_equal(
+        _read(registry, "tip"), np.asarray(inst.mesh["TIP"])
+    )
+
+    # depth is sourced from coupling_depth (length), NOT wetted_surface_area
+    # (area). plan02 lacks RAS Cell Hydraulic Depth so coupling_depth is
+    # resolved on the riverine side as volume / wetted_surface_area.
+    np.testing.assert_array_equal(
+        _read(registry, "depth"), np.asarray(inst.mesh["coupling_depth"])
+    )
+    assert not np.allclose(
+        np.nan_to_num(_read(registry, "depth"), nan=-1.0),
+        np.nan_to_num(_read(registry, "wetted_surface_area"), nan=-2.0),
     )
 
 
@@ -160,23 +231,13 @@ def test_init_process_bridges_all_constituents_and_depth():
 
 
 def test_init_process_bridges_only_present_constituents():
-    # Omit Ap.
-    registry = _build_registry(
-        [
-            "NH4",
-            "NO3",
-            "TIP",
-            "DOX",
-            "coupling_depth",
-            "volume",
-            "water_temperature",
-            "wetted_surface_area",
-        ]
+    # A config declaring only some of the five constituents (Ap omitted).
+    inst, registry = _build_real_riverine(
+        constituents=["NH4", "NO3", "TIP", "DOX"]
     )
-    process = _make_process(registry)
+    process = _init(inst, registry)
 
-    process.init_process(_DummyModel(), registry)
-
+    assert "Ap" not in inst.mesh  # not declared -> not on the mesh
     assert "algae_floating" not in registry  # Ap absent -> no bridge
     assert "ammonium" in registry
     assert "nitrate" in registry
@@ -184,87 +245,95 @@ def test_init_process_bridges_only_present_constituents():
     assert "oxygen_dissolved" in registry
     assert "depth" in registry
 
+    np.testing.assert_array_equal(
+        _read(registry, "ammonium"), np.asarray(inst.mesh["NH4"])
+    )
+    np.testing.assert_array_equal(
+        _read(registry, "depth"), np.asarray(inst.mesh["coupling_depth"])
+    )
+
 
 # ---------------------------------------------------------------------------
 # Missing depth: fail loud.
+#
+# Pure error-path check: a real instance cannot easily be made to fail to
+# resolve depth, so a MINIMAL stub instance (mesh lacks coupling_depth,
+# enable_coupling_depth is a no-op) exercises the guard.
 # ---------------------------------------------------------------------------
 
 
+def _da(values: list[float]) -> xr.DataArray:
+    return xr.DataArray(np.asarray(values, dtype=float), dims=["nface"])
+
+
+class _NoDepthStubInstance:
+    """Minimal stand-in whose mesh lacks ``coupling_depth`` and whose
+    ``enable_coupling_depth()`` is a no-op, so the bridge must raise."""
+
+    def __init__(self, registry: VariableRegistry) -> None:
+        self.mesh = MeshView(registry)
+        self.is_chunked = False
+
+    def enable_coupling_depth(self) -> None:  # no-op: depth never appears
+        pass
+
+
 def test_init_process_raises_when_coupling_depth_missing():
-    registry = _build_registry(
-        [
-            "Ap",
-            "NH4",
-            "NO3",
-            "TIP",
-            "DOX",
-            "volume",
-            "water_temperature",
-            "wetted_surface_area",
-        ]
-    )
-    process = _make_process(registry)
+    registry = VariableRegistry()
+    for name in ("Ap", "NH4", "NO3", "TIP", "DOX"):
+        registry.register(name, DataArrayVariable(_da([1.0, 1.1])))
+    registry.register("volume", DataArrayVariable(_da([100.0, 110.0])))
+    registry.register("water_temperature", DataArrayVariable(_da([20.0, 21.0])))
+    registry.register("wetted_surface_area", DataArrayVariable(_da([200.0, 220.0])))
+
+    process = Riverine(_NoDepthStubInstance(registry))
 
     with pytest.raises(KeyError, match="coupling_depth"):
         process.init_process(_DummyModel(), registry)
 
 
 # ---------------------------------------------------------------------------
-# Chunk-safety: the key regression test for the stale-after-chunk-1 bug.
+# Chunk-safety: the key regression test for the stale-after-chunk-1 bug,
+# driven against a REAL chunked instance across a real chunk boundary.
 # ---------------------------------------------------------------------------
 
 
 def test_rebridge_picks_up_new_chunk_objects():
-    registry = _build_registry(
-        [
-            "Ap",
-            "NH4",
-            "NO3",
-            "TIP",
-            "DOX",
-            "coupling_depth",
-            "volume",
-            "water_temperature",
-            "wetted_surface_area",
-        ]
+    chunk_size, dt_s, n_steps = _even_chunk_size()
+    if chunk_size is None:
+        pytest.skip("plan02 step count has no exact >=2-chunk split")
+
+    inst, registry = _build_real_riverine(chunk_size=chunk_size)
+    assert inst.is_chunked
+    process = _init(inst, registry, time_step=timedelta(seconds=dt_s))
+
+    # Seed t0 (chunk-1): canonical aliases track the first chunk's mesh.
+    np.testing.assert_array_equal(
+        _read(registry, "algae_floating"), np.asarray(inst.mesh["Ap"])
     )
-    process = _make_process(registry)
-
-    # Seed t0 (chunk-1).
-    process.init_process(_DummyModel(), registry)
-    np.testing.assert_array_equal(_read(registry, "algae_floating"), [1.0, 1.1])
-    np.testing.assert_array_equal(_read(registry, "depth"), [0.5, 0.6])
-
-    # Simulate a chunk reload: riverine's per-chunk refresh re-registers
-    # FRESH DataArray objects for the constituents and coupling_depth.
-    registry.register(
-        "Ap", DataArrayVariable(_da([91.0, 92.0])), overwrite=True
+    np.testing.assert_array_equal(
+        _read(registry, "depth"), np.asarray(inst.mesh["coupling_depth"])
     )
-    registry.register(
-        "coupling_depth", DataArrayVariable(_da([9.5, 9.6])), overwrite=True
+    chunk1_id = id(registry.get_variable("Ap"))
+
+    # Drive across the chunk boundary. update() reloads the next chunk,
+    # re-registering FRESH DataArrays; run()'s re-bridge must follow them.
+    start, _ = _hdf_time_bounds(PLAN02 / PLAN02_HDF)
+    t = pd.Timestamp(start)
+    crossed = False
+    for _ in range(n_steps + 2):
+        t = t + pd.Timedelta(seconds=dt_s)
+        process.run(t, registry)
+        if id(registry.get_variable("Ap")) != chunk1_id:
+            crossed = True
+            break
+    assert crossed, "never crossed a chunk boundary"
+
+    # After the reload the canonical aliases track the CURRENT chunk's
+    # mesh, not the stranded chunk-1 buffers.
+    np.testing.assert_array_equal(
+        _read(registry, "algae_floating"), np.asarray(inst.mesh["Ap"])
     )
-
-    # Without the re-bridge the canonical aliases would still point at the
-    # stranded chunk-1 buffers.
-    np.testing.assert_array_equal(_read(registry, "algae_floating"), [1.0, 1.1])
-    np.testing.assert_array_equal(_read(registry, "depth"), [0.5, 0.6])
-
-    # run() re-bridges after update(); exercise the helper directly.
-    process._bridge_mesh_to_registry(registry)
-
-    np.testing.assert_array_equal(_read(registry, "algae_floating"), [91.0, 92.0])
-    np.testing.assert_array_equal(_read(registry, "depth"), [9.5, 9.6])
-
-
-# ---------------------------------------------------------------------------
-# End-to-end integration: out of scope (depends on Change A + a riverine
-# mesh fixture). Stub kept to document the dependency.
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.skip(reason="needs Change A + riverine mesh fixture")
-def test_init_from_file_coupled_integration():  # pragma: no cover
-    """init_from_file with Ap/NH4/NO3/TIP/DOX + water_temperature, Phosphorus
-    + FloatingAlgae enabled, riverine first; assert model.run() advances and
-    Phosphorus reads finite ``tip`` and a length-scale ``depth``. Also covers
-    the chunked-integration variant across a real chunk boundary."""
+    np.testing.assert_array_equal(
+        _read(registry, "depth"), np.asarray(inst.mesh["coupling_depth"])
+    )

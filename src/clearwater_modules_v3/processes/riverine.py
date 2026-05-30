@@ -125,7 +125,15 @@ class Riverine(Process):
         try:
             check_variable_in_registry("wetted_surface_area")
         except KeyError:
-            cwr_utils.calculate_wetted_surface_area(self.riverine_instance)
+            # Temperature reads wetted_surface_area from the registry. The
+            # riverine mesh does not auto-register it, so derive it from the
+            # elevation-volume lookups and register it on the shared registry.
+            # calculate_wetted_surface_area takes the registry (not the model
+            # instance) and RETURNS a DataArrayVariable without registering it.
+            registry.register(
+                "wetted_surface_area",
+                cwr_utils.calculate_wetted_surface_area(registry),
+            )
 
         # Turn on resolved-depth computation for this coupled run. Idempotent:
         # enables the flag, seed-computes the resolved depth for the current
