@@ -8,7 +8,7 @@ dependencies=[
     "jupyterlab",
     "numpy",
     "pyyaml",
-    "xarray",
+    "xarray>=2025.8",
 ]
 
 [build-system]
