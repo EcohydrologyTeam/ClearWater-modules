@@ -5,15 +5,17 @@ Two complementary contracts:
 1. ``test_baseline_parity_bit_identical`` — replays the Phase 0
    4,320-substep baseline scenario and asserts every state-variable
    trajectory matches the committed
-   ``baseline_coupled_trajectory_6c10f36.nc`` bit-identically when no
+   ``baseline_coupled_trajectory_d530a3a.nc`` bit-identically when no
    ``REGISTRY_DIAGNOSTICS`` names are pre-registered. This is the
-   §11.2 contract enforced inside the test suite. (Terminal
-   gold-standard baseline at ``6c10f36``, incorporating NSM1-CA-1,
-   NSM1-SCI-N1, NSM1-SCI-A3 and NSM1-SCI-A2 — the
-   trajectory-perturbing gate changes (C2–C5/D do not perturb the
-   trajectory). Prior baselines ``3a8c188`` (through SCI-A3),
-   ``b51df71`` (CA-1+SCI-N1), ``624ed7c`` (CA-1) and ``186b5c4``
-   (pre-fix) are retained for auditability per baseline/README.md.)
+   §11.2 contract enforced inside the test suite. (Active baseline at
+   ``d530a3a``, which adds the Pathogen canonical ``algae_floating``
+   name fix on top of the prior terminal gold-standard ``6c10f36``;
+   the only trajectory-perturbing change is the pathogen die-off light
+   term now seeing the floating-algae bloom — pathogen-only. Prior
+   baselines ``6c10f36`` (NSM1-CA-1/SCI-N1/SCI-A3/SCI-A2), ``3a8c188``
+   (through SCI-A3), ``b51df71`` (CA-1+SCI-N1), ``624ed7c`` (CA-1) and
+   ``186b5c4`` (pre-fix) are retained for auditability per
+   baseline/README.md.)
 
 2. ``test_diagnostics_subscription_smoke`` — runs the same demo
    shorter (60 substeps for speed) but pre-registers every Appendix A
@@ -58,7 +60,7 @@ from clearwater_modules_v3.processes import (
 _BASELINE_NETCDF = (
     Path(__file__).resolve().parent
     / "baseline"
-    / "baseline_coupled_trajectory_6c10f36.nc"
+    / "baseline_coupled_trajectory_d530a3a.nc"
 )
 
 
