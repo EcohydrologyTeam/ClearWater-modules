@@ -234,7 +234,13 @@ class Pathogen(Process):
         # where these reservoirs may not be populated.
         solid = self._get_optional(registry, "Solid", "_warned_missing_solid", time)
         poc = self._get_optional(registry, "poc", "_warned_missing_poc", time)
-        ap = self._get_optional(registry, "ap", "_warned_missing_ap", time)
+        # Canonical floating-algae state is ``algae_floating`` (registered
+        # by FloatingAlgae and mapped from the riverine "Ap" constituent).
+        # Prefer it; fall back to the legacy ``ap`` name only during
+        # migration (pathogen_algae_name design spec, 2026-05-30).
+        ap = self._get_optional(
+            registry, "algae_floating", "_warned_missing_ap", time, fallback="ap"
+        )
 
         # --- Fused rate composition (pattern B; rate-form per §10 Q5) ---
         rate, components = self._rate_with_components(
@@ -442,15 +448,27 @@ class Pathogen(Process):
         name: str,
         warn_attr: str,
         time: datetime,
+        fallback: str | None = None,
     ) -> ArrayLike:
         """Read an optional registry variable; default to 0 with a
         one-time warning when missing.
 
-        Used for ``Solid`` / ``poc`` / ``ap`` — light-extinction inputs
-        that may not be populated when Pathogen runs stand-alone.
+        Used for ``Solid`` / ``poc`` / ``algae_floating`` —
+        light-extinction inputs that may not be populated when Pathogen
+        runs stand-alone.
+
+        When ``fallback`` is given, the canonical ``name`` is preferred
+        and ``fallback`` is consulted only if ``name`` is absent. This
+        mirrors the ``tip`` / ``phosphorus_total_inorganic`` precedence
+        pattern used in the algae processes for migration back-compat
+        (here: canonical ``algae_floating`` preferred, legacy ``ap``
+        fallback). The zero-with-warning default fires only when neither
+        name is present.
         """
         if name in registry:
             return registry.get_at_time(name, time)
+        if fallback is not None and fallback in registry:
+            return registry.get_at_time(fallback, time)
         if not getattr(self, warn_attr):
             logger.warning(
                 "Pathogen: optional registry variable %r not present; "
