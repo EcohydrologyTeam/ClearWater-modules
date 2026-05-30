@@ -17,6 +17,15 @@ class Riverine(Process):
 
     variables = []
 
+    # Mesh-constituent (CW-Riverine fork name) -> v3 canonical registry name.
+    _MESH_TO_CANONICAL = {
+        "Ap": "algae_floating",
+        "NH4": "ammonium",
+        "NO3": "nitrate",
+        "TIP": "tip",  # v3 convention; was phosphorus_total_inorganic
+        "DOX": "oxygen_dissolved",
+    }
+
     def __init__(
         self,
         riverine_instance: cwr.ClearwaterRiverine,
@@ -55,9 +64,52 @@ class Riverine(Process):
     def from_config(config: dict, variable_registry: VariableRegistry) -> "Riverine":
         return Riverine.from_file_path(**config, variable_registry=variable_registry)
 
+    def _bridge_mesh_to_registry(self, registry: VariableRegistry) -> None:
+        """(Re)point canonical registry names at the current mesh objects.
+
+        Idempotent and cheap: rebinds references (``copy(deep=False)``
+        shares buffers). Safe to call every substep; required after
+        ``update()`` so a chunk reload's freshly re-registered DataArrays
+        are picked up rather than left stranded on the previous chunk's
+        buffers.
+
+        The mesh is a ``MeshView`` exposing constituents by item access
+        (``mesh["Ap"]``) and membership via ``name in mesh``.
+        """
+        mesh = self.riverine_instance.mesh
+        for mesh_name, canonical in self._MESH_TO_CANONICAL.items():
+            if mesh_name in mesh:
+                registry.register(
+                    canonical,
+                    DataArrayVariable(mesh[mesh_name].copy(deep=False)),
+                    overwrite=True,  # re-bridge: upsert, not first-insert
+                )
+        # depth: the cell mean water-column depth, resolved on the riverine
+        # side by precedence (RAS Cell Hydraulic Depth -> volume / wetted_
+        # surface_area -> WSE - bed) and exposed on demand under
+        # 'coupling_depth' once enable_coupling_depth() has been called.
+        # Chunk-safe: refreshed per chunk on the riverine side. Bridge it
+        # like a constituent.
+        if "coupling_depth" not in mesh:
+            raise KeyError(
+                "Riverine coupling requires 'coupling_depth' (the resolved "
+                "cell mean water-column depth) from the transport mesh. Ensure "
+                "the ClearWater-Riverine model is coupling-enabled "
+                "(enable_coupling_depth() must have been called) or depth could "
+                "not be resolved; see design/clearwater_modules_v3_riverine_"
+                "process_meshview_compat.md."
+            )
+        registry.register(
+            "depth",
+            DataArrayVariable(mesh["coupling_depth"].copy(deep=False)),
+            overwrite=True,
+        )
+
     def init_process(self, model: "Model", registry: VariableRegistry) -> None:
         """
         Initialize the riverine process.
+
+        ``model`` is retained for interface compatibility but no longer read.
         """
 
         def check_variable_in_registry(variable_name: str) -> None:
@@ -75,36 +127,18 @@ class Riverine(Process):
         except KeyError:
             cwr_utils.calculate_wetted_surface_area(self.riverine_instance)
 
-        # TODO: update once Riverine can register variables to the registry
-        if model.has_process("FloatingAlgae"):
-            registry.register(
-                "algae_floating",
-                DataArrayVariable(self.riverine_instance.mesh.Ap.copy(deep=False)),
-            )
-            registry.register(
-                "ammonium",
-                DataArrayVariable(self.riverine_instance.mesh.NH4.copy(deep=False)),
-            )
-            registry.register(
-                "nitrate",
-                DataArrayVariable(self.riverine_instance.mesh.NO3.copy(deep=False)),
-            )
-            registry.register(
-                "phosphorus_total_inorganic",
-                DataArrayVariable(self.riverine_instance.mesh.TIP.copy(deep=False)),
-            )
-            registry.register(
-                "oxygen_dissolved",
-                DataArrayVariable(self.riverine_instance.mesh.DOX.copy(deep=False)),
-            )
+        # Turn on resolved-depth computation for this coupled run. Idempotent:
+        # enables the flag, seed-computes the resolved depth for the current
+        # window, and registers it under 'coupling_depth' (refreshed per chunk
+        # on the riverine side). Standalone runs never call this. Must precede
+        # the first _bridge_mesh_to_registry call below, which reads
+        # mesh["coupling_depth"].
+        self.riverine_instance.enable_coupling_depth()
 
-            # TODO: replace this with depth calculation
-            registry.register(
-                "depth",
-                DataArrayVariable(
-                    self.riverine_instance.mesh.wetted_surface_area.copy(deep=False)
-                ),
-            )
+        # Seed the canonical names at t0 (for substep 0, where run() skips
+        # the first riverine update). The same chunk-safe re-bridge runs in
+        # run() after each update() so the names track the current chunk.
+        self._bridge_mesh_to_registry(registry)
 
         # The riverine model use current time_step as the start point and
         # updates the model at the time_step + delta time.
@@ -126,6 +160,9 @@ class Riverine(Process):
         # run the next time step
         self.riverine_instance.update()
 
-        # previous couplings with riverine model required passing data arrays
-        # to the model. Now we are using the registry to access the data.
-        # ClearWater-Modules update the memory directly through the registry.
+        # Chunk-safe re-bridge: re-point the canonical registry names at the
+        # current mesh objects. In chunked mode, update() may load a new
+        # chunk, re-registering FRESH DataArrays for the constituents and
+        # average_depth; re-bridging here picks them up rather than leaving
+        # the canonical names stranded on the previous chunk's buffers.
+        self._bridge_mesh_to_registry(registry)

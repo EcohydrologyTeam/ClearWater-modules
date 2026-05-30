@@ -410,6 +410,54 @@ class Model:
                     f"registered; declared variables: {declared!r}"
                 )
 
+        # Step 8 (provider coverage check): every declared process input must
+        # have a provider. By now all providers have had their turn to populate
+        # the registry — data sources (step 1), hotstart seed (step 2),
+        # init_process incl. the riverine bridge (step 3), and from_hotstart
+        # (step 4). Any ``process.variables`` entry still absent from the
+        # registry has no provider and would otherwise surface as a latent
+        # runtime KeyError mid-substep. Turn it into a clear init-time error.
+        #
+        # Known limitation: constituents read via ``registry.get_at_time(...)``
+        # that are NOT declared in any ``process.variables`` (e.g.
+        # ``algae_floating``) are not covered here — only declared inputs are.
+        # ``depth`` IS declared (e.g. by POM/Temperature), so the riverine
+        # depth wiring is covered by this check.
+        required_by: dict[str, list[str]] = {}
+        for process in self.__processes:
+            for variable in process.variables:
+                required_by.setdefault(variable, []).append(
+                    process.process_name()
+                )
+        missing = [
+            variable
+            for variable in sorted(required_by)
+            if variable not in self.__registry
+        ]
+        if missing:
+            # Mirror the wet-mask check's enumeration of what *is* registered
+            # to help the caller see what providers did supply. The real
+            # ``VariableRegistry`` stores entries in ``_registry``; the test
+            # stubs use ``_data``.
+            declared_dict = (
+                getattr(self.__registry, "_registry", None)
+                or getattr(self.__registry, "_data", None)
+                or {}
+            )
+            declared = sorted(declared_dict.keys()) if hasattr(
+                declared_dict, "keys"
+            ) else []
+            details = "; ".join(
+                f"{variable!r} (declared by {required_by[variable]!r})"
+                for variable in missing
+            )
+            raise KeyError(
+                f"Process input(s) have no provider: {details}. Each must be "
+                "supplied by a data source, the riverine bridge, a hotstart "
+                "dataset, or pre-registration before the substep loop. "
+                f"Registered variables: {declared!r}."
+            )
+
     def __finalize_model(self) -> None:
         # C2 fix (review-findings 2026-05-04): the upstream ``Process``
         # base class does not define ``finalize_process``, so calling it
