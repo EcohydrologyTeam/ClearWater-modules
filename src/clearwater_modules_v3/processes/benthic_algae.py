@@ -42,6 +42,7 @@ from .floating_algae import FloatingAlgae
 
 from clearwater_modules_v3.utils.conversions import arrhenius_correction
 from clearwater_modules_v3.utils.numerics import clip_negative_state
+from clearwater_modules_v3.utils.light import L as compute_light_extinction
 
 
 def _sanitize_cache(value):
@@ -350,6 +351,39 @@ class BenthicAlgae(FloatingAlgae):
             if "Solid" in registry
             else self.Solid
         )
+
+        # Light-extinction coefficient lambda (1/m), computed each step via
+        # utils.light.L from the water-column optical constituents -- the same
+        # lambda the FloatingAlgae path uses (NSM1-I computes one global lambda;
+        # floating-algae Ap, suspended solids, and POC all attenuate the light
+        # reaching the bed). It replaces the constant light_attenuation_coefficient
+        # in limit_light's exp(-lambda*depth). Ap is the floating-algae state
+        # (water-column self-shading), read optionally (benthic biomass does NOT
+        # enter lambda); absent Ap/POC drop their terms. Disabled
+        # (use_computed_light_extinction=False) -> the scalar override.
+        if self.use_computed_light_extinction:
+            ap = (
+                registry.get_at_time("algae_floating", time)
+                if "algae_floating" in registry else 0.0
+            )
+            poc = (
+                registry.get_at_time("poc", time) if "poc" in registry else 0.0
+            )
+            self._light_extinction = compute_light_extinction(
+                lambda0=self.lambda0,
+                lambda1=self.lambda1,
+                lambda2=self.lambda2,
+                lambdas=self.lambdas,
+                lambdam=self.lambdam,
+                Solid=solid,
+                POC=poc,
+                fcom=self.fcom,
+                Ap=ap,
+                use_Algae=self.use_Algae,
+                use_POC=self.use_POC,
+            )
+        else:
+            self._light_extinction = self.light_attenuation_coefficient
 
         # --- Fused rate composition (pattern B) ---
         rate, components = self._change_with_components(
@@ -727,7 +761,11 @@ class BenthicAlgae(FloatingAlgae):
     ) -> ArrayLike:
         """Compute the limiting light for benthic algae."""
 
-        light_at_depth_coefficent = np.exp(-self.light_attenuation_coefficient * depth)
+        # ``run`` sets self._light_extinction each step: the computed per-cell
+        # utils.light.L field (default) or the scalar light_attenuation_coefficient
+        # override. Direct callers (no ``run``) get the scalar default set in
+        # __init__, preserving the pre-computed-lambda behavior.
+        light_at_depth_coefficent = np.exp(-self._light_extinction * depth)
 
         # Half-saturation light limitation
         if self.light_limitation_option == 1:

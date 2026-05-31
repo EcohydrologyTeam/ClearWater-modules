@@ -25,6 +25,7 @@ import xarray as xr
 
 from clearwater_modules_v3.examples import InMemoryRegistry
 from clearwater_modules_v3.processes.floating_algae import FloatingAlgae
+from clearwater_modules_v3.processes.benthic_algae import BenthicAlgae
 from clearwater_modules_v3.utils.light import L as compute_light_extinction
 
 
@@ -131,3 +132,75 @@ def test_computed_vs_override_change_light_limitation():
     a = np.asarray(computed._light_extinction)
     b = np.asarray(override._light_extinction)
     assert np.all(a > b), "computed bloom lambda should exceed the 1.0 /m constant"
+
+
+# ---------------------------------------------------------------------------
+# BenthicAlgae: same computed lambda (the light reaching the bed), via its own
+# limit_light (exp(-lambda*depth)). lambda uses the FLOATING-algae Ap, not the
+# benthic biomass.
+# ---------------------------------------------------------------------------
+
+
+def _run_benthic(*, benthic=5.0, ap=None, solid=None, poc=None, use_computed=True, scalar=1.0):
+    proc = BenthicAlgae(
+        use_computed_light_extinction=use_computed,
+        light_attenuation_coefficient=scalar,
+    )
+    reg = InMemoryRegistry()
+    reg.register("benthic_algae", _da(benthic))
+    reg.register("ammonium", _da(0.10))
+    reg.register("nitrate", _da(0.20))
+    reg.register("tip", _da(0.10))
+    reg.register("depth", _da(1.0))
+    reg.register("water_temperature", _da(20.0))
+    reg.register("solar_radiation", _da(300.0))
+    if ap is not None:
+        reg.register("algae_floating", _da(ap))
+    if solid is not None:
+        reg.register("Solid", _da(solid))
+    if poc is not None:
+        reg.register("poc", _da(poc))
+    proc.run(START, reg)
+    return proc
+
+
+def test_benthic_computed_lambda_matches_utils_light_L():
+    """BenthicAlgae's per-step lambda equals utils.light.L for the same
+    water-column inputs (floating-algae Ap, Solid, POC)."""
+    ap, solid, poc = 40.0, 6.0, 4.0
+    proc = _run_benthic(ap=ap, solid=solid, poc=poc)
+    expected = compute_light_extinction(
+        lambda0=L0, lambda1=L1, lambda2=L2, lambdas=LS, lambdam=LM,
+        Solid=_da(solid), POC=_da(poc), fcom=FCOM, Ap=_da(ap),
+        use_Algae=True, use_POC=True,
+    )
+    np.testing.assert_allclose(
+        np.asarray(proc._light_extinction), np.asarray(expected.values),
+        rtol=1e-12, atol=0.0,
+    )
+
+
+def test_benthic_lambda_uses_floating_algae_not_benthic_biomass():
+    """lambda rises with the floating-algae Ap (water-column shading) and is
+    independent of the benthic biomass."""
+    lo_ap = np.asarray(_run_benthic(benthic=5.0, ap=5.0, solid=0.0, poc=0.0)._light_extinction)
+    hi_ap = np.asarray(_run_benthic(benthic=5.0, ap=80.0, solid=0.0, poc=0.0)._light_extinction)
+    assert np.all(hi_ap > lo_ap)
+    # Changing benthic biomass alone leaves lambda unchanged.
+    lo_ab = np.asarray(_run_benthic(benthic=1.0, ap=20.0, solid=0.0, poc=0.0)._light_extinction)
+    hi_ab = np.asarray(_run_benthic(benthic=50.0, ap=20.0, solid=0.0, poc=0.0)._light_extinction)
+    np.testing.assert_array_equal(lo_ab, hi_ab)
+
+
+def test_benthic_runs_without_floating_algae():
+    """Benthic-only run (no algae_floating registered) -> Ap=0, lambda has
+    no algal term, and the process still runs."""
+    proc = _run_benthic(ap=None, solid=2.0, poc=0.0)
+    expected = L0 + LS * 2.0  # no POC, no algal term
+    np.testing.assert_allclose(np.asarray(proc._light_extinction), expected, rtol=1e-6)
+
+
+def test_benthic_scalar_override():
+    """use_computed_light_extinction=False -> the constant scalar."""
+    proc = _run_benthic(ap=40.0, solid=6.0, poc=4.0, use_computed=False, scalar=0.7)
+    assert np.all(np.asarray(proc._light_extinction) == 0.7)

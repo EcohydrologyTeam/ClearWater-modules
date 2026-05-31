@@ -12,10 +12,14 @@ the scalar `light_attenuation_coefficient` retained as an override
 `lambdas`, `lambdam`, `fcom`) added as `_LIGHT_EXT_DEFAULTS`, verified against the
 NSM1-I Fortran (see "Implementation note" below). Tests:
 `tests/v3/nsm1/test_light_extinction_v3.py`. Trajectory-perturbing → coupled
-baseline re-captured. **BenthicAlgae is NOT included** (it has its own
-`limit_light` with the `exp(-lambda*depth)` benthic form; a parallel wiring is a
-follow-up). The Report 2 Willowbend re-run / Methods update remains a follow-up
-in the Report 2 tracker.
+baseline re-captured. **BenthicAlgae was wired in a follow-up (2026-05-30):** its
+own `limit_light` (`exp(-lambda*depth)`, light reaching the bed) now uses the same
+computed lambda (`utils.light.L`) from the water-column constituents — the
+floating-algae `Ap`, suspended solids, and POC that attenuate light before it
+reaches the benthos. The benthic biomass does not enter lambda (NSM1-I computes
+one global lambda from the water column). Same `use_computed_light_extinction`
+override; trajectory-perturbing → a second baseline re-capture. The Report 2
+Willowbend re-run / Methods update remains a follow-up in the Report 2 tracker.
 
 ## Implementation note (2026-05-30, verified against the Fortran)
 
