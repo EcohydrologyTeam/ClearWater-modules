@@ -423,6 +423,14 @@ class Carbon(Process):
             registry.get_at_time("wind_speed", time)
             if "wind_speed" in registry else self.wind_speed
         )
+        # Wind shelter (wind_shelter_coefficient): the same optional per-cell
+        # forcing the TSM wind function consumes, threaded (with wind_speed)
+        # into the CO2-reaeration kaw_20 so a sheltered cell gets reduced wind
+        # for gas transfer as well as heat exchange. Absent -> 1.0 (no shelter).
+        wind_shelter = (
+            registry.get_at_time("wind_shelter_coefficient", time)
+            if "wind_shelter_coefficient" in registry else 1.0
+        )
         velocity = (
             registry.get_at_time("velocity", time)
             if "velocity" in registry else self.velocity
@@ -458,6 +466,7 @@ class Carbon(Process):
             topwidth=topwidth,
             slope=slope,
             shear_velocity=shear_velocity,
+            wind_shelter=wind_shelter,
         )
 
         # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
@@ -511,6 +520,7 @@ class Carbon(Process):
         topwidth: ArrayLike | None = None,
         slope: ArrayLike | None = None,
         shear_velocity: ArrayLike | None = None,
+        wind_shelter: ArrayLike | float = 1.0,
     ) -> tuple[ArrayLike, ArrayLike, ArrayLike, dict]:
         """Compute ``(d_poc, d_doc, d_dic, components)``.
 
@@ -616,7 +626,9 @@ class Carbon(Process):
         # ``KH * pCO2 / 1e6`` is in mol-C/L; multiply by MG_C_PER_MOL_C
         # to convert to mg-C/L for unit consistency with ``FCO2 * DIC``
         # (both terms now mg-C/L; resulting rate mg-C/L/d).
-        ka_tc_value = self._ka_tc(t_water_c, depth)
+        ka_tc_value = self._ka_tc(
+            t_water_c, depth, wind_speed=wind_speed, wind_shelter=wind_shelter
+        )
         kh_co2 = henrys_k_co2(t_water_c)
         co2_reaeration = (
             0.923 * ka_tc_value
@@ -722,6 +734,7 @@ class Carbon(Process):
         topwidth: ArrayLike | None = None,
         slope: ArrayLike | None = None,
         shear_velocity: ArrayLike | None = None,
+        wind_shelter: ArrayLike | float = 1.0,
     ) -> ArrayLike:
         """Effective reaeration coefficient (1/d), temperature-corrected.
 
@@ -771,6 +784,7 @@ class Carbon(Process):
             wind_speed=wind_speed,
             wind_reaeration_option=self.wind_reaeration_option,
             wind_input_height=getattr(self, "wind_input_height", 2.0),
+            wind_shelter=wind_shelter,
         )
         return ka_tc(
             kah_20=kah_20_value,

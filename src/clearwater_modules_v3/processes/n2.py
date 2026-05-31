@@ -326,6 +326,14 @@ class N2(Process):
             registry.get_at_time("wind_speed", time)
             if "wind_speed" in registry else self.wind_speed
         )
+        # Wind shelter (wind_shelter_coefficient): the same optional per-cell
+        # forcing the TSM wind function consumes, threaded into kaw_20 so a
+        # sheltered cell gets reduced wind for gas transfer as well as heat
+        # exchange. Absent -> 1.0 (no shelter), preserving prior output.
+        wind_shelter = (
+            registry.get_at_time("wind_shelter_coefficient", time)
+            if "wind_shelter_coefficient" in registry else 1.0
+        )
         velocity = (
             registry.get_at_time("velocity", time)
             if "velocity" in registry else self.velocity
@@ -359,6 +367,7 @@ class N2(Process):
             topwidth=topwidth,
             slope=slope,
             shear_velocity=shear_velocity,
+            wind_shelter=wind_shelter,
         )
 
         # --- Forward Euler integration (pattern C) ---
@@ -415,6 +424,7 @@ class N2(Process):
         topwidth: ArrayLike | None = None,
         slope: ArrayLike | None = None,
         shear_velocity: ArrayLike | None = None,
+        wind_shelter: ArrayLike | float = 1.0,
     ) -> tuple[ArrayLike, dict]:
         """Compute ``(rate, components)`` for N2 (without TDG; TDG is
         computed post-integrator-step in ``run`` because it depends on
@@ -475,6 +485,7 @@ class N2(Process):
                 wind_speed=wind_speed,
                 wind_reaeration_option=self.wind_reaeration_option,
                 wind_input_height=getattr(self, "wind_input_height", 2.0),
+                wind_shelter=wind_shelter,
             )
             ka_tc_value = ka_tc(
                 kah_20=kah_20_value,

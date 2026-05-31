@@ -4,7 +4,21 @@
 **Status:** Design note for a small, surgical fix in `clearwater_modules_v3.processes.dox` (and the supporting `utils/reaeration.kaw_20`). Parallels the existing `wind_shelter_coefficient` consumption in `processes.temperature`.
 **Scope:** Make the wind-driven oxygen-reaeration path consume the same per-cell `wind_shelter_coefficient` registry forcing that the TSM heat-budget wind function already consumes, so that sheltering reduces both evaporation and gas transfer consistently.
 
-**Status update — IMPLEMENTED 2026-05-30 (DOX):** `utils.reaeration.kaw_20` gained a `wind_shelter` keyword (default `1.0`), applied to the raw wind before the height rescale (§2/§3.2). `DOX.run` reads the optional `wind_shelter_coefficient` registry forcing (default `1.0`) and threads it through `_change_with_components` → `kaw_20` (§3.1). No re-baseline: the demo registers no `wind_shelter_coefficient`, so the default `1.0` leaves the coupled trajectory bit-identical. Tests: `tests/v3/test_reaeration_wind_shelter.py` (12). **N2 and Carbon (§3.3) are NOT yet wired** — they call the now-shelter-aware `kaw_20` but do not pass `wind_shelter`; extending them is the tracked follow-up for full pipeline consistency.
+**Status update — IMPLEMENTED 2026-05-30 (DOX):** `utils.reaeration.kaw_20` gained a `wind_shelter` keyword (default `1.0`), applied to the raw wind before the height rescale (§2/§3.2). `DOX.run` reads the optional `wind_shelter_coefficient` registry forcing (default `1.0`) and threads it through `_change_with_components` → `kaw_20` (§3.1). No re-baseline: the demo registers no `wind_shelter_coefficient`, so the default `1.0` leaves the coupled trajectory bit-identical. Tests: `tests/v3/test_reaeration_wind_shelter.py`.
+
+**N2 and Carbon (§3.3) wired 2026-05-30:** both now read `wind_shelter_coefficient`
+in `run()` and thread it to their `kaw_20` call (N2 directly in
+`_change_with_components`; Carbon through `_change_with_components` → `_ka_tc` →
+`kaw_20`). Carbon's `_ka_tc` call previously dropped the registry `wind_speed`
+local (a latent Phase-G-3 gap for the **wind** path); it now forwards both
+`wind_speed` and `wind_shelter`, so Carbon's CO2 reaeration uses the registry
+wind × shelter consistently with DOX/N2. No re-baseline: the demo registers no
+`wind_speed`/`wind_shelter_coefficient` and the wind path is inert at the default
+`wind_reaeration_option=1`/`kaw_20_user=0`. Integration tests for both added to
+`tests/v3/test_reaeration_wind_shelter.py`. **Still open:** Carbon's `_ka_tc`
+call also drops the registry **hydraulic** forcings (`velocity`/`flow`/`topwidth`/
+`slope`/`shear_velocity` fall back to constructor scalars) — a separate Phase-G-3
+hydraulic-path gap, out of wind-shelter scope.
 
 Companion CWR document:
 [`wind_sheltering_design.md`](../../ClearWater-riverine/design/wind_sheltering_design.md)

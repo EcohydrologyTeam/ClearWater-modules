@@ -160,3 +160,70 @@ def test_dox_no_shelter_registered_is_backcompat():
         _dox_wind_only(), _dox_registry(wind_speed=6.0, shelter=1.0)
     )
     np.testing.assert_array_equal(rate_absent, rate_unity)
+
+
+# ---------------------------------------------------------------------------
+# N2 and Carbon wind-reaeration paths (design spec 3.3 follow-up)
+# ---------------------------------------------------------------------------
+
+from clearwater_modules_v3.processes.n2 import N2
+from clearwater_modules_v3.processes.carbon import Carbon
+
+_WIND_ONLY = {
+    "hydraulic_reaeration_option": 1, "kah_20_user": 0.0,
+    "wind_reaeration_option": 5, "kaw_20_user": 0.0,  # Wanninkhof
+}
+
+
+def _n2_registry(*, wind_speed, shelter=None, n=2):
+    reg = InMemoryRegistry()
+    reg.register("n2", _da(10.0, n))            # below N2 saturation
+    reg.register("water_temperature", _da(25.0, n))
+    reg.register("depth", _da(1.0, n))
+    reg.register("atmospheric_pressure", _da(1013.0, n))
+    reg.register("wind_speed", _da(wind_speed, n))
+    if shelter is not None:
+        reg.register("wind_shelter_coefficient", _da(shelter, n))
+    return reg
+
+
+def _carbon_registry(*, wind_speed, shelter=None, n=2):
+    reg = InMemoryRegistry()
+    reg.register("poc", _da(4.0, n))
+    reg.register("doc", _da(2.0, n))
+    reg.register("dic", _da(5.0, n))
+    reg.register("water_temperature", _da(25.0, n))
+    reg.register("depth", _da(1.0, n))
+    reg.register("oxygen_dissolved", _da(8.0, n))
+    reg.register("wind_speed", _da(wind_speed, n))
+    if shelter is not None:
+        reg.register("wind_shelter_coefficient", _da(shelter, n))
+    return reg
+
+
+def test_n2_registered_shelter_equals_reduced_wind():
+    """N2 atmospheric exchange: shelter=0.5 at U=6 == no shelter at U=3."""
+    def rate(ws, sh):
+        p = N2(parameters=dict(_WIND_ONLY))
+        p.run(datetime(2026, 1, 1), _n2_registry(wind_speed=ws, shelter=sh))
+        return np.asarray(p.n2_atm_exchange_rate)
+
+    np.testing.assert_allclose(
+        rate(6.0, 0.5), rate(3.0, None), rtol=1e-12, atol=0.0
+    )
+    assert np.all(np.abs(rate(6.0, 0.5)) < np.abs(rate(6.0, None)))
+
+
+def test_carbon_registered_shelter_equals_reduced_wind():
+    """Carbon DIC reaeration (via _ka_tc -> kaw_20): shelter=0.5 at U=6 ==
+    no shelter at U=3. Also exercises the registry wind_speed now threaded
+    to _ka_tc."""
+    def rate(ws, sh):
+        p = Carbon(parameters=dict(_WIND_ONLY))
+        p.run(datetime(2026, 1, 1), _carbon_registry(wind_speed=ws, shelter=sh))
+        return np.asarray(p.dic_atm_exchange_rate)
+
+    np.testing.assert_allclose(
+        rate(6.0, 0.5), rate(3.0, None), rtol=1e-12, atol=0.0
+    )
+    assert np.all(np.abs(rate(6.0, 0.5)) < np.abs(rate(6.0, None)))
