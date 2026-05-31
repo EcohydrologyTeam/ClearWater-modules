@@ -337,3 +337,86 @@ def test_rebridge_picks_up_new_chunk_objects():
     np.testing.assert_array_equal(
         _read(registry, "depth"), np.asarray(inst.mesh["coupling_depth"])
     )
+
+
+# ---------------------------------------------------------------------------
+# Full NSM1 state set: the map covers every NSM1 state under its fork name.
+# ---------------------------------------------------------------------------
+
+# The full 16-entry fork-name -> canonical mapping the bridge installs. Pinned
+# here as an independent copy so the test fails loudly if the production map in
+# Riverine._MESH_TO_CANONICAL is changed without updating the contract.
+_EXPECTED_MAP = {
+    "Ap": "algae_floating",
+    "Ab": "benthic_algae",
+    "NH4": "ammonium",
+    "NO3": "nitrate",
+    "OrgN": "organic_nitrogen",
+    "N2": "n2",
+    "TIP": "tip",
+    "OrgP": "organic_phosphorus",
+    "POC": "poc",
+    "DOC": "doc",
+    "DIC": "dic",
+    "CBOD": "cbod",
+    "POM": "pom",
+    "DOX": "oxygen_dissolved",
+    "Alk": "alkalinity",
+    "PX": "pathogen",
+}
+
+
+def test_mesh_to_canonical_map_contract():
+    """The production map matches the pinned full NSM1 contract (no env)."""
+    prod = Riverine._MESH_TO_CANONICAL
+    assert prod == _EXPECTED_MAP
+    # No duplicate fork names or canonical targets.
+    assert len(prod) == 16
+    assert len(set(prod.values())) == 16
+    # Every entry is a non-empty str -> non-empty str.
+    for fork, canonical in prod.items():
+        assert isinstance(fork, str) and fork
+        assert isinstance(canonical, str) and canonical
+    # DOX is retained (it was in the original five and must not be dropped).
+    assert prod["DOX"] == "oxygen_dissolved"
+
+
+def test_init_process_bridges_full_nsm1_state_set():
+    """A config carrying all 16 fork constituents bridges every canonical
+    alias to the registry, each tracking its source mesh array."""
+    inst, registry = _build_real_riverine(constituents=list(_EXPECTED_MAP))
+    _init(inst, registry)
+
+    for fork, canonical in _EXPECTED_MAP.items():
+        assert fork in inst.mesh, f"{fork!r} not on mesh"
+        assert canonical in registry, f"{canonical!r} not bridged"
+        np.testing.assert_array_equal(
+            _read(registry, canonical), np.asarray(inst.mesh[fork])
+        )
+    assert "depth" in registry
+
+
+# ---------------------------------------------------------------------------
+# Shared-buffer: the bridge points the canonical alias at the SAME buffer as
+# the fork-named mesh array (copy(deep=False)), so a write to one side is seen
+# on the other. This is what makes the coupling two-way.
+# ---------------------------------------------------------------------------
+
+
+def test_bridge_is_shared_buffer_two_way():
+    inst, registry = _build_real_riverine(constituents=list(_EXPECTED_MAP))
+    _init(inst, registry)
+
+    # Write via the canonical registry alias -> visible on the fork mesh name.
+    canon = registry.get_variable("ammonium").get()
+    sentinel_a = np.arange(canon.values.size, dtype=float).reshape(
+        canon.values.shape
+    )
+    canon.values[:] = sentinel_a
+    np.testing.assert_array_equal(np.asarray(inst.mesh["NH4"]), sentinel_a)
+
+    # Write via the fork mesh name -> visible on the canonical registry alias.
+    mesh_arr = inst.mesh["nitrate"] if "nitrate" in inst.mesh else inst.mesh["NO3"]
+    sentinel_b = sentinel_a + 100.0
+    mesh_arr.values[:] = sentinel_b
+    np.testing.assert_array_equal(_read(registry, "nitrate"), sentinel_b)
