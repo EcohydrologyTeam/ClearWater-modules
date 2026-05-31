@@ -377,6 +377,20 @@ class FloatingAlgae(Process):
         from clearwater_modules_v3.utils.numerics import Diagnostics
         self.diagnostics = Diagnostics()
 
+        # Nutrient-availability flags read by run()'s limitation terms
+        # (limit_nitrogen / limit_phosphorus). Set here so a
+        # bare-constructed FloatingAlgae / BenthicAlgae (BenthicAlgae
+        # inherits this __init__) is runnable standalone without a Model;
+        # ``init_process`` overrides them when wired to a Model
+        # (FloatingAlgae: unconditionally True; BenthicAlgae: per
+        # sibling-process presence). Defaulting to True matches both the
+        # FloatingAlgae init_process contract and the BenthicAlgae
+        # no-Model fixture path, so configured/coupled runs are
+        # unaffected (init_process runs before run()).
+        self.use_nitrate = True
+        self.use_ammonium = True
+        self.use_phosphate = True
+
         Process.__init__(self, time_step)
 
     @ProcessFactory.register("floating_algae")
