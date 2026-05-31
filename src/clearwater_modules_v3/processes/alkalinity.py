@@ -4,12 +4,19 @@ Phase 6 (v3 NSM1 design spec, Section 11 Phase 6, Section 5 Alkalinity
 design notes, Section 14 resolved Q). v3-native (NOT a v2 overlay; v2
 has no Alkalinity Process).
 
-Per Section 14 resolved Q ("Alkalinity simple-tracer"), v3 1.0.0 treats
-Alkalinity as a *simple tracer* with source/sink coupling to Nitrogen
-(nitrification consumes alk, denitrification produces alk) and the algae
-Processes (algal growth/respiration coupling, fractionated by NH4 vs NO3
-uptake). There is **no** carbonate equilibrium / pH solver in v3 1.0.0;
-that is NSM2 territory in v3 1.1+.
+Alkalinity has source/sink coupling to Nitrogen (nitrification consumes
+alk, denitrification produces alk) and the algae Processes (algal
+growth/respiration coupling, fractionated by NH4 vs NO3 uptake).
+
+Carbonate-equilibrium pH is computed as a **derived diagnostic** from
+(Alkalinity, DIC, water temperature) via the NSM1-I Newton/bisection
+solver (``utils.carbonate.carbonate_ph``, ported from
+``fortran/NSM1/05_additional_variables/nsmi_alkalinity.f90``). pH is
+diagnostic only — in NSM1-I the DIC reaeration term uses a constant
+free-CO2 fraction (``Fco2 = 0.2``), so pH does not feed back into the DIC,
+alkalinity, or any other kinetics. It is written to the registry only when
+``"pH"`` is pre-registered (the opportunistic-diagnostic contract), so the
+state trajectory is unchanged whether or not pH is requested.
 
 Known limitation — NSM1-SCI-A1 (gold-standard spec C5; E2 author
 decision: stage with NSM2). The algal/benthic-algae alkalinity coupling
@@ -27,7 +34,9 @@ about the carbon-vs-nitrogen *basis*). It is **not** a v3 1.0 gate
 blocker because it is explicitly documented here and in
 ``parameter_defaults_corrections.md``; the proper fix — reimplementing
 the algal alkalinity term on the N-flux basis as CE-QUAL-W2 does — is
-**scheduled for NSM2** (v3 1.1+), alongside the carbonate/pH solver.
+**scheduled for NSM2** (v3 1.1+). (The carbonate/pH solver, formerly
+deferred alongside it, is now implemented as the diagnostic described
+above; it is part of NSM1-I.)
 
 Kinetics (mirrors v1 ``processes.py:3246-3447``):
 
@@ -113,6 +122,7 @@ from clearwater_modules_v3.utils.numerics import (
     clip_negative_state,
     sanitize_rate,
 )
+from clearwater_modules_v3.utils.carbonate import apparent_constants, solve_ph
 
 if TYPE_CHECKING:
     from clearwater_modules_v3.model import Model
@@ -522,8 +532,9 @@ class Alkalinity(Process):
         """
         # --- State and forcing reads (pattern A) ---
         alk = registry.get_at_time("alkalinity", time)
-        # water_temperature is read for symmetry.
-        _ = registry.get_at_time("water_temperature", time)
+        # water_temperature: no direct alkalinity-rate dependence, but it
+        # drives the carbonate equilibrium constants for the pH diagnostic.
+        water_temperature = registry.get_at_time("water_temperature", time)
         depth = registry.get_at_time("depth", time)
 
         # --- Fused rate composition (pattern B) ---
@@ -556,6 +567,46 @@ class Alkalinity(Process):
         for name in self.REGISTRY_DIAGNOSTICS:
             if name in registry:
                 registry.set_at_time(name, time, components[name])
+
+        # --- Carbonate-system pH (derived diagnostic; opportunistic) ---
+        # NSM1-I computes pH from (Alk, DIC, T) via the carbonate-equilibrium
+        # Newton solver (nsmi_alkalinity.f90:ComputeAlkalinityDerivedVariables).
+        # pH is diagnostic only: the DIC reaeration term uses a constant Fco2
+        # (=0.2 in NSM1-I), so pH feeds no kinetics and the state trajectory is
+        # unchanged. Computed only when the user pre-registered "pH" (and "dic"
+        # is available), matching the pattern-G opportunistic-write contract.
+        # DIC is converted mg-C/L -> mol/L for the solver.
+        if "pH" in registry:
+            if "dic" in registry:
+                dic_mgc = registry.get_at_time("dic", time)
+                # NSM1-I freshwater: ionic strength I=0, so the Davies
+                # activity correction vanishes and the apparent constants
+                # collapse to the modAlkalinity T-only Kw/K1/K2. solve_ph
+                # takes DIC in mg-C/L (converts internally) and never raises
+                # (Newton -> bisection -> hold-previous).
+                kw, k1, k2 = apparent_constants(water_temperature)
+                self.pH, fallback_mask = solve_ph(
+                    alk_new, dic_mgc, kw, k1, k2,
+                    prev_ph=getattr(self, "_prev_ph", None),
+                )
+                self._prev_ph = self.pH
+                registry.set_at_time("pH", time, self.pH)
+                n_fallback = int(np.asarray(fallback_mask).sum())
+                if n_fallback > 0 and not getattr(
+                    self, "_warned_ph_fallback", False
+                ):
+                    logger.warning(
+                        "Alkalinity: carbonate pH solver used the hold-previous "
+                        "fallback for %d cell(s) (non-convergent input).",
+                        n_fallback,
+                    )
+                    self._warned_ph_fallback = True
+            elif not getattr(self, "_warned_missing_dic_for_ph", False):
+                logger.warning(
+                    "Alkalinity: 'pH' is registered but 'dic' is not; the "
+                    "carbonate pH diagnostic cannot be computed this run."
+                )
+                self._warned_missing_dic_for_ph = True
 
     # ------------------------------------------------------------------
     # Rate-composition helpers
