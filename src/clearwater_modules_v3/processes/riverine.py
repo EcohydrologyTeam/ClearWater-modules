@@ -28,10 +28,21 @@ class Riverine(Process):
     # Mesh-constituent (CW-Riverine fork name) -> v3 canonical registry name.
     _MESH_TO_CANONICAL = {
         "Ap": "algae_floating",
+        "Ab": "benthic_algae",
         "NH4": "ammonium",
         "NO3": "nitrate",
+        "OrgN": "organic_nitrogen",
+        "N2": "n2",
         "TIP": "tip",  # v3 convention; was phosphorus_total_inorganic
+        "OrgP": "organic_phosphorus",
+        "POC": "poc",
+        "DOC": "doc",
+        "DIC": "dic",
+        "CBOD": "cbod",
+        "POM": "pom",
         "DOX": "oxygen_dissolved",
+        "Alk": "alkalinity",
+        "PX": "pathogen",
     }
 
     def __init__(
