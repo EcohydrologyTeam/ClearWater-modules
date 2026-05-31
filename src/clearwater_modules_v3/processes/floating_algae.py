@@ -69,6 +69,7 @@ from clearwater_data.custom_types import ArrayLike
 
 from clearwater_modules_v3.utils.conversions import arrhenius_correction
 from clearwater_modules_v3.utils.numerics import clip_negative_state
+from clearwater_modules_v3.utils.light import L as compute_light_extinction
 
 
 def _sanitize_cache(value):
@@ -133,6 +134,25 @@ _FDP_DEFAULTS = {
     # consumes the FloatingAlgae-cached rate); keep it consistent with
     # ``parameters/carbon.py`` f_pocp. See parameter_defaults_corrections.md.
     "f_pocp": 0.8,  # fraction of algal mortality C that goes to POC; (1-f_pocp) -> DOC
+}
+
+# Optical coefficients for the computed light-extinction coefficient lambda,
+# matching the NSM1-I Fortran defaults verified against
+# ``fortran/NSM1/01_extraneous/nsmi_main.f90`` (parameter table) and the lambda
+# assembly in ``fortran/NSM1/02_global/nsmi_global_params.f90:421-427``:
+#   lambda = lambda0 + lambdas*Solid + (use_POC) lambdam*POC/fcom
+#                    + (use_Algae) lambda1*Ap + lambda2*Ap**(2/3)
+# Same values as Pathogen's _LIGHT_DEFAULTS and the ``utils.light.L`` contract.
+# Applied in __init__ from ``user_params.get(...)`` so a caller can override.
+_LIGHT_EXT_DEFAULTS = {
+    "lambda0": 0.02,    # 1/m; background attenuation
+    "lambda1": 0.0088,  # 1/m / (ug-Chla/L); linear algal self-shading
+    "lambda2": 0.054,   # 1/m / (ug-Chla/L)^(2/3); nonlinear algal self-shading
+    "lambdas": 0.052,   # L/mg/m; inorganic suspended-solids attenuation
+    "lambdam": 0.174,   # L/mg/m; organic-matter (POC/fcom) attenuation
+    "fcom": 0.4,        # mg-C/mg-D; carbon-to-organic-matter mass ratio
+    "use_POC": True,    # include the POC attenuation term
+    "use_Algae": True,  # include the algal self-shading terms
 }
 
 
@@ -218,6 +238,7 @@ class FloatingAlgae(Process):
         light_limitation_option: int | None = None,
         light_limitation_constant: float | None = None,
         light_attenuation_coefficient: float = 1.0,
+        use_computed_light_extinction: bool = True,
         ratio_chla_carbon: float = 40.0,
         ratio_chla_nitrogen: float = 7.2,
         ratio_chla_phosphorus: float = 1.0,
@@ -344,10 +365,27 @@ class FloatingAlgae(Process):
         if light_limitation_option is not None:
             self.light_limitation_option = light_limitation_option
 
-        # ``light_attenuation_coefficient`` (lambda) is not in ALGAE_DEFAULTS
-        # (Fortran/v1 compute lambda from the POM/Chla sum in modGlobalParam).
-        # Keep the v2 scalar default as the wiring-only fallback per audit O4.
+        # Light-extinction coefficient lambda. NSM1-I computes lambda each
+        # step from the optical constituents (Solid / POC / Ap) via
+        # ``utils.light.L`` (port of nsmi_global_params.f90:421-427). v3 now
+        # does the same by default (``use_computed_light_extinction=True``).
+        # ``light_attenuation_coefficient`` is retained as a directly
+        # specified scalar override for tests / didactic runs: set
+        # ``use_computed_light_extinction=False`` to use it instead of the
+        # computed value (audit O4 wiring-only fallback).
         self.light_attenuation_coefficient = light_attenuation_coefficient
+        self.use_computed_light_extinction = use_computed_light_extinction
+        # Optical coefficients for the computed lambda (NSM1-I defaults;
+        # overridable via the ``parameters`` dict, like _FDP_DEFAULTS).
+        for k, v in _LIGHT_EXT_DEFAULTS.items():
+            if not hasattr(self, k):
+                setattr(self, k, user_params.get(k, v))
+        # Per-step lambda cache read by ``limit_light``. Defaults to the
+        # scalar so a bare/direct ``limit_light`` call (no ``run``) and the
+        # override path both behave as the pre-computed-lambda model did.
+        # ``run`` overwrites this with the computed per-cell field each step
+        # when ``use_computed_light_extinction`` is True.
+        self._light_extinction = self.light_attenuation_coefficient
         self.ratio_chla_carbon = ratio_chla_carbon
         self.ratio_chla_nitrogen = ratio_chla_nitrogen
         self.ratio_chla_phosphorus = ratio_chla_phosphorus
@@ -469,6 +507,34 @@ class FloatingAlgae(Process):
             if "Solid" in registry
             else self.Solid
         )
+
+        # Light-extinction coefficient lambda (1/m), computed each step from the
+        # optical constituents via utils.light.L (NSM1-I port,
+        # nsmi_global_params.f90:421-427): background + suspended-solids + POC +
+        # algal self-shading. Replaces the constant light_attenuation_coefficient
+        # so a coupled run reproduces NSM1-I optics. POC is read like Solid (an
+        # optional shared input; absent -> 0, dropping the POC term). When
+        # use_computed_light_extinction is False, the scalar override is used
+        # (tests / didactic runs). limit_light reads self._light_extinction.
+        if self.use_computed_light_extinction:
+            poc = (
+                registry.get_at_time("poc", time) if "poc" in registry else 0.0
+            )
+            self._light_extinction = compute_light_extinction(
+                lambda0=self.lambda0,
+                lambda1=self.lambda1,
+                lambda2=self.lambda2,
+                lambdas=self.lambdas,
+                lambdam=self.lambdam,
+                Solid=solid,
+                POC=poc,
+                fcom=self.fcom,
+                Ap=algae,
+                use_Algae=self.use_Algae,
+                use_POC=self.use_POC,
+            )
+        else:
+            self._light_extinction = self.light_attenuation_coefficient
 
         # --- Fused rate composition (pattern B) ---
         rate, components = self._change_with_components(
@@ -851,6 +917,15 @@ class FloatingAlgae(Process):
     ) -> ArrayLike:
         """Compute the limiting light for floating algae."""
 
+        # Light-extinction coefficient lambda. ``run`` sets
+        # ``self._light_extinction`` each step: the computed per-cell
+        # utils.light.L field (default) or the scalar
+        # ``light_attenuation_coefficient`` override. Direct callers (no
+        # ``run``) get the scalar default set in __init__, preserving the
+        # pre-computed-lambda behavior. See ``_light_extinction`` /
+        # ``use_computed_light_extinction``.
+        lambda_ext = self._light_extinction
+
         # Half-saturation light limitation
         # Phase 9.A.1 audit F5: the ``np.log`` argument must be the
         # ratio (KL+PAR) / (KL+PAR*exp(-Ld)). The previous form split
@@ -859,13 +934,13 @@ class FloatingAlgae(Process):
         # final result instead of forming the log argument.
         if self.light_limitation_option == 1:
             raw_rate = (
-                (1.0 / (self.light_attenuation_coefficient * depth))
+                (1.0 / (lambda_ext * depth))
                 * np.log(
                     (self.light_limitation_constant + surface_light_intensity)
                     / (
                         self.light_limitation_constant
                         + surface_light_intensity
-                        * np.exp(-(self.light_attenuation_coefficient * depth))
+                        * np.exp(-(lambda_ext * depth))
                     )
                 )
             )
@@ -875,7 +950,7 @@ class FloatingAlgae(Process):
                 abs(self.light_limitation_constant) < 1e-10,
                 1,
                 (
-                    (1.0 / (self.light_attenuation_coefficient * depth))
+                    (1.0 / (lambda_ext * depth))
                     * np.log(
                         (
                             surface_light_intensity / self.light_limitation_constant
@@ -893,7 +968,7 @@ class FloatingAlgae(Process):
                         )
                         / (
                             surface_light_intensity
-                            * np.exp(-self.light_attenuation_coefficient * depth)
+                            * np.exp(-lambda_ext * depth)
                             / self.light_limitation_constant
                             + (
                                 (
@@ -901,7 +976,7 @@ class FloatingAlgae(Process):
                                     + (
                                         surface_light_intensity
                                         * np.exp(
-                                            -self.light_attenuation_coefficient * depth
+                                            -lambda_ext * depth
                                         )
                                         / self.light_limitation_constant
                                     )
@@ -919,12 +994,12 @@ class FloatingAlgae(Process):
                 abs(self.light_limitation_constant) < 1e-10,
                 0,
                 (
-                    (2.718 / (self.light_attenuation_coefficient * depth))
+                    (2.718 / (lambda_ext * depth))
                     * (
                         np.exp(
                             -surface_light_intensity
                             / self.light_limitation_constant
-                            * np.exp(-self.light_attenuation_coefficient * depth)
+                            * np.exp(-lambda_ext * depth)
                         )
                         - np.exp(
                             -surface_light_intensity / self.light_limitation_constant
@@ -939,7 +1014,7 @@ class FloatingAlgae(Process):
         # no algae present
         rate = xr.where(algae <= 0, 0, raw_rate)
         # light cannot penetrate deep enough
-        rate = xr.where(self.light_attenuation_coefficient * depth <= 0, 0, rate)
+        rate = xr.where(lambda_ext * depth <= 0, 0, rate)
         rate = xr.where(raw_rate > 1, 1.0, rate)
         return rate
 
