@@ -626,8 +626,17 @@ class Carbon(Process):
         # ``KH * pCO2 / 1e6`` is in mol-C/L; multiply by MG_C_PER_MOL_C
         # to convert to mg-C/L for unit consistency with ``FCO2 * DIC``
         # (both terms now mg-C/L; resulting rate mg-C/L/d).
+        # Forward ALL registry forcings to the reaeration coefficient: the
+        # wind path (wind_speed + wind_shelter) and the hydraulic path
+        # (velocity/flow/topwidth/slope/shear_velocity). Previously only
+        # depth reached _ka_tc, so Carbon's CO2 reaeration used constructor-
+        # scalar velocity/flow even in a coupled run (a latent Phase-G-3 gap);
+        # it now uses the same registry forcings DOX/N2 use.
         ka_tc_value = self._ka_tc(
-            t_water_c, depth, wind_speed=wind_speed, wind_shelter=wind_shelter
+            t_water_c, depth,
+            wind_speed=wind_speed, wind_shelter=wind_shelter,
+            velocity=velocity, flow=flow, topwidth=topwidth,
+            slope=slope, shear_velocity=shear_velocity,
         )
         kh_co2 = henrys_k_co2(t_water_c)
         co2_reaeration = (

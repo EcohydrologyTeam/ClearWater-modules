@@ -15,10 +15,15 @@ local (a latent Phase-G-3 gap for the **wind** path); it now forwards both
 wind × shelter consistently with DOX/N2. No re-baseline: the demo registers no
 `wind_speed`/`wind_shelter_coefficient` and the wind path is inert at the default
 `wind_reaeration_option=1`/`kaw_20_user=0`. Integration tests for both added to
-`tests/v3/test_reaeration_wind_shelter.py`. **Still open:** Carbon's `_ka_tc`
-call also drops the registry **hydraulic** forcings (`velocity`/`flow`/`topwidth`/
-`slope`/`shear_velocity` fall back to constructor scalars) — a separate Phase-G-3
-hydraulic-path gap, out of wind-shelter scope.
+`tests/v3/test_reaeration_wind_shelter.py`.
+
+**Carbon hydraulic-path gap also closed 2026-05-31:** Carbon's `_ka_tc` call now
+forwards the registry hydraulic forcings (`velocity`/`flow`/`topwidth`/`slope`/
+`shear_velocity`) in addition to `wind_speed`/`wind_shelter`, so Carbon's CO2
+reaeration uses the same registry forcings as DOX/N2 instead of falling back to
+constructor scalars. Default `hydraulic_reaeration_option=5` is velocity-dependent,
+so this matters in a coupled run with registered velocity; the demo registers
+none, so no re-baseline. Covered by `test_carbon_uses_registered_velocity_in_reaeration`.
 
 Companion CWR document:
 [`wind_sheltering_design.md`](../../ClearWater-riverine/design/wind_sheltering_design.md)

@@ -227,3 +227,21 @@ def test_carbon_registered_shelter_equals_reduced_wind():
         rate(6.0, 0.5), rate(3.0, None), rtol=1e-12, atol=0.0
     )
     assert np.all(np.abs(rate(6.0, 0.5)) < np.abs(rate(6.0, None)))
+
+
+def test_carbon_uses_registered_velocity_in_reaeration():
+    """Carbon's hydraulic reaeration (default option 5, velocity-dependent)
+    now uses the registered velocity, threaded through _ka_tc -> kah_20:
+    two different registered velocities give different CO2 reaeration.
+    Before the hydraulic-forcing fix Carbon ignored the registry velocity
+    and used the constructor scalar (so this would have been equal)."""
+    def rate(velocity):
+        p = Carbon()  # default: hydraulic option 5 (velocity+depth); wind path inert
+        reg = _carbon_registry(wind_speed=2.0)  # wind path inert at default options
+        reg.register("velocity", _da(velocity))
+        p.run(datetime(2026, 1, 1), reg)
+        return np.asarray(p.dic_atm_exchange_rate)
+
+    assert not np.allclose(rate(0.1), rate(1.5)), (
+        "registered velocity must affect Carbon's CO2 reaeration"
+    )
