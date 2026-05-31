@@ -5,14 +5,15 @@ Two complementary contracts:
 1. ``test_baseline_parity_bit_identical`` — replays the Phase 0
    4,320-substep baseline scenario and asserts every state-variable
    trajectory matches the committed
-   ``baseline_coupled_trajectory_e0185de.nc`` bit-identically when no
+   ``baseline_coupled_trajectory_d82a5ed.nc`` bit-identically when no
    ``REGISTRY_DIAGNOSTICS`` names are pre-registered. This is the
    §11.2 contract enforced inside the test suite. (Active baseline at
-   ``e0185de``, which wires FloatingAlgae's computed light-extinction
-   coefficient (utils.light.L) on top of ``d530a3a``; the algal light
-   limitation now uses the optical-constituent lambda, a broad cascade
-   through algae/DO. Prior baselines ``d530a3a`` (Pathogen
-   algae_floating), ``6c10f36`` (NSM1-CA-1/SCI-N1/SCI-A3/SCI-A2),
+   ``d82a5ed``, which wires BenthicAlgae's computed light-extinction
+   coefficient (utils.light.L) on top of ``e0185de`` (FloatingAlgae
+   light-extinction); the benthic light limitation now uses the
+   optical-constituent lambda, a broad cascade through algae/DO. Prior
+   baselines ``e0185de`` (FloatingAlgae light-extinction), ``d530a3a``
+   (Pathogen algae_floating), ``6c10f36`` (NSM1-CA-1/SCI-N1/SCI-A3/SCI-A2),
    ``3a8c188`` (through SCI-A3), ``b51df71`` (CA-1+SCI-N1), ``624ed7c``
    (CA-1) and ``186b5c4`` (pre-fix) are retained for auditability per
    baseline/README.md.)
@@ -60,7 +61,7 @@ from clearwater_modules_v3.processes import (
 _BASELINE_NETCDF = (
     Path(__file__).resolve().parent
     / "baseline"
-    / "baseline_coupled_trajectory_e0185de.nc"
+    / "baseline_coupled_trajectory_d82a5ed.nc"
 )
 
 

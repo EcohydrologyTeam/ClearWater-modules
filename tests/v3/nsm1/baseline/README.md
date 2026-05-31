@@ -2,7 +2,7 @@
 
 Originally captured 2026-05-13 against commit `186b5c4` ("Add v3 NSM1 pattern alignment specification") on branch `streaming`.
 
-**Active baseline: `e0185de`** (re-baselined 2026-05-30 for the FloatingAlgae computed light-extinction wiring — `limit_light` now uses the optical-constituent lambda from `utils.light.L` instead of the constant `light_attenuation_coefficient`; a broad algae-light cascade through algae/DO, layered on `d530a3a`; see "Re-baseline log" below). The `d530a3a` (Pathogen `algae_floating`), `6c10f36` (terminal gold-standard through NSM1-SCI-A2), `3a8c188` (through SCI-A3), `b51df71` (CA-1+SCI-N1), `624ed7c` (CA-1 only) and `186b5c4` (pre-fix) artifacts are retained in the tree for auditability and are no longer the active reference.
+**Active baseline: `d82a5ed`** (re-baselined 2026-05-30 for the BenthicAlgae computed light-extinction wiring — its `limit_light` (`exp(-lambda*depth)`) now uses the optical-constituent lambda from `utils.light.L`, layered on `e0185de` (FloatingAlgae light-extinction); a broad benthic-light cascade through algae/DO; see "Re-baseline log" below). The `e0185de` (FloatingAlgae light-extinction), `d530a3a` (Pathogen `algae_floating`), `6c10f36` (terminal gold-standard through NSM1-SCI-A2), `3a8c188` (through SCI-A3), `b51df71` (CA-1+SCI-N1), `624ed7c` (CA-1 only) and `186b5c4` (pre-fix) artifacts are retained in the tree for auditability and are no longer the active reference.
 
 These artifacts are the **gold reference** for the zero-regression contract in `design/clearwater_modules_v3_nsm1_pattern_alignment_specification.md` §11. Every per-Process phase commit (Phase 1 through Phase 10) of the pattern-alignment work must reproduce them bit-identically when no `REGISTRY_DIAGNOSTICS` names are pre-registered.
 
@@ -10,7 +10,8 @@ These artifacts are the **gold reference** for the zero-regression contract in `
 
 | File | Purpose |
 |---|---|
-| `baseline_coupled_trajectory_e0185de.nc` | **ACTIVE.** 4,320-substep coupled NSM1 demo trajectory at the FloatingAlgae computed light-extinction wiring (commit `e0185de`). Differs broadly from `d530a3a` (the algal light-limitation lambda is now computed from Solid/POC/Ap, cascading through algae→DO→nutrients). **Load-bearing for §11.2.** Captured + parity-verified under the conda `clearwater` test env. |
+| `baseline_coupled_trajectory_d82a5ed.nc` | **ACTIVE.** 4,320-substep coupled NSM1 demo trajectory at the BenthicAlgae computed light-extinction wiring (commit `d82a5ed`). Differs broadly from `e0185de` (the benthic light-limitation lambda is now computed from Solid/POC/Ap, cascading through algae→DO→nutrients). **Load-bearing for §11.2.** Captured + parity-verified under the conda `clearwater` test env. |
+| `baseline_coupled_trajectory_e0185de.nc` | Superseded (FloatingAlgae computed light-extinction; encodes the constant benthic light_attenuation_coefficient=1.0). 4,320-substep coupled NSM1 demo trajectory. Retained for auditability. |
 | `baseline_coupled_trajectory_d530a3a.nc` | Superseded (Pathogen canonical `algae_floating` name fix; encodes the constant light_attenuation_coefficient=1.0 algal optics). 4,320-substep coupled NSM1 demo trajectory. Retained for auditability. |
 | `baseline_coupled_trajectory_6c10f36.nc` | Superseded (terminal gold-standard through NSM1-SCI-A2; encodes the Pathogen zero-algae name bug — Pathogen read the unregistered `ap`). 4,320-substep coupled NSM1 demo trajectory. Same shape/contract as `186b5c4`. Retained for auditability. |
 | `baseline_coupled_trajectory_3a8c188.nc` | Superseded (through SCI-A3; encodes the SCI-A2 0.5 mortality-C mis-routing). 4,320-substep coupled NSM1 demo trajectory. Retained for auditability. |
@@ -61,6 +62,29 @@ Only when one of the following changes:
 Re-baselining is a separate, signed-off commit with its own short hash in the filenames. The old baseline files are not overwritten — they remain in the tree so the history of references is auditable.
 
 ## Re-baseline log
+
+### `d82a5ed` — 2026-05-30 — BenthicAlgae computed light-extinction (NSM1-I port)
+
+Trigger: a deliberate kinetics change (the FloatingAlgae light-extinction
+follow-up). Commit `d82a5ed` made `BenthicAlgae.limit_light` compute the
+light-extinction coefficient lambda each step via `utils.light.L` (from the
+water-column floating-algae `Ap`, suspended solids, and POC), instead of the
+constant `light_attenuation_coefficient = 1.0 /m`, in its `exp(-lambda*depth)`
+light-at-the-bed term. NSM1-I computes one global lambda from the water column;
+the benthic biomass does not enter it.
+
+Scope of change vs `e0185de`: **broad** — the benthic light-limitation change
+cascades through the coupled algae→DO→nutrient network; ~16 variables differ.
+Captured and parity-verified under the conda `clearwater` test env
+(`test_coupled_demo_parity.py`, 4 passed). All other BenthicAlgae unit tests
+(v1-parity, registry diagnostics) pass unchanged. Prior artifacts (`e0185de`,
+`d530a3a`, `6c10f36`, `3a8c188`, `b51df71`, `624ed7c`, `186b5c4`) retained
+unmodified. References in `test_coupled_demo_parity.py` and
+`check_baseline_parity.py` now point at `d82a5ed`.
+
+Scope note: as with the prior light-extinction / pathogen re-baselines, only the
+load-bearing §11.2 trajectory `.nc` was regenerated; the §11.4 JUnit/summary
+artifacts (no test consumes them) were not.
 
 ### `e0185de` — 2026-05-30 — FloatingAlgae computed light-extinction (NSM1-I port)
 
