@@ -311,6 +311,16 @@ class Phosphorus(Process):
         orgp = registry.get_at_time("organic_phosphorus", time)
         water_temperature = registry.get_at_time("water_temperature", time)
         depth = registry.get_at_time("depth", time)
+        # Shared suspended-solids input (clearwater_modules_v3_solid_input_source):
+        # prefer the canonical per-cell ``Solid`` registry forcing when a provider
+        # registered it; otherwise fall back to the constructor scalar
+        # ``self.Solid``. Mirrors Temperature's optional wind_shelter_coefficient
+        # read. Runs that register no ``Solid`` are byte-identical to before.
+        solid = (
+            registry.get_at_time("Solid", time)
+            if "Solid" in registry
+            else self.Solid
+        )
 
         # --- Fused rate composition (pattern B) ---
         dtip_dt, dorgp_dt, components = self._change_with_components(
@@ -318,6 +328,7 @@ class Phosphorus(Process):
             orgp=orgp,
             water_temperature=water_temperature,
             depth=depth,
+            solid=solid,
         )
 
         # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
@@ -362,6 +373,7 @@ class Phosphorus(Process):
         orgp: ArrayLike,
         water_temperature: ArrayLike,
         depth: ArrayLike,
+        solid: ArrayLike | None = None,
     ) -> tuple[ArrayLike, ArrayLike, dict]:
         """Compute ``(dtip_dt, dorgp_dt, components)`` for Phosphorus.
 
@@ -388,9 +400,13 @@ class Phosphorus(Process):
         # Dissolved fraction. With ``kdpo4=0`` (v3 default), fdp = 1.0
         # which means (1 - fdp) * TIP = 0 and TIP settling is silently
         # zero. Setting ``kdpo4 > 0`` activates the particulate fraction.
+        # ``solid`` is resolved registry-first in ``run`` (Solid input source
+        # spec); ``None`` only when a direct caller omitted it -> scalar default.
+        if solid is None:
+            solid = self.Solid
         fdp = fdp_partition(
             use_TIP=self.use_TIP,
-            Solid=self.Solid,
+            Solid=solid,
             kdpo4=self.kdpo4,
         )
 

@@ -445,6 +445,17 @@ class FloatingAlgae(Process):
         solar_shortwave = registry.get_at_time("solar_radiation", time)
         solar = solar_shortwave * self.Fr_PAR
 
+        # Shared suspended-solids input (clearwater_modules_v3_solid_input_source):
+        # prefer the canonical per-cell ``Solid`` registry forcing when present,
+        # else fall back to the constructor scalar ``self.Solid``. Mirrors
+        # Temperature's optional wind_shelter_coefficient read; runs that register
+        # no ``Solid`` are byte-identical to before.
+        solid = (
+            registry.get_at_time("Solid", time)
+            if "Solid" in registry
+            else self.Solid
+        )
+
         # --- Fused rate composition (pattern B) ---
         rate, components = self._change_with_components(
             algae=algae,
@@ -454,6 +465,7 @@ class FloatingAlgae(Process):
             ammonium=ammonium,
             nitrate=nitrate,
             solar=solar,
+            solid=solid,
         )
 
         # --- Cache step-scoped rates on ``self.<name>`` (pattern F) ---
@@ -501,6 +513,7 @@ class FloatingAlgae(Process):
         ammonium: ArrayLike,
         nitrate: ArrayLike,
         solar: ArrayLike,
+        solid: ArrayLike | None = None,
     ) -> tuple[ArrayLike, dict]:
         """Compute ``(rate, components)`` for FloatingAlgae.
 
@@ -521,9 +534,13 @@ class FloatingAlgae(Process):
         # Bug #15: compute fdp via the v3 partitioning utility instead of
         # the previous hard-coded 0.5.
         from clearwater_modules_v3.utils.partitioning import fdp as fdp_partition
+        # ``solid`` is resolved registry-first in ``run`` (Solid input source
+        # spec); ``None`` only when a direct caller omitted it -> scalar default.
+        if solid is None:
+            solid = self.Solid
         phosphate_fraction_dissolved = fdp_partition(
             use_TIP=self.use_TIP,
-            Solid=self.Solid,
+            Solid=solid,
             kdpo4=self.kdpo4,
         )
 
