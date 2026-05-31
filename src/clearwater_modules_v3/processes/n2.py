@@ -145,11 +145,17 @@ class N2(Process):
 
     variables = [
         "n2",
-        "total_dissolved_gas",
         "water_temperature",
         "depth",
         "atmospheric_pressure",
     ]
+
+    # Outputs this process writes — the wet-mask scope (model.py
+    # __apply_wet_mask, C5 fix). Only the state ``n2`` is NaN-masked on dry
+    # cells; the forcings in ``variables`` are inputs and must NOT be masked.
+    # ``total_dissolved_gas`` is a derived diagnostic (REGISTRY_DIAGNOSTICS),
+    # not an output state, so it is not listed here.
+    output_variables = ["n2"]
 
     # Class-level v3 defaults. Lazy-loaded on first instantiation;
     # populated from a curated subset of global_parameters / dox /

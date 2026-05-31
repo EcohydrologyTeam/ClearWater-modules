@@ -158,11 +158,18 @@ _LIGHT_EXT_DEFAULTS = {
 
 class FloatingAlgae(Process):
     variables = [
-        "floating_algae",
+        "algae_floating",
         "solar_radiation",
         "depth",
         "water_temperature",
     ]
+
+    # Outputs this process writes — the wet-mask scope (model.py
+    # __apply_wet_mask, C5 fix). Only the state ``algae_floating`` is
+    # NaN-masked on dry cells; the forcings in ``variables``
+    # (solar_radiation/depth/water_temperature) are inputs and must NOT be
+    # masked (masking them corrupts the next substep's inputs).
+    output_variables = ["algae_floating"]
 
     # Class-level v3 defaults (Section 3.4 of design spec). Populated
     # lazily on first instantiation from ``v3.parameters.algae`` to

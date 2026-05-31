@@ -40,6 +40,8 @@ from clearwater_data.custom_types import ArrayLike
 
 from .floating_algae import FloatingAlgae
 
+from clearwater_modules_v3.processes.base import ProcessFactory
+
 from clearwater_modules_v3.utils.conversions import arrhenius_correction
 from clearwater_modules_v3.utils.numerics import clip_negative_state
 from clearwater_modules_v3.utils.light import L as compute_light_extinction
@@ -101,6 +103,13 @@ _BENTHIC_FDP_DEFAULTS = {
 
 class BenthicAlgae(FloatingAlgae):
     variables = ["benthic_algae", "solar_radiation"]
+
+    # Outputs this process writes — the wet-mask scope (model.py
+    # __apply_wet_mask, C5 fix). MUST override FloatingAlgae's
+    # ``output_variables`` (BenthicAlgae subclasses it): the benthic state is
+    # ``benthic_algae``, not ``algae_floating``. ``solar_radiation`` is an
+    # input forcing and must NOT be masked.
+    output_variables = ["benthic_algae"]
 
     # Class-level v3 defaults for benthic algae parameters. Lazy-loaded
     # on first instantiation to avoid the v2 <-> v3 circular import.
@@ -294,6 +303,13 @@ class BenthicAlgae(FloatingAlgae):
         model_diagnostics = getattr(model, "diagnostics", None)
         if model_diagnostics is not None:
             self.diagnostics = model_diagnostics
+
+    @ProcessFactory.register("benthic_algae")
+    @staticmethod
+    def from_config(
+        config: dict, variable_registry: VariableRegistry
+    ) -> "BenthicAlgae":
+        return BenthicAlgae(**config)
 
     def run(self, time: datetime, registry: VariableRegistry) -> None:
         """Run the benthic algae process.
