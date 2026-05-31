@@ -133,6 +133,7 @@ def kaw_20(
     wind_speed: xr.DataArray,
     wind_reaeration_option: xr.DataArray,
     wind_input_height: float = 2.0,
+    wind_shelter: "xr.DataArray | float" = 1.0,
 ) -> xr.DataArray:
     """Wind-driven oxygen reaeration velocity at 20 deg C.
 
@@ -154,6 +155,14 @@ def kaw_20(
             internal Uw10 calculation does not double-count the height
             correction. Phase H-8 (2026-05-21): added to align with the
             v3 TSM ``Temperature.wind_input_height`` configurable.
+        wind_shelter | dimensionless | per-cell wind-shelter coefficient
+            (``wind_shelter_coefficient``), the same forcing the TSM wind
+            function consumes. Applied to the raw wind BEFORE the height
+            rescale, mirroring ``Temperature._compute_effective_wind``
+            (``raw * shelter * height_factor``) and CE-QUAL-W2
+            ``w2_4_unix.f90:480``. Default ``1.0`` (no shelter) preserves
+            prior numerical output for callers that don't pass it. Accepts
+            a scalar or an ``xr.DataArray`` aligned with ``wind_speed``.
 
     Returns:
         m/d | wind-driven reaeration velocity at 20 deg C.
@@ -185,10 +194,15 @@ def kaw_20(
     # top of an already-10-m measurement. ``wind_input_height == 10``
     # now produces the identity factor here, matching the Temperature
     # module's log-law contract for the same height value.
+    # Wind shelter (wind_shelter_coefficient) is applied to the raw wind
+    # BEFORE the height rescale, matching the composition order in
+    # Temperature._compute_effective_wind (raw * shelter * height_factor)
+    # and CE-QUAL-W2 w2_4_unix.f90:480. Default wind_shelter=1.0 is a no-op.
+    sheltered_wind = wind_speed * wind_shelter
     if abs(wind_input_height - 10.0) < 1e-12:
-        Uw10 = wind_speed
+        Uw10 = sheltered_wind
     else:
-        Uw10 = wind_speed * (10.0 / wind_input_height) ** 0.143
+        Uw10 = sheltered_wind * (10.0 / wind_input_height) ** 0.143
     # See ``kah_20`` for the same ``np.select`` dim-stripping fix; reattach
     # ``wind_speed`` dims/coords to the result.
     result = np.select(
