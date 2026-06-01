@@ -162,3 +162,9 @@ dmypy.json
 /src/clearwater_modules_v2/met.zarr
 /src/.vscode
 CLAUDE.md
+
+# Claude Code harness session artifacts (transient; not for the repo).
+# Surgical: lock files only, so an intentional shared .claude/settings.json
+# can still be tracked.
+.claude/scheduled_tasks.lock
+.claude/*.lock
