@@ -158,6 +158,9 @@ dmypy.json
 /examples/dev_sandbox/data_temp
 *.plk
 /data_temp
+# init_from_file / Model run artifacts (zarr stores written to simulation_directory)
+model_inputs.zarr/
+model_outputs.zarr/
 /src/clearwater_modules_v2/.vscode
 /src/clearwater_modules_v2/met.zarr
 /src/.vscode

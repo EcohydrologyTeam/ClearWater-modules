@@ -1,40 +1,39 @@
 # v3 NSM1 default configuration (Phase 8.A, v3 NSM1 implementation plan).
 #
-# This YAML declares all 11 v3 NSM1 Process classes with sensible
-# default parameters. It is the canonical "ships-with-v3" NSM1 entry
-# point referenced by the v3 NSM1 design specification (Section 14:
-# resolved Q "default YAML"). It mirrors the headless Python builder in
-# ``src/clearwater_modules_v3/examples/nsm1_demo_setup.py`` and the
-# Phase 7.C demo notebook ``examples/V3/04_Example_NSM1.ipynb``.
+# This YAML declares all 11 v3 NSM1 Process classes with sensible default
+# parameters. It is the canonical "ships-with-v3" NSM1 entry point referenced
+# by the v3 NSM1 design specification (Section 14: resolved Q "default YAML").
+# It mirrors the headless Python builder ``build_nsm1_demo``
+# (``src/clearwater_modules_v3/examples/nsm1_demo_setup.py``) and the demo
+# notebook ``examples/V3/04_Example_NSM1.ipynb``.
 #
-# IMPORTANT: this YAML is intentionally a *template*. The v3
-# ``init_from_file`` entry point reuses v2 helpers
-# (``__init_processes`` and ``__init_model_data``) which require every
-# state and forcing variable read by any Process to be wired to a
-# ``data_sources`` provider via ``variable_map``. The 11 NSM1 Processes
-# read 17 state variables and 4 forcings (water_temperature, depth,
-# solar_radiation, atmospheric_pressure); a fully self-contained YAML
-# would have to carry CSV files for each one.
+# Builds, but is a template for *running*. ``init_from_file`` constructs a
+# Model directly from this file: every parameter block loads and all 11
+# processes are built (guarded by ``tests/v3/test_nsm1_default_config.py``).
+# It does not register any state, so ``data_sources`` and ``variable_map``
+# ship empty here. The 11 processes read 16 state variables and 4 forcings
+# (water_temperature, depth, solar_radiation, atmospheric_pressure) that
+# nothing in this file provides, so calling ``model.run()`` on the file
+# as-shipped raises a clear ``Process input(s) have no provider: ...`` error
+# naming every unwired input. Wire a data layer first, using one of:
 #
-# Two supported usage patterns:
+# 1. Pair with a Riverine ``configuration_path``: add a ``riverine:`` block to
+#    ``processes:`` and point its ``data_sources`` / ``variable_map`` at the
+#    HEC-RAS mesh. The Riverine bridge registers the transport state each
+#    step. This is the production path (Sumwere Creek and other riverine runs).
 #
-# 1. Pair this YAML with a Riverine ``configuration_path`` that
-#    registers the state variables. Add a ``riverine:`` block to the
-#    ``processes:`` list and supply the Riverine mesh's CSV inputs in
-#    ``data_sources`` and ``variable_map``. This is the production
-#    path used by Sumwere Creek and other riverine simulations.
+# 2. Populate ``data_sources`` / ``variable_map`` below with a provider for
+#    each state and forcing (e.g. ``{provider: float, ...}`` constants, or
+#    dataset/CSV-backed providers). The Python builder ``build_nsm1_demo`` does
+#    the in-memory equivalent against a synthetic registry and is the verified
+#    headless, no-files path; it constructs the same logical Model this YAML
+#    describes.
 #
-# 2. For headless NSM1-only runs (no transport, no I/O), use the
-#    Python builder
-#    ``clearwater_modules_v3.examples.build_nsm1_demo`` instead of
-#    ``init_from_file``. The builder constructs the same logical
-#    Model that this YAML describes, but against an in-memory
-#    registry pre-populated with synthetic 5-cell initial conditions.
-#    No CSV files required.
-#
-# The Process parameter blocks below are the authoritative reference
-# for "what NSM1 looks like with v3 defaults"; copy them into your own
-# YAML when promoting from a demo to a real simulation.
+# Parameter convention: each process nests its parameters under ``parameters:``
+# (see ``dox`` / ``n2`` below), which the config factory passes straight to the
+# Process constructor. The blocks below are the authoritative reference for
+# "what NSM1 looks like with v3 defaults" — copy them into your own YAML when
+# promoting from a demo to a real simulation.
 
 model:
   start_datetime: '2026-01-01 00:00:00'
@@ -74,13 +73,15 @@ processes:
   # The v3 default kah_20_user=0.0 disables reaeration and would let
   # DOX accumulate non-physically in a closed-box demo.
   - dox:
-      pressure_mb: 1013.25
-      kah_20_user: 20.0
-      hydraulic_reaeration_option: 1
+      parameters:
+        pressure_mb: 1013.25
+        kah_20_user: 20.0
+        hydraulic_reaeration_option: 1
 
   # N2 - dissolved dinitrogen / total dissolved gas (mg-N/L).
   - n2:
-      pressure_mb: 1013.25
+      parameters:
+        pressure_mb: 1013.25
 
   # Pathogen - pathogen indicator (count/100mL, relative).
   - pathogen: {}
