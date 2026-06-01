@@ -134,7 +134,14 @@ class Riverine(Process):
                 bridged = mesh[mesh_name].copy(deep=not two_way)
                 registry.register(
                     canonical,
-                    DataArrayVariable(bridged),
+                    # ``space_dimension="nface"`` lets every bridged
+                    # constituent self-report the riverine mesh's spatial
+                    # dimension. ``Model.__init_output_source`` reads this
+                    # generically to size the model-output zarr store, so any
+                    # constituent (not just water_temperature) can be an
+                    # output variable. The riverine mesh's spatial axis is
+                    # always ``nface``.
+                    DataArrayVariable(bridged, space_dimension="nface"),
                     overwrite=True,  # re-bridge: upsert, not first-insert
                 )
         # depth: the cell mean water-column depth, resolved on the riverine
@@ -154,7 +161,12 @@ class Riverine(Process):
             )
         registry.register(
             "depth",
-            DataArrayVariable(mesh["coupling_depth"].copy(deep=False)),
+            # Depth lives on the same ``nface`` mesh axis as the
+            # constituents; self-report it so the output store can size a
+            # ``depth`` output the same generic way.
+            DataArrayVariable(
+                mesh["coupling_depth"].copy(deep=False), space_dimension="nface"
+            ),
             overwrite=True,
         )
 

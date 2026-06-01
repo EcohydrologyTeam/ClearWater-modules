@@ -473,6 +473,87 @@ class Model:
             if callable(finalize):
                 finalize(self, self.__registry)
 
+    @staticmethod
+    def __resolve_space_dimensions(variable) -> list[tuple[str, Any]]:
+        """Resolve the (dim_name, coord_values) pairs that size an output
+        variable's spatial axes for the model-output zarr store.
+
+        Generalizes what v2 carried as a hardcoded ``water_temperature``
+        special-case. Every riverine-bridged constituent self-reports its
+        spatial dimension via ``DataArrayVariable(space_dimension="nface")``
+        (see ``Riverine._bridge_mesh_to_registry``), so this works for any
+        constituent rather than just temperature.
+
+        Two paths, in precedence order:
+
+        1. The variable self-reports ``space_dimension`` (one name or a
+           list). Use ``space_dimension_values`` when the variable supplies
+           them; otherwise derive the coordinate values from the underlying
+           array (``data[dim].values`` -- which returns the default integer
+           index when the dim has no explicit coordinate, as the riverine
+           mesh constituents do).
+        2. The variable does NOT self-report a spatial dimension (e.g. a
+           ``water_temperature`` array registered by a data source without a
+           ``space_dimension`` kwarg). Fall back to every non-time dimension
+           of the underlying array. This preserves the v2 behavior that let
+           ``water_temperature`` size the store off its ``nface`` axis,
+           without a name-specific check.
+
+        Variables with no array-like payload (e.g. scalar float providers)
+        contribute no spatial dimension.
+        """
+        declared = variable.space_dimension
+        names = (
+            [declared]
+            if isinstance(declared, str)
+            else list(declared)
+            if declared is not None
+            else None
+        )
+
+        data = None
+        get = getattr(variable, "get", None)
+        if callable(get):
+            try:
+                data = get()
+            except Exception:
+                data = None
+
+        def coord_values(dim: str):
+            if data is not None and hasattr(data, "__getitem__"):
+                try:
+                    return data[dim].values
+                except Exception:
+                    return None
+            return None
+
+        resolved: list[tuple[str, Any]] = []
+        if names is not None:
+            declared_values = variable.space_dimension_values
+            single = len(names) == 1
+            for index, dim in enumerate(names):
+                values = None
+                if declared_values is not None:
+                    values = declared_values if single else declared_values[index]
+                if values is None:
+                    values = coord_values(dim)
+                if values is not None:
+                    resolved.append((dim, values))
+            return resolved
+
+        # No self-reported spatial dimension: derive from the array's
+        # non-time dimensions so externally-registered fields on the mesh
+        # (water_temperature, etc.) still size the output store.
+        dims = getattr(data, "dims", None)
+        if dims is not None:
+            for dim in dims:
+                if dim == "time":
+                    continue
+                values = coord_values(dim)
+                if values is not None:
+                    resolved.append((dim, values))
+        return resolved
+
     def __init_output_source(self) -> None:
         if self.__output_variables is None or len(self.__output_variables) == 0:
             return
@@ -480,21 +561,9 @@ class Model:
         space_dimensions: dict[str, Any] = {}
         for variable_name in self.__output_variables:
             variable = self.__registry.get_variable(variable_name)
-            if (
-                variable.space_dimension is not None
-                and variable.space_dimension not in space_dimensions
-            ):
-                space_dimensions[variable.space_dimension] = (
-                    variable.space_dimension_values
-                )
-
-            # v2 carried this manual override for water_temperature so the
-            # output store sees the riverine mesh's ``nface`` dimension.
-            # Preserved verbatim until variable.space_dimension is wired
-            # up cleanly in riverine.
-            if variable_name == "water_temperature":
-                data = variable.get()
-                space_dimensions["nface"] = data["nface"].values
+            for dim, values in self.__resolve_space_dimensions(variable):
+                if dim not in space_dimensions:
+                    space_dimensions[dim] = values
 
         self.__output_data_store = ChunkedZarrDataStore(
             store_path=self.__simulation_directory / "model_outputs.zarr",
