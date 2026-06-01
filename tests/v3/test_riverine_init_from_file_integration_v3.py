@@ -30,7 +30,9 @@ import h5py
 import numpy as np
 import pandas as pd
 import pytest
+import xarray
 import yaml
+from packaging.version import Version
 
 # Importing the processes package runs the @ProcessFactory.register decorators
 # for every NSM1 process, so init_from_file can resolve them by name. Without
@@ -80,13 +82,23 @@ _CANONICAL_SPOT_CHECK = [
 ]
 
 
-pytestmark = pytest.mark.skipif(
-    not (PLAN02 / PLAN02_HDF).exists(),
-    reason=(
-        "ClearWater-riverine plan02 fixture not found at "
-        f"{PLAN02 / PLAN02_HDF}; sibling repo checkout required"
+pytestmark = [
+    pytest.mark.skipif(
+        not (PLAN02 / PLAN02_HDF).exists(),
+        reason=(
+            "ClearWater-riverine plan02 fixture not found at "
+            f"{PLAN02 / PLAN02_HDF}; sibling repo checkout required"
+        ),
     ),
-)
+    pytest.mark.skipif(
+        Version(xarray.__version__) < Version("2025.8"),
+        reason=(
+            "init_from_file exercises the zarr-backed model-data path; "
+            "xarray<2025.8 is incompatible with zarr 3.x (conda clearwater "
+            "env). Runs in pixi dev."
+        ),
+    ),
+]
 
 
 def _hdf_stamps(hdf_path: Path):
