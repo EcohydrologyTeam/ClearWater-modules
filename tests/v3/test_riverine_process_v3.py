@@ -420,3 +420,136 @@ def test_bridge_is_shared_buffer_two_way():
     sentinel_b = sentinel_a + 100.0
     mesh_arr.values[:] = sentinel_b
     np.testing.assert_array_equal(_read(registry, "nitrate"), sentinel_b)
+
+
+# ---------------------------------------------------------------------------
+# Per-constituent two-way vs one-way coupling.
+#
+# A two-way constituent shares the mesh buffer (kinetics writes feed back to
+# transport). A one-way constituent (two_way_coupling: false in the riverine
+# config) is bridged as an isolated snapshot: transport feeds kinetics, but a
+# kinetics write does NOT propagate back to the transport mesh.
+# ---------------------------------------------------------------------------
+
+
+def _build_real_riverine_with_flags(consts_cfg: dict):
+    """Build a real ClearwaterRiverine where each constituent's config is
+    given explicitly (so two_way_coupling can be set per constituent).
+
+    Mirrors ``_build_real_riverine`` but takes a full constituents-config
+    mapping rather than a name list. Returns ``(instance, registry)``.
+    """
+    start, end = _hdf_time_bounds(PLAN02 / PLAN02_HDF)
+    reg = VariableRegistry()
+    model_cfg = {
+        "simulation_directory": str(tempfile.mkdtemp()),
+        "hydrodynamic_input": str((PLAN02 / PLAN02_HDF).resolve()),
+        "start_datetime": str(start),
+        "end_datetime": str(end),
+        "diffusion_coefficient": 0.01,
+        "output_variables": [],
+        "mass_flux_calculation": False,
+    }
+    cfg = {"model": model_cfg, "constituents": consts_cfg}
+    cfg_path = Path(tempfile.mkdtemp()) / "riv.yml"
+    cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+    inst = cwr.ClearwaterRiverine(
+        config_filepath=str(cfg_path), variable_registry=reg
+    )
+    reg.register(
+        "water_temperature",
+        DataArrayVariable(xr.full_like(reg.get_variable("volume").get_data(), 15.0)),
+    )
+    return inst, reg
+
+
+def _const_block(two_way=None):
+    block = {
+        "initial_conditions": {"provider": "float", "data": {"value": 1.0}},
+        "boundary_conditions": {"provider": "float", "data": {"value": 1.0}},
+    }
+    if two_way is not None:
+        block["two_way_coupling"] = two_way
+    return block
+
+
+def test_one_way_constituent_does_not_write_back_to_mesh():
+    # NH4 is one-way; NO3 is two-way (explicit).
+    inst, registry = _build_real_riverine_with_flags(
+        {
+            "NH4": _const_block(two_way=False),
+            "NO3": _const_block(two_way=True),
+        }
+    )
+    _init(inst, registry)
+
+    # Transport -> kinetics: both aliases start equal to their mesh source.
+    np.testing.assert_array_equal(
+        _read(registry, "ammonium"), np.asarray(inst.mesh["NH4"])
+    )
+
+    # A kinetics write to the ONE-WAY alias must NOT reach the mesh.
+    mesh_before = np.asarray(inst.mesh["NH4"]).copy()
+    canon = registry.get_variable("ammonium").get()
+    canon.values[:] = np.nan_to_num(canon.values, nan=0.0) + 999.0
+    np.testing.assert_array_equal(np.asarray(inst.mesh["NH4"]), mesh_before)
+
+    # The TWO-WAY alias in the same model still writes back (shared buffer).
+    canon_no3 = registry.get_variable("nitrate").get()
+    sentinel = np.arange(canon_no3.values.size, dtype=float).reshape(
+        canon_no3.values.shape
+    )
+    canon_no3.values[:] = sentinel
+    np.testing.assert_array_equal(np.asarray(inst.mesh["NO3"]), sentinel)
+
+
+def test_one_way_snapshot_reseeds_from_transport_on_rebridge():
+    # A one-way constituent's snapshot is refreshed from transport each
+    # re-bridge: a kinetics write is discarded, and the alias tracks the
+    # mesh again after the next _bridge_mesh_to_registry call.
+    inst, registry = _build_real_riverine_with_flags(
+        {"NH4": _const_block(two_way=False)}
+    )
+    process = _init(inst, registry)
+
+    canon = registry.get_variable("ammonium").get()
+    canon.values[:] = np.nan_to_num(canon.values, nan=0.0) + 999.0
+
+    # Re-bridge (no transport advance needed): the snapshot is replaced by a
+    # fresh deep copy of the current mesh value, discarding the write.
+    process._bridge_mesh_to_registry(registry)
+    np.testing.assert_array_equal(
+        _read(registry, "ammonium"), np.asarray(inst.mesh["NH4"])
+    )
+
+
+def test_coupling_flags_default_two_way_when_accessor_absent():
+    # Back-compat: an instance without constituent_coupling() yields {} and
+    # the bridge treats every constituent as two-way.
+    inst, registry = _build_real_riverine(constituents=["Ap", "NH4"])
+    process = _init(inst, registry)
+
+    # A current instance exposes the accessor, so flags reflect the config
+    # (every constituent defaults to two-way True).
+    assert process._coupling_flags() == {"Ap": True, "NH4": True}
+
+    # Simulate an older instance lacking the accessor.
+    class _NoAccessor:
+        def __init__(self, wrapped):
+            self._w = wrapped
+
+        def __getattr__(self, name):
+            if name == "constituent_coupling":
+                raise AttributeError(name)
+            return getattr(self._w, name)
+
+    process.riverine_instance = _NoAccessor(inst)
+    assert process._coupling_flags() == {}
+    # And the bridge still works (all two-way / shared buffer).
+    process._bridge_mesh_to_registry(registry)
+    canon = registry.get_variable("ammonium").get()
+    sentinel = np.arange(canon.values.size, dtype=float).reshape(
+        canon.values.shape
+    )
+    canon.values[:] = sentinel
+    np.testing.assert_array_equal(np.asarray(inst.mesh["NH4"]), sentinel)

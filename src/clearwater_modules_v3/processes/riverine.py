@@ -85,6 +85,23 @@ class Riverine(Process):
     def from_config(config: dict, variable_registry: VariableRegistry) -> "Riverine":
         return Riverine.from_file_path(**config, variable_registry=variable_registry)
 
+    def _coupling_flags(self) -> dict:
+        """Per-constituent two-way coupling flags from the riverine instance.
+
+        Returns ``{mesh_name: bool}``. Falls back to an empty dict (every
+        constituent treated as two-way by ``_bridge_mesh_to_registry``)
+        when the riverine instance predates the public
+        ``constituent_coupling()`` accessor, so the bridge stays
+        compatible with older ClearWater-Riverine builds.
+        """
+        getter = getattr(self.riverine_instance, "constituent_coupling", None)
+        if getter is None:
+            return {}
+        try:
+            return dict(getter())
+        except Exception:
+            return {}
+
     def _bridge_mesh_to_registry(self, registry: VariableRegistry) -> None:
         """(Re)point canonical registry names at the current mesh objects.
 
@@ -96,13 +113,28 @@ class Riverine(Process):
 
         The mesh is a ``MeshView`` exposing constituents by item access
         (``mesh["Ap"]``) and membership via ``name in mesh``.
+
+        Coupling direction is per-constituent. A two-way constituent
+        (the default) is registered as ``copy(deep=False)`` so it shares
+        the mesh's buffer: kinetics writes propagate back into transport.
+        A one-way constituent (``two_way_coupling=False`` in the riverine
+        config) is registered as ``copy(deep=True)`` so the kinetics get
+        an isolated per-step snapshot of the transported value -- they
+        read and react on it, but their writes do not overwrite the
+        transported field (the next re-bridge re-seeds the snapshot from
+        transport). Flags come from the riverine instance's public
+        ``constituent_coupling()`` accessor; an instance predating that
+        accessor defaults every constituent to two-way.
         """
         mesh = self.riverine_instance.mesh
+        coupling = self._coupling_flags()
         for mesh_name, canonical in self._MESH_TO_CANONICAL.items():
             if mesh_name in mesh:
+                two_way = coupling.get(mesh_name, True)
+                bridged = mesh[mesh_name].copy(deep=not two_way)
                 registry.register(
                     canonical,
-                    DataArrayVariable(mesh[mesh_name].copy(deep=False)),
+                    DataArrayVariable(bridged),
                     overwrite=True,  # re-bridge: upsert, not first-insert
                 )
         # depth: the cell mean water-column depth, resolved on the riverine
