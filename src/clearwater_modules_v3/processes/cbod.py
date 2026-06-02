@@ -117,6 +117,12 @@ class CBOD(Process):
         "oxygen_dissolved",
     ]
 
+    # Wet/dry masking (C5): the per-cell state this process WRITES, so
+    # Model.__apply_wet_mask masks only the output on dry cells, never the
+    # input forcings. Mirrors n2/floating_algae/temperature. Persisted in
+    # run() via set_at_time("cbod").
+    output_variables = ["cbod"]
+
     # Class-level v3 defaults (design spec Section 3.4). Loaded from
     # the v3 ``parameters.cbod`` module.
     DEFAULTS: dict[str, float | int | bool] = CBOD_DEFAULTS

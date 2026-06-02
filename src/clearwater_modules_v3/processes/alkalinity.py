@@ -176,6 +176,12 @@ class Alkalinity(Process):
     # Class-level v3 defaults. Lazy-loaded on first instantiation;
     # composed from the relevant v3 parameter groups (see module
     # docstring).
+    # Wet/dry masking (C5): the per-cell state this process WRITES, so
+    # Model.__apply_wet_mask masks only the output on dry cells, never the
+    # input forcings. Mirrors n2/floating_algae/temperature. Persisted in
+    # run() via set_at_time("alkalinity") (pH is a diagnostic, left unmasked).
+    output_variables = ["alkalinity"]
+
     DEFAULTS: dict[str, float | int | bool] = {}
 
     # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics

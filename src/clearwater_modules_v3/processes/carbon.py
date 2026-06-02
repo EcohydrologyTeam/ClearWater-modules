@@ -178,6 +178,12 @@ class Carbon(Process):
     # (POC settling velocity, hydraulic forcings), and
     # ``parameters.algae`` / ``parameters.balgae`` (stoichiometric
     # ratios used in the algal-coupling terms).
+    # Wet/dry masking (C5): the per-cell state(s) this process WRITES, so
+    # Model.__apply_wet_mask masks only outputs on dry cells, never the input
+    # forcings. Mirrors n2/floating_algae/temperature. Persisted in run() via
+    # set_at_time("poc"/"doc"/"dic").
+    output_variables = ["poc", "doc", "dic"]
+
     DEFAULTS: dict[str, float | int | bool] = {}
 
     # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics

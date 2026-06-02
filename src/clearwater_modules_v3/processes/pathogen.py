@@ -115,6 +115,12 @@ class Pathogen(Process):
     # match for the v2 <-> v3 circular import; in v3-native modules the
     # circular import is not active, but the same idiom keeps the file
     # consistent with the established style in v2 process classes).
+    # Wet/dry masking (C5): the per-cell state this process WRITES, so
+    # Model.__apply_wet_mask masks only the output on dry cells, never the
+    # input forcings. Mirrors n2/floating_algae/temperature. Persisted in
+    # run() via set_at_time("pathogen").
+    output_variables = ["pathogen"]
+
     DEFAULTS: dict[str, float | int | bool] = {}
 
     # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics

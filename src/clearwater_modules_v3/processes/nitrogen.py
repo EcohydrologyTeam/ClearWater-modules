@@ -66,6 +66,12 @@ class Nitrogen(Process):
     # Class-level v3 defaults (Section 3.4 of design spec). Lazy-loaded
     # on first instantiation; see the module-level note about the v2
     # <-> v3 circular import chain.
+    # Wet/dry masking (C5): the per-cell state(s) this process WRITES, so
+    # Model.__apply_wet_mask masks only outputs on dry cells, never the input
+    # forcings. Mirrors n2/floating_algae/temperature. Persisted in run() via
+    # set_at_time("ammonium"/"nitrate"/"organic_nitrogen").
+    output_variables = ["ammonium", "nitrate", "organic_nitrogen"]
+
     DEFAULTS: dict[str, float | int | bool] = {}
 
     # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics

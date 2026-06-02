@@ -130,6 +130,12 @@ class POM(Process):
     # by Nitrogen / FloatingAlgae (originally introduced to break the
     # v2 <-> v3 circular import). POM is v3-native, but the lazy pattern
     # keeps consistency with the rest of v3.
+    # Wet/dry masking (C5): the per-cell state this process WRITES, so
+    # Model.__apply_wet_mask masks only the output on dry cells, never the
+    # input forcings. Mirrors n2/floating_algae/temperature. Persisted in
+    # run() via set_at_time("pom").
+    output_variables = ["pom"]
+
     DEFAULTS: dict[str, float | int | bool] = {}
 
     # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics

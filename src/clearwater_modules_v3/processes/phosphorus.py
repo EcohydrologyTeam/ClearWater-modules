@@ -155,6 +155,12 @@ class Phosphorus(Process):
     # Class-level v3 defaults. Lazy-loaded on first instantiation to
     # mirror the v2 nitrogen.py:91-93 pattern (the lazy idiom is also
     # used in v3 Pathogen for consistency).
+    # Wet/dry masking (C5): the per-cell state(s) this process WRITES, so
+    # Model.__apply_wet_mask masks only outputs on dry cells, never the input
+    # forcings. Mirrors n2/floating_algae/temperature. Persisted in run() via
+    # set_at_time("tip"/"organic_phosphorus").
+    output_variables = ["tip", "organic_phosphorus"]
+
     DEFAULTS: dict[str, float | int | bool] = {}
 
     # Pattern-alignment spec §4 / Appendix A diff: the registry-diagnostics
