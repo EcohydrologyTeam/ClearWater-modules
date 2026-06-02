@@ -216,6 +216,7 @@ class N2(Process):
                 "kaw_theta",
                 "hydraulic_reaeration_option",
                 "wind_reaeration_option",
+                "min_reaeration_depth",
             ):
                 composed[k] = DOX_DEFAULTS[k]
             # Hydraulic forcings live in global_vars (toy values; should
@@ -485,6 +486,7 @@ class N2(Process):
                 topwidth=topwidth,
                 slope=slope,
                 shear_velocity=shear_velocity,
+                min_depth=getattr(self, "min_reaeration_depth", 0.0),
             )
             kaw_20_value = kaw_20(
                 kaw_20_user=self.kaw_20_user,
@@ -500,6 +502,7 @@ class N2(Process):
                 kaw_theta=self.kaw_theta,
                 T_water_C=t_water_c,
                 depth=depth,
+                min_depth=getattr(self, "min_reaeration_depth", 0.0),
             )
 
         # --- Atmospheric exchange flux (mg-N/L/d) ---

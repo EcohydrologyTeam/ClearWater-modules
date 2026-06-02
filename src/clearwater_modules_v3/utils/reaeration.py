@@ -32,6 +32,7 @@ def kah_20(
     topwidth: xr.DataArray,
     slope: xr.DataArray,
     shear_velocity: xr.DataArray,
+    min_depth: float = 0.0,
 ) -> xr.DataArray:
     """Hydraulic oxygen reaeration coefficient at 20 deg C.
 
@@ -46,6 +47,18 @@ def kah_20(
         topwidth | m | average top width of cell.
         slope | dimensionless | average bottom slope.
         shear_velocity | m/s | average bottom shear velocity.
+        min_depth | m | OPT-IN floor on ``depth`` before the inverse-depth
+            empirical formulas evaluate. ``0.0`` = OFF (DEFAULT;
+            byte-identical to the unfloored expression). >0 clamps
+            ``depth = max(depth, min_depth)`` so the ``depth**-1.85`` /
+            ``depth**-0.66`` / ``depth**-1.5`` terms cannot blow up at a
+            sub-physical (newly-wet, ~0 m) cell. Coupled HEC-RAS-2D
+            transport delivers a physically faithful per-cell mean depth
+            that is legitimately ~1e-6 m (or exactly 0) at a wetting front;
+            without a floor those cells produce ``ka_tc`` ~ 1e11/d and a
+            Forward-Euler blow-up. Mirrors the opt-in CE-QUAL-W2-style
+            ``min_reaeration_ka`` (a floor on ``ka_tc``) and the TSM
+            ``q_net_depth_skip_threshold`` guards.
 
     Returns:
         1/d | hydraulic reaeration coefficient at 20 deg C.
@@ -71,6 +84,11 @@ def kah_20(
             9. Thackston and Dawson (2001): Froude-corrected shear-velocity
                form.
     """
+    # Opt-in depth floor (default OFF). Clamp BEFORE any inverse-depth
+    # term evaluates so a sub-physical newly-wet depth cannot drive the
+    # hydraulic coefficient to ~1e11/d. See ``min_depth`` in Args.
+    if min_depth > 0.0:
+        depth = np.maximum(depth, min_depth)
     Uw_x_S = velocity * slope
     sqrt_g_h = (9.81 * depth) ** 0.5
     # ``np.select`` returns a bare ndarray whose dim labels are lost when
@@ -259,6 +277,7 @@ def ka_tc(
     kaw_theta: xr.DataArray,
     T_water_C: xr.DataArray,
     depth: xr.DataArray,
+    min_depth: float = 0.0,
 ) -> xr.DataArray:
     """Effective oxygen reaeration coefficient, temperature-corrected.
 
@@ -275,10 +294,21 @@ def ka_tc(
         kaw_theta | dimensionless | Arrhenius theta for ``kaw``.
         T_water_C | deg C | water temperature.
         depth | m | average water depth in cell.
+        min_depth | m | OPT-IN floor on ``depth`` before the wind term
+            ``kaw_tc / depth`` divides. ``0.0`` = OFF (DEFAULT;
+            byte-identical to the unfloored expression). >0 clamps
+            ``depth = max(depth, min_depth)``. Pass the SAME ``min_depth``
+            to ``kah_20`` so both the hydraulic and wind components see the
+            floored depth; flooring here alone does not protect the
+            (already computed) ``kah_20`` value. See ``kah_20`` for the
+            newly-wet-cell rationale.
 
     Returns:
         1/d | overall temperature-corrected reaeration coefficient.
     """
+    # Opt-in depth floor (default OFF), applied to the wind term's 1/depth.
+    if min_depth > 0.0:
+        depth = np.maximum(depth, min_depth)
     kah_tc = arrhenius_correction(T_water_C, kah_20, kah_theta)
     kaw_tc = arrhenius_correction(T_water_C, kaw_20, kaw_theta)
     return kaw_tc / depth + kah_tc
