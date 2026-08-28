@@ -18,6 +18,21 @@ requires = ["hatchling"]
 [tool.hatch.metadata]
 allow-direct-references = true
 
+# This repository ships TWO packages from ``src/``: the v1 ``clearwater_modules``
+# and ``clearwater_modules_v3``, the Aquatic Processes Library. Hatchling infers
+# a single package from the project name when it is not told otherwise, so
+# without this list a built wheel contained ``clearwater_modules`` alone and
+# ``clearwater_modules_v3`` was absent from it.
+#
+# Editable installs hid that: they place ``src/`` itself on ``sys.path``, which
+# exposes both packages, so every environment built with ``pip install -e``
+# worked while every wheel-based install lacked the library. ClearWater-HMS
+# consumes the v3 processes and installs this repository non-editable in CI and
+# for collaborators, where the missing package raised ModuleNotFoundError at
+# import.
+[tool.hatch.build.targets.wheel]
+packages = ["src/clearwater_modules", "src/clearwater_modules_v3"]
+
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64", "osx-arm64", "win-64"]
@@ -73,4 +88,7 @@ clearwater_data = { path = "../ClearWater-data", editable = true}
 clearwater_riverine = {path = "../ClearWater-riverine", editable=true}
 
 [tool.pixi.tasks]
-verify-install = {cmd = "python -c \"import clearwater_data; import clearwater_riverine; import clearwater_modules;\""}
+# Imports clearwater_modules_v3 as well as v1: the task previously checked only
+# v1, so it reported a healthy install of a distribution whose wheel was missing
+# the Aquatic Processes Library entirely.
+verify-install = {cmd = "python -c \"import clearwater_data; import clearwater_riverine; import clearwater_modules; import clearwater_modules_v3;\""}
