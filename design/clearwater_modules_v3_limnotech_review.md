@@ -33,7 +33,7 @@ The v3 package is at `src/clearwater_modules_v3/` on this branch. It is co-locat
 - v3 NSM1 — in progress on a parallel work track per the architecture spec § 1; will land as a separate PR.
 - v3 retirement of v1 — v1 stays in the codebase as a deprecated reference for one release cycle per architecture spec § 5.
 - v2 retirement — feature-based trigger ("v3 1.0.0 ships"); v2 enters frozen state (bug fixes only) when this PR merges.
-- The Sediment Simulation Module (SSM) work in `src/clearwater_modules_v2/processes/sediment/` — separate active work track.
+- The Substrate Simulation Module (SSM) work in `src/clearwater_modules_v2/processes/sediment/` — separate active work track.
 - The `clearwater_riverine` dry→wet cell concentration artifact — documented as a known issue in `ClearWater-Riverine-streaming/design/known_issues.md` and tracked alongside an unrelated `test_mass_end_plan02` mass-balance regression in that repo.
 
 ## 3. Defects v3 found in upstream v2 (worth your direct attention)

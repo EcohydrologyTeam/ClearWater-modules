@@ -54,7 +54,7 @@ On the modules side, the analogous concept is the v3 chunked process loop: load 
 - **TSM v3 / NSM v3** — `src/clearwater_modules_v3/processes/`. Each subclasses `Process` (re-exported from v2 via `processes/base.py:67`, which is the v2 dependency in NSM v3) and implements `run(time, registry)`. The v3 `Model` dispatches them via the firing schedule. Two endorsed update patterns in `processes/base.py:9-28`:
   - **(a)** Compute rate of change and apply Forward Euler: `state_new = state_old + rate * dt_seconds`.
   - **(b)** Compute per-substep delta directly and add to state (e.g., Temperature's depth-ramp guard).
-- **SSM** — Sediment Simulation Module. The Python port lives in `clearwater_modules_v2`. Its integration into the coupled run is one of the open questions on the follow-up list (see § Open questions below). In the Santiam-Salem coupled exemplar today, sediment forcing is **read from a precomputed NetCDF** at `08_run_coupled.py:739` and passed to ESM via the `HydraulicData` namedtuple — meaning v2 SSM Python is not invoked inside the per-substep loop on this branch, even though the v2 SSM source still exists.
+- **SSM** — Substrate Simulation Module. The Python port lives in `clearwater_modules_v2`. Its integration into the coupled run is one of the open questions on the follow-up list (see § Open questions below). In the Santiam-Salem coupled exemplar today, sediment forcing is **read from a precomputed NetCDF** at `08_run_coupled.py:739` and passed to ESM via the `HydraulicData` namedtuple — meaning v2 SSM Python is not invoked inside the per-substep loop on this branch, even though the v2 SSM source still exists.
 
 ## The user-workflow arc, condensed
 

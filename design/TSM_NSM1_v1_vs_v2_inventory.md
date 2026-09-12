@@ -109,7 +109,7 @@ Three commits since 2026-04-01 (none after 2026-02-20 in the user-visible histor
 Repo B activity since 2026-04-01 (12 commits, all on the streaming branch):
 
 ```
-5674cbc 2026-05-02 Add SSM (Sediment Simulation Module) — clean-room SEDZLJ port
+5674cbc 2026-05-02 Add SSM (Substrate Simulation Module) — clean-room SEDZLJ port
 37e1d18 2026-05-02 Document streaming-branch additions in README
 d9505c6 2026-05-01 TSM kernel correctness: thin-water stability + latent-heat unit fix
 1a226dd 2026-05-01 Add hotstart_dataset kwargs to NSM1 and TSM kernels

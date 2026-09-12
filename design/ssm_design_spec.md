@@ -1,6 +1,6 @@
 # SSM design spec — moved
 
-The Sediment Simulation Module (SSM) has been extracted to its own
+The Substrate Simulation Module (SSM) has been extracted to its own
 repository:
 
 **`ClearWater-modules-phase2-SSM`**
